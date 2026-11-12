@@ -6,7 +6,7 @@ import { analyzeActions } from '../main/decoder/ActionAnalysis';
 import { analyzeDetailedActions } from '../main/decoder/DetailedAnalysis';
 import { buildCoachInsights } from '../main/decoder/CoachInsights';
 import { buildEngineCoachInsights } from '../main/decoder/EngineCoachInsights';
-import { simulateReplay, type ReplaySimulationResult } from './ReplaySimulation';
+import type { ReplaySimulationResult } from './ReplaySimulation';
 import { installBrowserReplayAPI } from './platform/BrowserReplayAPI';
 
 // Electron provides its API through the isolated preload; normal browsers use
@@ -99,8 +99,13 @@ function App() {
     }
     setSimulationProgress({percent:0,phase:'Original-Engine wird gestartet'});
     try {
-      const assets = await window.replayAPI.getReplayEngineAssets();
+      // Defer the heavy original-engine worker until an actual replay review is requested.
+      const [{ manifest, cdnBase }, { simulateReplay }] = await Promise.all([
+        window.replayAPI.getReplayEngineAssets(),
+        import('./ReplaySimulation'),
+      ]);
       if (requestId !== engineReviewRunId.current) return;
+      const assets = { manifest, cdnBase };
       let preferredClientId: string | null;
       if (selectedClientId !== undefined) {
         preferredClientId = selectedClientId || null;

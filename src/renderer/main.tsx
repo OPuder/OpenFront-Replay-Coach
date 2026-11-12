@@ -454,7 +454,7 @@ function CoachPanel({apiResult,preferredPlayerPublicId,decodedActions,simulation
   const recentPhaseHistory = phaseHistory.filter(item => item.playerName === selectedPlayerReview?.playerName).slice(0,12);
   const phaseTrend = phaseDefinitions.map(phase => {
     const values = recentPhaseHistory.map(game=>game.phases.find(item=>item.id===phase.id)).filter((item):item is NonNullable<typeof item>=>Boolean(item));
-    const strong = values.filter(item=>item.rating==='Messbarer Fortschritt').length;
+    const strong = values.filter(item=>['Messbarer Fortschritt','Über deinem Partiedurchschnitt','Starke Phase'].includes(item.rating)).length;
     const tr = values.map(item=>item.territoryRate).filter((v):v is number=>v!==null);
     const ir = values.map(item=>item.incomeRate).filter((v):v is number=>v!==null);
     return {...phase,games:values.length,strong,averageTerritory:tr.reduce((a,b)=>a+b,0)/Math.max(1,tr.length),averageIncome:ir.reduce((a,b)=>a+b,0)/Math.max(1,ir.length)};

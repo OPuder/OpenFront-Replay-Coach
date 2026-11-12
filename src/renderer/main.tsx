@@ -385,6 +385,76 @@ function CoachPanel({apiResult,preferredPlayerPublicId,decodedActions,simulation
   const selectedPlayerSamples = (simulationResult?.samples ?? [])
     .map(sample => sample.players.find(player => player.clientID === selectedClientId))
     .filter((sample): sample is NonNullable<typeof sample> => sample !== undefined);
+  const phaseDefinitions = [
+    { id: 'early', label: 'Early Game', from: 0, to: 0.3, description: 'Start, Expansion und erste Wirtschaft' },
+    { id: 'mid', label: 'Mid Game', from: 0.3, to: 0.7, description: 'Fronten, Zielwahl und Ressourcensteuerung' },
+    { id: 'late', label: 'Late Game', from: 0.7, to: 1, description: 'Endphase, Druck und Abschluss' },
+  ];
+  const replayDurationTicks = simulationResult?.totalTicks ?? 0;
+  const phasePerformance = simulationResult?.status === 'verified' && replayDurationTicks > 0
+    ? phaseDefinitions.map(phase => {
+        const fromTick = replayDurationTicks * phase.from;
+        const toTick = replayDurationTicks * phase.to;
+        const phaseSamples = (simulationResult.samples ?? []).filter(sample => sample.tick >= fromTick && sample.tick <= toTick)
+          .flatMap(sample => {
+            const player = sample.players.find(player => player.clientID === selectedClientId);
+            return player ? [{ tick: sample.tick, player }] : [];
+          });
+        const first = phaseSamples[0]?.player;
+        const last = phaseSamples[phaseSamples.length - 1]?.player;
+        const minutes = Math.max(0.1, (phaseSamples[phaseSamples.length - 1]?.tick ?? 0) - (phaseSamples[0]?.tick ?? 0)) / 600;
+        const phaseActions = selectedActionReviews.filter(action => action.seconds * 10 >= fromTick && action.seconds * 10 <= toTick);
+        const attackActions = phaseActions.filter(action => action.type === 'attack');
+        const targetPressureWins = attackActions.filter(action => action.targetDelta30s && action.targetDelta30s.tiles < 0).length;
+        const territory = first && last ? last.tiles - first.tiles : null;
+        const income = first && last ? last.goldEarned - first.goldEarned : null;
+        return { ...phase, sampleCount: phaseSamples.length, minutes, territory, income, attackCount: attackActions.length, targetPressureWins, territoryRate: territory === null ? null : territory / minutes, incomeRate: income === null ? null : income / minutes };
+      })
+    : [];
+  const phaseMedian = (values:number[]) => {
+    const sorted = [...values].sort((a,b)=>a-b);
+    return sorted.length ? sorted[Math.floor(sorted.length/2)] : null;
+  };
+  const territoryMedian = phaseMedian(phasePerformance.map(p=>p.territoryRate).filter((v):v is number=>v!==null));
+  const incomeMedian = phaseMedian(phasePerformance.map(p=>p.incomeRate).filter((v):v is number=>v!==null));
+  const ratedPhases = phasePerformance.map(phase => {
+    const enoughData = phase.sampleCount >= 3 && phase.minutes >= 0.5;
+    const strengths = [
+      phase.territoryRate !== null && territoryMedian !== null && phase.territoryRate > territoryMedian,
+      phase.incomeRate !== null && incomeMedian !== null && phase.incomeRate > incomeMedian,
+      phase.targetPressureWins > 0,
+    ].filter(Boolean).length;
+    const strengthLabels = [
+      phase.territoryRate !== null && territoryMedian !== null && phase.territoryRate > territoryMedian ? 'Expansion über Phasenschnitt' : '',
+      phase.incomeRate !== null && incomeMedian !== null && phase.incomeRate > incomeMedian ? 'Einkommen über Phasenschnitt' : '',
+      phase.targetPressureWins > 0 ? 'Zielgebiet messbar geschwächt' : '',
+    ].filter(Boolean);
+    return { ...phase, strengthLabels, rating: !enoughData ? 'Datenlage begrenzt' : strengths >= 2 ? 'Starke Phase' : strengths === 1 ? 'Solide Phase' : 'Hier liegt Potenzial' };
+  });
+  type SavedPhaseGame = { key:string; gameId:string; playedAt:string; playerName:string; mapName:string; phases:Array<{id:string;label:string;rating:string;territory:number|null;income:number|null;territoryRate:number|null;incomeRate:number|null}> };
+  const historyStorageKey = 'openfront-replay-coach.phase-history.v1';
+  const [phaseHistory,setPhaseHistory] = useState<SavedPhaseGame[]>(() => {
+    try { const raw = localStorage.getItem(historyStorageKey); const parsed = raw ? JSON.parse(raw) : []; return Array.isArray(parsed) ? parsed.filter(item => item && typeof item.key === 'string' && Array.isArray(item.phases)).slice(0,100) : []; }
+    catch { return []; }
+  });
+  React.useEffect(() => {
+    if (simulationResult?.status !== 'verified' || !selectedPlayerReview || !apiResult.gameId || ratedPhases.length !== 3) return;
+    const key = `${apiResult.gameId}:${selectedClientId}`;
+    const record: SavedPhaseGame = { key, gameId: apiResult.gameId, playedAt: new Date().toISOString(), playerName: selectedPlayerReview.playerName, mapName: apiResult.mapName ?? 'Unbekannte Karte', phases: ratedPhases.map(p=>({id:p.id,label:p.label,rating:p.rating,territory:p.territory,income:p.income,territoryRate:p.territoryRate,incomeRate:p.incomeRate})) };
+    setPhaseHistory(previous => {
+      const next = [record, ...previous.filter(item => item.key !== key)].slice(0,100);
+      try { localStorage.setItem(historyStorageKey, JSON.stringify(next)); } catch (error) { console.warn('[ReplayCoach] Spieler-Verlauf konnte nicht lokal gespeichert werden:', error); }
+      return next;
+    });
+  }, [simulationResult?.status, selectedPlayerReview?.playerName, apiResult.gameId, apiResult.mapName, selectedClientId, ratedPhases.map(p=>p.rating).join('|')]);
+  const recentPhaseHistory = phaseHistory.filter(item => item.playerName === selectedPlayerReview?.playerName).slice(0,12);
+  const phaseTrend = phaseDefinitions.map(phase => {
+    const values = recentPhaseHistory.map(game=>game.phases.find(item=>item.id===phase.id)).filter((item):item is NonNullable<typeof item>=>Boolean(item));
+    const strong = values.filter(item=>item.rating==='Starke Phase').length;
+    const tr = values.map(item=>item.territoryRate).filter((v):v is number=>v!==null);
+    const ir = values.map(item=>item.incomeRate).filter((v):v is number=>v!==null);
+    return {...phase,games:values.length,strong,averageTerritory:tr.reduce((a,b)=>a+b,0)/Math.max(1,tr.length),averageIncome:ir.reduce((a,b)=>a+b,0)/Math.max(1,ir.length)};
+  });
   const firstEngineSample = selectedPlayerSamples[0] ?? null;
   const lastEngineSample = selectedPlayerSamples[selectedPlayerSamples.length - 1] ?? null;
   const incomeSummary = firstEngineSample && lastEngineSample ? {
@@ -461,6 +531,27 @@ function CoachPanel({apiResult,preferredPlayerPublicId,decodedActions,simulation
         </div>}
         </section>
       </details>}
+      {simulationResult?.status === 'verified' && <section className="coach-phase-profile">
+        <div className="coach-engine-findings-heading"><span className="coach-report-label">DEIN SPIELERPROFIL</span><b>Wie liefen deine drei Spielphasen?</b><p>Die Einstufung vergleicht deine Phasen innerhalb dieser Partie. Sie ist kein weltweiter Ranglistenwert.</p></div>
+        <div className="coach-phase-grid">{ratedPhases.map(phase=><article className="coach-phase-card" key={phase.id}>
+          <span>{phase.label}</span><b>{phase.rating}</b><small>{phase.description}</small>
+          <div><strong>{phase.territory === null ? '–' : `${phase.territory > 0 ? '+' : ''}${fmt(phase.territory)}`}</strong><small>Gebiete netto</small></div>
+          <div><strong>{phase.income === null ? '–' : `+${fmt(phase.income)}`}</strong><small>Gold verdient</small></div>
+          <div><strong>{phase.attackCount}</strong><small>Angriffsbefehle</small></div>
+          {phase.strengthLabels.length > 0 && <p><strong>Das lief gut:</strong> {phase.strengthLabels.join(' · ')}</p>}
+          <p>{phase.targetPressureWins > 0 ? `${phase.targetPressureWins} Ziele verloren innerhalb von 30 Sekunden nach einem deiner Befehle Gebiet.` : 'Kein entsprechender Ziel-Gebietsverlust im erfassten 30-Sekunden-Fenster.'}</p>
+        </article>)}</div>
+        <small className="coach-phase-note">Grenze: Gebietszuwachs und Bruttoeinnahmen sind messbar, aber nicht automatisch Spielqualität. Bei zu wenigen Stichproben wird keine Phasenbewertung vergeben.</small>
+      </section>}
+      {simulationResult?.status === 'verified' && <section className="coach-history-profile">
+        <div className="coach-engine-findings-heading"><span className="coach-report-label">DEINE ENTWICKLUNG ÜBER MEHRERE PARTIEN</span><b>Langfristiges Spielerprofil</b><p>Jede hash-verifizierte Partie wird lokal auf diesem Gerät gespeichert. Die Übersicht zeigt deine letzten Partien für diesen Spielernamen.</p></div>
+        {recentPhaseHistory.length < 2 ? <p className="coach-history-empty">{recentPhaseHistory.length === 1 ? 'Eine Partie gespeichert. Nach der nächsten verifizierten Partie werden erste Vergleiche sichtbar.' : 'Noch keine gespeicherten Partien. Analysiere weitere Replays mit erfolgreicher Hash-Prüfung.'}</p> : <>
+          <div className="coach-history-count"><b>{recentPhaseHistory.length}</b><span>gespeicherte Partien · letzte 12</span></div>
+          <div className="coach-history-grid">{phaseTrend.map(phase=><article className="coach-history-card" key={phase.id}><b>{phase.label}</b><strong>{phase.strong}/{phase.games}</strong><small>starke Phasen</small><span>{phase.averageTerritory.toFixed(1)} Gebiete / Min. im Schnitt</span><span>{Math.round(phase.averageIncome).toLocaleString('de-DE')} Gold / Min. im Schnitt</span></article>)}</div>
+          <div className="coach-history-recent"><b>Zuletzt analysiert</b>{recentPhaseHistory.slice(0,5).map(game=><div key={game.key}><span>{game.playerName} · {game.mapName}</span><small>{new Date(game.playedAt).toLocaleDateString('de-DE')} · {game.phases.map(p=>p.rating).join(' / ')}</small></div>)}</div>
+        </>}
+        <small className="coach-phase-note">Es werden nur zusammengefasste Phasenwerte gespeichert, keine Replay-Dateien. Der Verlauf bleibt auf diesem Gerät und wird nicht automatisch zwischen Android, Windows und anderen Browsern synchronisiert.</small>
+      </section>}
       {orderedEngineInsights.length > 0 && <section className="coach-engine-findings">
         <div className="coach-engine-findings-heading"><span className="coach-report-label">ZUSTANDS-BASIERTE ERKENNTNISSE</span><b>Was die Original-Engine über deinen Spielverlauf zeigt</b><p>Diese Hinweise beruhen auf rekonstruierten Spielzuständen. Sie benennen überprüfbare Muster, keine automatisch bewiesenen Fehler oder hypothetischen Idealzüge.</p></div>
         <div className="coach-engine-findings-list">{orderedEngineInsights.slice(0,5).map((item,index)=><details className={`coach-engine-finding-details finding-${item.kind}`} key={item.id} open={index===0}>

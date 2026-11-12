@@ -77,10 +77,13 @@ function App() {
     setSimulationProgress({percent:0,phase:'Original-Engine wird gestartet'});
     try {
       const assets = await window.replayAPI.getReplayEngineAssets();
-      const simulated = await simulateReplay(result.record, assets, (percent, phase) => setSimulationProgress({percent,phase}));
+      const publicId = String(playerPage?.profile?.publicId ?? playerPage?.profile?.publicID ?? '');
+      const recordPlayer = result.record?.info?.players?.find((p: any) => String(p.publicID ?? p.publicId ?? '') === publicId);
+      const preferredClientId = recordPlayer?.clientID == null ? null : String(recordPlayer.clientID);
+      const simulated = await simulateReplay(result.record, assets, (percent, phase) => setSimulationProgress({percent,phase}), 50, preferredClientId);
       setSimulationResult(simulated);
     } catch (e) {
-      setSimulationResult({status:'unverified',totalTicks:0,verifiedHashes:0,samples:[],message:e instanceof Error ? e.message : String(e)});
+      setSimulationResult({status:'unverified',totalTicks:0,verifiedHashes:0,samples:[],playerReview:null,message:e instanceof Error ? e.message : String(e)});
     } finally {
       setSimulationProgress(null);
     }
@@ -188,6 +191,13 @@ function App() {
               <Detail label="Zustands-Samples" value={fmt(simulationResult.samples.length)}/>
             </div>
             {simulationResult.samples.length > 0 && <p>Letzter erfasster Zustand: Tick {fmt(simulationResult.samples[simulationResult.samples.length-1].tick)} · {simulationResult.samples[simulationResult.samples.length-1].players.length} Spieler · {fmt(simulationResult.samples[simulationResult.samples.length-1].totalUnits)} Einheiten.</p>}
+            {simulationResult.playerReview && <div className="details-grid" style={{marginTop:12}}>
+              <Detail label={`${simulationResult.playerReview.playerName} · Landgewinn`} value={`+${fmt(simulationResult.playerReview.tilesGained)}`}/>
+              <Detail label="Gold Start → Ende" value={`${fmt(simulationResult.playerReview.startGold)} → ${fmt(simulationResult.playerReview.endGold)}`}/>
+              <Detail label="Truppen Start → Ende" value={`${fmt(simulationResult.playerReview.startTroops)} → ${fmt(simulationResult.playerReview.endTroops)}`}/>
+              <Detail label="Längste Phase ohne Gebietszuwachs" value={`${fmt(simulationResult.playerReview.longestNoExpansionSeconds)} s`}/>
+            </div>}
+            {simulationResult.playerReview && <small>Diese Werte stammen aus rekonstruierten Spielzuständen. Eine lange Phase ohne Gebietszuwachs ist zunächst ein Prüfzeitraum – nicht automatisch ein Spielfehler.</small>}
           </section>}
           {apiResult.actionAnalysis && <CoachPanel apiResult={apiResult} preferredPlayerPublicId={playerPage?.profile?.publicId ?? playerPage?.profile?.publicID ?? null} decodedActions={decodedActions} onExport={exportActionsCsv} onSaveReplayJson={()=>void saveReplayJson()} onOpenReplay={()=>window.replayAPI.openOfficialReplay(apiResult.gameId)} fmt={fmt}/>}
           <details className="technical-details studio-card"><summary>Technische Daten und vollständiges Aktionsprotokoll <ChevronDown size={16}/></summary><div className="details-grid">{Object.entries(apiResult.categoryCounts??{}).map(([k,v])=><Detail key={k} label={k} value={fmt(v)}/>)}</div><div className="action-list">{decodedActions.slice(0,200).map((a,i)=><div className="check-row" key={`${a.turn}-${i}`}><div><b>{a.label}</b><small>{clock(a.seconds)} · {a.details}</small></div><span className="pill blue">{a.category}</span></div>)}</div></details>

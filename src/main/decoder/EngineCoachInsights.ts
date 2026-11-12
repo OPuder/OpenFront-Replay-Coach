@@ -28,6 +28,25 @@ interface EngineActiveAttackSummary {
   retreatingCount: number;
 }
 
+interface EngineFrontContext {
+  activeTargetCount: number;
+  outgoingAttackCount: number;
+  outgoingAttackTroops: number;
+  incomingAttackCount: number;
+  incomingAttackTroops: number;
+  incomingAttackerNames: string[];
+}
+
+interface EngineTargetPressure {
+  incomingAttackCount: number;
+  incomingAttackTroops: number;
+  otherAttackCount: number;
+  otherAttackTroops: number;
+  otherAttackerCount: number;
+  otherAttackerNames: string[];
+  retreatingOtherAttackCount: number;
+}
+
 interface EngineActionReview {
   frame: number;
   turn: number;
@@ -49,6 +68,8 @@ interface EngineActionReview {
   targetAliveBefore: boolean | null;
   targetAliveAt10s: boolean | null;
   targetAliveAt30s: boolean | null;
+  ownFrontContextBefore: EngineFrontContext | null;
+  targetPressureBefore: EngineTargetPressure | null;
   activeAttack10s: EngineActiveAttackSummary | null;
   activeAttack30s: EngineActiveAttackSummary | null;
 }
@@ -265,6 +286,35 @@ export function buildEngineCoachInsights(
       nextStep: "Prüfe die markierten Ziele im Replay. Achte darauf, ob das Ziel wirklich Gebiete verlor, ob du selbst Land gewonnen hast und ob der Angriff nach 30 Sekunden noch lief oder zurückgezogen wurde.",
       seconds: targetTerritoryLoss[0]?.seconds ?? targetedAttacks[0]?.seconds ?? null,
       limitation: "Die Werte vergleichen Ziel- und Eigenzustand bis 30 Sekunden nach dem Befehl. Andere Angriffe, passive Eroberungen oder zeitgleiche Ereignisse können mitwirken. Ein verschwundener Angriff ist für sich allein kein Erfolgsbeweis.",
+    });
+  }
+
+  const attackCommands = actionReviews.filter(action => action.type === "attack" && action.ownFrontContextBefore);
+  if (attackCommands.length > 0) {
+    const attacksAgainstPressuredTargets = attackCommands.filter(action => (action.targetPressureBefore?.otherAttackerCount ?? 0) > 0);
+    const attacksWithExistingTargets = attackCommands.filter(action => (action.ownFrontContextBefore?.activeTargetCount ?? 0) > 0);
+    const attacksUnderIncomingPressure = attackCommands.filter(action => (action.ownFrontContextBefore?.incomingAttackCount ?? 0) > 0);
+    const heavilyLoadedCommands = attackCommands.filter(action =>
+      (action.ownFrontContextBefore?.activeTargetCount ?? 0) >= 2 ||
+      (action.ownFrontContextBefore?.incomingAttackCount ?? 0) >= 2
+    );
+    const pressureEvidence = attacksAgainstPressuredTargets.slice(0, 4).map(action => {
+      const pressure = action.targetPressureBefore!;
+      return `${clock(action.seconds)} → ${action.targetName ?? action.targetId}: ${pressure.otherAttackerCount} andere Angreifer / ${pressure.otherAttackCount} Angriffe mit ${pressure.otherAttackTroops.toLocaleString("de-DE")} Truppen anderer Spieler bereits unterwegs`;
+    });
+    const frontEvidence = attacksWithExistingTargets.slice(0, 4).map(action => {
+      const context = action.ownFrontContextBefore!;
+      return `${clock(action.seconds)}: bereits ${context.activeTargetCount} andere Angriffsziel(e), ${context.outgoingAttackCount} Angriffe mit ${context.outgoingAttackTroops.toLocaleString("de-DE")} Truppen gebunden${context.incomingAttackCount ? ` · selbst unter ${context.incomingAttackCount} eingehenden Angriffen` : ""}`;
+    });
+    findings.push({
+      id: "front-pressure-context",
+      kind: heavilyLoadedCommands.length > 0 ? "review" : "observation",
+      title: "Angriffe im Kontext deiner aktiven Fronten",
+      summary: `Vor ${attacksAgainstPressuredTargets.length} von ${attackCommands.length} Angriffsbefehlen wurde das Ziel bereits von anderen Spielern angegriffen. Bei ${attacksWithExistingTargets.length} Befehlen hattest du schon andere Angriffziele aktiv; bei ${attacksUnderIncomingPressure.length} Befehlen kamen gleichzeitig Angriffe auf dich herein.`,
+      evidence: [...pressureEvidence, ...frontEvidence].join(" · ") || "Für die erfassten Angriffsbefehle war kein zusätzlicher Frontdruck vor dem Befehl dokumentiert.",
+      nextStep: "Prüfe diese Zeitpunkte zusammen mit dem Truppenbestand und den Zielveränderungen. Ein bereits bedrängter Gegner kann eine Gelegenheit sein; mehrere eigene Ziele oder eingehende Angriffe können zugleich deine verfügbaren Reserven binden.",
+      seconds: heavilyLoadedCommands[0]?.seconds ?? attacksAgainstPressuredTargets[0]?.seconds ?? attacksWithExistingTargets[0]?.seconds ?? attacksUnderIncomingPressure[0]?.seconds ?? null,
+      limitation: "Die Werte beschreiben aktive Angriffsobjekte unmittelbar vor deinem Befehl. Sie belegen weder räumlich getrennte Fronten noch Reichweite, Siegchance oder ob ein anderer Angreifer tatsächlich Gebiet erobert hat.",
     });
   }
 

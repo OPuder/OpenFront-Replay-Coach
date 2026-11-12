@@ -650,9 +650,9 @@ function CoachPanel({apiResult,preferredPlayerPublicId,decodedActions,simulation
         </div>
         <div className="domain-footnote"><b>Goldbestand im selben Zeitraum</b><p>{fmt(firstEngineSample?.gold ?? 0)} → {fmt(lastEngineSample?.gold ?? 0)} ({incomeSummary.goldChange>0?'+':''}{fmt(incomeSummary.goldChange)}). Das ist die Veränderung des Bestands, nicht der Nettogewinn aus einzelnen Aktionen.</p></div>
       </> : <p className="empty-note">Für den ausgewählten Spieler liegen noch keine Engine-Stichproben zum Einkommen vor. Prüfe die Engine-Kompatibilität oder lade eine Partie mit passenden Prüfpunkten.</p>}
-      {selectedPlayerSamples.length > 1 && <div className="analytics-chart-grid">
-        <ReplayTrendChart title="Goldbestand" description="So hat sich dein verfügbarer Goldbestand während deiner überlebten Spielzeit verändert." unit="Gold" points={selectedPlayerSamples.map(sample=>({time:sample.tick/10,value:sample.gold}))}/>
-        <ReplayTrendChart title="Gebietsentwicklung" description="Deine gehaltenen Felder im Verlauf. Nach dem Ausscheiden werden keine späteren Werte einbezogen." unit="Felder" points={selectedPlayerSamples.map(sample=>({time:sample.tick/10,value:sample.tiles}))}/>
+      {alivePlayerSamples.length > 1 && <div className="analytics-chart-grid">
+        <ReplayTrendChart title="Goldbestand" description="So hat sich dein verfügbarer Goldbestand während deiner überlebten Spielzeit verändert." unit="Gold" points={alivePlayerSamples.map(sample=>({time:sample.tick/10,value:sample.player.gold}))}/>
+        <ReplayTrendChart title="Gebietsentwicklung" description="Deine gehaltenen Felder im Verlauf. Nach dem Ausscheiden werden keine späteren Werte einbezogen." unit="Felder" points={alivePlayerSamples.map(sample=>({time:sample.tick/10,value:sample.player.tiles}))}/>
       </div>}
       <div className="overview-columns section-spaced">
         <article className="overview-panel"><div className="overview-panel-title"><div><span className="eyebrow">BAUAKTIONEN</span><h4>Was du gebaut hast</h4></div><b>{fmt(totalBuilds)}</b></div>
@@ -673,8 +673,8 @@ function CoachPanel({apiResult,preferredPlayerPublicId,decodedActions,simulation
         <article className="overview-kpi"><span>Max. eingehende Angriffe</span><b>{fmt(maxIncomingAttacks)}</b><small>Gleichzeitig beobachteter Druck</small></article>
       </div>
       {selectedPlayerSamples.length > 1 && <div className="analytics-chart-grid">
-        <ReplayTrendChart title="Truppenbestand" description="Gesamtbestand deiner Truppen laut Original-Engine-Stichproben." unit="Truppen" points={selectedPlayerSamples.map(sample=>({time:sample.tick/10,value:sample.troops}))}/>
-        <ReplayTrendChart title="Gleichzeitige Angriffe" description="Wie viele eigene Angriffe in den erfassten Spielständen gleichzeitig aktiv waren." unit="Angriffe" points={selectedPlayerSamples.map(sample=>({time:sample.tick/10,value:sample.outgoingAttacks}))}/>
+        <ReplayTrendChart title="Truppenbestand" description="Gesamtbestand deiner Truppen laut Original-Engine-Stichproben." unit="Truppen" points={alivePlayerSamples.map(sample=>({time:sample.tick/10,value:sample.player.troops}))}/>
+        <ReplayTrendChart title="Gleichzeitige Angriffe" description="Wie viele eigene Angriffe in den erfassten Spielständen gleichzeitig aktiv waren." unit="Angriffe" points={alivePlayerSamples.map(sample=>({time:sample.tick/10,value:sample.player.outgoingAttacks}))}/>
       </div>}
       <div className="overview-columns section-spaced">
         <article className="overview-panel"><div className="overview-panel-title"><div><span className="eyebrow">ZIELAUSWAHL</span><h4>Gegner bereits unter Druck</h4></div><b>{fmt(attackedPressuredTargets.length)}</b></div>

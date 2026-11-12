@@ -73,17 +73,21 @@ export async function simulateReplay(
   // sample can otherwise miss the state change that matters for coaching.
   const sampleFrames = new Set<number>();
   const cadence = Math.max(1, Math.floor(sampleEvery));
-  for (let frame = 0; frame < turns.length; frame += cadence) sampleFrames.add(frame);
+  // GameRecord turns are sparse checkpoints, not one array entry per game
+  // tick. turnNumber is the actual ReplayReader frame/tick coordinate.
+  const maxRecordedTick = turns.reduce((max: number, turn: any) => Math.max(max, Number(turn?.turnNumber ?? 0)), 0);
+  for (let frame = 0; frame <= maxRecordedTick; frame += cadence) sampleFrames.add(frame);
   if (preferredClientId) {
-    turns.forEach((turn, frame) => {
+    turns.forEach((turn) => {
+      const frame = Number(turn?.turnNumber ?? 0);
       if ((turn?.intents ?? []).some((intent: any) => String(intent?.clientID ?? "") === preferredClientId)) {
         sampleFrames.add(Math.max(0, frame - 1));
         sampleFrames.add(frame);
-        sampleFrames.add(Math.min(turns.length - 1, frame + 1));
+        sampleFrames.add(frame + 1);
       }
     });
   }
-  const orderedSampleFrames = [...sampleFrames].filter(frame => frame >= 0 && frame < turns.length).sort((a,b) => a-b);
+  const orderedSampleFrames = [...sampleFrames].filter(frame => frame >= 0 && frame <= maxRecordedTick + 1).sort((a,b) => a-b);
   let nextSampleIndex = 0;
   let appendQueue = Promise.resolve();
 
@@ -209,8 +213,9 @@ export async function simulateReplay(
             longestNoExpansionSeconds: Math.round(longestNoExpansionTicks / 10)
           } : null;
           const sampleByFrame = new Map(samples.map(sample => [sample.frame, sample]));
-          const actionReviews: ReplayActionReview[] = target ? turns.flatMap((turn: any, frame: number) =>
-            (turn?.intents ?? [])
+          const actionReviews: ReplayActionReview[] = target ? turns.flatMap((turn: any) => {
+            const frame = Number(turn?.turnNumber ?? 0);
+            return (turn?.intents ?? [])
               .filter((intent: any) => String(intent?.clientID ?? "") === String(target.clientID ?? preferredClientId ?? ""))
               .map((intent: any) => {
                 const beforeSample = sampleByFrame.get(Math.max(0, frame - 1));
@@ -239,8 +244,8 @@ export async function simulateReplay(
                     troops: after.troops - before.troops
                   } : null
                 };
-              })
-          ) : [];
+              });
+          }) : [];
           resolve({
             status: recordedHashCount > 0 ? "verified" : "unverified",
             totalTicks,

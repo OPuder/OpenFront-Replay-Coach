@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import test from 'node:test';
+import { test } from 'node:test';
 import { selectPlayerSurvivalWindow } from '../src/renderer/phaseSurvival.ts';
 
 test('excludes zeroed snapshots after elimination from player performance', () => {

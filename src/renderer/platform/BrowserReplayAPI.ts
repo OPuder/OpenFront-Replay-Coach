@@ -372,7 +372,7 @@ async function loadPlayer(rawId: string, onProgress?: (progress: { loaded: numbe
   return { playerId, profile, games: uniqueGames, nextCursor: null, pagesLoaded: pages, mapPreviews };
 }
 
-async function saveReplayJson(gameId: string): Promise<{ saved: boolean; canceled?: boolean; filePath?: string; bytes?: number }> {
+async function saveReplayJson(gameId: string): Promise<{ saved: boolean; shared?: boolean; canceled?: boolean; filePath?: string; bytes?: number }> {
   const raw = importedReplayJson.get(String(gameId));
   if (!raw) throw new Error("Für diese Partie liegt keine Replay-JSON mehr im Browser-Speicher. Lade die Partie bitte erneut.");
   const fileName = "OpenFront-" + String(gameId).replace(/[^A-Za-z0-9_-]/g, "_") + ".json";

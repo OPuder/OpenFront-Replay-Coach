@@ -419,3 +419,52 @@ body{background:radial-gradient(ellipse at 76% -10%,#17314b 0,transparent 42%),#
  .coach-history-recent>div{flex-direction:column;gap:3px}
  .coach-history-recent>div>small{text-align:left}
 }
+
+
+/* 2.3.0 – coach-first information architecture */
+.coach-primary-tabs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:14px 0 18px;padding:6px;border:1px solid #2d4359;border-radius:14px;background:#0b1724}
+.coach-primary-tabs button{display:flex;align-items:center;justify-content:center;gap:8px;min-height:46px;border:1px solid transparent;border-radius:10px;background:transparent;color:#9eb3c7;font-size:13px;font-weight:750}
+.coach-primary-tabs button.selected{border-color:#47718e;background:linear-gradient(135deg,#18334a,#14283a);color:#eff8ff;box-shadow:0 5px 18px #0003}
+.coach-data-tabs{position:relative;top:auto;display:flex;gap:6px;margin:-7px 0 16px;padding:5px;border:1px solid #263c52;border-radius:11px;background:#0d1b29}
+.coach-data-tabs button{flex:1;min-width:0;min-height:38px;padding:8px 7px;font-size:11px}
+.coach-workspace .coach-insights-section{display:flex;flex-direction:column;gap:14px}
+.coach-workspace .coach-insights-section>.overview-heading{margin:2px 0 0}
+.coach-workspace .coach-report-summary{border:1px solid #34536c;border-radius:16px;background:linear-gradient(145deg,#132a3d,#0d1b29);overflow:hidden}
+.coach-workspace .coach-report-summary>div{padding:18px}
+.coach-workspace .coach-report-summary>div+div{border-left:1px solid #304a63}
+.coach-workspace .coach-report-summary>div>b{font-size:16px;line-height:1.35}
+.coach-workspace .coach-report-summary>div>p{font-size:12px;line-height:1.65}
+.coach-phase-profile{padding:17px;border-color:#34516a;border-radius:16px;background:linear-gradient(160deg,#102337,#0b1927)}
+.coach-phase-profile .coach-engine-findings-heading>b{font-size:17px;line-height:1.35}
+.coach-phase-profile .coach-engine-findings-heading>p{font-size:11px;line-height:1.6}
+.coach-phase-grid{gap:11px}
+.coach-phase-card{padding:15px;border-color:#314c65;border-radius:13px;background:linear-gradient(160deg,#172e43,#102235);gap:9px}
+.coach-phase-card>span{font-size:11px;color:#a6d9ee}
+.coach-phase-card>b{font-size:15px}
+.coach-phase-card>div{padding-top:9px}
+.coach-phase-card>div>strong{font-size:20px}
+.coach-phase-card>p{font-size:11px;line-height:1.55}
+.coach-engine-findings{border-radius:15px}
+.coach-engine-findings-heading>b{font-size:16px}
+.coach-engine-finding-details{border-radius:12px}
+.coach-engine-finding-details>summary{padding:15px}
+.coach-engine-finding-details>summary>b{font-size:14px}
+.coach-engine-finding-content{padding:0 15px 15px}
+.coach-engine-finding-content>p{font-size:12px;line-height:1.65}
+.coach-engine-finding-content>small{font-size:11px;line-height:1.6}
+.coach-secondary-details{border-radius:13px}
+.coach-report-limit{border-radius:12px}
+@media(max-width:760px){
+ .coach-primary-tabs{position:sticky;top:0;z-index:8;margin:10px 0 14px;backdrop-filter:blur(16px)}
+ .coach-primary-tabs button{min-height:44px;font-size:12px}
+ .coach-data-tabs{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:3px}
+ .coach-data-tabs button{font-size:9px;padding:7px 2px;white-space:normal}
+ .coach-workspace .coach-report-summary{grid-template-columns:1fr}
+ .coach-workspace .coach-report-summary>div+div{border-left:0;border-top:1px solid #304a63}
+ .coach-phase-grid{grid-template-columns:1fr}
+ .coach-phase-card{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:7px 12px}
+ .coach-phase-card>span,.coach-phase-card>small,.coach-phase-card>p{grid-column:1/-1}
+ .coach-phase-card>div{display:flex;flex-direction:row;align-items:baseline;justify-content:space-between;gap:8px}
+ .coach-phase-card>div>strong{font-size:16px}
+ .coach-phase-card>div>small{text-align:right}
+}

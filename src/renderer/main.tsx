@@ -453,7 +453,7 @@ function CoachPanel({apiResult,preferredPlayerPublicId,decodedActions,simulation
     const record: SavedPhaseGame = {
       key,
       gameId: apiResult.gameId,
-      playedAt: apiResult.startTime ?? new Date().toISOString(),
+      playedAt: new Date().toISOString(),
       playerName: selectedPlayerReview.playerName,
       mapName: apiResult.mapName ?? 'Unbekannte Karte',
       phases: ratedPhases.map(phase => ({

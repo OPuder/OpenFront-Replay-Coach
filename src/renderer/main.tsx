@@ -142,7 +142,9 @@ function App() {
     setError(''); setSaveNotice('');
     try {
       const result = await window.replayAPI.saveReplayJson(apiResult.gameId);
-      if (result?.saved) setSaveNotice(`Gespeichert (${result.bytes} Bytes): ${result.filePath} – der Speicherort wurde im Explorer geöffnet.`);
+      if (result?.saved) setSaveNotice(isDesktopShell
+        ? `Gespeichert (${result.bytes} Bytes): ${result.filePath} – der Speicherort wurde im Explorer geöffnet.`
+        : `Download gestartet (${result.bytes} Bytes): ${result.filePath}. Die Datei findest du im Download-Ordner deines Browsers.`);
       else if (result?.canceled) setSaveNotice('Speichern abgebrochen. Es wurde keine Datei geschrieben.');
       else setSaveNotice('Es wurde keine Datei gespeichert.');
     } catch (e) {

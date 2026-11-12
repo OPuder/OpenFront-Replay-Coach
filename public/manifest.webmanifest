@@ -1,0 +1,19 @@
+{
+  "id": "./",
+  "name": "OpenFront Replay Coach",
+  "short_name": "Replay Coach",
+  "description": "Deine OpenFront-Partien verstehen und taktisch verbessern.",
+  "lang": "de-DE",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "display_override": ["standalone", "minimal-ui"],
+  "orientation": "any",
+  "background_color": "#0b1320",
+  "theme_color": "#101d2d",
+  "categories": ["games", "utilities"],
+  "icons": [
+    { "src": "./icons/replay-coach.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
+    { "src": "./icons/replay-coach-maskable.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "maskable" }
+  ]
+}

@@ -34,6 +34,7 @@ function App() {
   const [simulationResult, setSimulationResult] = useState<ReplaySimulationResult|null>(null);
   const engineReviewRunId = React.useRef(0);
   const isDesktopShell = /Electron/i.test(navigator.userAgent);
+  const isMobileDevice = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
   const [error, setError] = useState('');
   const [saveNotice, setSaveNotice] = useState('');
   const [url, setUrl] = useState('https://openfront.io/w5/game/e9D8juQg');
@@ -172,7 +173,7 @@ function App() {
       <button className={`studio-nav ${activePage==='dashboard'?'active':''}`} onClick={()=>navigateTo('dashboard')}><LayoutDashboard size={17}/>Dashboard</button>
       <button className={`studio-nav ${activePage==='games'?'active':''}`} onClick={()=>navigateTo('games')}><ListChecks size={17}/>Meine Partien</button>
       <button className={`studio-nav ${activePage==='analysis'?'active':''}`} onClick={()=>navigateTo('analysis')} disabled={!apiResult && !replay}><Brain size={17}/>Replay-Analyse</button>
-      <div className="studio-sidebar-bottom"><span><ShieldCheck size={14}/>{isDesktopShell ? 'Lokal auf diesem PC' : 'Browser / Android'}</span><small>OpenFront Replay Coach · 2.2.4</small></div>
+      <div className="studio-sidebar-bottom"><span><ShieldCheck size={14}/>{isDesktopShell ? 'Lokal auf diesem PC' : isMobileDevice ? 'Mobil im Browser' : 'Im Browser geöffnet'}</span><small>OpenFront Replay Coach · 2.2.4</small></div>
     </aside>
     <main className="studio-main">
       <header className="studio-header"><div><div className="studio-eyebrow">OPENFRONT / PERFORMANCE STUDIO</div><h1>{activePage==='dashboard'?'Dein Performance-Dashboard':activePage==='games'?'Deine Spielbibliothek':'Match Review'}</h1><p>{activePage==='dashboard'?'Deine Entwicklung, letzte Partien und nächste Trainingsschwerpunkte.':activePage==='games'?'Finde eine Partie und öffne ihre Karten- und Aktionsübersicht.':'Spielverlauf, beobachtete Entscheidungen und Replay an einem Ort.'}</p></div><div className="studio-header-actions"><button className="studio-button subtle" onClick={openReplay} disabled={busy}><FileUp size={16}/> Replay importieren</button></div></header>

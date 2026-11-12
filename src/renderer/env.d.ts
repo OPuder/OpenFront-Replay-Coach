@@ -21,7 +21,17 @@ declare global {
     gameId: string; previewUrl?: string|null; fileSize: number; savePath: string | null; actionCount: number | null; winner: any; durationSeconds: number | null; topLevelKeys: string[]; mapName: string; gameType: string;
     gameMode: string; difficulty: string; playerCount: number | null; turnCount: number | null; chunkCount: number | null;
     eventGroups: string[]; recordShape: string; note: string;
-    gitCommit?: string | null; hashedTurns?: number; decodedActions?: DecodedAction[]; actionCounts?: Record<string,number>; categoryCounts?: Record<string,number>;
+    gitCommit?: string | null; hashedTurns?: number;
+engineCompatibility?: {
+      status: "verified-compatible" | "compatible-unverified" | "engine-version-mismatch" | "missing-engine-version";
+      replayCommit: string | null;
+      engineCommit: string;
+      recordedHashCount: number;
+      deterministicReplayAllowed: boolean;
+      hashVerificationAvailable: boolean;
+      message: string;
+    };
+ decodedActions?: DecodedAction[]; actionCounts?: Record<string,number>; categoryCounts?: Record<string,number>;
     coachInsights?: Array<{id:string;kind:'strength'|'review'|'neutral';title:string;summary:string;evidence:string;why:string;nextStep:string;confidence:'high'|'medium';seconds:number|null}>;
     actionAnalysis?: { durationSeconds:number; totalActions:number; actionsPerMinute:number; attackCount:number; boatCount:number; buildCount:number; upgradeCount:number; findings:Array<{level:'info'|'warning'|'success';title:string;text:string;evidence:string}> } | null;
     playerStats?: Array<{name:string;clientID:string|null;publicID?:string|null;stats:Record<string,unknown>}>;

@@ -49,13 +49,13 @@ export async function getOpenFrontBootstrap(origin) {
   const manifest = JSON.parse(json);
   const cdnMatch = html.match(/cdnBase:\\s*("(?:\\\\.|[^"\\\\])*")/);
   const cdnBase = cdnMatch ? JSON.parse(cdnMatch[1]) : "";
-  bootstrapCache = {
-    manifest,
-    cdnBase: new URL("/api/openfront/assets/", origin).toString().replace(/\\/$/, ""),
-    upstreamCdnBase: cdnBase,
-  };
+  bootstrapCache = { manifest, upstreamCdnBase: cdnBase };
   bootstrapFetchedAt = Date.now();
-  return bootstrapCache;
+  return {
+    ...bootstrapCache,
+    // Relative to this Pages deployment; manifest URLs remain root-relative.
+    cdnBase: "/api/openfront/assets",
+  };
 }
 
 export function jsonError(message, status = 502) {

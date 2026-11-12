@@ -62,11 +62,11 @@ jobs:
           retention-days: 14
 
       - name: Publish GitHub Release
-        if: github.ref == 'refs/heads/main'
+        if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v2.1.7
-          name: OpenFront Replay Coach 2.1.7
+          tag_name: ${{ github.ref_name }}
+          name: OpenFront Replay Coach ${{ github.ref_name }}
           target_commitish: ${{ github.sha }}
           generate_release_notes: true
           files: |

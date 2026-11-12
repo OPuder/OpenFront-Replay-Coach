@@ -319,9 +319,9 @@ export async function simulateReplay(
             trainGold: current.trainGold - before.trainGold,
             piracyGold: current.piracyGold - before.piracyGold,
           });
-          const summarizeActiveAttack = (offset: number, targetSmallID: number | null): ReplayActiveAttackSummary | null => {
-            if (targetSmallID === null || frame + offset >= totalTicks) return null;
-            const sample = sampleByFrame.get(frame + offset);
+          const summarizeActiveAttack = (baseFrame: number, offset: number, targetSmallID: number | null): ReplayActiveAttackSummary | null => {
+            if (targetSmallID === null || baseFrame + offset >= totalTicks) return null;
+            const sample = sampleByFrame.get(baseFrame + offset);
             const actor = sample?.players.find(p => p.id === target.smallID);
             if (!actor) return null;
             const attacks = actor.outgoingAttackDetails.filter(attack => attack.targetID === targetSmallID);
@@ -407,8 +407,8 @@ export async function simulateReplay(
                   targetDelta30s: targetDeltaToFrame(300),
                   targetAliveAt10s: targetAliveAt(100),
                   targetAliveAt30s: targetAliveAt(300),
-                  activeAttack10s: summarizeActiveAttack(100, targetSmallID),
-                  activeAttack30s: summarizeActiveAttack(300, targetSmallID),
+                  activeAttack10s: summarizeActiveAttack(frame, 100, targetSmallID),
+                  activeAttack30s: summarizeActiveAttack(frame, 300, targetSmallID),
                 };
               });
           }) : [];

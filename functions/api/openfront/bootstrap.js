@@ -8,7 +8,7 @@ export async function onRequest({ request }) {
     const result = await getOpenFrontBootstrap(new URL(request.url).origin);
     const manifest = Object.fromEntries(Object.entries(result.manifest).map(([key, value]) => {
       let path = String(value ?? "");
-      if (/^https?:\\/\\//i.test(path)) path = new URL(path).pathname;
+      if (/^https?:\/\//i.test(path)) path = new URL(path).pathname;
       return [key, path.startsWith("/") ? path : "/" + path];
     }));
     return new Response(JSON.stringify({

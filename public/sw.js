@@ -14,7 +14,6 @@ self.addEventListener("install", event => {
     await Promise.all(shell.map(async url => {
       try {
         const response = await fetch(url, { cache: "reload" });
-        if (response.ok) await cache.put(url, response);
         if (url === base && response.ok) {
           const html = await response.clone().text();
           const bundledAssets = [...html.matchAll(/(?:src|href)="([^"]+\.(?:js|css))"/g)]
@@ -29,6 +28,7 @@ self.addEventListener("install", event => {
             }
           }));
         }
+        if (response.ok) await cache.put(url, response.clone());
       } catch {
         // A transient network issue should not prevent the first installation.
       }

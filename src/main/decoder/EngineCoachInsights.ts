@@ -41,6 +41,7 @@ interface EngineTargetPressure {
   incomingAttackCount: number;
   incomingAttackTroops: number;
   otherAttackCount: number;
+  otherAttackTroops: number;
   otherAttackerCount: number;
   otherAttackerNames: string[];
   retreatingOtherAttackCount: number;
@@ -299,7 +300,7 @@ export function buildEngineCoachInsights(
     );
     const pressureEvidence = attacksAgainstPressuredTargets.slice(0, 4).map(action => {
       const pressure = action.targetPressureBefore!;
-      return `${clock(action.seconds)} → ${action.targetName ?? action.targetId}: ${pressure.otherAttackerCount} andere Angreifer / ${pressure.otherAttackCount} Angriffe mit ${pressure.incomingAttackTroops.toLocaleString("de-DE")} gegnerischen Angriffstruppen bereits unterwegs`;
+      return `${clock(action.seconds)} → ${action.targetName ?? action.targetId}: ${pressure.otherAttackerCount} andere Angreifer / ${pressure.otherAttackCount} Angriffe mit ${pressure.otherAttackTroops.toLocaleString("de-DE")} Truppen anderer Spieler bereits unterwegs`;
     });
     const frontEvidence = attacksWithExistingTargets.slice(0, 4).map(action => {
       const context = action.ownFrontContextBefore!;

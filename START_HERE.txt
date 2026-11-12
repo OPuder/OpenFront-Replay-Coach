@@ -1,4 +1,4 @@
-OPENFRONT REPLAY COACH 2.2.9
+OPENFRONT REPLAY COACH 2.2.10
 
 START OHNE ENTWICKLER-TOOLS
 - INSTALLER: "OpenFront Replay Coach Setup.exe" starten und installieren.

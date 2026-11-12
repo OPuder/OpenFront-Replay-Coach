@@ -1,6 +1,6 @@
 {
   "name": "openfront-replay-coach",
-  "version": "2.2.9",
+  "version": "2.2.10",
   "private": true,
   "description": "OpenFront Replay Coach — Windows Desktop und Android-App",
   "main": "dist-electron/main.js",

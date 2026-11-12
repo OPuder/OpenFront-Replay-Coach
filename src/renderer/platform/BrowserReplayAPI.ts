@@ -4,7 +4,7 @@ import { analyzeDetailedActions } from "../../main/decoder/DetailedAnalysis";
 import { buildCoachInsights } from "../../main/decoder/CoachInsights";
 import { assessReplayCompatibility } from "../../main/decoder/ReplayCompatibility";
 
-const API_BASE = "https://api.openfront.io/public";
+const API_BASE = "/api/openfront/public";
 const MAX_REPLAY_BYTES = 250 * 1024 * 1024;
 const importedReplayJson = new Map<string, string>();
 let assetManifestCache: { manifest: Record<string, string>; cdnBase: string; fetchedAt: number } | null = null;
@@ -93,26 +93,24 @@ async function getOpenFrontAssetManifest() {
   }
   let response: Response;
   try {
-    response = await fetch("https://openfront.io/", {
+    response = await fetch("/api/openfront/bootstrap", {
       method: "GET",
-      mode: "cors",
-      credentials: "omit",
-      headers: { Accept: "text/html,application/xhtml+xml" },
+      headers: { Accept: "application/json" },
+      credentials: "same-origin",
       signal: AbortSignal.timeout(20_000),
     });
   } catch {
-    throw new Error("Die OpenFront-Asset-Liste ist aus dieser Web-App nicht abrufbar. Prüfe die Verbindung oder nutze die Windows-Version für die Engine-Simulation.");
+    throw new Error("Der OpenFront-Datenproxy ist nicht erreichbar. Die Web-App muss über die konfigurierte HTTPS-Adresse (Cloudflare Pages) geöffnet werden.");
   }
-  if (!response.ok) throw new Error("OpenFront liefert beim Laden der Asset-Liste HTTP " + response.status + ".");
-  const html = await response.text();
-  const marker = html.indexOf("assetManifest:");
-  if (marker < 0) throw new Error("Die aktuelle OpenFront-Asset-Liste wurde nicht gefunden.");
-  const objectText = readBalancedObject(html, marker + "assetManifest:".length);
-  if (!objectText) throw new Error("Die OpenFront-Asset-Liste ist unvollständig.");
-  const manifest = JSON.parse(objectText) as Record<string, string>;
-  const cdnMatch = html.match(/cdnBase:\s*("(?:\\.|[^"\\])*")/);
-  const cdnBase = cdnMatch ? JSON.parse(cdnMatch[1]) as string : "";
-  assetManifestCache = { manifest, cdnBase, fetchedAt: Date.now() };
+  if (!response.ok) {
+    const detail = await response.text().catch(() => "");
+    throw new Error("Die OpenFront-Asset-Liste konnte nicht geladen werden (HTTP " + response.status + "). " + detail.slice(0, 240));
+  }
+  const payload = await response.json() as { manifest?: Record<string, string>; cdnBase?: string };
+  if (!payload.manifest || typeof payload.manifest !== "object" || typeof payload.cdnBase !== "string") {
+    throw new Error("Der OpenFront-Datenproxy hat ein ungültiges Asset-Manifest geliefert.");
+  }
+  assetManifestCache = { manifest: payload.manifest, cdnBase: payload.cdnBase, fetchedAt: Date.now() };
   return assetManifestCache;
 }
 
@@ -307,7 +305,7 @@ async function loadPlayer(rawId: string, onProgress?: (progress: { loaded: numbe
   let cursor: string | null = null;
   let pages = 0;
   do {
-    const url = new URL(API_BASE + "/player/" + encodeURIComponent(playerId) + "/games");
+    const url = new URL(API_BASE + "/player/" + encodeURIComponent(playerId) + "/games", window.location.origin);
     if (cursor) url.searchParams.set("cursor", cursor);
     const result = await fetchJson<any>(url.toString(), 30_000);
     if (!Array.isArray(result?.results)) throw new Error("Die Spielhistorie hat ein unerwartetes API-Format.");

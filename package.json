@@ -48,13 +48,7 @@
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true
-    },
-    "publish": [
-      {
-        "provider": "generic",
-        "url": "https://example.invalid/disabled"
-      }
-    ]
+    }
   },
   "overrides": {
     "@babel/traverse": "7.29.13"

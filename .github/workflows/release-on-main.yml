@@ -203,6 +203,8 @@ jobs:
     if: needs.prepare-release.outputs.skip != 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 60
+    outputs:
+      signing_mode: ${{ steps.apk.outputs.signing_mode }}
     steps:
       - name: Check out the versioned release source
         uses: actions/checkout@v4
@@ -261,29 +263,38 @@ jobs:
           RELEASE_VERSION: ${{ needs.prepare-release.outputs.version }}
         run: node scripts/set-android-version.mjs "$RELEASE_VERSION"
 
-      - name: Build installable Android APK
-        working-directory: android
-        run: ./gradlew --no-daemon assembleDebug
-
-      - name: Verify APK signature, package ID and version
+      - name: Build permanently signed release APK (or temporary debug APK before setup)
+        id: apk
         env:
-          EXPECTED_VERSION: ${{ needs.prepare-release.outputs.version }}
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
           set -Eeuo pipefail
-          apk="android/app/build/outputs/apk/debug/app-debug.apk"
+          if [[ -n "$ANDROID_KEYSTORE_BASE64" && -n "$ANDROID_KEYSTORE_PASSWORD" && -n "$ANDROID_KEY_ALIAS" && -n "$ANDROID_KEY_PASSWORD" ]]; then
+            keystore="$RUNNER_TEMP/openfront-replay-coach-release.jks"
+            printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$keystore"
+            test -s "$keystore"
+            export ANDROID_KEYSTORE_PATH="$keystore"
+            node scripts/configure-android-signing.mjs
+            (cd android && ./gradlew --no-daemon assembleRelease)
+            apk="android/app/build/outputs/apk/release/app-release.apk"
+            echo "signing_mode=permanent release key" >> "$GITHUB_OUTPUT"
+          else
+            echo "::warning::Android signing secrets are incomplete; building a temporary debug-signed APK. In-place updates will not be reliable until all four secrets are configured."
+            (cd android && ./gradlew --no-daemon assembleDebug)
+            apk="android/app/build/outputs/apk/debug/app-debug.apk"
+            echo "signing_mode=temporary debug key (uninstall may be required for updates)" >> "$GITHUB_OUTPUT"
+          fi
           test -s "$apk"
           build_tools="$(find "$ANDROID_HOME/build-tools" -mindepth 1 -maxdepth 1 -type d | sort -V | tail -n 1)"
           "$build_tools/apksigner" verify --verbose "$apk"
           "$build_tools/aapt" dump badging "$apk" | tee /tmp/apk-badging.txt
           grep -F "package: name='de.openfront.replaycoach'" /tmp/apk-badging.txt
-          grep -F "versionName='$EXPECTED_VERSION'" /tmp/apk-badging.txt
-
-      - name: Rename the APK for the release
-        env:
-          RELEASE_VERSION: ${{ needs.prepare-release.outputs.version }}
-        run: |
+          grep -F "versionName='${{ needs.prepare-release.outputs.version }}'" /tmp/apk-badging.txt
           mkdir -p release
-          cp android/app/build/outputs/apk/debug/app-debug.apk "release/OpenFront-Replay-Coach-$RELEASE_VERSION-Android.apk"
+          cp "$apk" "release/OpenFront-Replay-Coach-${{ needs.prepare-release.outputs.version }}-Android.apk"
 
       - name: Upload Android APK
         uses: actions/upload-artifact@v4
@@ -366,7 +377,7 @@ jobs:
 
             Die Android-App verwendet Androids native HTTP-Schnittstelle für die öffentlichen OpenFront-Daten und Engine-Assets. Die Daten müssen dafür nicht über einen Cloudflare-Proxy geleitet werden.
 
-            **Hinweis zu Android-Updates:** Solange kein dauerhaft verwahrter Android-Signaturschlüssel im Repository eingerichtet ist, wird die APK für jede Version mit dem CI-Debug-Schlüssel signiert. Android kann eine neue Version dann nicht immer über eine bereits installierte Vorgängerversion installieren; in diesem Fall muss die alte App vor dem Update entfernt werden. Ein dauerhafter Signaturschlüssel kann später als privates GitHub-Secret ergänzt werden.
+            **Android-Signierung:** ${{ needs.build-android.outputs.signing_mode }}. Für zuverlässige Updates muss der dauerhafte Schlüssel einmalig als vier GitHub-Actions-Secrets eingerichtet werden; siehe `docs/ANDROID_SIGNING.md`. Den privaten Schlüssel niemals ins Repository committen.
 
             **Start:** siehe START_HERE.txt.
           files: |

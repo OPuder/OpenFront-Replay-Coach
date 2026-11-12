@@ -464,8 +464,8 @@ function CoachPanel({apiResult,preferredPlayerPublicId,decodedActions,simulation
     const ir = values.map(item=>item.incomeRate).filter((v):v is number=>v!==null);
     return {...phase,games:values.length,strong,averageTerritory:tr.reduce((a,b)=>a+b,0)/Math.max(1,tr.length),averageIncome:ir.reduce((a,b)=>a+b,0)/Math.max(1,ir.length)};
   });
-  const firstEngineSample = selectedPlayerSamples[0] ?? null;
-  const lastEngineSample = selectedPlayerSamples[selectedPlayerSamples.length - 1] ?? null;
+  const firstEngineSample = selectedPlayerSamples[0]?.player ?? null;
+  const lastEngineSample = lastAliveSample?.player ?? null;
   const incomeSummary = firstEngineSample && lastEngineSample ? {
     gross: lastEngineSample.goldEarned - firstEngineSample.goldEarned,
     trade: lastEngineSample.tradeGold - firstEngineSample.tradeGold,
@@ -490,9 +490,9 @@ function CoachPanel({apiResult,preferredPlayerPublicId,decodedActions,simulation
     start: firstEngineSample.unitCounts[unit.key] ?? 0,
     end: lastEngineSample.unitCounts[unit.key] ?? 0,
   })).filter(unit => unit.start > 0 || unit.end > 0) : [];
-  const maxOutgoingAttacks = Math.max(0, ...selectedPlayerSamples.map(sample => sample.outgoingAttacks));
-  const maxIncomingAttacks = Math.max(0, ...selectedPlayerSamples.map(sample => sample.incomingAttacks));
-  const maxCommittedAttackTroops = Math.max(0, ...selectedPlayerSamples.map(sample => sample.attackTroops));
+  const maxOutgoingAttacks = Math.max(0, ...selectedPlayerSamples.map(sample => sample.player.outgoingAttacks));
+  const maxIncomingAttacks = Math.max(0, ...selectedPlayerSamples.map(sample => sample.player.incomingAttacks));
+  const maxCommittedAttackTroops = Math.max(0, ...selectedPlayerSamples.map(sample => sample.player.attackTroops));
   const targetedAttackReviews = selectedActionReviews.filter(action => action.type === "attack" && action.targetName);
   const attackedPressuredTargets = targetedAttackReviews.filter(action => (action.targetPressureBefore?.otherAttackerCount ?? 0) > 0);
   const targetTerritoryLossCount = targetedAttackReviews.filter(action => (action.targetDelta30s?.tiles ?? 0) < 0).length;

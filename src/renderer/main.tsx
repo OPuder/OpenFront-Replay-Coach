@@ -384,8 +384,16 @@ function CoachPanel({apiResult,preferredPlayerPublicId,decodedActions,simulation
     ? leadEngineReview?.nextStep ?? 'Prüfe die Zeitachse auf Phasen mit eingehendem Druck, Gebietsverlust und gebundenen Truppen. Wähle daraus genau ein Verhalten, das du in der nächsten Partie bewusst trainierst.'
     : 'Zuerst das Replay mit der passenden Original-Engine reproduzieren und die gespeicherten Hashes abgleichen. Erst danach eine taktische Lektion ableiten.';
   const selectedPlayerSamples = (simulationResult?.samples ?? [])
-    .map(sample => sample.players.find(player => player.clientID === selectedClientId))
-    .filter((sample): sample is NonNullable<typeof sample> => sample !== undefined);
+    .map(sample => ({ tick: sample.tick, player: sample.players.find(player => player.clientID === selectedClientId) }))
+    .filter((entry): entry is { tick: number; player: NonNullable<typeof entry.player> } => entry.player !== undefined);
+  // A replay continues after a player is eliminated. Do not count the dead
+  // player's post-elimination zero state as late-game performance.
+  const lastAliveSample = [...selectedPlayerSamples].reverse().find(entry => entry.player.alive);
+  const firstEliminatedSample = selectedPlayerSamples.find(entry => !entry.player.alive);
+  const playerEliminatedAtSeconds = firstEliminatedSample
+    ? firstEliminatedSample.tick / 10
+    : null;
+  const lastAliveTick = lastAliveSample?.tick ?? replayDurationTicks;
   const phaseDefinitions = [
     { id: 'early', label: 'Early Game', from: 0, to: 0.3, description: 'Start, Expansion und erste Wirtschaft' },
     { id: 'mid', label: 'Mid Game', from: 0.3, to: 0.7, description: 'Fronten, Zielwahl und Ressourcensteuerung' },
@@ -396,15 +404,15 @@ function CoachPanel({apiResult,preferredPlayerPublicId,decodedActions,simulation
     ? phaseDefinitions.map(phase => {
         const fromTick = replayDurationTicks * phase.from;
         const toTick = replayDurationTicks * phase.to;
-        const phaseSamples = (simulationResult.samples ?? []).filter(sample => sample.tick >= fromTick && sample.tick <= toTick)
+        const phaseSamples = (simulationResult.samples ?? []).filter(sample => sample.tick >= fromTick && sample.tick <= toTick && sample.tick <= lastAliveTick)
           .flatMap(sample => {
             const player = sample.players.find(player => player.clientID === selectedClientId);
-            return player ? [{ tick: sample.tick, player }] : [];
+            return player?.alive ? [{ tick: sample.tick, player }] : [];
           });
         const first = phaseSamples[0]?.player;
         const last = phaseSamples[phaseSamples.length - 1]?.player;
         const minutes = Math.max(0.1, (phaseSamples[phaseSamples.length - 1]?.tick ?? 0) - (phaseSamples[0]?.tick ?? 0)) / 600;
-        const phaseActions = selectedActionReviews.filter(action => action.seconds * 10 >= fromTick && action.seconds * 10 <= toTick);
+        const phaseActions = selectedActionReviews.filter(action => action.seconds * 10 >= fromTick && action.seconds * 10 <= toTick && action.seconds * 10 <= lastAliveTick);
         const attackActions = phaseActions.filter(action => action.type === 'attack');
         const targetPressureWins = attackActions.filter(action => action.targetDelta30s && action.targetDelta30s.tiles < 0).length;
         const territory = first && last ? last.tiles - first.tiles : null;
@@ -430,7 +438,7 @@ function CoachPanel({apiResult,preferredPlayerPublicId,decodedActions,simulation
       phase.incomeRate !== null && incomeMedian !== null && phase.incomeRate > incomeMedian ? 'Einkommen über Phasenschnitt' : '',
       phase.targetPressureWins > 0 ? 'Zielgebiet messbar geschwächt' : '',
     ].filter(Boolean);
-    return { ...phase, strengthLabels, rating: !enoughData ? 'Datenlage begrenzt' : strengths >= 2 ? 'Starke Phase' : strengths === 1 ? 'Solide Phase' : 'Hier liegt Potenzial' };
+    return { ...phase, strengthLabels, rating: !enoughData ? 'Datenlage begrenzt' : strengths >= 2 ? 'Messbarer Fortschritt' : strengths === 1 ? 'Gemischtes Bild' : 'Keine relative Stärke erkannt' };
   });
   type SavedPhaseGame = { key:string; gameId:string; playedAt:string; playerName:string; mapName:string; phases:Array<{id:string;label:string;rating:string;territory:number|null;income:number|null;territoryRate:number|null;incomeRate:number|null}> };
   const historyStorageKey = 'openfront-replay-coach.phase-history.v1';
@@ -451,7 +459,7 @@ function CoachPanel({apiResult,preferredPlayerPublicId,decodedActions,simulation
   const recentPhaseHistory = phaseHistory.filter(item => item.playerName === selectedPlayerReview?.playerName).slice(0,12);
   const phaseTrend = phaseDefinitions.map(phase => {
     const values = recentPhaseHistory.map(game=>game.phases.find(item=>item.id===phase.id)).filter((item):item is NonNullable<typeof item>=>Boolean(item));
-    const strong = values.filter(item=>item.rating==='Starke Phase').length;
+    const strong = values.filter(item=>item.rating==='Messbarer Fortschritt').length;
     const tr = values.map(item=>item.territoryRate).filter((v):v is number=>v!==null);
     const ir = values.map(item=>item.incomeRate).filter((v):v is number=>v!==null);
     return {...phase,games:values.length,strong,averageTerritory:tr.reduce((a,b)=>a+b,0)/Math.max(1,tr.length),averageIncome:ir.reduce((a,b)=>a+b,0)/Math.max(1,ir.length)};
@@ -541,7 +549,8 @@ function CoachPanel({apiResult,preferredPlayerPublicId,decodedActions,simulation
           <div><strong>{phase.income === null ? '–' : `+${fmt(phase.income)}`}</strong><small>Gold verdient</small></div>
           <div><strong>{phase.attackCount}</strong><small>Angriffsbefehle</small></div>
           {phase.strengthLabels.length > 0 && <p><strong>Das lief gut:</strong> {phase.strengthLabels.join(' · ')}</p>}
-          <p>{phase.targetPressureWins > 0 ? `${phase.targetPressureWins} Ziele verloren innerhalb von 30 Sekunden nach einem deiner Befehle Gebiet.` : 'Kein entsprechender Ziel-Gebietsverlust im erfassten 30-Sekunden-Fenster.'}</p>
+          <p>{phase.targetPressureWins > 0 ? `${phase.targetPressureWins} Ziele verloren innerhalb von 30 Sekunden nach einem deiner Befehle Gebiet. Das ist ein zeitlicher Zusammenhang, kein alleiniger Erfolgsnachweis.` : 'Kein entsprechender Ziel-Gebietsverlust im erfassten 30-Sekunden-Fenster.'}</p>
+          {phase.id === 'late' && playerEliminatedAtSeconds !== null && <p className="coach-phase-elimination">Du bist bei {clock(playerEliminatedAtSeconds)} ausgeschieden. Zustände nach deinem Ausscheiden werden nicht als deine Leistung gewertet.</p>}
         </article>)}</div>
         <small className="coach-phase-note">Grenze: Gebietszuwachs und Bruttoeinnahmen sind messbar, aber nicht automatisch Spielqualität. Bei zu wenigen Stichproben wird keine Phasenbewertung vergeben.</small>
       </section>}

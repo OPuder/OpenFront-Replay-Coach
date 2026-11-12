@@ -38,7 +38,7 @@ export interface ReplaySimulationResult {
   totalTicks: number;
   verifiedHashes: number;
   samples: ReplayStateSample[];
-  playerReview: null | { playerName: string; startTiles: number; endTiles: number; tilesGained: number; startGold: number; endGold: number; startTroops: number; endTroops: number; outgoingAttackSamples: number; longestNoExpansionSeconds: number };
+  playerReview: null | { playerName: string; clientID: string | null; startTiles: number; endTiles: number; tilesGained: number; startGold: number; endGold: number; startTroops: number; endTroops: number; outgoingAttackSamples: number; longestNoExpansionSeconds: number };
   actionReviews: ReplayActionReview[];
   message: string;
 }
@@ -208,6 +208,7 @@ export async function simulateReplay(
           if (playerObservations.length > 1) longestNoExpansionTicks = Math.max(longestNoExpansionTicks, playerObservations[playerObservations.length-1].tick - flatStartTick);
           const playerReview = firstPlayer && lastPlayer ? {
             playerName: target.displayName ?? target.name ?? target.username ?? "Dein Spieler",
+            clientID: target.clientID == null ? null : String(target.clientID),
             startTiles: firstPlayer.tiles,
             endTiles: lastPlayer.tiles,
             tilesGained: lastPlayer.tiles - firstPlayer.tiles,

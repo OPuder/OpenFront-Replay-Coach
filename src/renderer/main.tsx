@@ -367,7 +367,21 @@ function CoachPanel({apiResult,preferredPlayerPublicId,decodedActions,simulation
   const totalBuilds=builds.reduce((sum,x)=>sum+x.count,0);
   const formatPct=(n:number)=>`${Math.round(n)} %`;
   const insights=buildCoachInsights(playerActions,apiResult.durationSeconds ?? 0);
-  const engineInsights = selectedPlayerReview ? buildEngineCoachInsights(selectedPlayerReview, selectedActionReviews, simulationResult?.samples ?? []) : [];
+  // Only let hash-verified original-engine state drive personal decision coaching.
+  const engineInsights = selectedPlayerReview && simulationResult?.status === 'verified'
+    ? buildEngineCoachInsights(selectedPlayerReview, selectedActionReviews, simulationResult.samples)
+    : [];
+  const orderedEngineInsights = [...engineInsights].sort((a,b)=>({high:0,medium:1,low:2}[a.priority ?? 'low']-({high:0,medium:1,low:2}[b.priority ?? 'low'])));
+  const leadEngineReview = orderedEngineInsights.find(item=>item.kind==='review' && (item.priority==='high' || item.priority==='medium')) ?? null;
+  const coachLeadTitle = simulationResult?.status === 'verified'
+    ? leadEngineReview?.title ?? 'Keine einzelne Fehlentscheidung belastbar belegt'
+    : 'Noch keine belastbare Coaching-Aussage';
+  const coachLeadSummary = simulationResult?.status === 'verified'
+    ? leadEngineReview?.summary ?? 'Die Original-Engine-Rekonstruktion zeigt hier keinen einzelnen Entscheidungsfehler mit ausreichender Grundlage. Das bedeutet nicht, dass jede Entscheidung optimal war.'
+    : 'Das Aktionsprotokoll belegt Befehle, aber noch keine belastbare taktische Bewertung. Dafür müssen Spielzustände mit der passenden Original-Engine und gespeicherten Hashes verifiziert sein.';
+  const coachTrainingFocus = simulationResult?.status === 'verified'
+    ? leadEngineReview?.nextStep ?? 'Prüfe die Zeitachse auf Phasen mit eingehendem Druck, Gebietsverlust und gebundenen Truppen. Wähle daraus genau ein Verhalten, das du in der nächsten Partie bewusst trainierst.'
+    : 'Zuerst das Replay mit der passenden Original-Engine reproduzieren und die gespeicherten Hashes abgleichen. Erst danach eine taktische Lektion ableiten.';
   const selectedPlayerSamples = (simulationResult?.samples ?? [])
     .map(sample => sample.players.find(player => player.clientID === selectedClientId))
     .filter((sample): sample is NonNullable<typeof sample> => sample !== undefined);
@@ -421,8 +435,8 @@ function CoachPanel({apiResult,preferredPlayerPublicId,decodedActions,simulation
       <div className="overview-heading"><div><span className="eyebrow">01 / DEIN SPIELBERICHT</span><h3>Die wichtigsten Erkenntnisse</h3><p>Nach Priorität sortiert. Jede Karte nennt deine Entscheidung, einen konkreten nächsten Prüf- bzw. Handlungsansatz und die Beleggrenze. Zeiten sind Befehlszeitpunkte; Bootszeit = Startbefehl, nicht Ankunft.</p></div></div>
 
       <div className="coach-report-summary">
-        <div><span className="coach-report-label">ZUERST ANSEHEN</span><b>{insights.find(x=>x.kind==='review')?.title ?? 'Keine kritischen Prüfpunkte erkannt'}</b><p>{insights.find(x=>x.kind==='review')?.nextStep ?? 'Für diese Partie liegen keine ausreichend belegten Hinweise vor.'}</p></div>
-        <div><span className="coach-report-label">WAS SICHER FESTSTEHT</span><b>{fmt(scopedAnalysis.totalActions)} protokollierte Aktionen</b><p>{fmt(scopedAnalysis.attackCount)} Angriffe · {fmt(scopedAnalysis.boatCount)} Bootsaktionen · {fmt(totalBuilds)} Bauaktionen</p></div>
+        <div><span className="coach-report-label">{leadEngineReview ? 'WICHTIGSTER ENGINE-PRÜFPUNKT' : 'COACH-ERGEBNIS'}</span><b>{coachLeadTitle}</b><p>{coachLeadSummary}</p></div>
+        <div><span className="coach-report-label">TRAININGSFOKUS FÜR DIE NÄCHSTE PARTIE</span><b>{leadEngineReview ? 'Genau dieses Muster gezielt verbessern' : simulationResult?.status === 'verified' ? 'Eine überprüfbare Lektion wählen' : 'Zustände zuerst verifizieren'}</b><p>{coachTrainingFocus}</p></div>
       </div>
       {selectedPlayerReview && <section className="coach-state-evidence">
         <div className="coach-state-evidence-heading"><div><span className="coach-report-label">ORIGINAL-ENGINE · SPIELERZUSTAND</span><b>{selectedPlayerReview.playerName}: Start bis Spielende</b></div><span className="coach-state-source">{simulationResult?.status === 'verified' ? 'Hash-verifiziert' : 'Ohne Hash-Verifikation'}</span></div>
@@ -444,9 +458,9 @@ function CoachPanel({apiResult,preferredPlayerPublicId,decodedActions,simulation
           </div>)}</div>
         </div>}
       </section>}
-      {engineInsights.length > 0 && <section className="coach-engine-findings">
+      {orderedEngineInsights.length > 0 && <section className="coach-engine-findings">
         <div className="coach-engine-findings-heading"><span className="coach-report-label">ZUSTANDS-BASIERTE ERKENNTNISSE</span><b>Was die Original-Engine über deinen Spielverlauf zeigt</b><p>Diese Hinweise beruhen auf rekonstruierten Spielzuständen. Sie benennen überprüfbare Muster, keine automatisch bewiesenen Fehler oder hypothetischen Idealzüge.</p></div>
-        <div className="coach-engine-findings-list">{[...engineInsights].sort((a,b)=>({high:0,medium:1,low:2}[a.priority ?? 'low']-({high:0,medium:1,low:2}[b.priority ?? 'low']))).map(item=><article className={`coach-engine-finding finding-${item.kind}`} key={item.id}>
+        <div className="coach-engine-findings-list">{orderedEngineInsights.slice(0,5).map(item=><article className={`coach-engine-finding finding-${item.kind}`} key={item.id}>
           <div><span>{item.priority === 'high' ? 'HOHE PRIORITÄT' : item.priority === 'medium' ? 'PRÜFPUNKT' : item.kind === 'strength' ? 'STÄRKE' : item.kind === 'review' ? 'PRÜFEN' : 'BEOBACHTUNG'}</span>{item.seconds !== null && <time>{clock(item.seconds)}</time>}</div>
           <b>{item.title}</b><p>{item.summary}</p>
           {item.decision && <p><strong>Deine Entscheidung:</strong> {item.decision}</p>}
@@ -456,12 +470,16 @@ function CoachPanel({apiResult,preferredPlayerPublicId,decodedActions,simulation
           <small><strong>Sicherheit:</strong> {item.confidence === 'high' ? 'hoch' : item.confidence === 'medium' ? 'mittel' : 'nicht eingestuft'} · <strong>Grenze:</strong> {item.limitation}</small>
         </article>)}</div>
       </section>}
+      <details className="coach-secondary-details">
+        <summary>Weitere allgemeine Aktionshinweise anzeigen</summary>
       <div className="coach-report-list">
         {[...insights].filter(x=>x.seconds!==null).sort((a,b)=>(b.priority??0)-(a.priority??0)).map((item,i)=><article className={`coach-report-row insight-${item.kind}`} key={item.id}>
           <div className="coach-report-time"><b>{clock(item.seconds??0)}</b><small>{item.kind==='strength'?'GUT GEMACHT':item.kind==='review'?'PRÜFEN':'BEOBACHTUNG'}</small></div>
           <div className="coach-report-body"><h4>{item.title}</h4><p>{item.summary}</p><div className="coach-report-evidence"><b>Beleg:</b> {item.evidence}</div><p><b>Warum wichtig:</b> {item.why}</p><div className="coach-report-action"><b>Was du daraus lernen kannst</b><span>{item.nextStep}</span></div>{item.alternative && item.alternative !== item.nextStep && <div className="coach-report-action"><b>Konkrete Alternative / nächster Entscheidungscheck</b><span>{item.alternative}</span></div>}<div className="coach-report-evidence"><b>Grenze der Aussage:</b> {item.limitation ?? "Der Aktionsdatensatz belegt den Befehl, nicht automatisch dessen Ergebnis."}</div></div>
         </article>)}
       </div>
+
+      </details>
       <div className="coach-report-limit"><b>Was noch nicht seriös bewertet werden kann</b><p>Ob ein Angriff erfolgreich war, wie viele Truppen verloren gingen oder ob ein Bau optimal war, erfordert den rekonstruierten Karten-, Gold- und Truppenstand. Diese Analyse erfindet dafür keine Ergebnisse.</p></div>
     </section>}
     {playerScoped && analysisTab==='overview' && <section id="match-overview" className="overview-block">

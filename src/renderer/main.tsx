@@ -430,7 +430,12 @@ function CoachPanel({apiResult,preferredPlayerPublicId,decodedActions,simulation
       phase.incomeRate !== null && incomeMedian !== null && phase.incomeRate > incomeMedian,
       phase.targetPressureWins > 0,
     ].filter(Boolean).length;
-    return { ...phase, rating: !enoughData ? 'Datenlage begrenzt' : strengths >= 2 ? 'Starke Phase' : strengths === 1 ? 'Solide Phase' : 'Hier liegt Potenzial' };
+    const strengthLabels = [
+      phase.territoryRate !== null && territoryMedian !== null && phase.territoryRate > territoryMedian ? 'Expansion über Phasenschnitt' : '',
+      phase.incomeRate !== null && incomeMedian !== null && phase.incomeRate > incomeMedian ? 'Einkommen über Phasenschnitt' : '',
+      phase.targetPressureWins > 0 ? 'Zielgebiet messbar geschwächt' : '',
+    ].filter(Boolean);
+    return { ...phase, strengthLabels, rating: !enoughData ? 'Datenlage begrenzt' : strengths >= 2 ? 'Starke Phase' : strengths === 1 ? 'Solide Phase' : 'Hier liegt Potenzial' };
   });
   const firstEngineSample = selectedPlayerSamples[0] ?? null;
   const lastEngineSample = selectedPlayerSamples[selectedPlayerSamples.length - 1] ?? null;
@@ -492,6 +497,7 @@ function CoachPanel({apiResult,preferredPlayerPublicId,decodedActions,simulation
           <div><strong>{phase.territory === null ? '–' : `${phase.territory > 0 ? '+' : ''}${fmt(phase.territory)}`}</strong><small>Gebiete netto</small></div>
           <div><strong>{phase.income === null ? '–' : `+${fmt(phase.income)}`}</strong><small>Gold verdient</small></div>
           <div><strong>{phase.attackCount}</strong><small>Angriffsbefehle</small></div>
+          {phase.strengthLabels.length > 0 && <p className="coach-phase-strengths"><strong>Das lief gut:</strong> {phase.strengthLabels.join(' · ')}</p>}
           <p>{phase.targetPressureWins > 0 ? `${phase.targetPressureWins} Ziele verloren innerhalb von 30 Sekunden nach einem deiner Befehle Gebiet.` : 'Kein entsprechender Ziel-Gebietsverlust im erfassten 30-Sekunden-Fenster.'}</p>
         </article>)}</div>
         <small className="coach-phase-note">Grenze: Gebietszuwachs und Bruttoeinnahmen sind messbar, aber nicht automatisch Spielqualität. Ein Angriff kann länger als 30 Sekunden unterwegs sein. Bei zu wenigen Stichproben wird keine Phasenbewertung vergeben.</small>

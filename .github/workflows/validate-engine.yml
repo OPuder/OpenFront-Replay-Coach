@@ -1,0 +1,53 @@
+name: Validate pinned OpenFront engine
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - ".gitmodules"
+      - "vendor/OpenFrontIO"
+      - ".github/workflows/validate-engine.yml"
+  push:
+    branches: [pinned-openfront-engine]
+    paths:
+      - ".gitmodules"
+      - "vendor/OpenFrontIO"
+      - ".github/workflows/validate-engine.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  validate-engine:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Check out coach and pinned engine
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Verify exact engine revision
+        shell: bash
+        run: |
+          expected="bc3e3334c573c4959ec6a6745df6826d07233b4d"
+          actual="$(git -C vendor/OpenFrontIO rev-parse HEAD)"
+          echo "Expected: $expected"
+          echo "Actual:   $actual"
+          test "$actual" = "$expected"
+
+      - name: Set up upstream Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24.15.0"
+
+      - name: Set up upstream npm
+        run: npm install --global npm@12.1.0
+
+      - name: Install pinned upstream workspaces
+        working-directory: vendor/OpenFrontIO
+        run: npm ci --ignore-scripts
+
+      - name: Type-check original engine and replay pipeline
+        working-directory: vendor/OpenFrontIO
+        run: npm run typecheck

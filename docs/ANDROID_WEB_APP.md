@@ -42,6 +42,6 @@ After the first deployment Cloudflare provides an HTTPS URL similar to https://p
 ## Limits and differences
 
 - The Android edition requires internet access for OpenFront's public API and engine assets. The cached shell can open offline, but replay simulation and public-data loading cannot run without a connection.
-- Local API replay JSON is supported by the browser file picker. Very large replays may exceed mobile memory or the hosting platform's response limits; use the Windows desktop edition for those.
+- Local API replay JSON is supported by the browser file picker. The browser edition caps a single replay JSON at 100 MB to avoid exhausting mobile memory. Use the Windows desktop edition for larger files.
 - The desktop edition continues to use its Electron preload and local file dialogs. The browser adapter is activated only when Electron has not provided window.replayAPI.
 - The Android edition is a responsive browser/PWA release, not a native Android APK.

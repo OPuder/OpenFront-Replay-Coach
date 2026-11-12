@@ -48,6 +48,7 @@ export async function simulateReplay(
   const samples: ReplayStateSample[] = [];
   let lastSampledFrame = -1;
   const recordedHashCount = (record.turns ?? []).filter((turn: any) => turn.hash !== null && turn.hash !== undefined).length;
+  let appendQueue = Promise.resolve();
 
   const completion = new Promise<ReplaySimulationResult>((resolve, reject) => {
     let settled = false;
@@ -70,7 +71,9 @@ export async function simulateReplay(
           onProgress(msg.percent ?? 0, "Original-Engine simuliert Spielzüge und prüft Hashes");
         } else if (msg.type === "start" && msg.base) {
           readerRef.current = new ReplayReader(msg.base, gunzipInBrowser);
-        } else if (msg.type === "append" && msg.append && readerRef.current) {
+        } else if (msg.type === "append" && msg.append) {
+          appendQueue = appendQueue.then(async () => {
+          if (!readerRef.current) throw new Error("Replay-Header fehlt vor dem ersten Frame-Append");
           const reader = readerRef.current;
           reader.append(msg.append);
           const target = reader.header.totalFrames - 1;
@@ -91,7 +94,11 @@ export async function simulateReplay(
             lastSampledFrame = frame;
           }
           onProgress(Math.min(99, Math.round((reader.header.totalFrames / Math.max(1, record.turns?.length ?? reader.header.totalFrames)) * 100)), "Spielzustände werden aus Original-Frames rekonstruiert");
+          });
+          appendQueue.catch(error => fail(error instanceof Error ? error : new Error(String(error))));
         } else if (msg.type === "done") {
+          await appendQueue;
+          if (settled) return;
           settled = true;
           const totalTicks = readerRef.current?.header.totalFrames ?? 0;
           cleanup();

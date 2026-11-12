@@ -21,12 +21,25 @@ export interface ReplayStateSample {
   falloutTiles: number;
 }
 
+export interface ReplayActionReview {
+  frame: number;
+  turn: number;
+  seconds: number;
+  type: string;
+  label: string;
+  details: string;
+  before: { tiles: number; gold: number; troops: number } | null;
+  after: { tiles: number; gold: number; troops: number } | null;
+  delta: { tiles: number; gold: number; troops: number } | null;
+}
+
 export interface ReplaySimulationResult {
   status: "verified" | "unverified";
   totalTicks: number;
   verifiedHashes: number;
   samples: ReplayStateSample[];
   playerReview: null | { playerName: string; startTiles: number; endTiles: number; tilesGained: number; startGold: number; endGold: number; startTroops: number; endTroops: number; outgoingAttackSamples: number; longestNoExpansionSeconds: number };
+  actionReviews: ReplayActionReview[];
   message: string;
 }
 
@@ -195,12 +208,46 @@ export async function simulateReplay(
             outgoingAttackSamples: playerSeries.reduce((sum, p) => sum + p.outgoingAttacks, 0),
             longestNoExpansionSeconds: Math.round(longestNoExpansionTicks / 10)
           } : null;
+          const sampleByFrame = new Map(samples.map(sample => [sample.frame, sample]));
+          const actionReviews: ReplayActionReview[] = target ? turns.flatMap((turn: any, frame: number) =>
+            (turn?.intents ?? [])
+              .filter((intent: any) => String(intent?.clientID ?? "") === String(target.clientID ?? preferredClientId ?? ""))
+              .map((intent: any) => {
+                const beforeSample = sampleByFrame.get(Math.max(0, frame - 1));
+                const afterSample = sampleByFrame.get(Math.min(totalTicks - 1, frame + 1));
+                const beforePlayer = beforeSample?.players.find(p => p.id === target.smallID);
+                const afterPlayer = afterSample?.players.find(p => p.id === target.smallID);
+                const before = beforePlayer ? { tiles: beforePlayer.tiles, gold: beforePlayer.gold, troops: beforePlayer.troops } : null;
+                const after = afterPlayer ? { tiles: afterPlayer.tiles, gold: afterPlayer.gold, troops: afterPlayer.troops } : null;
+                return {
+                  frame,
+                  turn: Number(turn?.turnNumber ?? frame),
+                  seconds: Number(turn?.turnNumber ?? frame) / 10,
+                  type: String(intent?.type ?? "unknown"),
+                  label: String(intent?.type ?? "Aktion"),
+                  details: [
+                    intent?.unit ? `Typ: ${intent.unit}` : "",
+                    intent?.troops != null ? `Truppen: ${Math.round(Number(intent.troops)).toLocaleString("de-DE")}` : "",
+                    intent?.targetID ? `Ziel: ${intent.targetID}` : "",
+                    intent?.dst != null ? `Ziel-Feld: ${intent.dst}` : ""
+                  ].filter(Boolean).join(" · "),
+                  before,
+                  after,
+                  delta: before && after ? {
+                    tiles: after.tiles - before.tiles,
+                    gold: after.gold - before.gold,
+                    troops: after.troops - before.troops
+                  } : null
+                };
+              })
+          ) : [];
           resolve({
             status: recordedHashCount > 0 ? "verified" : "unverified",
             totalTicks,
             verifiedHashes: recordedHashCount,
             samples,
             playerReview,
+            actionReviews,
             message: recordedHashCount > 0 ? "Simulation abgeschlossen; alle gespeicherten Hash-Prüfpunkte wurden ohne Abweichung abgeglichen." : "Simulation abgeschlossen, aber es waren keine Hash-Prüfpunkte im Replay vorhanden."
           });
         } else if (msg.type === "error") {

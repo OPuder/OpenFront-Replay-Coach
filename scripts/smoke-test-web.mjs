@@ -63,6 +63,7 @@ const platformAdapter = readFileSync(path.join(projectRoot, "src/renderer/platfo
 assert.match(platformAdapter, /\/api\/openfront\/public/, "Browser API does not use the same-origin public proxy");
 assert.match(platformAdapter, /\/api\/openfront\/bootstrap/, "Browser engine assets do not use the same-origin bootstrap proxy");
 assert.ok(!platformAdapter.includes("https://api.openfront.io/public"), "Browser code still bypasses the same-origin proxy");
+assert.match(platformAdapter, /100 \* 1024 \* 1024/, "Mobile replay size cap is missing");
 
 const functionFiles = [
   "functions/_lib/openfront.js",

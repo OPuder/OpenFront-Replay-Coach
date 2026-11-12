@@ -301,7 +301,7 @@ export async function simulateReplay(
             longestNoExpansionSeconds: Math.round(longestNoExpansionTicks / 10)
           } : null;
           const sampleByFrame = new Map(samples.map(sample => [sample.frame, sample]));
-          const staticPlayers = readerRef.current?.header.players ?? [];
+          const replayPlayerMetadata = readerRef.current?.header.players ?? [];
           const metrics = (player: ReplayStateSample["players"][number]) => ({
             tiles: player.tiles,
             gold: player.gold,
@@ -345,7 +345,7 @@ export async function simulateReplay(
                 const before = beforePlayer ? metrics(beforePlayer) : null;
                 const after = afterPlayer ? metrics(afterPlayer) : null;
                 const targetId = intent?.type === "attack" && intent?.targetID != null ? String(intent.targetID) : null;
-                const targetMeta: any = targetId === null ? null : staticPlayers.find((player: any) => String(player.id) === targetId);
+                const targetMeta: any = targetId === null ? null : replayPlayerMetadata.find((player: any) => String(player.id) === targetId);
                 const targetSmallID = targetMeta?.smallID == null ? null : Number(targetMeta.smallID);
                 const targetName = targetMeta?.displayName ?? targetMeta?.name ?? null;
                 const targetBeforePlayer = targetSmallID === null ? null : beforeSample?.players.find(p => p.id === targetSmallID) ?? null;

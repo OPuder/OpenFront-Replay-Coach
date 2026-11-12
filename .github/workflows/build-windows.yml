@@ -61,12 +61,26 @@ jobs:
           if-no-files-found: error
           retention-days: 14
 
+      - name: Check whether this version is already released
+        id: release_version
+        if: github.ref == 'refs/heads/main'
+        shell: bash
+        run: |
+          VERSION="$(node -p "require('./package.json').version")"
+          TAG="v${VERSION}"
+          if git ls-remote --exit-code --tags origin "refs/tags/${TAG}" >/dev/null 2>&1; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+
       - name: Publish GitHub Release
-        if: startsWith(github.ref, 'refs/tags/')
+        if: startsWith(github.ref, 'refs/tags/') || (github.ref == 'refs/heads/main' && steps.release_version.outputs.exists == 'false')
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ github.ref_name }}
-          name: OpenFront Replay Coach ${{ github.ref_name }}
+          tag_name: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || format('v{0}', steps.release_version.outputs.version) }}
+          name: OpenFront Replay Coach ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || format('v{0}', steps.release_version.outputs.version) }}
           target_commitish: ${{ github.sha }}
           generate_release_notes: true
           files: |

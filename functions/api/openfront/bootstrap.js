@@ -9,7 +9,7 @@ export async function onRequest({ request }) {
     const manifest = Object.fromEntries(Object.entries(result.manifest).map(([key, value]) => {
       let path = String(value ?? "");
       if (/^https?:\\/\\//i.test(path)) path = new URL(path).pathname;
-      return [key, path.startsWith("/") ? path.slice(1) : path];
+      return [key, path.startsWith("/") ? path : "/" + path];
     }));
     return new Response(JSON.stringify({
       manifest,

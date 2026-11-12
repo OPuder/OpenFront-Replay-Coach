@@ -8,9 +8,9 @@ export async function onRequest({ request }) {
   }
 
   const route = getRoutePath(request, PREFIX);
-  const isGame = /^game\\/[A-Za-z0-9_-]{4,80}$/.test(route);
-  const isPlayer = /^player\\/[A-Za-z0-9_-]{4,80}$/.test(route);
-  const isPlayerGames = /^player\\/[A-Za-z0-9_-]{4,80}\\/games$/.test(route);
+  const isGame = /^game\/[A-Za-z0-9_-]{4,80}$/.test(route);
+  const isPlayer = /^player\/[A-Za-z0-9_-]{4,80}$/.test(route);
+  const isPlayerGames = /^player\/[A-Za-z0-9_-]{4,80}\/games$/.test(route);
   if (!isGame && !isPlayer && !isPlayerGames) {
     return jsonError("This OpenFront public endpoint is not allowlisted.", 404);
   }

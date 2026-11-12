@@ -234,6 +234,20 @@ jobs:
       - name: Smoke-test native Android configuration
         run: node scripts/smoke-test-android-config.mjs
 
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v4
+        with:
+          packages: "platforms;android-36 build-tools;36.0.0"
+
+      - name: Add Android build tools to PATH
+        run: echo "$ANDROID_HOME/build-tools/36.0.0" >> "$GITHUB_PATH"
+
       - name: Generate the native Android project
         run: |
           npx cap add android
@@ -243,20 +257,6 @@ jobs:
         env:
           RELEASE_VERSION: ${{ needs.prepare-release.outputs.version }}
         run: node scripts/set-android-version.mjs "$RELEASE_VERSION"
-
-      - name: Set up Java
-        uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: "21"
-
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
-        with:
-          packages: "platforms;android-36 build-tools;36.0.0"
-
-      - name: Add Android build tools to PATH
-        run: echo "$ANDROID_HOME/build-tools/36.0.0" >> "$GITHUB_PATH"
 
       - name: Build installable Android APK
         working-directory: android

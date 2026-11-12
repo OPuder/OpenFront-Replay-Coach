@@ -30,11 +30,12 @@ export async function onRequest({ request }) {
       redirect: "error",
     });
     const contentLength = Number(response.headers.get("content-length") || 0);
-    if (isGame && contentLength > 250 * 1024 * 1024) {
-      return jsonError("Replay is too large for the mobile web edition. Use the Windows desktop edition.", 413);
+    if (isGame && contentLength > 100 * 1024 * 1024) {
+      return jsonError("Replay is larger than the 100 MB mobile web limit. Use the Windows desktop edition.", 413);
     }
     const headers = new Headers();
     headers.set("Content-Type", response.headers.get("content-type") || "application/json; charset=utf-8");
+    if (contentLength > 0) headers.set("X-Replay-Content-Length", String(contentLength));
     headers.set("Cache-Control", "no-store");
     headers.set("X-Content-Type-Options", "nosniff");
     return new Response(response.body, {

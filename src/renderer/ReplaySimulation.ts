@@ -65,6 +65,7 @@ export interface ReplayTargetPressure {
   incomingAttackCount: number;
   incomingAttackTroops: number;
   otherAttackCount: number;
+  otherAttackTroops: number;
   otherAttackerCount: number;
   otherAttackerNames: string[];
   retreatingOtherAttackCount: number;
@@ -358,6 +359,7 @@ export async function simulateReplay(
               incomingAttackCount: attacks.length,
               incomingAttackTroops: attacks.reduce((sum, attack) => sum + attack.troops, 0),
               otherAttackCount: otherAttacks.length,
+              otherAttackTroops: otherAttacks.reduce((sum, attack) => sum + attack.troops, 0),
               otherAttackerCount: otherAttackerIDs.size,
               otherAttackerNames: [...otherAttackerIDs].map(id => nameBySmallID.get(id) ?? `Spieler ${id}`),
               retreatingOtherAttackCount: otherAttacks.filter(attack => attack.retreating).length,

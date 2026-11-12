@@ -396,7 +396,10 @@ ipcMain.handle('replay:open', async () => {
     const hashedTurns = turns.filter((t: any) => t?.hash !== null && t?.hash !== undefined).length;
     const firstTurn = turns.length ? Number(turns[0]?.turnNumber ?? 0) : null;
     const lastTurn = turns.length ? Number(turns[turns.length - 1]?.turnNumber ?? 0) : null;
+    const apiSummary = summarizeRecord(data, info.gameID ?? info.gameId ?? 'local-replay', stat.size, filePath);
+    apiSummary.record = data;
     return {
+      apiSummary,
       fileName: path.basename(filePath), fileSize: stat.size,
       gameId: info.gameID ?? info.gameId ?? data.gameID ?? 'unbekannt',
       map: 'API-Spielbericht', mapName: config.gameMap ?? config.map ?? 'unbekannt',

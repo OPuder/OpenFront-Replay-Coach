@@ -126,6 +126,10 @@ export interface EngineCoachInsight {
   nextStep: string;
   seconds: number | null;
   limitation: string;
+  priority?: "high" | "medium" | "low";
+  decision?: string;
+  alternative?: string;
+  confidence?: "high" | "medium";
 }
 
 /**
@@ -406,6 +410,83 @@ export function buildEngineCoachInsights(
         limitation: "Truppenstärke allein beweist keine erreichbare Angriffsgelegenheit. Entfernung, Barrieren, Diplomatie und gegnerische Verstärkungen sind in diesem Hinweis nicht vollständig bewertet.",
       });
     }
+  }
+
+
+  // Decision-level coaching based on the exact pre-command engine snapshot.
+  // Findings are review prompts, not claims about counterfactual outcomes.
+  const decisionFindings: EngineCoachInsight[] = [];
+  const attackDecisions = actionReviews.filter(action =>
+    action.type === "attack" && action.ownFrontContextBefore
+  ).sort((a,b)=>a.seconds-b.seconds);
+
+  for (const action of attackDecisions) {
+    const front = action.ownFrontContextBefore!;
+    const beforeTroops = action.before?.troops ?? null;
+    const committedShare = beforeTroops && beforeTroops > 0
+      ? front.outgoingAttackTroops / beforeTroops : null;
+    const overloaded = front.activeTargetCount >= 2 ||
+      (front.incomingAttackCount > 0 && front.outgoingAttackCount > 0) ||
+      (committedShare !== null && committedShare >= 0.65);
+    const pressure = action.targetPressureBefore;
+    const own30 = action.delta30s;
+    const target30 = action.targetDelta30s;
+    const attackStillActive = (action.activeAttack30s?.count ?? 0) > 0;
+
+    if (overloaded) {
+      const reasons = [
+        front.activeTargetCount >= 2 ? `${front.activeTargetCount} andere aktive Angriffziele` : "",
+        front.incomingAttackCount > 0 ? `${front.incomingAttackCount} eingehende Angriffe` : "",
+        committedShare !== null && committedShare >= 0.65 ? `ca. ${Math.round(committedShare*100)} % der eigenen Truppen bereits gebunden` : "",
+      ].filter(Boolean);
+      decisionFindings.push({
+        id: `decision-front-load-${action.frame}`, kind: "review", priority: "high",
+        title: "Weitere Front eröffnet, obwohl bereits Truppen gebunden waren",
+        summary: `Bei ${clock(action.seconds)} hast du einen weiteren Angriff befohlen. Gleichzeitig bestanden ${reasons.join(", ")}.`,
+        evidence: `Vor dem Befehl: ${front.outgoingAttackCount} eigene Angriffe mit ${front.outgoingAttackTroops.toLocaleString("de-DE")} gebundenen Truppen; ${front.incomingAttackCount} eingehende Angriffe mit ${front.incomingAttackTroops.toLocaleString("de-DE")} Truppen. ${own30 ? `Nach 30 s: Gebiet ${own30.tiles>=0?"+":""}${own30.tiles}, Truppen ${own30.troops>=0?"+":""}${own30.troops}.` : "30-Sekunden-Folge nicht vollständig erfasst."}`,
+        decision: action.label + (action.targetName ? ` auf ${action.targetName}` : ""),
+        alternative: "Vor einer neuen Front prüfen, ob ein bestehender Angriff zuerst abgeschlossen werden kann oder Truppen für die Verteidigung zurückgehalten werden müssen. Eine weitere Front nur mit ausreichender Reserve eröffnen.",
+        nextStep: "Springe zu diesem Zeitpunkt im Replay. Vergleiche Truppenreserve, laufende Angriffe und eingehende Gegnerbewegungen. Überlege, ob die Konzentration auf eine Front sicherer gewesen wäre.",
+        seconds: action.seconds, confidence: "high",
+        limitation: "Belegt sind aktive Angriffsobjekte und Truppenbindungen. Reichweite, Reisezeit, Sicht des Spielers und der taktische Wert einer Ablenkung sind nicht vollständig bekannt. Das ist ein Prüfhinweis, kein bewiesener Fehler.",
+      });
+    }
+
+    if (overloaded && (pressure?.otherAttackerCount ?? 0) > 0) {
+      decisionFindings.push({
+        id: `decision-contested-target-${action.frame}`, kind: "review", priority: "medium",
+        title: "Ziel war bereits durch andere Spieler unter Druck",
+        summary: `Vor deinem Befehl um ${clock(action.seconds)} waren bereits ${pressure!.otherAttackerCount} andere Spieler mit ${pressure!.otherAttackTroops.toLocaleString("de-DE")} Truppen gegen dieses Ziel unterwegs.`,
+        evidence: `${pressure!.otherAttackCount} fremde Angriffsobjekte. ${target30 ? `Nach 30 s: Zielgebiet ${target30.tiles>=0?"+":""}${target30.tiles}; eigene Truppen ${own30?.troops ?? "n/v"}.` : "Kein vollständiges Zielfenster."}`,
+        decision: action.label + (action.targetName ? ` auf ${action.targetName}` : ""),
+        alternative: "Prüfe, ob dein zusätzlicher Angriff den Gegner schneller ausschalten konnte oder ob deine Truppen an einer unbedrängten Front mehr bewirkt hätten. Vergleiche Zielzustand und eigene Reserve.",
+        nextStep: "Untersuche, ob dein Angriff einen zusätzlichen Beitrag leistete oder nur Truppen band, während andere Spieler das Ziel bereits bedrängten.",
+        seconds: action.seconds, confidence: "medium",
+        limitation: "Mehrere Angreifer können ein Ziel schneller besiegen. Die Beobachtung beweist weder verschwendete Truppen noch eine falsche Zielwahl.",
+      });
+    }
+
+    if (own30 && own30.troops < 0 && own30.tiles <= 0 && attackStillActive) {
+      decisionFindings.push({
+        id: `decision-cost-window-${action.frame}`, kind: "review", priority: "medium",
+        title: "Truppen gebunden, aber nach 30 Sekunden noch kein Gebietszuwachs",
+        summary: `Nach dem Angriff um ${clock(action.seconds)} waren deine Truppen um ${Math.abs(own30.troops).toLocaleString("de-DE")} niedriger, ohne eigenen Gebietszuwachs. Der Angriff war noch aktiv.`,
+        evidence: `30-Sekunden-Fenster: Gebiet ${own30.tiles}, Truppen ${own30.troops}, Gold ${own30.gold}; aktive Angriffe: ${action.activeAttack30s?.count ?? 0}.`,
+        decision: action.label + (action.targetName ? ` auf ${action.targetName}` : ""),
+        alternative: "Nicht automatisch abbrechen: erst prüfen, ob der Angriff noch unterwegs ist oder auf Verteidigung trifft. Künftig vor dem Absenden gebundene Truppenmenge und Rückzugsreserve festlegen.",
+        nextStep: "Verfolge den Angriff über das 30-Sekunden-Fenster hinaus. Prüfe, ob später Gebiet gewonnen wurde oder ein Rückzug nötig war.",
+        seconds: action.seconds, confidence: "medium",
+        limitation: "30 Sekunden können bei langen Reisewegen zu kurz sein. Der Truppenrückgang ist kein sicherer Verlust und beweist kein Scheitern.",
+      });
+    }
+  }
+  // Keep the first occurrence of each decision pattern to avoid flooding the report.
+  const decisionKinds = new Set<string>();
+  for (const item of decisionFindings) {
+    const kind = item.id.replace(/-\d+$/, "");
+    if (decisionKinds.has(kind)) continue;
+    decisionKinds.add(kind);
+    findings.push(item);
   }
 
   return findings;

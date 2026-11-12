@@ -2,7 +2,7 @@ declare module "*replay-engine.js" {
   export function createReplayWorkers(): { engine: Worker; processor: Worker };
   export class ReplayReader {
     constructor(base: any, inflate: (data: Uint8Array) => Uint8Array | Promise<Uint8Array>);
-    readonly header: { totalFrames: number; keyframeInterval: number };
+    readonly header: { totalFrames: number; keyframeInterval: number; players: any[] };
     append(more: any): void;
     chunkOf(frame: number): number;
     load(index: number): Promise<void>;

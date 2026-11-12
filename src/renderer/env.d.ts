@@ -9,7 +9,7 @@ declare global {
   } }
   interface PlayerGame { previewUrl?:string; gameId:string; start?:string; durationSeconds?:number; map?:string; mode?:string; type?:string; result?:string; totalPlayers?:number; username?:string; clanTag?:string|null; playerTeams?:string|null; rankedType?:string; }
   interface PlayerPage { playerId:string; profile:Record<string,any>; games:PlayerGame[]; nextCursor:string|null; pagesLoaded?:number; mapPreviews?:Record<string,string>; }
-  interface DecodedAction { turn:number; seconds:number; type:string; category:string; label:string; details:string; clientId:string|null; }
+  interface DecodedAction { turn:number; seconds:number; type:string; category:"Wirtschaft"|"Militär"|"Diplomatie"|"Spielsteuerung"|"Sonstiges"; label:string; details:string; clientId:string|null; }
   interface ReplaySummary {
     fileName: string; fileSize: number; gameId: string; map: string; mapName: string; mode: string; difficulty: string;
     bots: number | null; keyframeInterval: number | null; players: number; chunks: number; frames: number;

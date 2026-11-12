@@ -672,7 +672,7 @@ function CoachPanel({apiResult,preferredPlayerPublicId,decodedActions,simulation
         <article className="overview-kpi"><span>Max. gebundene Angriffstruppen</span><b>{fmt(maxCommittedAttackTroops)}</b><small>In aktiven Angriffen beobachtet</small></article>
         <article className="overview-kpi"><span>Max. eingehende Angriffe</span><b>{fmt(maxIncomingAttacks)}</b><small>Gleichzeitig beobachteter Druck</small></article>
       </div>
-      {selectedPlayerSamples.length > 1 && <div className="analytics-chart-grid">
+      {alivePlayerSamples.length > 1 && <div className="analytics-chart-grid">
         <ReplayTrendChart title="Truppenbestand" description="Gesamtbestand deiner Truppen laut Original-Engine-Stichproben." unit="Truppen" points={alivePlayerSamples.map(sample=>({time:sample.tick/10,value:sample.player.troops}))}/>
         <ReplayTrendChart title="Gleichzeitige Angriffe" description="Wie viele eigene Angriffe in den erfassten Spielständen gleichzeitig aktiv waren." unit="Angriffe" points={alivePlayerSamples.map(sample=>({time:sample.tick/10,value:sample.player.outgoingAttacks}))}/>
       </div>}

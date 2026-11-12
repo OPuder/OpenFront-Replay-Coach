@@ -3,8 +3,13 @@ import { analyzeActions } from "../../main/decoder/ActionAnalysis";
 import { analyzeDetailedActions } from "../../main/decoder/DetailedAnalysis";
 import { buildCoachInsights } from "../../main/decoder/CoachInsights";
 import { assessReplayCompatibility } from "../../main/decoder/ReplayCompatibility";
+import { Capacitor } from "@capacitor/core";
+import { Browser } from "@capacitor/browser";
+import { Directory, Encoding, Filesystem } from "@capacitor/filesystem";
+import { Share } from "@capacitor/share";
 
-const API_BASE = "/api/openfront/public";
+const IS_NATIVE_ANDROID = Capacitor.isNativePlatform() && Capacitor.getPlatform() === "android";
+const API_BASE = IS_NATIVE_ANDROID ? "https://api.openfront.io/public" : "/api/openfront/public";
 const MAX_REPLAY_BYTES = 100 * 1024 * 1024;
 const importedReplayJson = new Map<string, string>();
 let assetManifestCache: { manifest: Record<string, string>; cdnBase: string; fetchedAt: number } | null = null;
@@ -91,6 +96,35 @@ async function getOpenFrontAssetManifest() {
   if (assetManifestCache && Date.now() - assetManifestCache.fetchedAt < 6 * 60 * 60 * 1000) {
     return assetManifestCache;
   }
+
+  // CapacitorHttp patches fetch to use Android's native HTTP stack. This
+  // avoids browser CORS restrictions without sending public replay data to a
+  // third-party proxy or requiring a hosted Cloudflare worker.
+  if (IS_NATIVE_ANDROID) {
+    let response: Response;
+    try {
+      response = await fetch("https://openfront.io/", {
+        method: "GET",
+        headers: { Accept: "text/html,application/xhtml+xml" },
+        credentials: "omit",
+        signal: AbortSignal.timeout(20_000),
+      });
+    } catch {
+      throw new Error("OpenFront konnte nicht erreicht werden. Prüfe deine Internetverbindung.");
+    }
+    if (!response.ok) throw new Error("OpenFront liefert beim Laden der Engine-Assets HTTP " + response.status + ".");
+    const html = await response.text();
+    const marker = html.indexOf("assetManifest:");
+    if (marker < 0) throw new Error("Die aktuelle OpenFront-Asset-Liste wurde nicht gefunden.");
+    const objectText = readBalancedObject(html, marker + "assetManifest:".length);
+    if (!objectText) throw new Error("Die OpenFront-Asset-Liste ist unvollständig.");
+    const manifest = JSON.parse(objectText) as Record<string, string>;
+    const cdnMatch = html.match(/cdnBase:\s*("(?:\\.|[^"\\])*")/);
+    const cdnBase = cdnMatch ? JSON.parse(cdnMatch[1]) as string : "";
+    assetManifestCache = { manifest, cdnBase, fetchedAt: Date.now() };
+    return assetManifestCache;
+  }
+
   let response: Response;
   try {
     response = await fetch("/api/openfront/bootstrap", {
@@ -100,7 +134,7 @@ async function getOpenFrontAssetManifest() {
       signal: AbortSignal.timeout(20_000),
     });
   } catch {
-    throw new Error("Der OpenFront-Datenproxy ist nicht erreichbar. Die Web-App muss über die konfigurierte HTTPS-Adresse (Cloudflare Pages) geöffnet werden.");
+    throw new Error("Der OpenFront-Datenproxy ist nicht erreichbar. Die Web-App muss über eine HTTPS-Adresse mit konfigurierten Proxy-Funktionen geöffnet werden.");
   }
   if (!response.ok) {
     const detail = await response.text().catch(() => "");
@@ -208,7 +242,9 @@ async function importReplayUrl(input: string): Promise<ApiImportSummary> {
     signal: AbortSignal.timeout(120_000),
   }).catch(error => {
     if (error instanceof TypeError) {
-      throw new Error("Der Replay-Coach-Datenproxy ist nicht erreichbar. Prüfe die Cloudflare-Pages-Veröffentlichung oder öffne eine lokale Replay-JSON über „Replay importieren“.");
+      throw new Error(IS_NATIVE_ANDROID
+        ? "OpenFront ist nicht erreichbar. Prüfe deine Internetverbindung."
+        : "Der Replay-Coach-Datenproxy ist nicht erreichbar. Prüfe die Web-Veröffentlichung oder öffne eine lokale Replay-JSON über „Replay importieren“.");
     }
     throw error;
   });
@@ -336,14 +372,31 @@ async function loadPlayer(rawId: string, onProgress?: (progress: { loaded: numbe
   return { playerId, profile, games: uniqueGames, nextCursor: null, pagesLoaded: pages, mapPreviews };
 }
 
-async function saveReplayJson(gameId: string): Promise<{ saved: boolean; canceled?: boolean; filePath?: string; bytes?: number }> {
+async function saveReplayJson(gameId: string): Promise<{ saved: boolean; shared?: boolean; canceled?: boolean; filePath?: string; bytes?: number }> {
   const raw = importedReplayJson.get(String(gameId));
   if (!raw) throw new Error("Für diese Partie liegt keine Replay-JSON mehr im Browser-Speicher. Lade die Partie bitte erneut.");
+  const fileName = "OpenFront-" + String(gameId).replace(/[^A-Za-z0-9_-]/g, "_") + ".json";
   const blob = new Blob([raw], { type: "application/json;charset=utf-8" });
+  if (IS_NATIVE_ANDROID) {
+    const file = await Filesystem.writeFile({
+      path: fileName,
+      data: raw,
+      directory: Directory.Cache,
+      encoding: Encoding.UTF8,
+      recursive: true,
+    });
+    await Share.share({
+      title: "OpenFront Replay Coach",
+      text: "Replay-JSON exportieren oder speichern",
+      url: file.uri,
+      dialogTitle: "Replay-JSON exportieren",
+    });
+    return { saved: true, shared: true, filePath: fileName, bytes: blob.size };
+  }
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.href = url;
-  link.download = "OpenFront-" + String(gameId).replace(/[^A-Za-z0-9_-]/g, "_") + ".json";
+  link.download = fileName;
   document.body.appendChild(link);
   link.click();
   link.remove();
@@ -363,6 +416,10 @@ function installBrowserReplayAPI() {
     openOfficialReplay: async (gameId: string) => {
       if (!/^[A-Za-z0-9_-]{4,80}$/.test(String(gameId))) throw new Error("Ungültige Game-ID.");
       const url = "https://openfront.io/#replay-viewer=" + encodeURIComponent(gameId);
+      if (IS_NATIVE_ANDROID) {
+        await Browser.open({ url });
+        return { opened: true, url };
+      }
       const opened = window.open(url, "_blank", "noopener,noreferrer");
       if (!opened) throw new Error("Der Browser hat das neue Fenster blockiert. Erlaube Pop-ups für diese App oder öffne den OpenFront-Link manuell.");
       return { opened: true, url };

@@ -1,0 +1,98 @@
+name: Validate Android APK
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [release-automation-2.2.4]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: openfront-replay-coach-android-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-android:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+        with:
+          submodules: false
+
+      - name: Check out only the pinned public OpenFront source
+        run: git submodule update --init --depth 1 vendor/OpenFrontIO
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24.15.0"
+          cache: npm
+
+      - name: Set up pinned npm
+        run: npm install --global npm@12.1.0
+
+      - name: Install pinned OpenFront dependencies
+        working-directory: vendor/OpenFrontIO
+        run: npm ci --ignore-scripts
+
+      - name: Install Coach and Capacitor dependencies
+        run: npm ci
+
+      - name: Build the shared renderer and original replay engine
+        run: npm run build:web
+
+      - name: Smoke-test native Android configuration
+        run: node scripts/smoke-test-android-config.mjs
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v4
+        with:
+          packages: "platforms;android-36 build-tools;36.0.0"
+
+      - name: Add Android build tools to PATH
+        run: echo "$ANDROID_HOME/build-tools/36.0.0" >> "$GITHUB_PATH"
+
+      - name: Generate and sync Android project
+        run: |
+          npx cap add android
+          npx cap sync android
+
+      - name: Generate branded Android launcher and splash assets
+        run: npx capacitor-assets generate --android --iconBackgroundColor "#0b1320" --splashBackgroundColor "#0b1320"
+
+      - name: Set Android application version
+        run: node scripts/set-android-version.mjs "$(node -p "require('./package.json').version")"
+
+      - name: Build debug APK
+        working-directory: android
+        run: ./gradlew --no-daemon assembleDebug
+
+      - name: Verify APK signature, package ID and version
+        run: |
+          set -Eeuo pipefail
+          apk="android/app/build/outputs/apk/debug/app-debug.apk"
+          version="$(node -p "require('./package.json').version")"
+          test -s "$apk"
+          "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --verbose "$apk"
+          "$ANDROID_HOME/build-tools/36.0.0/aapt" dump badging "$apk" | tee /tmp/apk-badging.txt
+          grep -F "package: name='de.openfront.replaycoach'" /tmp/apk-badging.txt
+          grep -F "versionName='$version'" /tmp/apk-badging.txt
+
+      - name: Upload Android validation APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: OpenFront-Replay-Coach-Android-Debug
+          path: android/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+          retention-days: 14

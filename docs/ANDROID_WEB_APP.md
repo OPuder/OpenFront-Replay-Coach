@@ -1,47 +1,38 @@
-# Android / Browser Edition
+# Android App – direct APK download
 
-The Android edition is the same React application as the Windows desktop edition. It runs in a current mobile browser and does not require an APK or Play Store installation.
+The Android edition is built from the same React interface and replay-analysis code as the Windows desktop edition. Capacitor packages it in a native Android application.
 
-## What users do
+## No Cloudflare or Play Store account required
 
-1. Open the published HTTPS address in Chrome on Android, Safari on iPhone/iPad, or a modern desktop browser.
-2. Paste an OpenFront game link or choose a local API replay JSON through the browser's file picker.
-3. Use the same coaching, economy, military, timeline and replay review screens as on Windows.
-4. Optionally use the browser's **Add to Home screen** command. This creates an app-like shortcut; it is not required.
+Every successful GitHub Release includes an Android APK alongside the Windows installer and portable ZIP.
 
-The PWA caches only its own HTML, JavaScript, CSS and icon shell. Replay JSON files, public game/player API responses and personal files are not stored by the service worker.
+1. Open the repository's [Releases page](https://github.com/OPuder/OpenFront-Replay-Coach/releases) on the phone.
+2. Download the asset named `OpenFront-Replay-Coach-<version>-Android.apk`.
+3. Open the downloaded APK. Android may ask you to allow this browser or file manager to install apps.
+4. Confirm the installation and launch OpenFront Replay Coach.
 
-## Why the app uses Cloudflare Pages Functions
+There is no Cloudflare account, no external hosting setup, no Node.js or Git installation on the phone, and no Play Store listing.
 
-OpenFront's public API explicitly limits which browser origins may call it. A static app on an unrelated GitHub Pages hostname is not an allowed origin. The PWA therefore uses a same-origin Cloudflare Pages Functions proxy.
+## Why the APK can read OpenFront directly
 
-The proxy is intentionally restricted:
-- GET /api/openfront/public/game/{id}
-- GET /api/openfront/public/player/{id}
-- GET /api/openfront/public/player/{id}/games?cursor=...
-- GET /api/openfront/bootstrap
-- GET /api/openfront/assets/{path} only when the path is present in OpenFront's current public asset manifest
+Normal browser JavaScript is subject to cross-origin (CORS) restrictions. The Android package runs in Capacitor's native WebView and enables CapacitorHttp, which routes fetch/XMLHttpRequest through Android's native HTTP stack. This allows the app to call OpenFront's public game/player API and load its public engine assets without a hosted proxy.
 
-It rejects other API paths and non-GET methods. It does not proxy game actions, account sessions, login tokens, private player information, or write requests. Replay files stay in the user's browser and are processed locally by the bundled replay engine.
+Only public GET data is requested. The app does not proxy private endpoints, account sessions, login tokens or game-write operations. Local replay JSON files are processed on the device.
 
-## One-time publishing setup
+## Supported devices
 
-The repository contains the Cloudflare Pages build and Functions. A repository owner must connect it to a Cloudflare account once; that account authorization cannot be performed from the GitHub repository alone.
+The APK is built with Capacitor 8. Its documented Android support starts at Android 7 (API 24), subject to a working Android System WebView / Chrome WebView on the device. Actual memory and performance still depend on the phone; use the Windows edition for very large replays.
 
-1. In Cloudflare, open **Workers & Pages → Create → Pages → Connect to Git**.
-2. Select OPuder/OpenFront-Replay-Coach.
-3. Set the production branch to main.
-4. Set the build command to bash scripts/build-cloudflare.sh.
-5. Set the build output directory to dist.
-6. Set the root directory to / and create the Pages project.
+## Updating the APK
 
-Cloudflare Pages detects and deploys the functions/ directory alongside the static dist/ output. The build script initializes the exact pinned OpenFront submodule, installs dependencies, builds the replay workers and renderer, and runs the PWA/proxy smoke test.
+The APK is signed by the GitHub Actions build. Until a permanent private signing key is configured as a GitHub Actions secret, each CI run uses its own temporary debug signing key. Android may therefore reject an in-place update over the previous CI APK. When that happens:
 
-After the first deployment Cloudflare provides an HTTPS URL similar to https://project-name.pages.dev. That is the link to share with friends. They do not need Git, Node.js, an APK or a developer setup. A custom domain can be attached later in Cloudflare.
+1. Remove the old OpenFront Replay Coach app.
+2. Download and install the newest APK.
+3. Reopen the app and load your profile again.
 
-## Limits and differences
+A permanent signing key can be added later as a private GitHub Actions secret. This is separate from Cloudflare and does not require Play Store access.
 
-- The Android edition requires internet access for OpenFront's public API and engine assets. The cached shell can open offline, but replay simulation and public-data loading cannot run without a connection.
-- Local API replay JSON is supported by the browser file picker. The browser edition caps a single replay JSON at 100 MB to avoid exhausting mobile memory. Use the Windows desktop edition for larger files.
-- The desktop edition continues to use its Electron preload and local file dialogs. The browser adapter is activated only when Electron has not provided window.replayAPI.
-- The Android edition is a responsive browser/PWA release, not a native Android APK.
+## Optional browser/PWA source
+
+The repository continues to build and test a browser/PWA edition. Its public OpenFront data calls require the included same-origin Pages Functions. It is not automatically hosted by this repository. The APK is the ready-to-use mobile download and does not depend on that optional hosting path.

@@ -60,9 +60,9 @@ for (const ref of [...scriptRefs, ...cssRefs]) {
 }
 
 const platformAdapter = readFileSync(path.join(projectRoot, "src/renderer/platform/BrowserReplayAPI.ts"), "utf8");
-assert.match(platformAdapter, /\/api\/openfront\/public/, "Browser API does not use the same-origin public proxy");
+assert.ok(platformAdapter.includes('const API_BASE = IS_NATIVE_ANDROID ? "https://api.openfront.io/public" : "/api/openfront/public";'), "Native Android and browser API routes are not separated");
 assert.match(platformAdapter, /\/api\/openfront\/bootstrap/, "Browser engine assets do not use the same-origin bootstrap proxy");
-assert.ok(!platformAdapter.includes("https://api.openfront.io/public"), "Browser code still bypasses the same-origin proxy");
+assert.ok(platformAdapter.includes("Capacitor.isNativePlatform()") && platformAdapter.includes("CapacitorHttp"), "Native Android HTTP integration is missing");
 assert.match(platformAdapter, /100 \* 1024 \* 1024/, "Mobile replay size cap is missing");
 
 const functionFiles = [

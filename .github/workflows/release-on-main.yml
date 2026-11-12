@@ -1,0 +1,386 @@
+name: Release all editions from main
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: openfront-replay-coach-release-main
+  cancel-in-progress: false
+
+jobs:
+  prepare-release:
+    name: Select and pin the next release version
+    runs-on: ubuntu-latest
+    outputs:
+      skip: ${{ steps.version.outputs.skip }}
+      version: ${{ steps.version.outputs.version }}
+      tag: ${{ steps.version.outputs.tag }}
+      release_sha: ${{ steps.version.outputs.release_sha }}
+    steps:
+      - name: Check out main history and all release tags
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+          persist-credentials: true
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24.15.0"
+
+      - name: Choose a unique version for this main commit
+        id: version
+        shell: bash
+        env:
+          EVENT_SHA: ${{ github.sha }}
+        run: |
+          set -Eeuo pipefail
+          git fetch origin main --tags --force
+          git checkout -B release-main origin/main
+
+          if ! git merge-base --is-ancestor "$EVENT_SHA" HEAD; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            echo "::notice::The triggering commit is no longer on the current main history."
+            exit 0
+          fi
+
+          latest_tag="$(git tag --list 'v[0-9]*' | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | sort -V | tail -n 1 || true)"
+          if [[ -n "$latest_tag" ]]; then
+            latest_tag_sha="$(git rev-list -n 1 "$latest_tag")"
+            if git merge-base --is-ancestor "$EVENT_SHA" "$latest_tag_sha"; then
+              echo "skip=true" >> "$GITHUB_OUTPUT"
+              echo "::notice::This commit is already included in $latest_tag. Skipping duplicate release."
+              exit 0
+            fi
+          fi
+
+          base_version="$(node -p "require('./package.json').version")"
+          if [[ ! "$base_version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::package.json must contain a stable x.y.z version (found: $base_version)"
+            exit 1
+          fi
+
+          if [[ -z "$latest_tag" ]]; then
+            next_version="$base_version"
+          else
+            latest_version="${latest_tag#v}"
+            if [[ "$base_version" == "$latest_version" ]]; then
+              IFS='.' read -r major minor patch <<< "$latest_version"
+              next_version="$major.$minor.$((patch + 1))"
+            elif [[ "$(printf '%s\n%s\n' "$latest_version" "$base_version" | sort -V | head -n 1)" == "$latest_version" ]]; then
+              next_version="$base_version"
+            else
+              IFS='.' read -r major minor patch <<< "$latest_version"
+              next_version="$major.$minor.$((patch + 1))"
+            fi
+          fi
+
+          while git rev-parse -q --verify "refs/tags/v$next_version" >/dev/null; do
+            IFS='.' read -r major minor patch <<< "$next_version"
+            next_version="$major.$minor.$((patch + 1))"
+          done
+
+          node scripts/set-release-version.mjs "$next_version"
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if ! git diff --quiet; then
+            git add package.json package-lock.json START_HERE.txt src/renderer/main.tsx
+            git commit -m "chore(release): prepare v$next_version [skip ci]"
+            git push origin HEAD:main
+          fi
+
+          release_sha="$(git rev-parse HEAD)"
+          echo "skip=false" >> "$GITHUB_OUTPUT"
+          echo "version=$next_version" >> "$GITHUB_OUTPUT"
+          echo "tag=v$next_version" >> "$GITHUB_OUTPUT"
+          echo "release_sha=$release_sha" >> "$GITHUB_OUTPUT"
+          echo "Selected v$next_version at $release_sha"
+
+  validate-engine:
+    name: Validate exact OpenFront engine revision
+    needs: prepare-release
+    if: needs.prepare-release.outputs.skip != 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Check out the release source
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.prepare-release.outputs.release_sha }}
+
+      - name: Check out only the pinned public OpenFront source
+        run: git submodule update --init --depth 1 vendor/OpenFrontIO
+
+      - name: Verify the exact upstream revision
+        shell: bash
+        run: |
+          expected="bc3e3334c573c4959ec6a6745df6826d07233b4d"
+          actual="$(git -C vendor/OpenFrontIO rev-parse HEAD)"
+          echo "Expected: $expected"
+          echo "Actual:   $actual"
+          test "$actual" = "$expected"
+
+      - name: Set up Node.js and npm
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24.15.0"
+
+      - name: Set up pinned npm
+        run: npm install --global npm@12.1.0
+
+      - name: Install pinned upstream dependencies
+        working-directory: vendor/OpenFrontIO
+        run: npm ci --ignore-scripts
+
+      - name: Type-check the original engine and replay pipeline
+        working-directory: vendor/OpenFrontIO
+        run: npm run typecheck
+
+      - name: Build the original replay workers
+        run: |
+          npm ci
+          npm run build:engine
+
+  build-windows:
+    name: Build Windows installer and portable ZIP
+    needs: prepare-release
+    if: needs.prepare-release.outputs.skip != 'true'
+    runs-on: windows-latest
+    timeout-minutes: 60
+    steps:
+      - name: Check out the versioned release source
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.prepare-release.outputs.release_sha }}
+
+      - name: Check out only the pinned public OpenFront source
+        run: git submodule update --init --depth 1 vendor/OpenFrontIO
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24.15.0"
+
+      - name: Set up pinned npm
+        run: npm install --global npm@12.1.0
+
+      - name: Install pinned OpenFront dependencies
+        working-directory: vendor/OpenFrontIO
+        run: npm ci --ignore-scripts
+
+      - name: Install Coach dependencies
+        run: npm ci
+
+      - name: Build the original replay engine and Windows application
+        run: npm run build
+
+      - name: Package the installer and portable ZIP
+        run: npx electron-builder --win nsis zip --publish never
+
+      - name: Smoke-test the packaged Windows renderer
+        run: node scripts/smoke-test-windows.mjs
+
+      - name: Upload Windows release files
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-windows
+          path: |
+            release/*.exe
+            release/*.zip
+          if-no-files-found: error
+          retention-days: 14
+
+  build-android:
+    name: Build installable Android APK
+    needs: prepare-release
+    if: needs.prepare-release.outputs.skip != 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    outputs:
+      signing_mode: ${{ steps.apk.outputs.signing_mode }}
+    steps:
+      - name: Check out the versioned release source
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.prepare-release.outputs.release_sha }}
+
+      - name: Check out only the pinned public OpenFront source
+        run: git submodule update --init --depth 1 vendor/OpenFrontIO
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24.15.0"
+          cache: npm
+
+      - name: Set up pinned npm
+        run: npm install --global npm@12.1.0
+
+      - name: Install pinned OpenFront dependencies
+        working-directory: vendor/OpenFrontIO
+        run: npm ci --ignore-scripts
+
+      - name: Install Coach and Capacitor dependencies
+        run: npm ci
+
+      - name: Build the shared renderer and original replay engine
+        run: npm run build:web
+
+      - name: Smoke-test native Android configuration
+        run: node scripts/smoke-test-android-config.mjs
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v4
+        with:
+          packages: "platforms;android-36 build-tools;36.0.0"
+
+      - name: Add Android build tools to PATH
+        run: echo "$ANDROID_HOME/build-tools/36.0.0" >> "$GITHUB_PATH"
+
+      - name: Generate the native Android project
+        run: |
+          npx cap add android
+          npx cap sync android
+
+      - name: Generate branded Android launcher and splash assets
+        run: npx capacitor-assets generate --android --iconBackgroundColor "#0b1320" --splashBackgroundColor "#0b1320"
+
+      - name: Set the Android application version
+        env:
+          RELEASE_VERSION: ${{ needs.prepare-release.outputs.version }}
+        run: node scripts/set-android-version.mjs "$RELEASE_VERSION"
+
+      - name: Build permanently signed release APK (or temporary debug APK before setup)
+        id: apk
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          set -Eeuo pipefail
+          if [[ -n "$ANDROID_KEYSTORE_BASE64" && -n "$ANDROID_KEYSTORE_PASSWORD" && -n "$ANDROID_KEY_ALIAS" && -n "$ANDROID_KEY_PASSWORD" ]]; then
+            keystore="$RUNNER_TEMP/openfront-replay-coach-release.jks"
+            printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$keystore"
+            test -s "$keystore"
+            export ANDROID_KEYSTORE_PATH="$keystore"
+            node scripts/configure-android-signing.mjs
+            (cd android && ./gradlew --no-daemon assembleRelease)
+            apk="android/app/build/outputs/apk/release/app-release.apk"
+            echo "signing_mode=permanent release key" >> "$GITHUB_OUTPUT"
+          else
+            echo "::warning::Android signing secrets are incomplete; building a temporary debug-signed APK. In-place updates will not be reliable until all four secrets are configured."
+            (cd android && ./gradlew --no-daemon assembleDebug)
+            apk="android/app/build/outputs/apk/debug/app-debug.apk"
+            echo "signing_mode=temporary debug key (uninstall may be required for updates)" >> "$GITHUB_OUTPUT"
+          fi
+          test -s "$apk"
+          build_tools="$(find "$ANDROID_HOME/build-tools" -mindepth 1 -maxdepth 1 -type d | sort -V | tail -n 1)"
+          "$build_tools/apksigner" verify --verbose "$apk"
+          "$build_tools/aapt" dump badging "$apk" | tee /tmp/apk-badging.txt
+          grep -F "package: name='de.openfront.replaycoach'" /tmp/apk-badging.txt
+          grep -F "versionName='${{ needs.prepare-release.outputs.version }}'" /tmp/apk-badging.txt
+          mkdir -p release
+          cp "$apk" "release/OpenFront-Replay-Coach-${{ needs.prepare-release.outputs.version }}-Android.apk"
+
+      - name: Upload Android APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-android
+          path: release/*-Android.apk
+          if-no-files-found: error
+          retention-days: 14
+
+  build-web:
+    name: Validate the optional browser/PWA edition
+    needs: prepare-release
+    if: needs.prepare-release.outputs.skip != 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Check out the versioned release source
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.prepare-release.outputs.release_sha }}
+
+      - name: Check out pinned OpenFront engine
+        run: git submodule update --init --depth 1 vendor/OpenFrontIO
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24.15.0"
+          cache: npm
+
+      - name: Set up pinned npm
+        run: npm install --global npm@12.1.0
+
+      - name: Install pinned OpenFront dependencies
+        working-directory: vendor/OpenFrontIO
+        run: npm ci --ignore-scripts
+
+      - name: Install Coach dependencies
+        run: npm ci
+
+      - name: Build and validate the browser/PWA version
+        run: |
+          npm run build:web
+          node scripts/smoke-test-web.mjs
+
+  publish-release:
+    name: Publish all three editions as one GitHub Release
+    needs: [prepare-release, validate-engine, build-windows, build-android, build-web]
+    if: needs.prepare-release.outputs.skip != 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download Windows installer and portable ZIP
+        uses: actions/download-artifact@v4
+        with:
+          name: release-windows
+          path: release
+
+      - name: Download Android APK
+        uses: actions/download-artifact@v4
+        with:
+          name: release-android
+          path: release
+
+      - name: Create one release with all three downloads
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ needs.prepare-release.outputs.tag }}
+          target_commitish: ${{ needs.prepare-release.outputs.release_sha }}
+          name: OpenFront Replay Coach ${{ needs.prepare-release.outputs.version }}
+          generate_release_notes: true
+          fail_on_unmatched_files: true
+          body: |
+            ## Drei Ausgaben – eine Version
+
+            - **Windows Installer:** normal installieren, Desktop-Verknüpfung inklusive.
+            - **Windows Portable:** ZIP entpacken und direkt starten, keine Installation.
+            - **Android APK:** auf das Handy herunterladen und einmalig installieren. Keine Cloudflare-Anmeldung und kein Play-Store-Konto erforderlich.
+
+            Die Android-App verwendet Androids native HTTP-Schnittstelle für die öffentlichen OpenFront-Daten und Engine-Assets. Die Daten müssen dafür nicht über einen Cloudflare-Proxy geleitet werden.
+
+            **Android-Signierung:** ${{ needs.build-android.outputs.signing_mode }}. Für zuverlässige Updates muss der dauerhafte Schlüssel einmalig als vier GitHub-Actions-Secrets eingerichtet werden; siehe `docs/ANDROID_SIGNING.md`. Den privaten Schlüssel niemals ins Repository committen.
+
+            **Start:** siehe START_HERE.txt.
+          files: |
+            release/*.exe
+            release/*.zip
+            release/*-Android.apk

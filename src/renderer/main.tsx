@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { FileUp, Gamepad2, Clock3, Users, Map, ShieldCheck, AlertTriangle, CheckCircle2, HardDrive, ArrowRight, Link2, DownloadCloud, LayoutDashboard, Brain, ListChecks, ChevronDown, Building2, Activity, Search, Trophy, Swords, Ship, TrendingUp, CalendarDays, SlidersHorizontal, Home, ChevronRight, Sparkles } from 'lucide-react';
 import './style.css';
+import { Capacitor } from '@capacitor/core';
 import { analyzeActions } from '../main/decoder/ActionAnalysis';
 import { analyzeDetailedActions } from '../main/decoder/DetailedAnalysis';
 import { buildCoachInsights } from '../main/decoder/CoachInsights';
@@ -12,7 +13,7 @@ import { installBrowserReplayAPI } from './platform/BrowserReplayAPI';
 // Electron provides its API through the isolated preload; normal browsers use
 // the browser adapter so the same React interface powers Windows and Android.
 installBrowserReplayAPI();
-if (typeof window !== 'undefined' && window.isSecureContext && 'serviceWorker' in navigator && location.protocol === 'https:') {
+if (!Capacitor.isNativePlatform() && typeof window !== 'undefined' && window.isSecureContext && 'serviceWorker' in navigator && location.protocol === 'https:') {
   window.addEventListener('load', () => {
     const scope = new URL('./', document.baseURI);
     void navigator.serviceWorker.register(new URL('sw.js', document.baseURI), { scope: scope.pathname })
@@ -144,7 +145,9 @@ function App() {
       const result = await window.replayAPI.saveReplayJson(apiResult.gameId);
       if (result?.saved) setSaveNotice(isDesktopShell
         ? `Gespeichert (${result.bytes} Bytes): ${result.filePath} – der Speicherort wurde im Explorer geöffnet.`
-        : `Download gestartet (${result.bytes} Bytes): ${result.filePath}. Die Datei findest du im Download-Ordner deines Browsers.`);
+        : result.shared
+          ? `Android-Teilen-Menü geöffnet (${result.bytes} Bytes): ${result.filePath}. Wähle dort „Dateien“ oder eine andere App zum Speichern.`
+          : `Download gestartet (${result.bytes} Bytes): ${result.filePath}. Die Datei findest du im Download-Ordner deines Browsers.`);
       else if (result?.canceled) setSaveNotice('Speichern abgebrochen. Es wurde keine Datei geschrieben.');
       else setSaveNotice('Es wurde keine Datei gespeichert.');
     } catch (e) {

@@ -86,5 +86,7 @@ assert.match(assetFunction, /official OpenFront manifest/, "Asset proxy does not
 assert.match(assetFunction, /Only static GET requests are supported/, "Asset proxy does not enforce GET-only access");
 assert.ok(existsSync(path.join(projectRoot, "scripts/build-cloudflare.sh")), "Cloudflare Pages build script is missing");
 assert.ok(existsSync(path.join(projectRoot, "wrangler.toml")), "Cloudflare Pages configuration is missing");
+assert.ok(existsSync(path.join(projectRoot, "scripts/build-cloudflare.sh")), "Cloudflare build script is missing");
+execFileSync(process.execPath, [path.join(projectRoot, "scripts/smoke-test-pages-functions.mjs")], { stdio: "inherit" });
 
 console.log("Web/PWA smoke test passed: app shell, PNG icons, offline bundles, same-origin API proxy and Cloudflare functions are valid.");

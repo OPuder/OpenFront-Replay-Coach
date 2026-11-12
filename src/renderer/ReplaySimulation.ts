@@ -119,6 +119,31 @@ export async function simulateReplay(
           if (settled) return;
           settled = true;
           const totalTicks = readerRef.current?.header.totalFrames ?? 0;
+          const finalFrame = totalTicks - 1;
+          if (readerRef.current && finalFrame >= 0 && lastSampledFrame !== finalFrame) {
+            const reader = readerRef.current;
+            await reader.load(reader.chunkOf(finalFrame));
+            const state = reader.seek(finalFrame);
+            const unitsByOwner = new Map<number, number>();
+            for (const unit of state.units.values() as Iterable<any>) unitsByOwner.set(Number(unit.ownerID), (unitsByOwner.get(Number(unit.ownerID)) ?? 0) + 1);
+            const playerMeta = new Map(reader.header.players.map((p: any) => [p.smallID, p]));
+            const players = [...state.players.entries()].map(([id, p]: [number, any]) => {
+              const meta: any = playerMeta.get(id) ?? {};
+              const outgoingAttacks = Array.isArray(p.outgoingAttacks) ? p.outgoingAttacks : [];
+              const incomingAttacks = Array.isArray(p.incomingAttacks) ? p.incomingAttacks : [];
+              return {
+                id, name: String(meta.displayName ?? meta.name ?? `Spieler ${id}`),
+                clientID: meta.clientID == null ? null : String(meta.clientID),
+                alive: Boolean(p.isAlive), gold: Number(p.gold ?? 0), troops: Number(p.troops ?? 0),
+                tiles: Number(p.tilesOwned ?? 0), units: unitsByOwner.get(id) ?? 0,
+                outgoingAttacks: outgoingAttacks.length, incomingAttacks: incomingAttacks.length,
+                attackTroops: outgoingAttacks.reduce((sum: number, attack: any) => sum + Number(attack.troops ?? 0), 0),
+                allies: Array.isArray(p.allies) ? p.allies.length : 0
+              };
+            });
+            samples.push({tick:state.tick,frame:finalFrame,players,totalUnits:state.units.size,falloutTiles:state.falloutTiles});
+            lastSampledFrame = finalFrame;
+          }
           cleanup();
           const staticPlayers = readerRef.current?.header.players ?? [];
           const target = staticPlayers.find((p: any) => preferredClientId && p.clientID === preferredClientId)
@@ -135,6 +160,7 @@ export async function simulateReplay(
           }
           const firstPlayer = playerSeries[0];
           const lastPlayer = playerSeries[playerSeries.length - 1];
+          if (playerSeries.length > 1) longestNoExpansionTicks = Math.max(longestNoExpansionTicks, (playerSeries.length - 1 - flatStart) * sampleEvery);
           const playerReview = firstPlayer && lastPlayer ? {
             playerName: target.displayName ?? target.name ?? "Dein Spieler",
             startTiles: firstPlayer.tiles,

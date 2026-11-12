@@ -5,6 +5,7 @@ import { decodeApiGameRecord } from './decoder/ApiTurnDecoder';
 import { analyzeActions } from './decoder/ActionAnalysis';
 import { analyzeDetailedActions } from './decoder/DetailedAnalysis';
 import { buildCoachInsights } from './decoder/CoachInsights';
+import { assessReplayCompatibility } from './decoder/ReplayCompatibility';
 
 const isDev = !app.isPackaged;
 const API_BASE = 'https://api.openfront.io/public/game/';
@@ -253,6 +254,7 @@ function summarizeRecord(record: any, gameId: string, fileSize: number, savePath
   const decoded = info && Array.isArray(root?.turns) ? decodeApiGameRecord(record) : null;
   const actions = decoded?.actionCount ?? (Array.isArray(turns) ? turns.reduce((sum: number, turn: any) => sum + (Array.isArray(turn?.intents) ? turn.intents.length : 0), 0) : null);
   const durationSeconds = Number(info?.duration ?? root?.duration ?? 0);
+  const engineCompatibility = assessReplayCompatibility(record);
   const playerStats = (info?.players ?? []).map((p: any) => ({ name: p.username ?? p.displayName ?? p.name ?? 'Unbekannt', clientID: p.clientID ?? null, publicID: p.publicID ?? null, stats: p.stats ?? {} }));
   return {
     gameId, fileSize, savePath,
@@ -270,6 +272,7 @@ function summarizeRecord(record: any, gameId: string, fileSize: number, savePath
     eventGroups: events && typeof events === 'object' ? Object.keys(events) : [],
     recordShape: chunks ? 'stored-replay-like' : Array.isArray(turns) ? 'game-record-with-turns' : 'game-record-unclassified',
     gitCommit: record?.gitCommit ?? root?.gitCommit ?? null,
+    engineCompatibility,
     hashedTurns: Array.isArray(turns) ? turns.filter((t: any) => t?.hash !== null && t?.hash !== undefined).length : 0,
     decodedActions: decoded?.actions ?? [],
     actionCounts: decoded?.counts ?? {},

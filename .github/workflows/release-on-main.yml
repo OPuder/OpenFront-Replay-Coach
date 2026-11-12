@@ -253,6 +253,9 @@ jobs:
           npx cap add android
           npx cap sync android
 
+      - name: Generate branded Android launcher and splash assets
+        run: npx capacitor-assets generate --android --iconBackgroundColor "#0b1320" --splashBackgroundColor "#0b1320"
+
       - name: Set the Android application version
         env:
           RELEASE_VERSION: ${{ needs.prepare-release.outputs.version }}

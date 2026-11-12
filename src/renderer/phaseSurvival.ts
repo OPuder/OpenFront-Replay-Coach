@@ -28,7 +28,9 @@ export function selectPlayerSurvivalWindow<TPlayer extends PlayerSurvivalSnapsho
   const firstAliveSample = selectedPlayerSamples.find(entry => entry.player.alive) ?? null;
   const lastAliveSample = [...selectedPlayerSamples].reverse().find(entry => entry.player.alive) ?? null;
   const firstEliminatedSample = selectedPlayerSamples.find(entry => !entry.player.alive) ?? null;
-  const lastAliveTick = lastAliveSample?.tick ?? replayDurationTicks;
+  const lastAliveTick = firstEliminatedSample
+    ? lastAliveSample?.tick ?? -1
+    : replayDurationTicks;
 
   // Only alive snapshots can contribute to phase ratings or player summaries.
   const alivePlayerSamples = selectedPlayerSamples.filter(

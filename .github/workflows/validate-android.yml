@@ -68,6 +68,9 @@ jobs:
           npx cap add android
           npx cap sync android
 
+      - name: Generate branded Android launcher and splash assets
+        run: npx capacitor-assets generate --android --iconBackgroundColor "#0b1320" --splashBackgroundColor "#0b1320"
+
       - name: Set Android application version
         run: node scripts/set-android-version.mjs "$(node -p "require('./package.json').version")"
 

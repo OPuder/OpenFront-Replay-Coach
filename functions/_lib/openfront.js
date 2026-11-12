@@ -26,7 +26,7 @@ function readBalancedObject(source, start) {
 
 export async function getOpenFrontBootstrap(origin) {
   if (bootstrapCache && Date.now() - bootstrapFetchedAt < 6 * 60 * 60 * 1000) {
-    return bootstrapCache;
+    return { ...bootstrapCache, cdnBase: "/api/openfront/assets" };
   }
 
   const response = await fetch(OPENFRONT_HOME, {

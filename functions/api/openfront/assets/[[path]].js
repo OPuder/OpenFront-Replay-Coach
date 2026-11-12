@@ -8,7 +8,15 @@ export async function onRequest({ request }) {
   }
 
   const assetPath = getRoutePath(request, PREFIX);
-  if (!assetPath || assetPath.length > 500 || assetPath.includes("..") || assetPath.includes("\\")) {
+  if (!assetPath || assetPath.length > 500) {
+    return jsonError("Invalid OpenFront asset path.", 400);
+  }
+  const normalizeAssetPath = (value) => {
+    const raw = String(value ?? "").replace(/^\\/+/, "");
+    try { return decodeURIComponent(raw); } catch { return raw; }
+  };
+  const allowedPath = normalizeAssetPath(assetPath);
+  if (!allowedPath.startsWith("_assets/") || allowedPath.includes("..") || allowedPath.includes("\\")) {
     return jsonError("Invalid OpenFront asset path.", 400);
   }
 

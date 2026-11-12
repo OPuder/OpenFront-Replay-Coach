@@ -80,6 +80,8 @@ export async function simulateReplay(
           for (let frame = lastSampledFrame < 0 ? 0 : lastSampledFrame + sampleEvery; frame <= target; frame += sampleEvery) {
             await reader.load(reader.chunkOf(frame));
             const state = reader.seek(frame);
+            const unitsByOwner = new Map<number, number>();
+            for (const unit of state.units.values() as Iterable<any>) unitsByOwner.set(Number(unit.ownerID), (unitsByOwner.get(Number(unit.ownerID)) ?? 0) + 1);
             const players = [...state.players.entries()].map(([id, p]: [number, any]) => ({
               id,
               name: String(p.displayName ?? p.name ?? p.clientID ?? `Spieler ${id}`),
@@ -88,7 +90,7 @@ export async function simulateReplay(
               gold: Number(p.gold ?? 0),
               troops: Number(p.troops ?? 0),
               tiles: Number(p.tilesOwned ?? 0),
-              units: [...state.units.values()].filter((u: any) => Number(u.ownerID) === id).length
+              units: unitsByOwner.get(id) ?? 0
             }));
             samples.push({ tick: state.tick, frame, players, totalUnits: state.units.size, falloutTiles: state.falloutTiles });
             lastSampledFrame = frame;

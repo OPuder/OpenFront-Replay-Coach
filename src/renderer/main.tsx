@@ -86,7 +86,7 @@ function App() {
     }
   }
   async function importUrl() { setBusy(true); setError(''); setApiResult(null); setSimulationResult(null); try { const result = await window.replayAPI.importReplayUrl(url); if ('canceled' in result) { setError('Speichern abgebrochen. Die API-Antwort wurde nicht lokal abgelegt.'); } else { setApiResult(result); setDecodedActions(result.decodedActions ?? []); setReplay(null); setActivePage('analysis'); await runEngineReview(result); } } catch (e) { setError(e instanceof Error ? e.message : String(e)); } finally { setBusy(false); } }
-  async function openReplay() { setBusy(true); setError(''); try { const result = await window.replayAPI.openReplay(); if (result) { setReplay(result); setDecodedActions(result.decodedActions ?? []); setApiResult(null); setActivePage('analysis'); } } catch (e) { setError(e instanceof Error ? e.message : String(e)); } finally { setBusy(false); } }
+  async function openReplay() { setBusy(true); setError(''); try { const result = await window.replayAPI.openReplay(); if (result) { if (result.apiSummary) { setApiResult(result.apiSummary); setDecodedActions(result.apiSummary.decodedActions ?? []); setReplay(null); setActivePage('analysis'); await runEngineReview(result.apiSummary); } else { setReplay(result); setDecodedActions(result.decodedActions ?? []); setApiResult(null); setSimulationResult(null); setActivePage('analysis'); } } } catch (e) { setError(e instanceof Error ? e.message : String(e)); } finally { setBusy(false); } }
   async function saveReplayJson() {
     if (!apiResult?.gameId) {
       setError('Für diese Partie liegt kein herunterladbarer Original-Datensatz in der aktuellen Sitzung vor. Bitte die Partie zuerst erneut über ihren OpenFront-Link laden.');

@@ -72,15 +72,20 @@ function App() {
       setBusy(false);
     }
   }
-  async function runEngineReview(result: ApiImportSummary) {
+  async function runEngineReview(result: ApiImportSummary, selectedClientId?: string | null) {
     setSimulationResult(null);
     if (!result.record || !result.engineCompatibility?.engineVersionCompatible) return;
     setSimulationProgress({percent:0,phase:'Original-Engine wird gestartet'});
     try {
       const assets = await window.replayAPI.getReplayEngineAssets();
-      const publicId = String(playerPage?.profile?.publicId ?? playerPage?.profile?.publicID ?? '');
-      const recordPlayer = result.record?.info?.players?.find((p: any) => String(p.publicID ?? p.publicId ?? '') === publicId);
-      const preferredClientId = recordPlayer?.clientID == null ? null : String(recordPlayer.clientID);
+      let preferredClientId: string | null;
+      if (selectedClientId !== undefined) {
+        preferredClientId = selectedClientId || null;
+      } else {
+        const publicId = String(playerPage?.profile?.publicId ?? playerPage?.profile?.publicID ?? '');
+        const recordPlayer = result.record?.info?.players?.find((p: any) => String(p.publicID ?? p.publicId ?? '') === publicId);
+        preferredClientId = recordPlayer?.clientID == null ? null : String(recordPlayer.clientID);
+      }
       const simulated = await simulateReplay(result.record, assets, (percent, phase) => setSimulationProgress({percent,phase}), 50, preferredClientId);
       setSimulationResult(simulated);
     } catch (e) {
@@ -168,7 +173,7 @@ function App() {
       {activePage==='analysis' && <>
         {apiResult ? <>
           <div className="analysis-hero studio-card"><div className="analysis-map-preview"><MapPreview map={apiResult.mapName} src={apiResult.previewUrl} refreshKey={mapRefreshKey}/><div className="map-overlay"><span className="studio-eyebrow">MATCH REVIEW</span><h2>{apiResult.mapName}</h2><p>{apiResult.gameMode} · {apiResult.gameType} · {clock(apiResult.durationSeconds??0)} · {fmt(apiResult.playerCount??0)} Spieler</p></div></div><div className="analysis-hero-side"><span className="studio-eyebrow">MATCH ID</span><b>{apiResult.gameId}</b><button className="studio-button primary" onClick={()=>window.replayAPI.openOfficialReplay(apiResult.gameId)}><Gamepad2 size={16}/> Original-Replay ansehen</button><button className="studio-button subtle" onClick={exportActionsCsv}><DownloadCloud size={16}/> Aktionsprotokoll exportieren</button></div></div>
-          {apiResult.actionAnalysis && <CoachPanel apiResult={apiResult} preferredPlayerPublicId={playerPage?.profile?.publicId ?? playerPage?.profile?.publicID ?? null} decodedActions={decodedActions} simulationResult={simulationResult} simulationProgress={simulationProgress} onExport={exportActionsCsv} onSaveReplayJson={()=>void saveReplayJson()} onOpenReplay={()=>window.replayAPI.openOfficialReplay(apiResult.gameId)} fmt={fmt}/>}
+          {apiResult.actionAnalysis && <CoachPanel apiResult={apiResult} preferredPlayerPublicId={playerPage?.profile?.publicId ?? playerPage?.profile?.publicID ?? null} decodedActions={decodedActions} simulationResult={simulationResult} simulationProgress={simulationProgress} onPlayerSelect={(clientId)=>void runEngineReview(apiResult,clientId)} onExport={exportActionsCsv} onSaveReplayJson={()=>void saveReplayJson()} onOpenReplay={()=>window.replayAPI.openOfficialReplay(apiResult.gameId)} fmt={fmt}/>}
           <details className="technical-details studio-card engine-diagnostics"><summary>Engine-Simulation, Hash-Abgleich und technische Zustände <ChevronDown size={16}/></summary>
           {apiResult.engineCompatibility && <section className="studio-card" style={{marginTop:16}}>
             <div className="card-heading"><div><span className="studio-eyebrow">ENGINE-KOMPATIBILITÄT</span><h3>{apiResult.engineCompatibility.status === 'version-compatible-hashes-available' ? 'Version passt – Hash-Abgleich kann starten' : apiResult.engineCompatibility.status === 'version-compatible-no-hashes' ? 'Version passt – keine Hash-Prüfpunkte' : 'Keine sichere Engine-Wiedergabe möglich'}</h3></div>{apiResult.engineCompatibility.engineVersionCompatible ? <CheckCircle2 size={20}/> : <AlertTriangle size={20}/>}</div>

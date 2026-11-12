@@ -5,7 +5,7 @@ import { buildCoachInsights } from "../../main/decoder/CoachInsights";
 import { assessReplayCompatibility } from "../../main/decoder/ReplayCompatibility";
 
 const API_BASE = "/api/openfront/public";
-const MAX_REPLAY_BYTES = 250 * 1024 * 1024;
+const MAX_REPLAY_BYTES = 100 * 1024 * 1024;
 const importedReplayJson = new Map<string, string>();
 let assetManifestCache: { manifest: Record<string, string>; cdnBase: string; fetchedAt: number } | null = null;
 const previewCache = new Map<string, string | null>();

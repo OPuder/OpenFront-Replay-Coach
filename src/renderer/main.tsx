@@ -552,7 +552,7 @@ function CoachPanel({apiResult,preferredPlayerPublicId,decodedActions,simulation
           <div><strong>{phase.attackCount}</strong><small>Angriffsbefehle</small></div>
           {phase.strengthLabels.length > 0 && <p><strong>Das lief gut:</strong> {phase.strengthLabels.join(' · ')}</p>}
           <p>{phase.targetPressureWins > 0 ? `${phase.targetPressureWins} Ziele verloren innerhalb von 30 Sekunden nach einem deiner Befehle Gebiet. Das ist ein zeitlicher Zusammenhang, kein alleiniger Erfolgsnachweis.` : 'Kein entsprechender Ziel-Gebietsverlust im erfassten 30-Sekunden-Fenster.'}</p>
-          {phase.id === 'late' && playerEliminatedAtSeconds !== null && <p className="coach-phase-elimination">Du bist bei {clock(playerEliminatedAtSeconds)} ausgeschieden. Zustände nach deinem Ausscheiden werden nicht als deine Leistung gewertet.</p>}
+          {phase.id === 'late' && playerEliminatedAtSeconds !== null && <p className="coach-phase-elimination">Der ausgewählte Spieler ist bei {clock(playerEliminatedAtSeconds)} ausgeschieden. Zustände danach werden nicht als seine Leistung gewertet.</p>}
         </article>)}</div>
         <small className="coach-phase-note">Die Phasenwerte zeigen beobachtete Raten, keine Ursache oder optimale Strategie. Ein Gebietszuwachs nach einem Angriff beweist nicht, dass dieser Befehl ihn verursacht hat. Bei zu wenigen Stichproben wird keine Einstufung vorgenommen.</small>
       </div></details>}

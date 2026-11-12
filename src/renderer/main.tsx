@@ -186,8 +186,8 @@ function TrainingFocus({apiResult,decodedActions}:{apiResult:ApiImportSummary;de
   const attacks=apiResult.actionAnalysis?.attackCount??0;
   const boats=apiResult.actionAnalysis?.boatCount??0;
   const builds=apiResult.actionAnalysis?.buildCount??0;
-  const firstAttack=playerActions.find(a=>a.type==='attack');
-  const firstBuild=playerActions.find(a=>a.type==='build_unit');
+  const firstAttack=decodedActions.find(a=>a.type==='attack');
+  const firstBuild=decodedActions.find(a=>a.type==='build_unit');
   const checkpoints=[
     firstAttack ? {
       number:'01', tag:'STARTPHASE', title:'Ersten Angriff bewerten', time:firstAttack.seconds,
@@ -222,7 +222,7 @@ function TrainingFocus({apiResult,decodedActions}:{apiResult:ApiImportSummary;de
   </div>;
 }
 function selectedPlayerName(players:Array<{name:string;clientID:string|null}>,id:string){return players.find(p=>p.clientID===id)?.name ?? '';}
-function CoachPanel({apiResult,preferredPlayerPublicId,decodedActions,onExport,onSaveReplayJson,onOpenReplay,fmt}:{preferredPlayerPublicId:string|null;apiResult:ApiImportSummary & {actionAnalysis:NonNullable<ApiImportSummary['actionAnalysis']>};decodedActions:DecodedAction[];onExport:()=>void;onSaveReplayJson:()=>void;onOpenReplay:()=>void;fmt:(n:number)=>string}) {
+function CoachPanel({apiResult,preferredPlayerPublicId,decodedActions,onExport,onSaveReplayJson,onOpenReplay,fmt}:{preferredPlayerPublicId:string|null;apiResult:ApiImportSummary;decodedActions:DecodedAction[];onExport:()=>void;onSaveReplayJson:()=>void;onOpenReplay:()=>void;fmt:(n:number)=>string}) {
   const [analysisTab,setAnalysisTab]=useState<'overview'|'decisions'|'economy'|'military'|'timeline'>('decisions');
   const players=apiResult.playerStats ?? [];
   const preferredPlayer=players.find(p=>preferredPlayerPublicId && p.publicID===preferredPlayerPublicId);

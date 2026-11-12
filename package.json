@@ -5,11 +5,12 @@
   "description": "OpenFront Replay Coach — korrekte Versionsanzeige und transparenter Engine-Status",
   "main": "dist-electron/main.js",
   "scripts": {
-    "dev": "npm run build:electron && concurrently -k \"vite\" \"wait-on http://localhost:5173 && electron .\"",
-    "build": "tsc --noEmit && vite build && tsc -p tsconfig.electron.json",
+    "dev": "npm run build:engine && npm run build:electron && concurrently -k \"vite\" \"wait-on http://localhost:5173 && electron .\"",
+    "build": "npm run build:engine && tsc --noEmit && vite build && tsc -p tsconfig.electron.json",
     "start": "electron .",
     "dist:win": "npm run build && electron-builder --win nsis",
-    "build:electron": "tsc -p tsconfig.electron.json"
+    "build:electron": "tsc -p tsconfig.electron.json",
+    "build:engine": "node vendor/OpenFrontIO/node_modules/vite/bin/vite.js build --config engine-build/vite.config.mjs"
   },
   "dependencies": {
     "lucide-react": "^0.468.0",

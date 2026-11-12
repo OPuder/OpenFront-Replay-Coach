@@ -7,8 +7,9 @@ self.addEventListener("install", event => {
     const shell = [
       base,
       new URL("manifest.webmanifest", base).href,
-      new URL("icons/replay-coach.svg", base).href,
-      new URL("icons/replay-coach-maskable.svg", base).href
+      new URL("icons/replay-coach-192.png", base).href,
+      new URL("icons/replay-coach-512.png", base).href,
+      new URL("icons/replay-coach-maskable-512.png", base).href
     ];
     await Promise.all(shell.map(async url => {
       try {

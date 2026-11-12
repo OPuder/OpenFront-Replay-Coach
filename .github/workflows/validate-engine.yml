@@ -6,6 +6,8 @@ on:
     paths:
       - ".gitmodules"
       - "vendor/OpenFrontIO"
+      - "engine-build/**"
+      - "package.json"
       - ".github/workflows/validate-engine.yml"
   push:
     branches: [main]

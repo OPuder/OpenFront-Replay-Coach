@@ -336,6 +336,15 @@ function TrainingFocus({apiResult,decodedActions}:{apiResult:ApiImportSummary;de
 function selectedPlayerName(players:Array<{name:string;clientID:string|null}>,id:string){return players.find(p=>p.clientID===id)?.name ?? '';}
 function CoachPanel({apiResult,preferredPlayerPublicId,decodedActions,simulationResult,simulationProgress,onPlayerSelect,onExport,onSaveReplayJson,onOpenReplay,fmt}:{preferredPlayerPublicId:string|null;apiResult:ApiImportSummary;decodedActions:DecodedAction[];simulationResult:ReplaySimulationResult|null;simulationProgress:{percent:number;phase:string}|null;onPlayerSelect:(clientId:string)=>void;onExport:()=>void;onSaveReplayJson:()=>void;onOpenReplay:()=>void;fmt:(n:number)=>string}) {
   const [analysisTab,setAnalysisTab]=useState<'overview'|'decisions'|'economy'|'military'|'timeline'>('decisions');
+  type SavedPhaseGame = { key:string; gameId:string; playedAt:string; playerName:string; mapName:string; phases:Array<{id:string;label:string;rating:string;territory:number|null;income:number|null;territoryRate:number|null;incomeRate:number|null}> };
+  const historyStorageKey = 'openfront-replay-coach.phase-history.v1';
+  const [phaseHistory,setPhaseHistory] = useState<SavedPhaseGame[]>(() => {
+    try {
+      const raw = localStorage.getItem(historyStorageKey);
+      const parsed = raw ? JSON.parse(raw) : [];
+      return Array.isArray(parsed) ? parsed.filter(item => item && typeof item.key === 'string' && Array.isArray(item.phases)).slice(0,100) : [];
+    } catch { return []; }
+  });
   const players=apiResult.playerStats ?? [];
   const preferredPlayer=players.find(p=>preferredPlayerPublicId && p.publicID===preferredPlayerPublicId);
   const initialPlayer=preferredPlayer ?? (players.length===1 ? players[0] : players.find(p=>/oligenole/i.test(p.name)) ?? null);
@@ -437,6 +446,38 @@ function CoachPanel({apiResult,preferredPlayerPublicId,decodedActions,simulation
     ].filter(Boolean);
     return { ...phase, strengthLabels, rating: !enoughData ? 'Datenlage begrenzt' : strengths >= 2 ? 'Starke Phase' : strengths === 1 ? 'Solide Phase' : 'Hier liegt Potenzial' };
   });
+
+  React.useEffect(() => {
+    if (simulationResult?.status !== 'verified' || !selectedPlayerReview || !apiResult.gameId || ratedPhases.length !== 3) return;
+    const key = `${apiResult.gameId}:${selectedClientId}`;
+    const record: SavedPhaseGame = {
+      key,
+      gameId: apiResult.gameId,
+      playedAt: apiResult.startTime ?? new Date().toISOString(),
+      playerName: selectedPlayerReview.playerName,
+      mapName: apiResult.mapName ?? 'Unbekannte Karte',
+      phases: ratedPhases.map(phase => ({
+        id: phase.id, label: phase.label, rating: phase.rating,
+        territory: phase.territory, income: phase.income,
+        territoryRate: phase.territoryRate, incomeRate: phase.incomeRate,
+      })),
+    };
+    setPhaseHistory(previous => {
+      const next = [record, ...previous.filter(item => item.key !== key)].slice(0,100);
+      try { localStorage.setItem(historyStorageKey, JSON.stringify(next)); } catch (error) {
+        console.warn('[ReplayCoach] Spieler-Verlauf konnte nicht lokal gespeichert werden:', error);
+      }
+      return next;
+    });
+  }, [simulationResult?.status, selectedPlayerReview?.playerName, apiResult.gameId, selectedClientId, ratedPhases.map(p => p.rating).join('|')]);
+  const recentPhaseHistory = phaseHistory.filter(item => item.playerName === selectedPlayerReview?.playerName).slice(0,12);
+  const phaseTrend = phaseDefinitions.map(phase => {
+    const values = recentPhaseHistory.map(game => game.phases.find(item => item.id === phase.id)).filter((item): item is NonNullable<typeof item> => Boolean(item));
+    const strong = values.filter(item => item.rating === 'Starke Phase').length;
+    const averageTerritory = values.map(item => item.territoryRate).filter((value): value is number => value !== null).reduce((sum,value)=>sum+value,0) / Math.max(1,values.filter(item=>item.territoryRate !== null).length);
+    const averageIncome = values.map(item => item.incomeRate).filter((value): value is number => value !== null).reduce((sum,value)=>sum+value,0) / Math.max(1,values.filter(item=>item.incomeRate !== null).length);
+    return { ...phase, games: values.length, strong, averageTerritory, averageIncome };
+  });
   const firstEngineSample = selectedPlayerSamples[0] ?? null;
   const lastEngineSample = selectedPlayerSamples[selectedPlayerSamples.length - 1] ?? null;
   const incomeSummary = firstEngineSample && lastEngineSample ? {
@@ -490,6 +531,19 @@ function CoachPanel({apiResult,preferredPlayerPublicId,decodedActions,simulation
         <div><span className="coach-report-label">{leadEngineReview ? 'WICHTIGSTER ENGINE-PRÜFPUNKT' : 'COACH-ERGEBNIS'}</span><b>{coachLeadTitle}</b><p>{coachLeadSummary}</p></div>
         <div><span className="coach-report-label">TRAININGSFOKUS FÜR DIE NÄCHSTE PARTIE</span><b>{leadEngineReview ? 'Genau dieses Muster gezielt verbessern' : simulationResult?.status === 'verified' ? 'Eine überprüfbare Lektion wählen' : 'Zustände zuerst verifizieren'}</b><p>{coachTrainingFocus}</p></div>
       </div>
+      {simulationResult?.status === 'verified' && <section className="coach-history-profile">
+        <div className="coach-engine-findings-heading"><span className="coach-report-label">DEINE ENTWICKLUNG ÜBER MEHRERE PARTIEN</span><b>Langfristiges Spielerprofil</b><p>Jede hash-verifizierte Partie wird lokal auf diesem Gerät gespeichert. Die Übersicht zeigt deine letzten Partien für diesen Spielernamen.</p></div>
+        {recentPhaseHistory.length < 2 ? <p className="coach-history-empty">{recentPhaseHistory.length === 1 ? 'Eine Partie gespeichert. Nach der nächsten verifizierten Partie werden erste Vergleiche sichtbar.' : 'Noch keine gespeicherten Partien. Analysiere weitere Replays mit erfolgreicher Hash-Prüfung.'}</p> : <>
+          <div className="coach-history-count"><b>{recentPhaseHistory.length}</b><span>gespeicherte Partien · letzte 12</span></div>
+          <div className="coach-history-grid">{phaseTrend.map(phase=><article className="coach-history-card" key={phase.id}>
+            <b>{phase.label}</b><strong>{phase.strong}/{phase.games}</strong><small>starke Phasen</small>
+            <span>{phase.averageTerritory.toFixed(1)} Gebiete / Min. im Schnitt</span>
+            <span>{Math.round(phase.averageIncome).toLocaleString('de-DE')} Gold / Min. im Schnitt</span>
+          </article>)}</div>
+          <div className="coach-history-recent"><b>Zuletzt analysiert</b>{recentPhaseHistory.slice(0,5).map(game=><div key={game.key}><span>{game.playerName} · {game.mapName}</span><small>{new Date(game.playedAt).toLocaleDateString('de-DE')} · {game.phases.map(p=>p.rating).join(' / ')}</small></div>)}</div>
+        </>}
+        <small className="coach-phase-note">Datenschutz: Es werden nur zusammengefasste Phasenwerte gespeichert, keine Replay-Dateien. Der Verlauf bleibt in diesem Browser bzw. auf diesem Gerät und wird nicht automatisch zwischen Android, Windows und anderen Browsern synchronisiert.</small>
+      </section>}
       {simulationResult?.status === 'verified' && <section className="coach-phase-profile">
         <div className="coach-engine-findings-heading"><span className="coach-report-label">DEIN SPIELERPROFIL</span><b>Wie liefen deine drei Spielphasen?</b><p>Die Einstufung vergleicht deine Phasen innerhalb dieser Partie. Sie ist kein weltweiter Ranglistenwert.</p></div>
         <div className="coach-phase-grid">{ratedPhases.map(phase=><article className="coach-phase-card" key={phase.id}>

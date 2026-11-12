@@ -32,6 +32,8 @@ function App() {
   const [busy, setBusy] = useState(false);
   const [simulationProgress, setSimulationProgress] = useState<{percent:number;phase:string}|null>(null);
   const [simulationResult, setSimulationResult] = useState<ReplaySimulationResult|null>(null);
+  const engineReviewRunId = React.useRef(0);
+  const isDesktopShell = /Electron/i.test(navigator.userAgent);
   const [error, setError] = useState('');
   const [saveNotice, setSaveNotice] = useState('');
   const [url, setUrl] = useState('https://openfront.io/w5/game/e9D8juQg');
@@ -47,6 +49,8 @@ function App() {
   const [gameSearch, setGameSearch] = useState('');
   async function loadPlayer() { setPlayerBusy(true); setError(''); setPlayerProgress({loaded:0,pages:0,status:'Profil wird geladen …'}); try { const page = await window.replayAPI.loadPlayer(playerId, progress => setPlayerProgress(progress)); setPlayerPage(page); } catch(e) { setError(e instanceof Error ? e.message : String(e)); } finally { setPlayerBusy(false); } }
   async function choosePlayerGame(gameId: string) {
+    engineReviewRunId.current++;
+    setSimulationProgress(null);
     setUrl(`https://openfront.io/w5/game/${gameId}`);
     setBusy(true); setError('');
     try {
@@ -86,11 +90,16 @@ function App() {
     }
   }
   async function runEngineReview(result: ApiImportSummary, selectedClientId?: string | null) {
+    const requestId = ++engineReviewRunId.current;
     setSimulationResult(null);
-    if (!result.record || !result.engineCompatibility?.engineVersionCompatible) return;
+    if (!result.record || !result.engineCompatibility?.engineVersionCompatible) {
+      setSimulationProgress(null);
+      return;
+    }
     setSimulationProgress({percent:0,phase:'Original-Engine wird gestartet'});
     try {
       const assets = await window.replayAPI.getReplayEngineAssets();
+      if (requestId !== engineReviewRunId.current) return;
       let preferredClientId: string | null;
       if (selectedClientId !== undefined) {
         preferredClientId = selectedClientId || null;
@@ -99,16 +108,26 @@ function App() {
         const recordPlayer = result.record?.info?.players?.find((p: any) => String(p.publicID ?? p.publicId ?? '') === publicId);
         preferredClientId = recordPlayer?.clientID == null ? null : String(recordPlayer.clientID);
       }
-      const simulated = await simulateReplay(result.record, assets, (percent, phase) => setSimulationProgress({percent,phase}), 50, preferredClientId);
-      setSimulationResult(simulated);
+      const simulated = await simulateReplay(
+        result.record,
+        assets,
+        (percent, phase) => {
+          if (requestId === engineReviewRunId.current) setSimulationProgress({percent,phase});
+        },
+        50,
+        preferredClientId
+      );
+      if (requestId === engineReviewRunId.current) setSimulationResult(simulated);
     } catch (e) {
-      setSimulationResult({status:'unverified',totalTicks:0,verifiedHashes:0,samples:[],playerReview:null,actionReviews:[],message:e instanceof Error ? e.message : String(e)});
+      if (requestId === engineReviewRunId.current) {
+        setSimulationResult({status:'unverified',totalTicks:0,verifiedHashes:0,samples:[],playerReview:null,actionReviews:[],message:e instanceof Error ? e.message : String(e)});
+      }
     } finally {
-      setSimulationProgress(null);
+      if (requestId === engineReviewRunId.current) setSimulationProgress(null);
     }
   }
-  async function importUrl() { setBusy(true); setError(''); setApiResult(null); setSimulationResult(null); try { const result = await window.replayAPI.importReplayUrl(url); if ('canceled' in result) { setError('Speichern abgebrochen. Die API-Antwort wurde nicht lokal abgelegt.'); } else { setApiResult(result); setDecodedActions(result.decodedActions ?? []); setReplay(null); setActivePage('analysis'); await runEngineReview(result); } } catch (e) { setError(e instanceof Error ? e.message : String(e)); } finally { setBusy(false); } }
-  async function openReplay() { setBusy(true); setError(''); try { const result = await window.replayAPI.openReplay(); if (result) { if (result.apiSummary) { setApiResult(result.apiSummary); setDecodedActions(result.apiSummary.decodedActions ?? []); setReplay(null); setActivePage('analysis'); await runEngineReview(result.apiSummary); } else { setReplay(result); setDecodedActions(result.decodedActions ?? []); setApiResult(null); setSimulationResult(null); setActivePage('analysis'); } } } catch (e) { setError(e instanceof Error ? e.message : String(e)); } finally { setBusy(false); } }
+  async function importUrl() { engineReviewRunId.current++; setSimulationProgress(null); setBusy(true); setError(''); setApiResult(null); setSimulationResult(null); try { const result = await window.replayAPI.importReplayUrl(url); if ('canceled' in result) { setError('Speichern abgebrochen. Die API-Antwort wurde nicht lokal abgelegt.'); } else { setApiResult(result); setDecodedActions(result.decodedActions ?? []); setReplay(null); setActivePage('analysis'); await runEngineReview(result); } } catch (e) { setError(e instanceof Error ? e.message : String(e)); } finally { setBusy(false); } }
+  async function openReplay() { engineReviewRunId.current++; setSimulationProgress(null); setBusy(true); setError(''); try { const result = await window.replayAPI.openReplay(); if (result) { if (result.apiSummary) { setApiResult(result.apiSummary); setDecodedActions(result.apiSummary.decodedActions ?? []); setReplay(null); setActivePage('analysis'); await runEngineReview(result.apiSummary); } else { setReplay(result); setDecodedActions(result.decodedActions ?? []); setApiResult(null); setSimulationResult(null); setActivePage('analysis'); } } } catch (e) { setError(e instanceof Error ? e.message : String(e)); } finally { setBusy(false); } }
   async function saveReplayJson() {
     if (!apiResult?.gameId) {
       setError('Für diese Partie liegt kein herunterladbarer Original-Datensatz in der aktuellen Sitzung vor. Bitte die Partie zuerst erneut über ihren OpenFront-Link laden.');
@@ -153,7 +172,7 @@ function App() {
       <button className={`studio-nav ${activePage==='dashboard'?'active':''}`} onClick={()=>navigateTo('dashboard')}><LayoutDashboard size={17}/>Dashboard</button>
       <button className={`studio-nav ${activePage==='games'?'active':''}`} onClick={()=>navigateTo('games')}><ListChecks size={17}/>Meine Partien</button>
       <button className={`studio-nav ${activePage==='analysis'?'active':''}`} onClick={()=>navigateTo('analysis')} disabled={!apiResult && !replay}><Brain size={17}/>Replay-Analyse</button>
-      <div className="studio-sidebar-bottom"><span><ShieldCheck size={14}/> Lokal auf diesem PC</span><small>OpenFront Replay Coach · 2.2.4</small></div>
+      <div className="studio-sidebar-bottom"><span><ShieldCheck size={14}/>{isDesktopShell ? 'Lokal auf diesem PC' : 'Browser / Android'}</span><small>OpenFront Replay Coach · 2.2.4</small></div>
     </aside>
     <main className="studio-main">
       <header className="studio-header"><div><div className="studio-eyebrow">OPENFRONT / PERFORMANCE STUDIO</div><h1>{activePage==='dashboard'?'Dein Performance-Dashboard':activePage==='games'?'Deine Spielbibliothek':'Match Review'}</h1><p>{activePage==='dashboard'?'Deine Entwicklung, letzte Partien und nächste Trainingsschwerpunkte.':activePage==='games'?'Finde eine Partie und öffne ihre Karten- und Aktionsübersicht.':'Spielverlauf, beobachtete Entscheidungen und Replay an einem Ort.'}</p></div><div className="studio-header-actions"><button className="studio-button subtle" onClick={openReplay} disabled={busy}><FileUp size={16}/> Replay importieren</button></div></header>
@@ -384,6 +403,7 @@ function CoachPanel({apiResult,preferredPlayerPublicId,decodedActions,simulation
         <strong>{simulationProgress ? `${simulationProgress.percent}%` : simulationResult?.status === 'verified' ? `${fmt(simulationResult.verifiedHashes)} Hashes bestanden` : simulationResult ? 'Prüfung erforderlich' : 'Wird geprüft'}</strong>
       </div>
       <p>{simulationProgress ? simulationProgress.phase : simulationResult?.message ?? apiResult.engineCompatibility?.message ?? 'Die Replay-Engine konnte für diesen Datensatz nicht sicher zugeordnet werden.'}</p>
+      {simulationProgress && <div className="coach-progress-track" role="progressbar" aria-label="Replay wird analysiert" aria-valuemin={0} aria-valuemax={100} aria-valuenow={simulationProgress.percent}><span style={{width:`${Math.max(0,Math.min(100,simulationProgress.percent))}%`}}/></div>}
     </div>}
     <nav className="review-tabs" aria-label="Analysebereiche">{([{id:"decisions",label:"Dein Coach"},{id:"overview",label:"Partie"},{id:"economy",label:"Wirtschaft"},{id:"military",label:"Militär"},{id:"timeline",label:"Zeitachse"}] as const).map(tab=><button type="button" key={tab.id} className={analysisTab===tab.id?"selected":""} aria-pressed={analysisTab===tab.id} onClick={()=>setAnalysisTab(tab.id)}>{tab.label}</button>)}</nav>
     {playerScoped && analysisTab==='decisions' && <section id="match-coach-insights" className="coach-insights-section">
@@ -423,7 +443,7 @@ function CoachPanel({apiResult,preferredPlayerPublicId,decodedActions,simulation
       <div className="coach-report-list">
         {[...insights].filter(x=>x.seconds!==null).sort((a,b)=>(b.priority??0)-(a.priority??0)).map((item,i)=><article className={`coach-report-row insight-${item.kind}`} key={item.id}>
           <div className="coach-report-time"><b>{clock(item.seconds??0)}</b><small>{item.kind==='strength'?'GUT GEMACHT':item.kind==='review'?'PRÜFEN':'BEOBACHTUNG'}</small></div>
-          <div className="coach-report-body"><h4>{item.title}</h4><p>{item.summary}</p><div className="coach-report-evidence"><b>Beleg:</b> {item.evidence}</div><p><b>Warum wichtig:</b> {item.why}</p><div className="coach-report-action"><b>Was du daraus lernen kannst</b><span>{item.nextStep}</span></div><div className="coach-report-action"><b>Konkrete Alternative / nächster Entscheidungscheck</b><span>{item.alternative ?? item.nextStep}</span></div><div className="coach-report-evidence"><b>Grenze der Aussage:</b> {item.limitation ?? "Der Aktionsdatensatz belegt den Befehl, nicht automatisch dessen Ergebnis."}</div></div>
+          <div className="coach-report-body"><h4>{item.title}</h4><p>{item.summary}</p><div className="coach-report-evidence"><b>Beleg:</b> {item.evidence}</div><p><b>Warum wichtig:</b> {item.why}</p><div className="coach-report-action"><b>Was du daraus lernen kannst</b><span>{item.nextStep}</span></div>{item.alternative && item.alternative !== item.nextStep && <div className="coach-report-action"><b>Konkrete Alternative / nächster Entscheidungscheck</b><span>{item.alternative}</span></div>}<div className="coach-report-evidence"><b>Grenze der Aussage:</b> {item.limitation ?? "Der Aktionsdatensatz belegt den Befehl, nicht automatisch dessen Ergebnis."}</div></div>
         </article>)}
       </div>
       <div className="coach-report-limit"><b>Was noch nicht seriös bewertet werden kann</b><p>Ob ein Angriff erfolgreich war, wie viele Truppen verloren gingen oder ob ein Bau optimal war, erfordert den rekonstruierten Karten-, Gold- und Truppenstand. Diese Analyse erfindet dafür keine Ergebnisse.</p></div>

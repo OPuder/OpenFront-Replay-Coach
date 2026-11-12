@@ -192,7 +192,7 @@ function summarizeRecord(record: any, gameId: string, fileSize: number): ApiImpo
     actionCounts: decoded?.counts ?? {},
     categoryCounts: decoded?.categoryCounts ?? {},
     actionAnalysis: decoded ? analyzeActions(decoded.actions, durationSeconds) : null,
-    detailedAnalysis: decoded ? analyzeDetailedActions(decoded.actions, durationSeconds) : null,
+    detailedAnalysis: analyzeDetailedActions(decoded?.actions ?? [], durationSeconds),
     coachInsights: decoded ? buildCoachInsights(decoded.actions, durationSeconds) : [],
     playerStats,
     note: "API-Datensatz im Browser geladen. Die Datei bleibt auf diesem Gerät.",

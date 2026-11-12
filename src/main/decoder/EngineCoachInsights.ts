@@ -12,6 +12,22 @@ interface EnginePlayerReview {
   longestNoExpansionSeconds: number;
 }
 
+interface EngineStateDelta {
+  tiles: number;
+  gold: number;
+  troops: number;
+  goldEarned: number;
+  tradeGold: number;
+  trainGold: number;
+  piracyGold: number;
+}
+
+interface EngineActiveAttackSummary {
+  count: number;
+  troops: number;
+  retreatingCount: number;
+}
+
 interface EngineActionReview {
   frame: number;
   turn: number;
@@ -19,23 +35,52 @@ interface EngineActionReview {
   type: string;
   label: string;
   details: string;
-  before: { tiles: number; gold: number; troops: number } | null;
-  after: { tiles: number; gold: number; troops: number } | null;
-  delta: { tiles: number; gold: number; troops: number } | null;
-  delta5s: { tiles: number; gold: number; troops: number } | null;
-  delta10s: { tiles: number; gold: number; troops: number } | null;
-  delta30s: { tiles: number; gold: number; troops: number } | null;
+  targetId: string | null;
+  targetName: string | null;
+  targetSmallID: number | null;
+  before: EngineStateDelta | null;
+  after: EngineStateDelta | null;
+  delta: EngineStateDelta | null;
+  delta5s: EngineStateDelta | null;
+  delta10s: EngineStateDelta | null;
+  delta30s: EngineStateDelta | null;
+  targetDelta10s: EngineStateDelta | null;
+  targetDelta30s: EngineStateDelta | null;
+  targetAliveBefore: boolean | null;
+  targetAliveAt10s: boolean | null;
+  targetAliveAt30s: boolean | null;
+  activeAttack10s: EngineActiveAttackSummary | null;
+  activeAttack30s: EngineActiveAttackSummary | null;
 }
 
 interface EngineSamplePlayer {
+  id: number;
   name: string;
   clientID: string | null;
   alive: boolean;
   gold: number;
+  goldEarned: number;
+  tradeGold: number;
+  trainGold: number;
+  piracyGold: number;
   troops: number;
   tiles: number;
+  units: number;
+  unitCounts: Record<string, number>;
+  unitTroops: Record<string, number>;
+  unitsUnderConstruction: number;
   outgoingAttacks: number;
   incomingAttacks: number;
+  outgoingAttackDetails: Array<{ id: string; targetID: number; troops: number; retreating: boolean }>;
+  incomingAttackDetails: Array<{ id: string; attackerID: number; troops: number; retreating: boolean }>;
+  attackTroops: number;
+  allies: number;
+  alliances: number;
+  targets: number;
+  betrayals: number;
+  isTraitor: boolean;
+  isDecaying: boolean;
+  inDoomsdayClock: boolean;
 }
 
 interface EngineStateSample {
@@ -100,6 +145,55 @@ export function buildEngineCoachInsights(
     });
   }
 
+  const orderedSamples = [...samples].sort((a, b) => a.frame - b.frame);
+  const firstOwnSample = orderedSamples.map(sample => sample.players.find(player => player.clientID === review.clientID)).find((player): player is EngineSamplePlayer => Boolean(player));
+  const lastOwnSample = [...orderedSamples].reverse().map(sample => sample.players.find(player => player.clientID === review.clientID)).find((player): player is EngineSamplePlayer => Boolean(player));
+
+  if (firstOwnSample && lastOwnSample) {
+    const earned = lastOwnSample.goldEarned - firstOwnSample.goldEarned;
+    const trade = lastOwnSample.tradeGold - firstOwnSample.tradeGold;
+    const train = lastOwnSample.trainGold - firstOwnSample.trainGold;
+    const piracy = lastOwnSample.piracyGold - firstOwnSample.piracyGold;
+    const knownCommerce = trade + train + piracy;
+    if (earned > 0 || knownCommerce > 0) {
+      findings.push({
+        id: "income-source-profile",
+        kind: "observation",
+        title: "Woher dein Goldeinkommen kam",
+        summary: `Die Engine erfasste ${earned.toLocaleString("de-DE")} Gold Bruttoeinnahmen. Davon kamen ${knownCommerce.toLocaleString("de-DE")} aus den ausgewiesenen Handels-, Zug- und Pirateriequellen.`,
+        evidence: `Gesamteinnahmen ${earned.toLocaleString("de-DE")} · Handel ${trade.toLocaleString("de-DE")} · Züge ${train.toLocaleString("de-DE")} · Piraterie ${piracy.toLocaleString("de-DE")}`,
+        nextStep: "Vergleiche diese Einnahmen mit deinen Hafen-, Handels- und Zugbeständen. Prüfe, welche Infrastruktur tatsächlich Einnahmen erzeugt hat und wann sie aufgebaut wurde.",
+        seconds: null,
+        limitation: "GoldEarned ist ein kumulierter Bruttozufluss. Die Einzelquellen sind Teilbeträge davon; sie zeigen weder Nettogewinn noch die Kosten oder Rendite einer einzelnen Investition.",
+      });
+    }
+
+    const trackedUnits = ["City", "Factory", "Port", "Warship", "TransportShip", "TradeShip", "DefensePost", "SAMLauncher", "MissileSilo", "Train"];
+    const unitChanges = trackedUnits.map(type => ({
+      type,
+      start: firstOwnSample.unitCounts[type] ?? 0,
+      end: lastOwnSample.unitCounts[type] ?? 0,
+    })).filter(item => item.start > 0 || item.end > 0);
+    if (unitChanges.length > 0) {
+      const economy = unitChanges.filter(item => ["City", "Factory", "Port"].includes(item.type));
+      const military = unitChanges.filter(item => ["Warship", "DefensePost", "SAMLauncher", "MissileSilo"].includes(item.type));
+      const logistics = unitChanges.filter(item => ["TransportShip", "TradeShip", "Train"].includes(item.type));
+      const fmtUnits = (items: typeof unitChanges) => items.map(item =>
+        `${item.type} ${item.start}→${item.end}`
+      ).join(" · ");
+      findings.push({
+        id: "unit-composition",
+        kind: "observation",
+        title: "Dein tatsächlicher Einheiten- und Gebäudebestand",
+        summary: `Zum Spielende waren ${lastOwnSample.units} eigene Einheiten und Gebäude in den rekonstruierten Frames vorhanden; ${lastOwnSample.unitsUnderConstruction} davon befanden sich im Bau.`,
+        evidence: [economy.length ? `Wirtschaft: ${fmtUnits(economy)}` : "", military.length ? `Militär: ${fmtUnits(military)}` : "", logistics.length ? `Logistik: ${fmtUnits(logistics)}` : ""].filter(Boolean).join(" · "),
+        nextStep: "Vergleiche deinen Bestand mit den Einkommensquellen und den Abschnitten, in denen du angegriffen oder dich verteidigt hast. So lässt sich die Rolle deiner Infrastruktur besser einordnen.",
+        seconds: null,
+        limitation: "Das ist der Bestand in den erfassten Start- und Endframes. Er bewertet weder Baukosten noch die Effektivität oder Überlebensdauer einzelner Einheiten.",
+      });
+    }
+  }
+
   const goldDelta = review.endGold - review.startGold;
   findings.push({
     id: "gold-trajectory",
@@ -140,6 +234,37 @@ export function buildEngineCoachInsights(
       nextStep: "Öffne zuerst die markierten Angriffe. Prüfe Zielverteidigung, Marsch-/Transportzeit und ob ein anderer Frontabschnitt im selben Zeitraum eigene Gebiete verändert hat.",
       seconds: troopDownNoTerritory[0]?.seconds ?? null,
       limitation: "Das sind Netto-Veränderungen bis 10 bzw. 30 Sekunden nach dem Befehl. Andere zeitgleiche Ereignisse wirken mit; ein Angriff kann später eintreffen und wird hier nicht automatisch als erfolgreich oder gescheitert bewertet.",
+    });
+  }
+
+  const targetedAttackFrames = new Map<string, EngineActionReview>();
+  for (const action of actionReviews) {
+    if (action.type === "attack" && action.targetSmallID !== null && action.targetDelta30s) {
+      targetedAttackFrames.set(`${action.frame}:${action.targetSmallID}`, action);
+    }
+  }
+  const targetedAttacks = [...targetedAttackFrames.values()];
+  if (targetedAttacks.length > 0) {
+    const targetTerritoryLoss = targetedAttacks.filter(action => action.targetDelta30s!.tiles < 0);
+    const targetTerritoryGain = targetedAttacks.filter(action => action.targetDelta30s!.tiles > 0);
+    const ownTerritoryGain = targetedAttacks.filter(action => action.delta30s?.tiles !== undefined && action.delta30s.tiles > 0);
+    const targetNoLongerAlive = targetedAttacks.filter(action => action.targetAliveBefore === true && action.targetAliveAt30s === false);
+    const attackStillActive = targetedAttacks.filter(action => (action.activeAttack30s?.count ?? 0) > 0);
+    const retreating = targetedAttacks.filter(action => (action.activeAttack30s?.retreatingCount ?? 0) > 0);
+    findings.push({
+      id: "targeted-attack-outcomes",
+      kind: targetTerritoryLoss.length > 0 || targetNoLongerAlive.length > 0 ? "review" : "observation",
+      title: "Was bei deinen Angriffszielen tatsächlich geschah",
+      summary: `Innerhalb von 30 Sekunden sank das Gebiet bei ${targetTerritoryLoss.length} Zielen und stieg bei ${targetTerritoryGain.length}; dein eigener Gebietsbestand stieg bei ${ownTerritoryGain.length} Angriffen. ${targetNoLongerAlive.length} Ziele waren am Ende des Fensters ausgeschieden, ${attackStillActive.length} Angriffe liefen noch und ${retreating.length} davon waren im Rückzug.`,
+      evidence: targetedAttacks.slice(0, 6).map(action => {
+        const targetDelta = action.targetDelta30s!;
+        const ownDelta = action.delta30s;
+        const active = action.activeAttack30s;
+        return `${clock(action.seconds)} → ${action.targetName ?? action.targetId}: Zielgebiet ${targetDelta.tiles > 0 ? "+" : ""}${targetDelta.tiles.toLocaleString("de-DE")}, Zieltruppen ${targetDelta.troops > 0 ? "+" : ""}${targetDelta.troops.toLocaleString("de-DE")}, Zielgold ${targetDelta.gold > 0 ? "+" : ""}${targetDelta.gold.toLocaleString("de-DE")}, eigenes Gebiet ${ownDelta ? `${ownDelta.tiles > 0 ? "+" : ""}${ownDelta.tiles.toLocaleString("de-DE")}` : "n/v"}, eigene Truppen ${ownDelta ? `${ownDelta.troops > 0 ? "+" : ""}${ownDelta.troops.toLocaleString("de-DE")}` : "n/v"}, ${action.targetAliveAt30s === false ? "Ziel ausgeschieden" : action.targetAliveAt30s === true ? "Ziel lebt" : "Zielstatus n/v"}, ${active?.count ? `${active.count} aktiv${active.retreatingCount ? ` / ${active.retreatingCount} Rückzug` : ""}` : "kein aktiver Angriff im Frame"}`;
+      }).join(" · "),
+      nextStep: "Prüfe die markierten Ziele im Replay. Achte darauf, ob das Ziel wirklich Gebiete verlor, ob du selbst Land gewonnen hast und ob der Angriff nach 30 Sekunden noch lief oder zurückgezogen wurde.",
+      seconds: targetTerritoryLoss[0]?.seconds ?? targetedAttacks[0]?.seconds ?? null,
+      limitation: "Die Werte vergleichen Ziel- und Eigenzustand bis 30 Sekunden nach dem Befehl. Andere Angriffe, passive Eroberungen oder zeitgleiche Ereignisse können mitwirken. Ein verschwundener Angriff ist für sich allein kein Erfolgsbeweis.",
     });
   }
 

@@ -170,6 +170,12 @@ body{background:radial-gradient(ellipse at 76% -10%,#17314b 0,transparent 42%),#
 @media(max-width:420px){.coach-state-grid{grid-template-columns:1fr}.engine-diagnostics>summary{align-items:flex-start}}
 
 
+.coach-secondary-details{margin:12px 0;border:1px solid #2b4055;border-radius:10px;background:#0d1b29}
+.coach-secondary-details>summary{padding:12px 14px;color:#b9cde0;font-size:11px;font-weight:700;cursor:pointer;list-style:none}
+.coach-secondary-details>summary::-webkit-details-marker{display:none}
+.coach-secondary-details[open]>summary{border-bottom:1px solid #2b4055}
+.coach-secondary-details .coach-report-list{padding:0 12px 12px}
+.coach-secondary-details .coach-report-limit{margin:0 12px 12px}
 .coach-engine-findings{margin:14px 0;padding:15px 16px;border:1px solid #304a63;border-radius:12px;background:#0e1c2b}
 .coach-engine-findings-heading{display:flex;flex-direction:column;gap:5px;margin-bottom:12px}
 .coach-engine-findings-heading>b{font-size:13px;color:#f1f6fb}

@@ -4,6 +4,9 @@ import { analyzeDetailedActions } from "../../main/decoder/DetailedAnalysis";
 import { buildCoachInsights } from "../../main/decoder/CoachInsights";
 import { assessReplayCompatibility } from "../../main/decoder/ReplayCompatibility";
 import { Capacitor } from "@capacitor/core";
+import { Browser } from "@capacitor/browser";
+import { Directory, Encoding, Filesystem } from "@capacitor/filesystem";
+import { Share } from "@capacitor/share";
 
 const IS_NATIVE_ANDROID = Capacitor.isNativePlatform() && Capacitor.getPlatform() === "android";
 const API_BASE = IS_NATIVE_ANDROID ? "https://api.openfront.io/public" : "/api/openfront/public";
@@ -372,11 +375,28 @@ async function loadPlayer(rawId: string, onProgress?: (progress: { loaded: numbe
 async function saveReplayJson(gameId: string): Promise<{ saved: boolean; canceled?: boolean; filePath?: string; bytes?: number }> {
   const raw = importedReplayJson.get(String(gameId));
   if (!raw) throw new Error("Für diese Partie liegt keine Replay-JSON mehr im Browser-Speicher. Lade die Partie bitte erneut.");
+  const fileName = "OpenFront-" + String(gameId).replace(/[^A-Za-z0-9_-]/g, "_") + ".json";
   const blob = new Blob([raw], { type: "application/json;charset=utf-8" });
+  if (IS_NATIVE_ANDROID) {
+    const file = await Filesystem.writeFile({
+      path: fileName,
+      data: raw,
+      directory: Directory.Cache,
+      encoding: Encoding.UTF8,
+      recursive: true,
+    });
+    await Share.share({
+      title: "OpenFront Replay Coach",
+      text: "Replay-JSON exportieren oder speichern",
+      url: file.uri,
+      dialogTitle: "Replay-JSON exportieren",
+    });
+    return { saved: true, shared: true, filePath: fileName, bytes: blob.size };
+  }
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.href = url;
-  link.download = "OpenFront-" + String(gameId).replace(/[^A-Za-z0-9_-]/g, "_") + ".json";
+  link.download = fileName;
   document.body.appendChild(link);
   link.click();
   link.remove();
@@ -396,6 +416,10 @@ function installBrowserReplayAPI() {
     openOfficialReplay: async (gameId: string) => {
       if (!/^[A-Za-z0-9_-]{4,80}$/.test(String(gameId))) throw new Error("Ungültige Game-ID.");
       const url = "https://openfront.io/#replay-viewer=" + encodeURIComponent(gameId);
+      if (IS_NATIVE_ANDROID) {
+        await Browser.open({ url });
+        return { opened: true, url };
+      }
       const opened = window.open(url, "_blank", "noopener,noreferrer");
       if (!opened) throw new Error("Der Browser hat das neue Fenster blockiert. Erlaube Pop-ups für diese App oder öffne den OpenFront-Link manuell.");
       return { opened: true, url };

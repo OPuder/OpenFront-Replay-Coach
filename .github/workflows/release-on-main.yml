@@ -362,7 +362,7 @@ jobs:
           retention-days: 14
 
   publish-release:
-    name: Publish all three editions as one GitHub Release
+    name: Publish all four editions as one GitHub Release
     needs: [prepare-release, validate-engine, build-windows, build-android, build-web]
     if: needs.prepare-release.outputs.skip != 'true'
     runs-on: ubuntu-latest

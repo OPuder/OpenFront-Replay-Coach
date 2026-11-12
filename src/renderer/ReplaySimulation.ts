@@ -72,6 +72,11 @@ export async function simulateReplay(
   // before and after every action by the selected player. A 50-frame-only
   // sample can otherwise miss the state change that matters for coaching.
   const sampleFrames = new Set<number>();
+  const replayPlayers = Array.isArray(record?.info?.players) ? record.info.players : [];
+  const selectedPlayerMeta = preferredClientId
+    ? replayPlayers.find((player: any) => String(player?.clientID ?? "") === preferredClientId)
+    : replayPlayers.find((player: any) => /oligenole/i.test(String(player?.displayName ?? player?.name ?? player?.username ?? "")));
+  const selectedClientId = selectedPlayerMeta?.clientID == null ? null : String(selectedPlayerMeta.clientID);
   const cadence = Math.max(1, Math.floor(sampleEvery));
   // OpenFront decompresses sparse records by inserting empty turns for every
   // omitted game tick. ReplayProcessor then emits one frame per decompressed
@@ -82,11 +87,11 @@ export async function simulateReplay(
     0,
   );
   for (let frame = 0; frame < totalRecordedFrames; frame += cadence) sampleFrames.add(frame);
-  if (preferredClientId) {
+  if (selectedClientId) {
     turns.forEach((turn: any) => {
       const frame = Number(turn?.turnNumber);
       if (Number.isInteger(frame) && frame >= 0 &&
-          (turn?.intents ?? []).some((intent: any) => String(intent?.clientID ?? "") === preferredClientId)) {
+          (turn?.intents ?? []).some((intent: any) => String(intent?.clientID ?? "") === selectedClientId)) {
         sampleFrames.add(Math.max(0, frame - 1));
         sampleFrames.add(frame);
         sampleFrames.add(Math.min(totalRecordedFrames - 1, frame + 1));
@@ -189,8 +194,8 @@ export async function simulateReplay(
           }
           cleanup();
           const staticPlayers = readerRef.current?.header.players ?? [];
-          const target = preferredClientId
-            ? staticPlayers.find((p: any) => String(p.clientID ?? "") === preferredClientId)
+          const target = selectedClientId
+            ? staticPlayers.find((p: any) => String(p.clientID ?? "") === selectedClientId)
             : staticPlayers.find((p: any) => /oligenole/i.test(String(p.displayName ?? p.name ?? p.username ?? "")));
           const playerObservations = target ? samples.map(sample => ({tick:sample.tick, player:sample.players.find(p => p.id === target.smallID)})).filter((x): x is {tick:number;player:NonNullable<typeof x.player>} => Boolean(x.player)) : [];
           const playerSeries = playerObservations.map(x => x.player);

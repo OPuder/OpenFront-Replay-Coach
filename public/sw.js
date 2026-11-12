@@ -15,6 +15,20 @@ self.addEventListener("install", event => {
       try {
         const response = await fetch(url, { cache: "reload" });
         if (response.ok) await cache.put(url, response);
+        if (url === base && response.ok) {
+          const html = await response.clone().text();
+          const bundledAssets = [...html.matchAll(/(?:src|href)="([^"]+\.(?:js|css))"/g)]
+            .map(match => new URL(match[1], base))
+            .filter(asset => asset.origin === new URL(base).origin && asset.pathname.startsWith(new URL(base).pathname));
+          await Promise.all(bundledAssets.map(async asset => {
+            try {
+              const bundle = await fetch(asset.href, { cache: "reload" });
+              if (bundle.ok) await cache.put(asset.href, bundle);
+            } catch {
+              // Keep the rest of the shell even if one optional asset is unreachable.
+            }
+          }));
+        }
       } catch {
         // A transient network issue should not prevent the first installation.
       }

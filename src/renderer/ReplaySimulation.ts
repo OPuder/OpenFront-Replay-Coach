@@ -54,6 +54,7 @@ export interface ReplayStateSample {
 
 export interface ReplayFrontContext {
   activeTargetCount: number;
+  outgoingTargetIds: number[];
   outgoingAttackCount: number;
   outgoingAttackTroops: number;
   incomingAttackCount: number;
@@ -76,6 +77,7 @@ export interface ReplayActionReview {
   turn: number;
   seconds: number;
   type: string;
+  commandTroops: number | null;
   label: string;
   details: string;
   targetId: string | null;
@@ -339,6 +341,7 @@ export async function simulateReplay(
             const nameBySmallID = new Map(replayPlayerMetadata.map((meta: any) => [Number(meta.smallID), String(meta.displayName ?? meta.name ?? `Spieler ${meta.smallID}`)]));
             return {
               activeTargetCount: activeTargets.size,
+              outgoingTargetIds: [...activeTargets],
               outgoingAttackCount: player.outgoingAttackDetails.length,
               outgoingAttackTroops: player.outgoingAttackDetails.reduce((sum, attack) => sum + attack.troops, 0),
               incomingAttackCount: player.incomingAttackDetails.length,
@@ -441,6 +444,7 @@ export async function simulateReplay(
                   turn: Number(turn?.turnNumber ?? frame),
                   seconds: Number(turn?.turnNumber ?? frame) / 10,
                   type,
+                  commandTroops: intent?.troops != null && Number.isFinite(Number(intent.troops)) ? Number(intent.troops) : null,
                   label: labels[type] ?? type,
                   targetId,
                   targetName,

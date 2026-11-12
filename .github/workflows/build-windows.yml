@@ -4,12 +4,9 @@ on:
   workflow_dispatch:
   pull_request:
     branches: [main]
-  push:
-    branches: [main, coach-front-pressure-2.2.3, coach-ux-overhaul-2.2.4]
-    tags: ["v*"]
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: openfront-replay-coach-windows-${{ github.ref }}
@@ -61,14 +58,3 @@ jobs:
           if-no-files-found: error
           retention-days: 14
 
-      - name: Publish GitHub Release
-        if: startsWith(github.ref, 'refs/tags/')
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: ${{ github.ref_name }}
-          name: OpenFront Replay Coach ${{ github.ref_name }}
-          target_commitish: ${{ github.sha }}
-          generate_release_notes: true
-          files: |
-            release/*.exe
-            release/*.zip

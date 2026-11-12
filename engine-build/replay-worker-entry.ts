@@ -6,7 +6,7 @@
  * the Coach renderer.
  */
 import EngineWorker from "../vendor/OpenFrontIO/packages/engine/src/worker/Worker.worker.ts?worker&inline";
-import ReplayProcessorWorker from "../vendor/OpenFrontIO/src/client/replay/ReplayProcessor.worker.ts?worker&inline";
+import ReplayProcessorWorker from "./ReplayProcessor.worker.ts?worker&inline";
 
 export function createReplayWorkers(): {
   engine: Worker;

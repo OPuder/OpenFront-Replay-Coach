@@ -79,8 +79,8 @@ for (const relativePath of functionFiles) {
 
 const publicFunction = readFileSync(path.join(projectRoot, functionFiles[2]), "utf8");
 assert.match(publicFunction, /Only public GET requests are supported/, "Public API proxy does not enforce GET-only access");
-assert.match(publicFunction, /isGame.*game\\//s, "Game endpoint is not allowlisted");
-assert.match(publicFunction, /isPlayerGames.*games/s, "Player history endpoint is not allowlisted");
+assert.ok(publicFunction.includes("const isGame =") && publicFunction.includes("/^game"), "Game endpoint is not allowlisted");
+assert.ok(publicFunction.includes("const isPlayerGames =") && publicFunction.includes("/games$"), "Player history endpoint is not allowlisted");
 const assetFunction = readFileSync(path.join(projectRoot, functionFiles[3]), "utf8");
 assert.match(assetFunction, /official OpenFront manifest/, "Asset proxy does not validate assets against the upstream manifest");
 assert.match(assetFunction, /Only static GET requests are supported/, "Asset proxy does not enforce GET-only access");

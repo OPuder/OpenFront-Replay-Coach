@@ -215,8 +215,8 @@ async function importReplayUrl(input: string): Promise<ApiImportSummary> {
   if (response.status === 404) throw new Error("Für Game-ID " + gameId + " wurde kein öffentlicher Datensatz gefunden.");
   if (response.status === 429) throw new Error("Die OpenFront-API begrenzt gerade Anfragen (429). Bitte später erneut versuchen.");
   if (!response.ok) throw new Error("OpenFront-API antwortet mit HTTP " + response.status + ".");
-  const contentLength = Number(response.headers.get("content-length") ?? 0);
-  if (contentLength > MAX_REPLAY_BYTES) throw new Error("Das Replay ist für die mobile Web-Version zu groß. Bitte verwende die Windows-Version.");
+  const contentLength = Number(response.headers.get("x-replay-content-length") ?? response.headers.get("content-length") ?? 0);
+  if (contentLength > MAX_REPLAY_BYTES) throw new Error("Das Replay ist größer als das 100-MB-Limit der mobilen Browser-Version. Verwende dafür bitte die Windows-Version.");
   const raw = await response.text();
   const byteLength = new Blob([raw]).size;
   if (byteLength > MAX_REPLAY_BYTES) throw new Error("Das Replay ist für die mobile Web-Version zu groß. Bitte verwende die Windows-Version.");

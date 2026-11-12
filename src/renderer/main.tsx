@@ -325,6 +325,42 @@ function CoachPanel({apiResult,preferredPlayerPublicId,decodedActions,simulation
   const formatPct=(n:number)=>`${Math.round(n)} %`;
   const insights=buildCoachInsights(playerActions,apiResult.durationSeconds ?? 0);
   const engineInsights = selectedPlayerReview ? buildEngineCoachInsights(selectedPlayerReview, selectedActionReviews, simulationResult?.samples ?? []) : [];
+  const selectedPlayerSamples = (simulationResult?.samples ?? [])
+    .map(sample => sample.players.find(player => player.clientID === selectedClientId))
+    .filter((sample): sample is NonNullable<typeof sample> => sample !== undefined);
+  const firstEngineSample = selectedPlayerSamples[0] ?? null;
+  const lastEngineSample = selectedPlayerSamples[selectedPlayerSamples.length - 1] ?? null;
+  const incomeSummary = firstEngineSample && lastEngineSample ? {
+    gross: lastEngineSample.goldEarned - firstEngineSample.goldEarned,
+    trade: lastEngineSample.tradeGold - firstEngineSample.tradeGold,
+    train: lastEngineSample.trainGold - firstEngineSample.trainGold,
+    piracy: lastEngineSample.piracyGold - firstEngineSample.piracyGold,
+    goldChange: lastEngineSample.gold - firstEngineSample.gold,
+  } : null;
+  const trackedUnitTypes = [
+    { key: "City", label: "Stadt" },
+    { key: "Factory", label: "Fabrik" },
+    { key: "Port", label: "Hafen" },
+    { key: "Warship", label: "Kriegsschiff" },
+    { key: "TransportShip", label: "Transportschiff" },
+    { key: "TradeShip", label: "Handelsschiff" },
+    { key: "DefensePost", label: "Verteidigungsposten" },
+    { key: "SAMLauncher", label: "Flugabwehr" },
+    { key: "MissileSilo", label: "Raketensilo" },
+    { key: "Train", label: "Zug" },
+  ];
+  const unitStockRows = firstEngineSample && lastEngineSample ? trackedUnitTypes.map(unit => ({
+    ...unit,
+    start: firstEngineSample.unitCounts[unit.key] ?? 0,
+    end: lastEngineSample.unitCounts[unit.key] ?? 0,
+  })).filter(unit => unit.start > 0 || unit.end > 0) : [];
+  const maxOutgoingAttacks = Math.max(0, ...selectedPlayerSamples.map(sample => sample.outgoingAttacks));
+  const maxIncomingAttacks = Math.max(0, ...selectedPlayerSamples.map(sample => sample.incomingAttacks));
+  const maxCommittedAttackTroops = Math.max(0, ...selectedPlayerSamples.map(sample => sample.attackTroops));
+  const targetedAttackReviews = selectedActionReviews.filter(action => action.type === "attack" && action.targetName);
+  const attackedPressuredTargets = targetedAttackReviews.filter(action => (action.targetPressureBefore?.otherAttackerCount ?? 0) > 0);
+  const targetTerritoryLossCount = targetedAttackReviews.filter(action => (action.targetDelta30s?.tiles ?? 0) < 0).length;
+  const ownAttackTerritoryGainCount = targetedAttackReviews.filter(action => (action.delta30s?.tiles ?? 0) > 0).length;
   return <section id="analyse" className="coach-workspace review-v2">
     <div className="review-topline"><div><div className="eyebrow">MATCH CENTER / PARTIEÜBERSICHT</div><h2>{apiResult.mapName}</h2><p>{apiResult.gameMode} <span>·</span> {apiResult.gameType} <span>·</span> {clock(apiResult.durationSeconds ?? 0)} <span>·</span> Match-ID {apiResult.gameId}</p></div><div className="review-actions"><button className="secondary" onClick={onExport}><DownloadCloud size={16}/> CSV exportieren</button><button className="secondary" onClick={onSaveReplayJson}><FileUp size={16}/> Replay-JSON speichern</button><button className="primary" onClick={onOpenReplay}><Gamepad2 size={17}/> Replay öffnen</button></div></div>
     <div className="player-scope-bar"><div><b>Wessen Spielverlauf soll gecoacht werden?</b><small>{selectedPlayerName(players,selectedClientId) ? `Persönliche Analyse für ${selectedPlayerName(players,selectedClientId)}. Fremde Spieleraktionen sind ausgeschlossen.` : 'Die Aktionsliste enthält Befehle aller Spieler. Für persönliche Empfehlungen muss zuerst dein Spieler ausgewählt werden.'}</small></div><select aria-label="Spieler für Coaching auswählen" value={selectedClientId} onChange={e=>{const id=e.target.value;setSelectedClientId(id);if(id)onPlayerSelect(id);}}><option value="">Spieler auswählen …</option>{players.filter(p=>p.clientID).map(p=><option key={p.clientID!} value={p.clientID!}>{p.name}</option>)}</select></div>

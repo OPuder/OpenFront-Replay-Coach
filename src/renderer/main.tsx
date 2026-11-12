@@ -319,7 +319,7 @@ function CoachPanel({apiResult,preferredPlayerPublicId,decodedActions,simulation
   const totalBuilds=builds.reduce((sum,x)=>sum+x.count,0);
   const formatPct=(n:number)=>`${Math.round(n)} %`;
   const insights=buildCoachInsights(playerActions,apiResult.durationSeconds ?? 0);
-  const engineInsights = selectedPlayerReview ? buildEngineCoachInsights(selectedPlayerReview, selectedActionReviews) : [];
+  const engineInsights = selectedPlayerReview ? buildEngineCoachInsights(selectedPlayerReview, selectedActionReviews, simulationResult?.samples ?? []) : [];
   return <section id="analyse" className="coach-workspace review-v2">
     <div className="review-topline"><div><div className="eyebrow">MATCH CENTER / PARTIEÜBERSICHT</div><h2>{apiResult.mapName}</h2><p>{apiResult.gameMode} <span>·</span> {apiResult.gameType} <span>·</span> {clock(apiResult.durationSeconds ?? 0)} <span>·</span> Match-ID {apiResult.gameId}</p></div><div className="review-actions"><button className="secondary" onClick={onExport}><DownloadCloud size={16}/> CSV exportieren</button><button className="secondary" onClick={onSaveReplayJson}><FileUp size={16}/> Replay-JSON speichern</button><button className="primary" onClick={onOpenReplay}><Gamepad2 size={17}/> Replay öffnen</button></div></div>
     <div className="player-scope-bar"><div><b>Wessen Spielverlauf soll gecoacht werden?</b><small>{selectedPlayerName(players,selectedClientId) ? `Persönliche Analyse für ${selectedPlayerName(players,selectedClientId)}. Fremde Spieleraktionen sind ausgeschlossen.` : 'Die Aktionsliste enthält Befehle aller Spieler. Für persönliche Empfehlungen muss zuerst dein Spieler ausgewählt werden.'}</small></div><select aria-label="Spieler für Coaching auswählen" value={selectedClientId} onChange={e=>setSelectedClientId(e.target.value)}><option value="">Spieler auswählen …</option>{players.filter(p=>p.clientID).map(p=><option key={p.clientID!} value={p.clientID!}>{p.name}</option>)}</select></div>
@@ -347,11 +347,11 @@ function CoachPanel({apiResult,preferredPlayerPublicId,decodedActions,simulation
           <div><small>Gebietszuwachs-Pause</small><b>{fmt(selectedPlayerReview.longestNoExpansionSeconds)} s</b><span>Längster beobachteter Zeitraum ohne Zuwachs</span></div>
         </div>
         <p className="coach-state-caveat">Das sind beobachtete Zustandsunterschiede, keine automatische Bewertung einzelner Befehle. Die längste Pause wird aus gespeicherten Stichproben abgeleitet; sie ist kein Beweis für Leerlauf.</p>
-        {selectedActionReviews.some(item=>item.delta) && <div className="coach-action-outcomes">
-          <b>Eigene Aktionen mit Zustandsvergleich</b>
-          <p>Die Werte zeigen den Zustand direkt vor und nach dem jeweiligen Aktions-Tick. Zeitgleiche Spielereignisse können ebenfalls zu Änderungen beitragen.</p>
-          <div>{selectedActionReviews.filter(item=>item.delta).slice(0,6).map(item=><div className="coach-action-outcome" key={`${item.turn}-${item.type}`}>
-            <time>{clock(item.seconds)}</time><b>{item.label}</b><span>Gebiet {item.delta!.tiles>0?'+':''}{fmt(item.delta!.tiles)} · Gold {item.delta!.gold>0?'+':''}{fmt(item.delta!.gold)} · Truppen {item.delta!.troops>0?'+':''}{fmt(item.delta!.troops)}</span>
+        {selectedActionReviews.some(item=>item.delta10s || item.delta30s) && <div className="coach-action-outcomes">
+          <b>Eigene Aktionen: beobachtete Folge nach 10 und 30 Sekunden</b>
+          <p>Die Werte sind Nettoveränderungen gegenüber dem Zustand vor dem Befehl. Weitere gleichzeitige Spielereignisse können mitwirken.</p>
+          <div>{selectedActionReviews.filter(item=>item.delta10s || item.delta30s).slice(0,6).map(item=><div className="coach-action-outcome" key={`${item.turn}-${item.type}`}>
+            <time>{clock(item.seconds)}</time><b>{item.label}</b><span>+10 s: Gebiet {item.delta10s?.tiles===undefined?'–':item.delta10s.tiles>0?'+':''}{item.delta10s?fmt(item.delta10s.tiles):''} · Truppen {item.delta10s?.troops===undefined?'–':item.delta10s.troops>0?'+':''}{item.delta10s?fmt(item.delta10s.troops):''} · Gold {item.delta10s?.gold===undefined?'–':item.delta10s.gold>0?'+':''}{item.delta10s?fmt(item.delta10s.gold):''} | +30 s: Gebiet {item.delta30s?.tiles===undefined?'–':item.delta30s.tiles>0?'+':''}{item.delta30s?fmt(item.delta30s.tiles):''} · Truppen {item.delta30s?.troops===undefined?'–':item.delta30s.troops>0?'+':''}{item.delta30s?fmt(item.delta30s.troops):''} · Gold {item.delta30s?.gold===undefined?'–':item.delta30s.gold>0?'+':''}{item.delta30s?fmt(item.delta30s.gold):''}</span>
           </div>)}</div>
         </div>}
       </section>}

@@ -342,6 +342,7 @@ jobs:
       - name: Build and validate the browser/PWA version
         run: |
           npm run build:web
+          npm run test:phase-survival
           node scripts/smoke-test-web.mjs
 
       - name: Package the browser/PWA edition

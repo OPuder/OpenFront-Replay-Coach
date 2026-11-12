@@ -383,6 +383,7 @@ function CoachPanel({apiResult,preferredPlayerPublicId,decodedActions,simulation
   const coachTrainingFocus = simulationResult?.status === 'verified'
     ? leadEngineReview?.nextStep ?? 'Prüfe die Zeitachse auf Phasen mit eingehendem Druck, Gebietsverlust und gebundenen Truppen. Wähle daraus genau ein Verhalten, das du in der nächsten Partie bewusst trainierst.'
     : 'Zuerst das Replay mit der passenden Original-Engine reproduzieren und die gespeicherten Hashes abgleichen. Erst danach eine taktische Lektion ableiten.';
+  const replayDurationTicks = simulationResult?.totalTicks ?? 0;
   const selectedPlayerSamples = (simulationResult?.samples ?? [])
     .map(sample => ({ tick: sample.tick, player: sample.players.find(player => player.clientID === selectedClientId) }))
     .filter((entry): entry is { tick: number; player: NonNullable<typeof entry.player> } => entry.player !== undefined);
@@ -399,7 +400,6 @@ function CoachPanel({apiResult,preferredPlayerPublicId,decodedActions,simulation
     { id: 'mid', label: 'Mid Game', from: 0.3, to: 0.7, description: 'Fronten, Zielwahl und Ressourcensteuerung' },
     { id: 'late', label: 'Late Game', from: 0.7, to: 1, description: 'Endphase, Druck und Abschluss' },
   ];
-  const replayDurationTicks = simulationResult?.totalTicks ?? 0;
   const phasePerformance = simulationResult?.status === 'verified' && replayDurationTicks > 0
     ? phaseDefinitions.map(phase => {
         const fromTick = replayDurationTicks * phase.from;

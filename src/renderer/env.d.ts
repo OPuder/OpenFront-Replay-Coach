@@ -54,6 +54,7 @@ declare global {
   }
 
   interface ReplaySummary {
+    apiSummary?: ApiImportSummary;
     fileName: string;
     fileSize: number;
     gameId: string;

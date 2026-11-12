@@ -335,7 +335,7 @@ function TrainingFocus({apiResult,decodedActions}:{apiResult:ApiImportSummary;de
 }
 function selectedPlayerName(players:Array<{name:string;clientID:string|null}>,id:string){return players.find(p=>p.clientID===id)?.name ?? '';}
 function CoachPanel({apiResult,preferredPlayerPublicId,decodedActions,simulationResult,simulationProgress,onPlayerSelect,onExport,onSaveReplayJson,onOpenReplay,fmt}:{preferredPlayerPublicId:string|null;apiResult:ApiImportSummary;decodedActions:DecodedAction[];simulationResult:ReplaySimulationResult|null;simulationProgress:{percent:number;phase:string}|null;onPlayerSelect:(clientId:string)=>void;onExport:()=>void;onSaveReplayJson:()=>void;onOpenReplay:()=>void;fmt:(n:number)=>string}) {
-  const [analysisTab,setAnalysisTab]=useState<'overview'|'decisions'|'economy'|'military'|'timeline'>('decisions');
+  const [analysisTab,setAnalysisTab]=useState<'coach'|'details'|'overview'|'decisions'|'economy'|'military'|'timeline'>('coach');
   const players=apiResult.playerStats ?? [];
   const preferredPlayer=players.find(p=>preferredPlayerPublicId && p.publicID===preferredPlayerPublicId);
   const initialPlayer=preferredPlayer ?? (players.length===1 ? players[0] : players.find(p=>/oligenole/i.test(p.name)) ?? null);
@@ -500,8 +500,9 @@ function CoachPanel({apiResult,preferredPlayerPublicId,decodedActions,simulation
       <p>{simulationProgress ? simulationProgress.phase : simulationResult?.message ?? apiResult.engineCompatibility?.message ?? 'Die Replay-Engine konnte für diesen Datensatz nicht sicher zugeordnet werden.'}</p>
       {simulationProgress && <div className="coach-progress-track" role="progressbar" aria-label="Replay wird analysiert" aria-valuemin={0} aria-valuemax={100} aria-valuenow={simulationProgress.percent}><span style={{width:`${Math.max(0,Math.min(100,simulationProgress.percent))}%`}}/></div>}
     </div>}
-    <nav className="review-tabs" aria-label="Analysebereiche">{([{id:"decisions",label:"Dein Coach"},{id:"overview",label:"Partie"},{id:"economy",label:"Wirtschaft"},{id:"military",label:"Militär"},{id:"timeline",label:"Zeitachse"}] as const).map(tab=><button type="button" key={tab.id} className={analysisTab===tab.id?"selected":""} aria-pressed={analysisTab===tab.id} onClick={()=>setAnalysisTab(tab.id)}>{tab.label}</button>)}</nav>
-    {playerScoped && analysisTab==='decisions' && <section id="match-coach-insights" className="coach-insights-section">
+    <nav className="review-tabs coach-primary-tabs" aria-label="Analysebereiche"><button type="button" className={analysisTab==='coach'?'selected':''} aria-pressed={analysisTab==='coach'} onClick={()=>setAnalysisTab('coach')}><Brain size={15}/> Dein Coach</button><button type="button" className={analysisTab==='details'?'selected':''} aria-pressed={analysisTab==='details'} onClick={()=>setAnalysisTab('details')}><Activity size={15}/> Matchdaten</button></nav>
+    {analysisTab==='details' && <nav className="review-tabs coach-data-tabs" aria-label="Matchdaten">{([{id:"overview",label:"Überblick"},{id:"economy",label:"Wirtschaft"},{id:"military",label:"Militär"},{id:"timeline",label:"Zeitachse"}] as const).map(tab=><button type="button" key={tab.id} className={analysisTab===tab.id?"selected":""} aria-pressed={analysisTab===tab.id} onClick={()=>setAnalysisTab(tab.id)}>{tab.label}</button>)}</nav>}
+    {playerScoped && analysisTab==='coach' && <section id="match-coach-insights" className="coach-insights-section">
       <div className="overview-heading"><div><span className="eyebrow">01 / DEIN SPIELBERICHT</span><h3>Die wichtigsten Erkenntnisse</h3><p>Nach Priorität sortiert. Jede Karte nennt deine Entscheidung, einen konkreten nächsten Prüf- bzw. Handlungsansatz und die Beleggrenze. Zeiten sind Befehlszeitpunkte; Bootszeit = Startbefehl, nicht Ankunft.</p></div></div>
 
       <div className="coach-report-summary">

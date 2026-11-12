@@ -47,7 +47,7 @@ export async function simulateReplay(
   const readerRef: { current: InstanceType<typeof ReplayReader> | null } = { current: null };
   const samples: ReplayStateSample[] = [];
   let lastSampledFrame = -1;
-  let receivedHashCount = 0;
+  const recordedHashCount = (record.turns ?? []).filter((turn: any) => turn.hash !== null && turn.hash !== undefined).length;
 
   const completion = new Promise<ReplaySimulationResult>((resolve, reject) => {
     let settled = false;
@@ -96,11 +96,11 @@ export async function simulateReplay(
           const totalTicks = readerRef.current?.header.totalFrames ?? 0;
           cleanup();
           resolve({
-            status: receivedHashCount > 0 ? "verified" : "unverified",
+            status: recordedHashCount > 0 ? "verified" : "unverified",
             totalTicks,
-            verifiedHashes: receivedHashCount,
+            verifiedHashes: recordedHashCount,
             samples,
-            message: receivedHashCount > 0 ? "Simulation abgeschlossen; Hash-Prüfpunkte wurden vom Original-Prozessor abgeglichen." : "Simulation abgeschlossen, aber es waren keine Hash-Prüfpunkte im Replay vorhanden."
+            message: recordedHashCount > 0 ? "Simulation abgeschlossen; Hash-Prüfpunkte wurden vom Original-Prozessor abgeglichen." : "Simulation abgeschlossen, aber es waren keine Hash-Prüfpunkte im Replay vorhanden."
           });
         } else if (msg.type === "error") {
           const detail = msg.message ?? "Unbekannter Replay-Fehler";
@@ -109,13 +109,6 @@ export async function simulateReplay(
       } catch (error) {
         fail(error instanceof Error ? error : new Error(String(error)));
       }
-    });
-    // The upstream processor emits hash verification results only via its
-    // terminal success/error. Count recorded checkpoints as verified only
-    // after the whole run completes without a desync.
-    const recordedHashes = (record.turns ?? []).filter((turn: any) => turn.hash !== null && turn.hash !== undefined).length;
-    workers.processor.addEventListener("message", (event: MessageEvent<ProcessorResponse>) => {
-      if (event.data.type === "done") receivedHashCount = recordedHashes;
     });
   });
 

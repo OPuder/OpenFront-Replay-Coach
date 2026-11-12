@@ -389,6 +389,7 @@ function CoachPanel({apiResult,preferredPlayerPublicId,decodedActions,simulation
   const selectedPlayerSamples = (simulationResult?.samples ?? [])
     .map(sample => ({ tick: sample.tick, player: sample.players.find(player => player.clientID === selectedClientId) }))
     .filter((entry): entry is { tick: number; player: NonNullable<typeof entry.player> } => entry.player !== undefined);
+  const firstAliveSample = selectedPlayerSamples.find(entry => entry.player.alive);
   const lastAliveSample = [...selectedPlayerSamples].reverse().find(entry => entry.player.alive);
   const firstEliminatedSample = selectedPlayerSamples.find(entry => !entry.player.alive);
   const playerEliminatedAtSeconds = firstEliminatedSample ? firstEliminatedSample.tick / 10 : null;
@@ -436,7 +437,7 @@ function CoachPanel({apiResult,preferredPlayerPublicId,decodedActions,simulation
       phase.incomeRate !== null && incomeMedian !== null && phase.incomeRate > incomeMedian ? 'Einkommen über Phasenschnitt' : '',
       phase.targetPressureWins > 0 ? 'Zielgebiet messbar geschwächt' : '',
     ].filter(Boolean);
-    return { ...phase, strengthLabels, rating: !enoughData ? 'Zu wenig Daten' : strengths >= 2 ? 'Über deinem Partiedurchschnitt' : strengths === 1 ? 'Gemischtes Bild' : 'Unter deinem Partiedurchschnitt' };
+    return { ...phase, strengthLabels, rating: !enoughData ? 'Zu wenig Daten' : strengths >= 2 ? 'Messbarer Fortschritt' : strengths === 1 ? 'Gemischtes Bild' : 'Keine relative Stärke erkannt' };
   });
   type SavedPhaseGame = { key:string; gameId:string; playedAt:string; playerName:string; mapName:string; phases:Array<{id:string;label:string;rating:string;territory:number|null;income:number|null;territoryRate:number|null;incomeRate:number|null}> };
   const historyStorageKey = 'openfront-replay-coach.phase-history.v1';
@@ -457,12 +458,12 @@ function CoachPanel({apiResult,preferredPlayerPublicId,decodedActions,simulation
   const recentPhaseHistory = phaseHistory.filter(item => item.playerName === selectedPlayerReview?.playerName).slice(0,12);
   const phaseTrend = phaseDefinitions.map(phase => {
     const values = recentPhaseHistory.map(game=>game.phases.find(item=>item.id===phase.id)).filter((item):item is NonNullable<typeof item>=>Boolean(item));
-    const strong = values.filter(item=>item.rating==='Starke Phase').length;
+    const strong = values.filter(item=>item.rating==='Messbarer Fortschritt').length;
     const tr = values.map(item=>item.territoryRate).filter((v):v is number=>v!==null);
     const ir = values.map(item=>item.incomeRate).filter((v):v is number=>v!==null);
     return {...phase,games:values.length,strong,averageTerritory:tr.reduce((a,b)=>a+b,0)/Math.max(1,tr.length),averageIncome:ir.reduce((a,b)=>a+b,0)/Math.max(1,ir.length)};
   });
-  const firstEngineSample = selectedPlayerSamples[0]?.player ?? null;
+  const firstEngineSample = firstAliveSample?.player ?? null;
   const lastEngineSample = lastAliveSample?.player ?? null;
   const incomeSummary = firstEngineSample && lastEngineSample ? {
     gross: lastEngineSample.goldEarned - firstEngineSample.goldEarned,
@@ -554,7 +555,8 @@ function CoachPanel({apiResult,preferredPlayerPublicId,decodedActions,simulation
           <div><strong>{phase.incomeRate === null ? '–' : `${Math.round(phase.incomeRate).toLocaleString('de-DE')}`}</strong><small>Brutto-Gold pro Minute</small></div>
           <div><strong>{phase.attackCount}</strong><small>Angriffsbefehle</small></div>
           {phase.strengthLabels.length > 0 && <p><strong>Das lief gut:</strong> {phase.strengthLabels.join(' · ')}</p>}
-          <p>{phase.targetPressureWins > 0 ? `${phase.targetPressureWins} Ziele verloren innerhalb von 30 Sekunden nach einem deiner Befehle Gebiet.` : 'Kein entsprechender Ziel-Gebietsverlust im erfassten 30-Sekunden-Fenster.'}</p>
+          <p>{phase.targetPressureWins > 0 ? `${phase.targetPressureWins} Ziele verloren innerhalb von 30 Sekunden nach einem deiner Befehle Gebiet. Das ist ein zeitlicher Zusammenhang, kein alleiniger Erfolgsnachweis.` : 'Kein entsprechender Ziel-Gebietsverlust im erfassten 30-Sekunden-Fenster.'}</p>
+          {phase.id === 'late' && playerEliminatedAtSeconds !== null && <p className="coach-phase-elimination">Du bist bei {clock(playerEliminatedAtSeconds)} ausgeschieden. Zustände nach deinem Ausscheiden werden nicht als deine Leistung gewertet.</p>}
         </article>)}</div>
         <small className="coach-phase-note">Die Phasenwerte zeigen beobachtete Raten, keine Ursache oder optimale Strategie. Ein Gebietszuwachs nach einem Angriff beweist nicht, dass dieser Befehl ihn verursacht hat. Bei zu wenigen Stichproben wird keine Einstufung vorgenommen.</small>
       </div></details>}
@@ -562,7 +564,7 @@ function CoachPanel({apiResult,preferredPlayerPublicId,decodedActions,simulation
         <div className="coach-engine-findings-heading"><span className="coach-report-label">DEINE ENTWICKLUNG ÜBER MEHRERE PARTIEN</span><b>Langfristiges Spielerprofil</b><p>Jede hash-verifizierte Partie wird lokal auf diesem Gerät gespeichert. Die Übersicht zeigt deine letzten Partien für diesen Spielernamen.</p></div>
         {recentPhaseHistory.length < 2 ? <p className="coach-history-empty">{recentPhaseHistory.length === 1 ? 'Eine Partie gespeichert. Nach der nächsten verifizierten Partie werden erste Vergleiche sichtbar.' : 'Noch keine gespeicherten Partien. Analysiere weitere Replays mit erfolgreicher Hash-Prüfung.'}</p> : <>
           <div className="coach-history-count"><b>{recentPhaseHistory.length}</b><span>gespeicherte Partien · letzte 12</span></div>
-          <div className="coach-history-grid">{phaseTrend.map(phase=><article className="coach-history-card" key={phase.id}><b>{phase.label}</b><strong>{phase.strong}/{phase.games}</strong><small>starke Phasen</small><span>{phase.averageTerritory.toFixed(1)} Gebiete / Min. im Schnitt</span><span>{Math.round(phase.averageIncome).toLocaleString('de-DE')} Gold / Min. im Schnitt</span></article>)}</div>
+          <div className="coach-history-grid">{phaseTrend.map(phase=><article className="coach-history-card" key={phase.id}><b>{phase.label}</b><strong>{phase.strong}/{phase.games}</strong><small>Phasen mit messbarem Fortschritt</small><span>{phase.averageTerritory.toFixed(1)} Gebiete / Min. im Schnitt</span><span>{Math.round(phase.averageIncome).toLocaleString('de-DE')} Gold / Min. im Schnitt</span></article>)}</div>
           <div className="coach-history-recent"><b>Zuletzt analysiert</b>{recentPhaseHistory.slice(0,5).map(game=><div key={game.key}><span>{game.playerName} · {game.mapName}</span><small>{new Date(game.playedAt).toLocaleDateString('de-DE')} · {game.phases.map(p=>p.rating).join(' / ')}</small></div>)}</div>
         </>}
         <small className="coach-phase-note">Es werden nur zusammengefasste Phasenwerte gespeichert, keine Replay-Dateien. Der Verlauf bleibt auf diesem Gerät und wird nicht automatisch zwischen Android, Windows und anderen Browsern synchronisiert.</small>

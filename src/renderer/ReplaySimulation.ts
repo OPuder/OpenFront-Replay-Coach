@@ -26,6 +26,7 @@ export interface ReplaySimulationResult {
   totalTicks: number;
   verifiedHashes: number;
   samples: ReplayStateSample[];
+  playerReview: null | { playerName: string; startTiles: number; endTiles: number; tilesGained: number; startGold: number; endGold: number; startTroops: number; endTroops: number; outgoingAttackSamples: number; longestNoExpansionSeconds: number };
   message: string;
 }
 
@@ -44,6 +45,7 @@ export async function simulateReplay(
   assets: EngineAssets,
   onProgress: (percent: number, phase: string) => void,
   sampleEvery = 50,
+  preferredClientId: string | null = null,
 ): Promise<ReplaySimulationResult> {
   const workers = createReplayWorkers();
   const channel = new MessageChannel();
@@ -118,12 +120,40 @@ export async function simulateReplay(
           settled = true;
           const totalTicks = readerRef.current?.header.totalFrames ?? 0;
           cleanup();
+          const staticPlayers = readerRef.current?.header.players ?? [];
+          const target = staticPlayers.find((p: any) => preferredClientId && p.clientID === preferredClientId)
+            ?? staticPlayers.find((p: any) => /oligenole/i.test(String(p.displayName ?? p.name ?? "")));
+          const playerSeries = target ? samples.map(sample => sample.players.find(p => p.id === target.smallID)).filter((p): p is NonNullable<typeof p> => Boolean(p)) : [];
+          let longestNoExpansionTicks = 0;
+          let flatStart = 0;
+          for (let i = 1; i < playerSeries.length; i++) {
+            if (playerSeries[i].tiles <= playerSeries[i-1].tiles) {
+              longestNoExpansionTicks = Math.max(longestNoExpansionTicks, (i - flatStart) * sampleEvery);
+            } else {
+              flatStart = i;
+            }
+          }
+          const firstPlayer = playerSeries[0];
+          const lastPlayer = playerSeries[playerSeries.length - 1];
+          const playerReview = firstPlayer && lastPlayer ? {
+            playerName: target.displayName ?? target.name ?? "Dein Spieler",
+            startTiles: firstPlayer.tiles,
+            endTiles: lastPlayer.tiles,
+            tilesGained: lastPlayer.tiles - firstPlayer.tiles,
+            startGold: firstPlayer.gold,
+            endGold: lastPlayer.gold,
+            startTroops: firstPlayer.troops,
+            endTroops: lastPlayer.troops,
+            outgoingAttackSamples: playerSeries.reduce((sum, p) => sum + p.outgoingAttacks, 0),
+            longestNoExpansionSeconds: Math.round(longestNoExpansionTicks / 10)
+          } : null;
           resolve({
             status: recordedHashCount > 0 ? "verified" : "unverified",
             totalTicks,
             verifiedHashes: recordedHashCount,
             samples,
-            message: recordedHashCount > 0 ? "Simulation abgeschlossen; Hash-Prüfpunkte wurden vom Original-Prozessor abgeglichen." : "Simulation abgeschlossen, aber es waren keine Hash-Prüfpunkte im Replay vorhanden."
+            playerReview,
+            message: recordedHashCount > 0 ? "Simulation abgeschlossen; alle gespeicherten Hash-Prüfpunkte wurden ohne Abweichung abgeglichen." : "Simulation abgeschlossen, aber es waren keine Hash-Prüfpunkte im Replay vorhanden."
           });
         } else if (msg.type === "error") {
           const detail = msg.message ?? "Unbekannter Replay-Fehler";

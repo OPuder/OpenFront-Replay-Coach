@@ -10,6 +10,7 @@ declare global {
       importReplayUrl: (
         url: string,
       ) => Promise<ApiImportSummary | { canceled: true; gameId: string }>;
+      getReplayEngineAssets: () => Promise<{manifest:Record<string,string>;cdnBase:string}>;
       saveReplayJson: (
         gameId: string,
       ) => Promise<{ saved: boolean; canceled?: boolean; filePath?: string; bytes?: number }>;
@@ -86,6 +87,7 @@ declare global {
   }
 
   interface ApiImportSummary {
+    record?: any;
     gameId: string;
     previewUrl?: string | null;
     fileSize: number;

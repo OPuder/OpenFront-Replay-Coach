@@ -3,7 +3,7 @@ import { getRoutePath, jsonError } from "../../../_lib/openfront.js";
 const PREFIX = "/api/openfront/public/";
 
 export async function onRequest({ request }) {
-  if (request.method !== "GET" && request.method !== "HEAD") {
+  if (request.method !== "GET") {
     return jsonError("Only public GET requests are supported.", 405);
   }
 

@@ -14,7 +14,8 @@ The Replay Coach reconstructs supported OpenFront game records with the original
 
 All three editions are published together in each successful GitHub Release. Android needs no Cloudflare account, no Play Store account and no separate server. Friends can download the APK directly from Releases.
 
-**Android setup:** [docs/ANDROID_WEB_APP.md](docs/ANDROID_WEB_APP.md)
+**Android setup:** [docs/ANDROID_WEB_APP.md](docs/ANDROID_WEB_APP.md)  
+**Maintainer setup (permanent APK signing):** [docs/ANDROID_SIGNING.md](docs/ANDROID_SIGNING.md)
 
 ## What the Coach shows
 
@@ -45,7 +46,7 @@ The Windows package includes the pinned replay engine. Node.js, npm, Git and a s
 
 The Android app uses Capacitor's native HTTP stack for public OpenFront game/player data and official engine assets. It does not depend on a Cloudflare proxy. The APK is a direct download, not a Play Store listing.
 
-**Android update note:** Until a permanent private Android signing key is configured in GitHub Actions, CI builds use a debug signing key. Android may require you to uninstall the previous APK before installing a new release. This is documented in the release notes.
+**Android update note:** Once the permanent private signing key is configured in GitHub Actions, future APK releases can update the existing installation. The first switch from a debug-signed APK to the permanent key still requires one uninstall/reinstall. Maintainers: see [the signing setup](docs/ANDROID_SIGNING.md).
 
 ## Data and privacy
 

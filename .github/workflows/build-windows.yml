@@ -5,7 +5,7 @@ on:
   pull_request:
     branches: [main]
   push:
-    branches: [main, coach-front-pressure-2.2.3]
+    branches: [main, coach-front-pressure-2.2.3, coach-ux-overhaul-2.2.4]
     tags: ["v*"]
 
 permissions:

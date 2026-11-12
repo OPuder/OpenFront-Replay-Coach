@@ -1,8 +1,8 @@
 {
   "name": "openfront-replay-coach",
-  "version": "2.2.3",
+  "version": "2.2.4",
   "private": true,
-  "description": "OpenFront Replay Coach — korrekte Versionsanzeige und transparenter Engine-Status",
+  "description": "OpenFront Replay Coach — Desktop, Android und installfreie Web-App",
   "main": "dist-electron/main.js",
   "scripts": {
     "dev": "npm run build:engine && npm run build:electron && concurrently -k \"vite\" \"wait-on http://localhost:5173 && electron .\"",
@@ -10,7 +10,9 @@
     "start": "electron .",
     "dist:win": "npm run build && electron-builder --win nsis",
     "build:electron": "tsc -p tsconfig.electron.json",
-    "build:engine": "node vendor/OpenFrontIO/node_modules/vite/bin/vite.js build --config engine-build/vite.config.mjs"
+    "build:engine": "node vendor/OpenFrontIO/node_modules/vite/bin/vite.js build --config engine-build/vite.config.mjs",
+    "build:web": "npm run build:engine && tsc --noEmit && vite build",
+    "preview:web": "vite preview"
   },
   "dependencies": {
     "lucide-react": "^0.468.0",

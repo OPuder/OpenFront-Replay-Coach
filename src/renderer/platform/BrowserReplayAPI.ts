@@ -58,7 +58,7 @@ async function fetchJson<T>(url: string, timeoutMs = 120_000): Promise<T> {
   } catch (error) {
     if (controller.signal.aborted) throw new Error("Zeitüberschreitung beim Abruf von OpenFront.");
     if (error instanceof TypeError) {
-      throw new Error("OpenFront konnte aus diesem Browser nicht erreicht werden. Der Browser meldet möglicherweise eine CORS- oder Netzwerkbeschränkung. Du kannst stattdessen die Replay-JSON-Datei direkt vom Handy auswählen.");
+      throw new Error("Der Replay-Coach-Datenproxy ist nicht erreichbar. Öffne die veröffentlichte HTTPS-Adresse und prüfe die Cloudflare-Pages-Funktionen. Als Alternative kannst du eine lokale Replay-JSON direkt vom Gerät auswählen.");
     }
     throw error;
   } finally {
@@ -208,7 +208,7 @@ async function importReplayUrl(input: string): Promise<ApiImportSummary> {
     signal: AbortSignal.timeout(120_000),
   }).catch(error => {
     if (error instanceof TypeError) {
-      throw new Error("Der Browser darf die OpenFront-API von dieser Web-Adresse aus nicht lesen (CORS/Netzwerk). Öffne die Replay-JSON-Datei über „Replay importieren“ oder nutze die Windows-Version.");
+      throw new Error("Der Replay-Coach-Datenproxy ist nicht erreichbar. Prüfe die Cloudflare-Pages-Veröffentlichung oder öffne eine lokale Replay-JSON über „Replay importieren“.");
     }
     throw error;
   });

@@ -116,7 +116,7 @@ async function getOpenFrontAssetManifest() {
     const objectText = readBalancedObject(html, marker + "assetManifest:".length);
     if (!objectText) throw new Error("Die OpenFront-Asset-Liste ist unvollständig.");
     const manifest = JSON.parse(objectText) as Record<string, string>;
-    const cdnMatch = html.match(/cdnBase:\\s*("(?:\\\\.|[^"\\\\])*")/);
+    const cdnMatch = html.match(/cdnBase:\s*("(?:\\.|[^"\\])*")/);
     const cdnBase = cdnMatch ? JSON.parse(cdnMatch[1]) as string : "";
     assetManifestCache = { manifest, cdnBase, fetchedAt: Date.now() };
     return assetManifestCache;

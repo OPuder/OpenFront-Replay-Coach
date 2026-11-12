@@ -398,8 +398,10 @@ function CoachPanel({apiResult,preferredPlayerPublicId,decodedActions,simulation
         const fromTick = replayDurationTicks * phase.from;
         const toTick = replayDurationTicks * phase.to;
         const phaseSamples = (simulationResult.samples ?? []).filter(sample => sample.tick >= fromTick && sample.tick <= toTick)
-          .map(sample => ({ tick: sample.tick, player: sample.players.find(player => player.clientID === selectedClientId) }))
-          .filter((entry): entry is {tick:number;player:NonNullable<typeof entry.player>} => Boolean(entry.player));
+          .flatMap(sample => {
+            const player = sample.players.find(player => player.clientID === selectedClientId);
+            return player ? [{ tick: sample.tick, player }] : [];
+          });
         const first = phaseSamples[0]?.player;
         const last = phaseSamples[phaseSamples.length - 1]?.player;
         const minutes = Math.max(0.1, (phaseSamples[phaseSamples.length - 1]?.tick ?? 0) - (phaseSamples[0]?.tick ?? 0)) / 600;

@@ -7,6 +7,19 @@ import { analyzeDetailedActions } from '../main/decoder/DetailedAnalysis';
 import { buildCoachInsights } from '../main/decoder/CoachInsights';
 import { buildEngineCoachInsights } from '../main/decoder/EngineCoachInsights';
 import { simulateReplay, type ReplaySimulationResult } from './ReplaySimulation';
+import { installBrowserReplayAPI } from './platform/BrowserReplayAPI';
+
+// Electron provides its API through the isolated preload; normal browsers use
+// the browser adapter so the same React interface powers Windows and Android.
+installBrowserReplayAPI();
+if (typeof window !== 'undefined' && window.isSecureContext && 'serviceWorker' in navigator && location.protocol === 'https:') {
+  window.addEventListener('load', () => {
+    const scope = new URL('./', document.baseURI);
+    void navigator.serviceWorker.register(new URL('sw.js', document.baseURI), { scope: scope.pathname })
+      .catch(error => console.warn('[ReplayCoach] Offline-App-Shell konnte nicht aktiviert werden:', error));
+  }, { once: true });
+}
+
 
 function App() {
   const [replay, setReplay] = useState<ReplaySummary | null>(null);

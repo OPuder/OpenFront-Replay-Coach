@@ -7,6 +7,7 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const packageJson = JSON.parse(readFileSync(path.join(root, "package.json"), "utf8"));
 const config = readFileSync(path.join(root, "capacitor.config.ts"), "utf8");
 const adapter = readFileSync(path.join(root, "src/renderer/platform/BrowserReplayAPI.ts"), "utf8");
+const renderer = readFileSync(path.join(root, "src/renderer/main.tsx"), "utf8");
 const versionScript = readFileSync(path.join(root, "scripts/set-android-version.mjs"), "utf8");
 
 for (const name of ["@capacitor/core", "@capacitor/android", "@capacitor/browser", "@capacitor/filesystem", "@capacitor/share"]) {
@@ -21,6 +22,7 @@ assert.ok(adapter.includes('const API_BASE = IS_NATIVE_ANDROID ? "https://api.op
 assert.ok(adapter.includes("https://openfront.io/"), "Native Android engine manifest request is missing");
 assert.ok(adapter.includes("Filesystem.writeFile") && adapter.includes("Directory.Cache"), "Native Android replay file export is missing");
 assert.ok(adapter.includes("Share.share") && adapter.includes("Browser.open"), "Native Android share/browser integration is missing");
+assert.ok(renderer.includes("!Capacitor.isNativePlatform()") && renderer.includes("navigator.serviceWorker.register"), "PWA service worker must stay disabled inside native Android app");
 assert.ok(versionScript.includes("versionCode") && versionScript.includes("versionName"), "Android versionCode/versionName logic is missing");
 
 console.log("Android configuration smoke test passed: Capacitor HTTP, public OpenFront API, native exports and app versioning are configured.");

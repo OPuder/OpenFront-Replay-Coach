@@ -438,7 +438,9 @@ function CoachPanel({apiResult,preferredPlayerPublicId,decodedActions,simulation
         <div><span className="coach-report-label">{leadEngineReview ? 'WICHTIGSTER ENGINE-PRÜFPUNKT' : 'COACH-ERGEBNIS'}</span><b>{coachLeadTitle}</b><p>{coachLeadSummary}</p></div>
         <div><span className="coach-report-label">TRAININGSFOKUS FÜR DIE NÄCHSTE PARTIE</span><b>{leadEngineReview ? 'Genau dieses Muster gezielt verbessern' : simulationResult?.status === 'verified' ? 'Eine überprüfbare Lektion wählen' : 'Zustände zuerst verifizieren'}</b><p>{coachTrainingFocus}</p></div>
       </div>
-      {selectedPlayerReview && <section className="coach-state-evidence">
+      {selectedPlayerReview && <details className="coach-mobile-details">
+        <summary>Spielstand und Folgen der Befehle anzeigen</summary>
+        <section className="coach-state-evidence">
         <div className="coach-state-evidence-heading"><div><span className="coach-report-label">ORIGINAL-ENGINE · SPIELERZUSTAND</span><b>{selectedPlayerReview.playerName}: Start bis Spielende</b></div><span className="coach-state-source">{simulationResult?.status === 'verified' ? 'Hash-verifiziert' : 'Ohne Hash-Verifikation'}</span></div>
         <div className="coach-state-grid">
           <div><small>Gebiete</small><b>{fmt(selectedPlayerReview.startTiles)} → {fmt(selectedPlayerReview.endTiles)}</b><span>{selectedPlayerReview.tilesGained >= 0 ? '+' : ''}{fmt(selectedPlayerReview.tilesGained)} Felder netto</span></div>
@@ -457,18 +459,20 @@ function CoachPanel({apiResult,preferredPlayerPublicId,decodedActions,simulation
             {item.targetName && <><small>Spielerziel {item.targetName} nach 30 s: Gebiet {item.targetDelta30s?.tiles===undefined?'–':item.targetDelta30s.tiles>0?'+':''}{item.targetDelta30s?fmt(item.targetDelta30s.tiles):''} · Truppen {item.targetDelta30s?.troops===undefined?'–':item.targetDelta30s.troops>0?'+':''}{item.targetDelta30s?fmt(item.targetDelta30s.troops):''} · Gold {item.targetDelta30s?.gold===undefined?'–':item.targetDelta30s.gold>0?'+':''}{item.targetDelta30s?fmt(item.targetDelta30s.gold):''} · {item.targetAliveAt30s===false?'ausgeschieden':item.targetAliveAt30s===true?'lebt noch':'Status nicht erfasst'}</small><small>{item.activeAttack30s ? (item.activeAttack30s.count ? `${item.activeAttack30s.count} Angriff(e) noch aktiv · ${fmt(item.activeAttack30s.troops)} Truppen${item.activeAttack30s.retreatingCount ? ` · ${item.activeAttack30s.retreatingCount} im Rückzug` : ''}` : 'Kein Angriff auf dieses Ziel im 30-Sekunden-Frame aktiv') : 'Angriffsstatus nach 30 s nicht erfasst'}</small></>}
           </div>)}</div>
         </div>}
-      </section>}
+        </section>
+      </details>}
       {orderedEngineInsights.length > 0 && <section className="coach-engine-findings">
         <div className="coach-engine-findings-heading"><span className="coach-report-label">ZUSTANDS-BASIERTE ERKENNTNISSE</span><b>Was die Original-Engine über deinen Spielverlauf zeigt</b><p>Diese Hinweise beruhen auf rekonstruierten Spielzuständen. Sie benennen überprüfbare Muster, keine automatisch bewiesenen Fehler oder hypothetischen Idealzüge.</p></div>
-        <div className="coach-engine-findings-list">{orderedEngineInsights.slice(0,5).map(item=><article className={`coach-engine-finding finding-${item.kind}`} key={item.id}>
-          <div><span>{item.priority === 'high' ? 'HOHE PRIORITÄT' : item.priority === 'medium' ? 'PRÜFPUNKT' : item.kind === 'strength' ? 'STÄRKE' : item.kind === 'review' ? 'PRÜFEN' : 'BEOBACHTUNG'}</span>{item.seconds !== null && <time>{clock(item.seconds)}</time>}</div>
-          <b>{item.title}</b><p>{item.summary}</p>
+        <div className="coach-engine-findings-list">{orderedEngineInsights.slice(0,5).map((item,index)=><details className={`coach-engine-finding-details finding-${item.kind}`} key={item.id} open={index===0}>
+          <summary><span>{item.priority === 'high' ? 'HOHE PRIORITÄT' : item.priority === 'medium' ? 'PRÜFPUNKT' : item.kind === 'strength' ? 'STÄRKE' : item.kind === 'review' ? 'PRÜFEN' : 'BEOBACHTUNG'}</span><b>{item.title}</b>{item.seconds !== null && <time>{clock(item.seconds)}</time>}<small>{item.summary}</small></summary>
+          <div className="coach-engine-finding-content">
           {item.decision && <p><strong>Deine Entscheidung:</strong> {item.decision}</p>}
           <small><strong>Beleg:</strong> {item.evidence}</small>
-          {item.alternative && <div className="coach-report-action"><b>Mögliche bessere Entscheidungsprüfung</b><span>{item.alternative}</span></div>}
-          <p><strong>Trainingsaufgabe:</strong> {item.nextStep}</p>
+          {item.alternative && <div className="coach-report-action"><b>Was du vorher prüfen solltest</b><span>{item.alternative}</span></div>}
+          <p><strong>Nächster Trainingsschritt:</strong> {item.nextStep}</p>
           <small><strong>Sicherheit:</strong> {item.confidence === 'high' ? 'hoch' : item.confidence === 'medium' ? 'mittel' : 'nicht eingestuft'} · <strong>Grenze:</strong> {item.limitation}</small>
-        </article>)}</div>
+          </div>
+        </details>)}</div>
       </section>}
       <details className="coach-secondary-details">
         <summary>Weitere allgemeine Aktionshinweise anzeigen</summary>

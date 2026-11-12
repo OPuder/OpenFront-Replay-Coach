@@ -30,6 +30,7 @@ interface EngineActiveAttackSummary {
 
 interface EngineFrontContext {
   activeTargetCount: number;
+  outgoingTargetIds: number[];
   outgoingAttackCount: number;
   outgoingAttackTroops: number;
   incomingAttackCount: number;
@@ -52,6 +53,7 @@ interface EngineActionReview {
   turn: number;
   seconds: number;
   type: string;
+  commandTroops: number | null;
   label: string;
   details: string;
   targetId: string | null;
@@ -413,21 +415,45 @@ export function buildEngineCoachInsights(
   }
 
 
-  // Decision-level coaching based on the exact pre-command engine snapshot.
-  // Findings are review prompts, not claims about counterfactual outcomes.
-  const decisionFindings: EngineCoachInsight[] = [];
-  const attackDecisions = actionReviews.filter(action =>
-    action.type === "attack" && action.ownFrontContextBefore
-  ).sort((a,b)=>a.seconds-b.seconds);
+  // Decision-level coaching based on exact pre-command context and the new command size.
+  // The detector only calls an attack a new front when that target was not already active.
+  // A prompt is a review opportunity, never proof that the decision was wrong.
+  const bestDecisionByType = new Map<string, { score: number; finding: EngineCoachInsight }>();
+  const considerDecision = (type: string, score: number, finding: EngineCoachInsight) => {
+    const current = bestDecisionByType.get(type);
+    if (!current || score > current.score) bestDecisionByType.set(type, { score, finding });
+  };
+
+  const attackDecisions = actionReviews
+    .filter(action => action.type === "attack" && action.ownFrontContextBefore && action.targetSmallID !== null)
+    .sort((a, b) => a.seconds - b.seconds);
 
   for (const action of attackDecisions) {
     const front = action.ownFrontContextBefore!;
-    const beforeTroops = action.before?.troops ?? null;
-    const committedShare = beforeTroops && beforeTroops > 0
-      ? front.outgoingAttackTroops / beforeTroops : null;
-    const overloaded = front.activeTargetCount >= 2 ||
-      (front.incomingAttackCount > 0 && front.outgoingAttackCount > 0) ||
-      (committedShare !== null && committedShare >= 0.65);
+    const targetSmallID = action.targetSmallID!;
+    const alreadyActiveTarget = front.outgoingTargetIds.includes(targetSmallID);
+    const opensNewFront = !alreadyActiveTarget;
+    if (!opensNewFront) continue;
+
+    const availableBefore = Math.max(0, action.before?.troops ?? 0);
+    const alreadyCommitted = Math.max(0, front.outgoingAttackTroops);
+    const commandTroops = action.commandTroops === null ? null : Math.max(0, action.commandTroops);
+    const totalArmyBefore = availableBefore + alreadyCommitted;
+    const projectedCommitment = commandTroops !== null && totalArmyBefore > 0
+      ? Math.min(1, (alreadyCommitted + commandTroops) / totalArmyBefore)
+      : null;
+    const reserveAfterCommand = commandTroops === null ? null : Math.max(0, availableBefore - commandTroops);
+
+    const opensSecondOrLaterFront = front.activeTargetCount >= 1;
+    const splitCommitment = opensSecondOrLaterFront && projectedCommitment !== null && projectedCommitment >= 0.55;
+    const exposedReserve = front.incomingAttackCount > 0 && reserveAfterCommand !== null &&
+      availableBefore > 0 && (
+        reserveAfterCommand <= availableBefore * 0.35 ||
+        (front.incomingAttackTroops > 0 && reserveAfterCommand < front.incomingAttackTroops)
+      );
+    const heavyCommitment = projectedCommitment !== null && projectedCommitment >= 0.8;
+    const overloaded = splitCommitment || exposedReserve || heavyCommitment;
+
     const pressure = action.targetPressureBefore;
     const own30 = action.delta30s;
     const target30 = action.targetDelta30s;
@@ -435,31 +461,40 @@ export function buildEngineCoachInsights(
 
     if (overloaded) {
       const reasons = [
-        front.activeTargetCount >= 2 ? `${front.activeTargetCount} andere aktive Angriffziele` : "",
+        front.activeTargetCount > 0 ? `${front.activeTargetCount} bereits aktive Zielfront(en)` : "",
         front.incomingAttackCount > 0 ? `${front.incomingAttackCount} eingehende Angriffe` : "",
-        committedShare !== null && committedShare >= 0.65 ? `ca. ${Math.round(committedShare*100)} % der eigenen Truppen bereits gebunden` : "",
+        projectedCommitment !== null ? `nach dem Befehl ca. ${Math.round(projectedCommitment * 100)} % der Truppen gebunden` : "",
+        reserveAfterCommand !== null ? `verbleibende Reserve ca. ${reserveAfterCommand.toLocaleString("de-DE")}` : "",
       ].filter(Boolean);
-      decisionFindings.push({
-        id: `decision-front-load-${action.frame}`, kind: "review", priority: "high",
-        title: "Weitere Front eröffnet, obwohl bereits Truppen gebunden waren",
-        summary: `Bei ${clock(action.seconds)} hast du einen weiteren Angriff befohlen. Gleichzeitig bestanden ${reasons.join(", ")}.`,
-        evidence: `Vor dem Befehl: ${front.outgoingAttackCount} eigene Angriffe mit ${front.outgoingAttackTroops.toLocaleString("de-DE")} gebundenen Truppen; ${front.incomingAttackCount} eingehende Angriffe mit ${front.incomingAttackTroops.toLocaleString("de-DE")} Truppen. ${own30 ? `Nach 30 s: Gebiet ${own30.tiles>=0?"+":""}${own30.tiles}, Truppen ${own30.troops>=0?"+":""}${own30.troops}.` : "30-Sekunden-Folge nicht vollständig erfasst."}`,
+      const highPriority = projectedCommitment !== null && projectedCommitment >= 0.8 &&
+        (front.activeTargetCount >= 1 || front.incomingAttackCount > 0);
+      const score = (projectedCommitment ?? 0) * 100 +
+        front.activeTargetCount * 15 + front.incomingAttackCount * 12 +
+        (exposedReserve ? 20 : 0);
+
+      considerDecision("front-load", score, {
+        id: `decision-front-load-${action.frame}`, kind: "review",
+        priority: highPriority ? "high" : "medium",
+        title: "Neue Zielfront trotz bereits gebundener Truppen eröffnet",
+        summary: `Bei ${clock(action.seconds)} hast du einen Angriff auf ein weiteres Spielerziel befohlen. Gleichzeitig bestanden ${reasons.join(", ") || "bereits laufende Truppenbindungen"}.`,
+        evidence: `Vor dem Befehl: ${front.activeTargetCount} aktive Zielfront(en), ${front.outgoingAttackCount} Angriffe mit ${front.outgoingAttackTroops.toLocaleString("de-DE")} gebundenen Truppen und ${availableBefore.toLocaleString("de-DE")} verfügbare Truppen. Neuer Befehl: ${commandTroops === null ? "Truppenmenge nicht erfasst" : commandTroops.toLocaleString("de-DE") + " Truppen"}.${projectedCommitment !== null ? ` Rechnerischer Bindungsanteil danach: ca. ${Math.round(projectedCommitment * 100)} %.` : ""}${own30 ? ` Nach 30 s: Gebiet ${own30.tiles >= 0 ? "+" : ""}${own30.tiles}, Truppen ${own30.troops >= 0 ? "+" : ""}${own30.troops}.` : ""}`,
         decision: action.label + (action.targetName ? ` auf ${action.targetName}` : ""),
-        alternative: "Vor einer neuen Front prüfen, ob ein bestehender Angriff zuerst abgeschlossen werden kann oder Truppen für die Verteidigung zurückgehalten werden müssen. Eine weitere Front nur mit ausreichender Reserve eröffnen.",
-        nextStep: "Springe zu diesem Zeitpunkt im Replay. Vergleiche Truppenreserve, laufende Angriffe und eingehende Gegnerbewegungen. Überlege, ob die Konzentration auf eine Front sicherer gewesen wäre.",
-        seconds: action.seconds, confidence: "high",
-        limitation: "Belegt sind aktive Angriffsobjekte und Truppenbindungen. Reichweite, Reisezeit, Sicht des Spielers und der taktische Wert einer Ablenkung sind nicht vollständig bekannt. Das ist ein Prüfhinweis, kein bewiesener Fehler.",
+        alternative: "Vor einer zusätzlichen Zielfront zuerst prüfen, ob ein laufender Angriff abgeschlossen werden kann und welche Reserve nach dem neuen Befehl bleibt. Bei eingehendem Druck die Verteidigung und den Wert des neuen Ziels gegeneinander abwägen.",
+        nextStep: "Springe zu diesem Zeitpunkt im Replay. Prüfe die Reserve direkt vor dem Befehl, die bereits aktiven Ziele und eingehende Angriffe. Lege für die nächste Partie vor einem zweiten Ziel eine feste Mindestreserve fest.",
+        seconds: action.seconds, confidence: "medium",
+        limitation: "Der Replay-Zustand belegt aktive Angriffe und Truppenbindungen. Er bewertet nicht vollständig Zielentfernung, Gelände, Gegnerstärke, Sicht oder den taktischen Wert einer Ablenkung. Der Bindungsanteil ist eine Näherung aus verfügbarem und bereits gebundenem Heer.",
       });
     }
 
     if (overloaded && (pressure?.otherAttackerCount ?? 0) > 0) {
-      decisionFindings.push({
+      const pressureScore = pressure!.otherAttackerCount * 100 + pressure!.otherAttackTroops / 100000;
+      considerDecision("contested-target", pressureScore, {
         id: `decision-contested-target-${action.frame}`, kind: "review", priority: "medium",
-        title: "Ziel war bereits durch andere Spieler unter Druck",
+        title: "Ziel stand bereits unter dem Druck anderer Spieler",
         summary: `Vor deinem Befehl um ${clock(action.seconds)} waren bereits ${pressure!.otherAttackerCount} andere Spieler mit ${pressure!.otherAttackTroops.toLocaleString("de-DE")} Truppen gegen dieses Ziel unterwegs.`,
-        evidence: `${pressure!.otherAttackCount} fremde Angriffsobjekte. ${target30 ? `Nach 30 s: Zielgebiet ${target30.tiles>=0?"+":""}${target30.tiles}; eigene Truppen ${own30?.troops ?? "n/v"}.` : "Kein vollständiges Zielfenster."}`,
+        evidence: `${pressure!.otherAttackCount} fremde Angriffsobjekte.${target30 ? ` Nach 30 s: Zielgebiet ${target30.tiles >= 0 ? "+" : ""}${target30.tiles}; eigene Truppen ${own30?.troops ?? "n/v"}.` : " Kein vollständiges Zielfenster."}`,
         decision: action.label + (action.targetName ? ` auf ${action.targetName}` : ""),
-        alternative: "Prüfe, ob dein zusätzlicher Angriff den Gegner schneller ausschalten konnte oder ob deine Truppen an einer unbedrängten Front mehr bewirkt hätten. Vergleiche Zielzustand und eigene Reserve.",
+        alternative: "Prüfe, ob dein zusätzlicher Angriff das Ziel schneller ausschalten konnte oder ob deine Truppen an einer weniger umkämpften Front mehr bewirkt hätten. Vergleiche den Zielzustand mit deiner eigenen Reserve.",
         nextStep: "Untersuche, ob dein Angriff einen zusätzlichen Beitrag leistete oder nur Truppen band, während andere Spieler das Ziel bereits bedrängten.",
         seconds: action.seconds, confidence: "medium",
         limitation: "Mehrere Angreifer können ein Ziel schneller besiegen. Die Beobachtung beweist weder verschwendete Truppen noch eine falsche Zielwahl.",
@@ -467,26 +502,24 @@ export function buildEngineCoachInsights(
     }
 
     if (own30 && own30.troops < 0 && own30.tiles <= 0 && attackStillActive) {
-      decisionFindings.push({
+      const costScore = Math.abs(own30.troops) + Math.max(0, -own30.tiles) * 10000;
+      considerDecision("cost-window", costScore, {
         id: `decision-cost-window-${action.frame}`, kind: "review", priority: "medium",
-        title: "Truppen gebunden, aber nach 30 Sekunden noch kein Gebietszuwachs",
-        summary: `Nach dem Angriff um ${clock(action.seconds)} waren deine Truppen um ${Math.abs(own30.troops).toLocaleString("de-DE")} niedriger, ohne eigenen Gebietszuwachs. Der Angriff war noch aktiv.`,
-        evidence: `30-Sekunden-Fenster: Gebiet ${own30.tiles}, Truppen ${own30.troops}, Gold ${own30.gold}; aktive Angriffe: ${action.activeAttack30s?.count ?? 0}.`,
+        title: "Truppen gebunden, nach 30 Sekunden noch kein eigener Gebietszuwachs",
+        summary: `Nach dem Angriff um ${clock(action.seconds)} waren deine Truppen um ${Math.abs(own30.troops).toLocaleString("de-DE")} niedriger, ohne eigenen Gebietszuwachs. Der Angriff auf das Ziel war im 30-Sekunden-Frame noch aktiv.`,
+        evidence: `30-Sekunden-Fenster: Gebiet ${own30.tiles}, Truppen ${own30.troops}, Gold ${own30.gold}; aktive Angriffe auf das Ziel: ${action.activeAttack30s?.count ?? 0}.`,
         decision: action.label + (action.targetName ? ` auf ${action.targetName}` : ""),
-        alternative: "Nicht automatisch abbrechen: erst prüfen, ob der Angriff noch unterwegs ist oder auf Verteidigung trifft. Künftig vor dem Absenden gebundene Truppenmenge und Rückzugsreserve festlegen.",
+        alternative: "Nicht automatisch abbrechen: zuerst prüfen, ob der Angriff noch unterwegs ist oder auf Verteidigung trifft. Vor einem ähnlichen Befehl eine Mindestreserve und einen Prüfzeitpunkt festlegen.",
         nextStep: "Verfolge den Angriff über das 30-Sekunden-Fenster hinaus. Prüfe, ob später Gebiet gewonnen wurde oder ein Rückzug nötig war.",
         seconds: action.seconds, confidence: "medium",
-        limitation: "30 Sekunden können bei langen Reisewegen zu kurz sein. Der Truppenrückgang ist kein sicherer Verlust und beweist kein Scheitern.",
+        limitation: "30 Sekunden können bei langen Reisewegen zu kurz sein. Der Truppenrückgang ist kein sicherer Verlust und beweist kein Scheitern. Andere gleichzeitige Aktionen können die Zustandsänderung beeinflussen.",
       });
     }
   }
-  // Keep the first occurrence of each decision pattern to avoid flooding the report.
-  const decisionKinds = new Set<string>();
-  for (const item of decisionFindings) {
-    const kind = item.id.replace(/-\d+$/, "");
-    if (decisionKinds.has(kind)) continue;
-    decisionKinds.add(kind);
-    findings.push(item);
+
+  // Retain only the strongest instance of each pattern instead of the earliest one.
+  for (const candidate of [...bestDecisionByType.values()].sort((a, b) => b.score - a.score)) {
+    findings.push(candidate.finding);
   }
 
   return findings;

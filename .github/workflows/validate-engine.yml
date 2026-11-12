@@ -8,7 +8,7 @@ on:
       - "vendor/OpenFrontIO"
       - ".github/workflows/validate-engine.yml"
   push:
-    branches: [pinned-openfront-engine]
+    branches: [main]
     paths:
       - ".gitmodules"
       - "vendor/OpenFrontIO"
@@ -22,10 +22,13 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
-      - name: Check out coach and pinned engine
+      - name: Check out coach source
         uses: actions/checkout@v4
-        with:
-          submodules: recursive
+
+      # The upstream repository declares a private nested submodule that is
+      # unrelated to replay simulation. Initialize only the public engine.
+      - name: Check out only the pinned public OpenFront source
+        run: git submodule update --init --depth 1 vendor/OpenFrontIO
 
       - name: Verify exact engine revision
         shell: bash

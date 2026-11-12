@@ -70,6 +70,7 @@ export interface ReplayActionReview {
   delta30s: ReplayStateDelta | null;
   targetDelta10s: ReplayStateDelta | null;
   targetDelta30s: ReplayStateDelta | null;
+  targetAliveBefore: boolean | null;
   targetAliveAt10s: boolean | null;
   targetAliveAt30s: boolean | null;
   activeAttack10s: ReplayActiveAttackSummary | null;
@@ -405,6 +406,7 @@ export async function simulateReplay(
                   delta30s: deltaToFrame(300),
                   targetDelta10s: targetDeltaToFrame(100),
                   targetDelta30s: targetDeltaToFrame(300),
+                  targetAliveBefore: targetBeforePlayer?.alive ?? null,
                   targetAliveAt10s: targetAliveAt(100),
                   targetAliveAt30s: targetAliveAt(300),
                   activeAttack10s: summarizeActiveAttack(frame, 100, targetSmallID),

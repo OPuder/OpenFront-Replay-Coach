@@ -300,6 +300,37 @@ export async function simulateReplay(
             longestNoExpansionSeconds: Math.round(longestNoExpansionTicks / 10)
           } : null;
           const sampleByFrame = new Map(samples.map(sample => [sample.frame, sample]));
+          const staticPlayers = readerRef.current?.header.players ?? [];
+          const metrics = (player: ReplayStateSample["players"][number]) => ({
+            tiles: player.tiles,
+            gold: player.gold,
+            troops: player.troops,
+            goldEarned: player.goldEarned,
+            tradeGold: player.tradeGold,
+            trainGold: player.trainGold,
+            piracyGold: player.piracyGold,
+          });
+          const difference = (current: ReturnType<typeof metrics>, before: ReturnType<typeof metrics>) => ({
+            tiles: current.tiles - before.tiles,
+            gold: current.gold - before.gold,
+            troops: current.troops - before.troops,
+            goldEarned: current.goldEarned - before.goldEarned,
+            tradeGold: current.tradeGold - before.tradeGold,
+            trainGold: current.trainGold - before.trainGold,
+            piracyGold: current.piracyGold - before.piracyGold,
+          });
+          const summarizeActiveAttack = (offset: number, targetSmallID: number | null): ReplayActiveAttackSummary | null => {
+            if (targetSmallID === null || frame + offset >= totalTicks) return null;
+            const sample = sampleByFrame.get(frame + offset);
+            const actor = sample?.players.find(p => p.id === target.smallID);
+            if (!actor) return null;
+            const attacks = actor.outgoingAttackDetails.filter(attack => attack.targetID === targetSmallID);
+            return {
+              count: attacks.length,
+              troops: attacks.reduce((sum, attack) => sum + attack.troops, 0),
+              retreatingCount: attacks.filter(attack => attack.retreating).length,
+            };
+          };
           const actionReviews: ReplayActionReview[] = target ? turns.flatMap((turn: any) => {
             const frame = Number(turn?.turnNumber);
             if (!Number.isInteger(frame) || frame < 0 || frame >= totalTicks) return [];
@@ -310,41 +341,74 @@ export async function simulateReplay(
                 const afterSample = sampleByFrame.get(Math.min(totalTicks - 1, frame + 1));
                 const beforePlayer = beforeSample?.players.find(p => p.id === target.smallID);
                 const afterPlayer = afterSample?.players.find(p => p.id === target.smallID);
-                const before = beforePlayer ? { tiles: beforePlayer.tiles, gold: beforePlayer.gold, troops: beforePlayer.troops } : null;
-                const after = afterPlayer ? { tiles: afterPlayer.tiles, gold: afterPlayer.gold, troops: afterPlayer.troops } : null;
+                const before = beforePlayer ? metrics(beforePlayer) : null;
+                const after = afterPlayer ? metrics(afterPlayer) : null;
+                const targetId = intent?.type === "attack" && intent?.targetID != null ? String(intent.targetID) : null;
+                const targetMeta: any = targetId === null ? null : staticPlayers.find((player: any) => String(player.id) === targetId);
+                const targetSmallID = targetMeta?.smallID == null ? null : Number(targetMeta.smallID);
+                const targetName = targetMeta?.displayName ?? targetMeta?.name ?? null;
+                const targetBeforePlayer = targetSmallID === null ? null : beforeSample?.players.find(p => p.id === targetSmallID) ?? null;
+                const targetDeltaToFrame = (offset: number) => {
+                  if (!targetBeforePlayer || frame + offset >= totalTicks) return null;
+                  const sample = sampleByFrame.get(frame + offset);
+                  const targetAtFrame = sample?.players.find(p => p.id === targetSmallID);
+                  if (!targetAtFrame) return null;
+                  return difference(metrics(targetAtFrame), metrics(targetBeforePlayer));
+                };
+                const targetAliveAt = (offset: number): boolean | null => {
+                  if (targetSmallID === null || frame + offset >= totalTicks) return null;
+                  const sample = sampleByFrame.get(frame + offset);
+                  const targetAtFrame = sample?.players.find(p => p.id === targetSmallID);
+                  return targetAtFrame ? targetAtFrame.alive : null;
+                };
                 const deltaToFrame = (offset: number) => {
                   if (!beforePlayer || frame + offset >= totalTicks) return null;
                   const sample = sampleByFrame.get(frame + offset);
                   const player = sample?.players.find(p => p.id === target.smallID);
                   if (!player) return null;
-                  return {
-                    tiles: player.tiles - beforePlayer.tiles,
-                    gold: player.gold - beforePlayer.gold,
-                    troops: player.troops - beforePlayer.troops
-                  };
+                  return difference(metrics(player), metrics(beforePlayer));
+                };
+                const type = String(intent?.type ?? "unknown");
+                const labels: Record<string, string> = {
+                  attack: "Angriff",
+                  boat: "Bootstransport",
+                  build_unit: "Bauentscheidung",
+                  upgrade_structure: "Gebäude verbessert",
+                  cancel_attack: "Angriff abgebrochen",
+                  cancel_boat: "Bootstransport abgebrochen",
+                  delete_unit: "Einheit entfernt",
+                  target_player: "Gegner fokussiert",
+                  donate_gold: "Gold gespendet",
+                  donate_troops: "Truppen gespendet",
                 };
                 return {
                   frame,
                   turn: Number(turn?.turnNumber ?? frame),
                   seconds: Number(turn?.turnNumber ?? frame) / 10,
-                  type: String(intent?.type ?? "unknown"),
-                  label: String(intent?.type ?? "Aktion"),
+                  type,
+                  label: labels[type] ?? type,
+                  targetId,
+                  targetName,
+                  targetSmallID,
                   details: [
                     intent?.unit ? `Typ: ${intent.unit}` : "",
                     intent?.troops != null ? `Truppen: ${Math.round(Number(intent.troops)).toLocaleString("de-DE")}` : "",
-                    intent?.targetID ? `Ziel: ${intent.targetID}` : "",
-                    intent?.dst != null ? `Ziel-Feld: ${intent.dst}` : ""
+                    targetName ? `Ziel: ${targetName}` : targetId ? `Ziel-ID: ${targetId}` : "",
+                    intent?.dst != null ? `Ziel-Feld: ${intent.dst}` : "",
+                    intent?.amount != null ? `Menge: ${intent.amount}` : "",
                   ].filter(Boolean).join(" · "),
                   before,
                   after,
-                  delta: before && after ? {
-                    tiles: after.tiles - before.tiles,
-                    gold: after.gold - before.gold,
-                    troops: after.troops - before.troops
-                  } : null,
+                  delta: before && after ? difference(after, before) : null,
                   delta5s: deltaToFrame(50),
                   delta10s: deltaToFrame(100),
-                  delta30s: deltaToFrame(300)
+                  delta30s: deltaToFrame(300),
+                  targetDelta10s: targetDeltaToFrame(100),
+                  targetDelta30s: targetDeltaToFrame(300),
+                  targetAliveAt10s: targetAliveAt(100),
+                  targetAliveAt30s: targetAliveAt(300),
+                  activeAttack10s: summarizeActiveAttack(100, targetSmallID),
+                  activeAttack30s: summarizeActiveAttack(300, targetSmallID),
                 };
               });
           }) : [];

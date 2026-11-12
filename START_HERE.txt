@@ -1,18 +1,26 @@
-OPENFRONT REPLAY COACH 2.0.0
+OPENFRONT REPLAY COACH 2.1.3
 
-1. ZIP in einen eigenen Ordner entpacken.
-2. START_COACH.bat doppelklicken.
-3. In der Replay-Analyse bei Mehrspielerpartien deinen Spielernamen auswählen.
-4. Danach beziehen sich Coaching, Zeitpunkte, Aktionszahlen und die Wirtschafts-/Militärübersicht nur auf diesen Spieler.
+START OHNE ENTWICKLER-TOOLS
+- INSTALLER: "OpenFront Replay Coach Setup.exe" starten und installieren.
+- PORTABLE: ZIP in einen Ordner entpacken und "OpenFront Replay Coach.exe" doppelklicken.
+- Node.js, npm, Git oder eine separate OpenFront-Installation sind für diese Windows-Pakete nicht erforderlich.
+- Für die Replay-Simulation wird eine Internetverbindung benötigt, damit die offiziellen OpenFront-Kartendaten geladen werden können.
 
-WICHTIG ZU ZEITEN:
-Zeitpunkte zeigen den protokollierten Befehl im Spielzug (10 Ticks = 1 Sekunde).
-Bei Booten ist das die Zeit des Transportbefehls. Die tatsächliche Ankunft/Landung
-ist ein späteres Ereignis und wird nicht mit dem Startbefehl gleichgesetzt.
+REPLAY ANALYSIEREN
+1. Eine Partie über den OpenFront-Link laden oder eine lokale Replay-JSON öffnen.
+2. Bei passender Engine-Version und vorhandenen Hash-Prüfpunkten startet die Original-OpenFront-Engine automatisch.
+3. Der Prozessor vergleicht die gespeicherten Hashes. Bei einer Abweichung wird die Simulation als fehlgeschlagen ausgewiesen.
+4. Nach erfolgreichem Abgleich werden tatsächliche Replay-Frames rekonstruiert und Spieler-, Gebiets-, Gold-, Truppen- und Einheitenstände angezeigt.
 
-FACHLICHE GRENZE:
-Diese Version korrigiert die Zuordnung der Aktionen zum ausgewählten Spieler und
-verhindert Lobby-weite Fehlzuordnungen. Eine echte Bewertung von Eroberungen,
-Verlusten, Gold-/Truppenentwicklung und besseren Alternativzügen benötigt noch
-die passende deterministische OpenFront-Engine samt rekonstruierten Spielzuständen.
-Diese Werte werden hier nicht erfunden.
+WICHTIG
+- Eine passende Commit-ID allein ist noch kein erfolgreicher Nachweis. Erst der vollständige Hash-Abgleich bestätigt die Reproduktion.
+- Die Coaching-Hinweise sind taktische Indikatoren und keine Garantie, dass ein anderer Zug gewonnen hätte.
+- Dein Replay wird lokal verarbeitet. Der Coach lädt es nicht zu einem eigenen Server hoch.
+- Für Kartendaten und die OpenFront-Engine ist eine Verbindung zu den offiziellen OpenFront-Servern erforderlich.
+
+QUELLCODE UND LIZENZ
+Der Coach bindet den OpenFront-Replay-Prozessor und die Engine aus dem fest gepinnten OpenFrontIO-Quellstand ein:
+https://github.com/openfrontio/OpenFrontIO/tree/bc3e3334c573c4959ec6a6745df6826d07233b4d
+Der mitgelieferte OpenFrontIO-Lizenztext liegt unter resources/licenses/OpenFrontIO-AGPL-3.0.txt.
+Der vollständige Coach-Quellcode einschließlich Build-Anleitung und Engine-Pinning ist verfügbar unter:
+https://github.com/OPuder/OpenFront-Replay-Coach

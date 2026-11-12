@@ -385,6 +385,51 @@ function CoachPanel({apiResult,preferredPlayerPublicId,decodedActions,simulation
   const selectedPlayerSamples = (simulationResult?.samples ?? [])
     .map(sample => sample.players.find(player => player.clientID === selectedClientId))
     .filter((sample): sample is NonNullable<typeof sample> => sample !== undefined);
+  // Phase performance is a within-match profile, not a universal skill rating.
+  // Boundaries use elapsed match time: early 0–30%, mid 30–70%, late 70–100%.
+  const phaseDefinitions = [
+    { id: 'early', label: 'Early Game', from: 0, to: 0.3, description: 'Start, Expansion und erste Wirtschaft' },
+    { id: 'mid', label: 'Mid Game', from: 0.3, to: 0.7, description: 'Fronten, Zielwahl und Ressourcensteuerung' },
+    { id: 'late', label: 'Late Game', from: 0.7, to: 1, description: 'Endphase, Druck und Abschluss' },
+  ];
+  const replayDurationTicks = simulationResult?.totalTicks ?? 0;
+  const phasePerformance = simulationResult?.status === 'verified' && replayDurationTicks > 0
+    ? phaseDefinitions.map(phase => {
+        const fromTick = replayDurationTicks * phase.from;
+        const toTick = replayDurationTicks * phase.to;
+        const phaseSamples = (simulationResult.samples ?? []).filter(sample => sample.tick >= fromTick && sample.tick <= toTick)
+          .map(sample => ({ tick: sample.tick, player: sample.players.find(player => player.clientID === selectedClientId) }))
+          .filter((entry): entry is {tick:number;player:NonNullable<typeof entry.player>} => Boolean(entry.player));
+        const first = phaseSamples[0]?.player;
+        const last = phaseSamples[phaseSamples.length - 1]?.player;
+        const minutes = Math.max(0.1, (phaseSamples[phaseSamples.length - 1]?.tick ?? 0) - (phaseSamples[0]?.tick ?? 0)) / 600;
+        const phaseActions = selectedActionReviews.filter(action => action.seconds * 10 >= fromTick && action.seconds * 10 <= toTick);
+        const attackActions = phaseActions.filter(action => action.type === 'attack');
+        const targetPressureWins = attackActions.filter(action => action.targetDelta30s && action.targetDelta30s.tiles < 0).length;
+        const territory = first && last ? last.tiles - first.tiles : null;
+        const income = first && last ? last.goldEarned - first.goldEarned : null;
+        const territoryRate = territory === null ? null : territory / minutes;
+        const incomeRate = income === null ? null : income / minutes;
+        return { ...phase, sampleCount: phaseSamples.length, minutes, territory, income, attackCount: attackActions.length, targetPressureWins, territoryRate, incomeRate };
+      })
+    : [];
+  const comparablePhaseRates = (key:'territoryRate'|'incomeRate') => phasePerformance
+    .map(phase => phase[key]).filter((value): value is number => value !== null && Number.isFinite(value));
+  const phaseMedian = (values:number[]) => {
+    const sorted = [...values].sort((a,b)=>a-b);
+    return sorted.length ? sorted[Math.floor(sorted.length/2)] : null;
+  };
+  const territoryMedian = phaseMedian(comparablePhaseRates('territoryRate'));
+  const incomeMedian = phaseMedian(comparablePhaseRates('incomeRate'));
+  const ratedPhases = phasePerformance.map(phase => {
+    const enoughData = phase.sampleCount >= 3 && phase.minutes >= 0.5;
+    const strengths = [
+      phase.territoryRate !== null && territoryMedian !== null && phase.territoryRate > territoryMedian,
+      phase.incomeRate !== null && incomeMedian !== null && phase.incomeRate > incomeMedian,
+      phase.targetPressureWins > 0,
+    ].filter(Boolean).length;
+    return { ...phase, rating: !enoughData ? 'Datenlage begrenzt' : strengths >= 2 ? 'Starke Phase' : strengths === 1 ? 'Solide Phase' : 'Hier liegt Potenzial' };
+  });
   const firstEngineSample = selectedPlayerSamples[0] ?? null;
   const lastEngineSample = selectedPlayerSamples[selectedPlayerSamples.length - 1] ?? null;
   const incomeSummary = firstEngineSample && lastEngineSample ? {
@@ -438,6 +483,17 @@ function CoachPanel({apiResult,preferredPlayerPublicId,decodedActions,simulation
         <div><span className="coach-report-label">{leadEngineReview ? 'WICHTIGSTER ENGINE-PRÜFPUNKT' : 'COACH-ERGEBNIS'}</span><b>{coachLeadTitle}</b><p>{coachLeadSummary}</p></div>
         <div><span className="coach-report-label">TRAININGSFOKUS FÜR DIE NÄCHSTE PARTIE</span><b>{leadEngineReview ? 'Genau dieses Muster gezielt verbessern' : simulationResult?.status === 'verified' ? 'Eine überprüfbare Lektion wählen' : 'Zustände zuerst verifizieren'}</b><p>{coachTrainingFocus}</p></div>
       </div>
+      {simulationResult?.status === 'verified' && <section className="coach-phase-profile">
+        <div className="coach-engine-findings-heading"><span className="coach-report-label">DEIN SPIELERPROFIL</span><b>Wie liefen deine drei Spielphasen?</b><p>Die Einstufung vergleicht deine Phasen innerhalb dieser Partie. Sie ist kein weltweiter Ranglistenwert.</p></div>
+        <div className="coach-phase-grid">{ratedPhases.map(phase=><article className="coach-phase-card" key={phase.id}>
+          <span>{phase.label}</span><b>{phase.rating}</b><small>{phase.description}</small>
+          <div><strong>{phase.territory === null ? '–' : `${phase.territory > 0 ? '+' : ''}${fmt(phase.territory)}`}</strong><small>Gebiete netto</small></div>
+          <div><strong>{phase.income === null ? '–' : `+${fmt(phase.income)}`}</strong><small>Gold verdient</small></div>
+          <div><strong>{phase.attackCount}</strong><small>Angriffsbefehle</small></div>
+          <p>{phase.targetPressureWins > 0 ? `${phase.targetPressureWins} Ziele verloren innerhalb von 30 Sekunden nach einem deiner Befehle Gebiet.` : 'Kein entsprechender Ziel-Gebietsverlust im erfassten 30-Sekunden-Fenster.'}</p>
+        </article>)}</div>
+        <small className="coach-phase-note">Grenze: Gebietszuwachs und Bruttoeinnahmen sind messbar, aber nicht automatisch Spielqualität. Ein Angriff kann länger als 30 Sekunden unterwegs sein. Bei zu wenigen Stichproben wird keine Phasenbewertung vergeben.</small>
+      </section>}
       {selectedPlayerReview && <details className="coach-mobile-details">
         <summary>Spielstand und Folgen der Befehle anzeigen</summary>
         <section className="coach-state-evidence">

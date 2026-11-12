@@ -445,11 +445,47 @@ function CoachPanel({apiResult,preferredPlayerPublicId,decodedActions,simulation
         </article>
       </div>
     </section>}
-    {playerScoped && (analysisTab==='economy'||analysisTab==='military') && <><div className="overview-heading section-spaced"><div><span className="eyebrow">03 / DEINE SPIELWEISE</span><h3>Wirtschaft, Militär und Marine</h3></div><span className="unit-note">Beobachtete Aktionen – keine Erfolgswertung</span></div>
-    <div className="domain-grid">
-      {analysisTab==='economy' && <article id="match-economy" className="domain-panel"><div className="domain-icon economy-icon"><Building2 size={20}/></div><div className="domain-title"><div><span className="eyebrow">WIRTSCHAFT & BAU</span><h4>Deine Bauentscheidungen</h4></div><b>{fmt(totalBuilds)}</b></div><p className="domain-subtitle">Protokollierte Bauaktionen nach Typ</p><div className="build-list">{builds.slice().sort((a,b)=>b.count-a.count).map(x=><div className="build-row" key={x.unit}><span>{x.unit}</span><div className="build-track"><div style={{width:`${x.count/Math.max(1,...builds.map(v=>v.count))*100}%`}}/></div><b>{fmt(x.count)}</b></div>)}</div><div className="domain-footnote"><b>Was sich daraus lesen lässt</b><p>Welche Gebäude du wie oft gebaut hast. Ob die Reihenfolge wirtschaftlich optimal war, lässt sich ohne Gold- und Produktionsstände nicht beurteilen.</p></div></article>}
-      {analysisTab==='military' && <article id="match-military" className="domain-panel"><div className="domain-icon military-icon"><ShieldCheck size={20}/></div><div className="domain-title"><div><span className="eyebrow">MILITÄR & MARINE</span><h4>Deine offensiven Aktionen</h4></div><b>{fmt(scopedAnalysis.attackCount+scopedAnalysis.boatCount)}</b></div><div className="military-split"><div><span>Angriffsbefehle</span><b>{fmt(scopedAnalysis.attackCount)}</b><small>{firstAttack ? `Erster Angriff ${clock(firstAttack.seconds)}` : 'Kein Angriff protokolliert'}</small></div><div><span>Bootstransporte</span><b>{fmt(scopedAnalysis.boatCount)}</b><small>Protokollierte Transportaktionen</small></div></div><div className="military-builds"><div><span>Warships gebaut</span><b>{fmt(warships)}</b></div><div><span>Ports gebaut</span><b>{fmt(ports)}</b></div></div><div className="domain-footnote"><b>Was noch nicht bewertet werden kann</b><p>Treffer, eroberte Gebiete, Verluste und Kosten. Dafür müssen Karten- und Truppenstände vor und nach jeder Aktion rekonstruiert werden.</p></div></article>}
-    </div></>}
+    {playerScoped && analysisTab==='economy' && <section id="match-economy" className="domain-workspace">
+      <div className="overview-heading section-spaced"><div><span className="eyebrow">03 / WIRTSCHAFT</span><h3>Gold, Einkommen und Ausbau</h3><p>Original-Engine-Werte aus den erfassten Spielzuständen. Einnahmen sind brutto; Ausgaben und Gewinn werden hier nicht gleichgesetzt.</p></div></div>
+      {incomeSummary ? <>
+        <div className="overview-kpis">
+          <article className="overview-kpi"><span>Gold-Einnahmen brutto</span><b>{fmt(incomeSummary.gross)}</b><small>Im erfassten Zeitraum</small></article>
+          <article className="overview-kpi"><span>Handel</span><b>{fmt(incomeSummary.trade)}</b><small>Erfasste Handelseinnahmen</small></article>
+          <article className="overview-kpi"><span>Züge</span><b>{fmt(incomeSummary.train)}</b><small>Erfasste Zugeinnahmen</small></article>
+          <article className="overview-kpi"><span>Piraterie</span><b>{fmt(incomeSummary.piracy)}</b><small>Erfasste Piraterieeinnahmen</small></article>
+        </div>
+        <div className="domain-footnote"><b>Goldbestand im selben Zeitraum</b><p>{fmt(firstEngineSample?.gold ?? 0)} → {fmt(lastEngineSample?.gold ?? 0)} ({incomeSummary.goldChange>0?'+':''}{fmt(incomeSummary.goldChange)}). Das ist die Veränderung des Bestands, nicht der Nettogewinn aus einzelnen Aktionen.</p></div>
+      </> : <p className="empty-note">Für den ausgewählten Spieler liegen noch keine Engine-Stichproben zum Einkommen vor. Prüfe die Engine-Kompatibilität oder lade eine Partie mit passenden Prüfpunkten.</p>}
+      <div className="overview-columns section-spaced">
+        <article className="overview-panel"><div className="overview-panel-title"><div><span className="eyebrow">BAUAKTIONEN</span><h4>Was du gebaut hast</h4></div><b>{fmt(totalBuilds)}</b></div>
+          {builds.length ? <div className="build-list">{builds.slice().sort((a,b)=>b.count-a.count).map(x=><div className="build-row" key={x.unit}><span>{x.unit}</span><div className="build-track"><div style={{width:`${x.count/Math.max(1,...builds.map(v=>v.count))*100}%`}}/></div><b>{fmt(x.count)}</b></div>)}</div> : <p className="empty-note">Keine Bauaktionen dekodiert.</p>}
+        </article>
+        <article className="overview-panel"><div className="overview-panel-title"><div><span className="eyebrow">GEBÄUDE- UND EINHEITENBESTAND</span><h4>Erster und letzter erfasster Stand</h4></div></div>
+          {unitStockRows.length ? <div className="coach-stock-list">{unitStockRows.map(unit=><div className="coach-stock-row" key={unit.key}><span>{unit.label}</span><b>{fmt(unit.start)} <i>→</i> {fmt(unit.end)}</b></div>)}</div> : <p className="empty-note">Keine erfassten Gebäudestände in diesem Replay.</p>}
+          <p className="chart-footnote">Das ist der Bestand in den ersten und letzten gespeicherten Stichproben – keine Produktions- oder Effizienzbewertung.</p>
+        </article>
+      </div>
+    </section>}
+    {playerScoped && analysisTab==='military' && <section id="match-military" className="domain-workspace">
+      <div className="overview-heading section-spaced"><div><span className="eyebrow">04 / MILITÄR</span><h3>Angriffe und Frontdruck</h3><p>Beobachtete Angriffsbefehle, gleichzeitig aktive Angriffe und bereits bedrängte Ziele.</p></div></div>
+      <div className="overview-kpis">
+        <article className="overview-kpi"><span>Eigene Angriffsbefehle</span><b>{fmt(scopedAnalysis.attackCount)}</b><small>{firstAttack ? `Erster Befehl bei ${clock(firstAttack.seconds)}` : 'Keine Angriffe protokolliert'}</small></article>
+        <article className="overview-kpi"><span>Max. aktive Angriffe</span><b>{fmt(maxOutgoingAttacks)}</b><small>Höchster erfasster Stichprobenwert</small></article>
+        <article className="overview-kpi"><span>Max. gebundene Angriffstruppen</span><b>{fmt(maxCommittedAttackTroops)}</b><small>In aktiven Angriffen beobachtet</small></article>
+        <article className="overview-kpi"><span>Max. eingehende Angriffe</span><b>{fmt(maxIncomingAttacks)}</b><small>Gleichzeitig beobachteter Druck</small></article>
+      </div>
+      <div className="overview-columns section-spaced">
+        <article className="overview-panel"><div className="overview-panel-title"><div><span className="eyebrow">ZIELAUSWAHL</span><h4>Gegner bereits unter Druck</h4></div><b>{fmt(attackedPressuredTargets.length)}</b></div>
+          <p className="domain-subtitle">Von {fmt(targetedAttackReviews.length)} zugeordneten Spielerangriffen trafen {fmt(attackedPressuredTargets.length)} auf ein Ziel, auf das bereits andere Spieler angriffen.</p>
+          {attackedPressuredTargets.length ? <div className="coach-stock-list">{attackedPressuredTargets.slice(0,8).map(item=><div className="coach-stock-row" key={item.frame}><span>{item.targetName} · {clock(item.seconds)}</span><b>{fmt(item.targetPressureBefore?.otherAttackerCount ?? 0)} andere Spieler</b></div>)}</div> : <p className="empty-note">Kein bereits von anderen Spielern angegriffenes Ziel in den erfassten Befehlen gefunden.</p>}
+        </article>
+        <article className="overview-panel"><div className="overview-panel-title"><div><span className="eyebrow">+30-SEKUNDEN-FENSTER</span><h4>Beobachtete Gebietsveränderung</h4></div></div>
+          <div className="military-split"><div><span>Angriffe mit eigenem Gebietszuwachs</span><b>{fmt(ownAttackTerritoryGainCount)}</b><small>Beobachtete positive Änderung</small></div><div><span>Ziele mit Gebietsverlust</span><b>{fmt(targetTerritoryLossCount)}</b><small>Beobachtete negative Zieländerung</small></div></div>
+          <p className="chart-footnote">Gleichzeitige Spielereignisse können diese Veränderung mitverursacht haben. Das ist keine Trefferquote oder kausale Erfolgswertung.</p>
+        </article>
+      </div>
+      <div className="domain-footnote"><b>Einordnung</b><p>Einheiten in aktiven Angriffen sind gebundene Truppen, nicht dein gesamter verfügbarer Truppenbestand. Anzahl und Stärke der Angriffe belegen keine räumliche Front, Reichweite oder Siegchance.</p></div>
+    </section>}
     {playerScoped && analysisTab==='timeline' && <section id="match-timeline" className="overview-panel timeline-panel"><div className="overview-panel-title"><div><span className="eyebrow">04 / WICHTIGE ZEITPUNKTE</span><h4>Hier lohnt sich ein genauer Blick</h4><p>Automatisch aus dem Protokoll ermittelte Ereignisse – keine nachträgliche Bewertung.</p></div><button className="secondary compact-button" onClick={onOpenReplay}>Im Replay ansehen <ArrowRight size={15}/></button></div>
       {timeline.length ? <div className="event-timeline">{timeline.map((event,i)=><div className="event-item" key={`${event.kind}-${i}`}><div className="event-marker"><span>{String(i+1).padStart(2,'0')}</span></div><div className="event-copy"><div><b>{event.title}</b><span className="event-type">{event.kind}</span></div><p>{event.detail}</p></div><time>{clock(event.time)}</time></div>)}</div> : <p className="empty-note">Keine markierbaren Ereignisse im Protokoll gefunden.</p>}
     </section>}

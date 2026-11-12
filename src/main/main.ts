@@ -223,6 +223,10 @@ ipcMain.handle('player:load', async (event, rawId: string) => {
 });
 
 ipcMain.handle('map:resolve-preview', async (_event, mapName: string) => ({ imageUrl: await resolveOfficialMapPreview(String(mapName ?? '')) }));
+ipcMain.handle('replay:get-engine-assets', async () => {
+  const { manifest, cdnBase } = await getOpenFrontAssetManifest();
+  return { manifest, cdnBase };
+});
 
 function createWindow() {
   const win = new BrowserWindow({ width: 1440, height: 940, minWidth: 1050, minHeight: 700,
@@ -321,6 +325,9 @@ ipcMain.handle('replay:import-url', async (_event, input: string) => {
   const savePath: string | null = null;
   const summary = summarizeRecord(record, gameId, byteLength, savePath);
   summary.previewUrl = await resolveOfficialMapPreview(summary.mapName);
+  // The renderer needs the untouched GameRecord for the pinned upstream processor.
+  // It is never persisted or uploaded by the Coach.
+  summary.record = record;
   return summary;
 });
 

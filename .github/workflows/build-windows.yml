@@ -6,19 +6,10 @@ on:
     branches: [main]
   push:
     branches: [main]
-    paths:
-      - "src/**"
-      - "engine-build/**"
-      - "vendor/OpenFrontIO"
-      - ".gitmodules"
-      - "package.json"
-      - "package-lock.json"
-      - "vite.config.ts"
-      - "tsconfig*.json"
-      - ".github/workflows/build-windows.yml"
+    tags: ["v*"]
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
   group: openfront-replay-coach-windows-${{ github.ref }}
@@ -66,3 +57,13 @@ jobs:
             release/*.zip
           if-no-files-found: error
           retention-days: 14
+
+      - name: Publish GitHub Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          name: OpenFront Replay Coach ${{ github.ref_name }}
+          generate_release_notes: true
+          files: |
+            release/*.exe
+            release/*.zip

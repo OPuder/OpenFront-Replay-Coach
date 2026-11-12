@@ -61,8 +61,8 @@ export async function simulateReplay(
       if (settled) return;
       settled = true; cleanup(); reject(error);
     };
-    workers.processor.addEventListener("error", e => fail(new Error(e.message || "Replay-Prozessor fehlgeschlagen")));
-    workers.engine.addEventListener("error", e => fail(new Error(e.message || "OpenFront-Engine fehlgeschlagen")));
+    workers.processor.addEventListener("error", (e: ErrorEvent) => fail(new Error(e.message || "Replay-Prozessor fehlgeschlagen")));
+    workers.engine.addEventListener("error", (e: ErrorEvent) => fail(new Error(e.message || "OpenFront-Engine fehlgeschlagen")));
     workers.processor.addEventListener("message", async (event: MessageEvent<ProcessorResponse>) => {
       if (settled) return;
       const msg = event.data;

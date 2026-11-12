@@ -483,7 +483,7 @@ export function buildEngineCoachInsights(
   // Keep the first occurrence of each decision pattern to avoid flooding the report.
   const decisionKinds = new Set<string>();
   for (const item of decisionFindings) {
-    const kind = item.id.replace(/-\\d+$/, "");
+    const kind = item.id.replace(/-\d+$/, "");
     if (decisionKinds.has(kind)) continue;
     decisionKinds.add(kind);
     findings.push(item);

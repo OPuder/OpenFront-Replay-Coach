@@ -432,7 +432,7 @@ function CoachPanel({apiResult,preferredPlayerPublicId,decodedActions,simulation
       phase.incomeRate !== null && incomeMedian !== null && phase.incomeRate > incomeMedian ? 'Einkommen über Phasenschnitt' : '',
       phase.targetPressureWins > 0 ? 'Zielgebiet messbar geschwächt' : '',
     ].filter(Boolean);
-    return { ...phase, strengthLabels, rating: !enoughData ? 'Datenlage begrenzt' : strengths >= 2 ? 'Starke Phase' : strengths === 1 ? 'Solide Phase' : 'Hier liegt Potenzial' };
+    return { ...phase, strengthLabels, rating: !enoughData ? 'Zu wenig Daten' : strengths >= 2 ? 'Über deinem Partiedurchschnitt' : strengths === 1 ? 'Gemischtes Bild' : 'Unter deinem Partiedurchschnitt' };
   });
   type SavedPhaseGame = { key:string; gameId:string; playedAt:string; playerName:string; mapName:string; phases:Array<{id:string;label:string;rating:string;territory:number|null;income:number|null;territoryRate:number|null;incomeRate:number|null}> };
   const historyStorageKey = 'openfront-replay-coach.phase-history.v1';
@@ -542,18 +542,18 @@ function CoachPanel({apiResult,preferredPlayerPublicId,decodedActions,simulation
         </div>}
         </section>
       </details>}
-      {simulationResult?.status === 'verified' && <section className="coach-phase-profile">
-        <div className="coach-engine-findings-heading"><span className="coach-report-label">DEIN SPIELERPROFIL</span><b>Wie liefen deine drei Spielphasen?</b><p>Die Einstufung vergleicht deine Phasen innerhalb dieser Partie. Sie ist kein weltweiter Ranglistenwert.</p></div>
+      {simulationResult?.status === 'verified' && <details className="coach-phase-profile coach-phase-details"><summary>Early-, Mid- und Late-Game-Vergleich öffnen</summary><div className="coach-phase-inner">
+        <div className="coach-engine-findings-heading"><span className="coach-report-label">PHASENVERGLEICH</span><b>Wie hat sich dein Spielverlauf verändert?</b><p>Die Raten machen unterschiedlich lange Phasen vergleichbar. Die Einordnung ist nur ein Vergleich deiner drei Phasen in dieser Partie, keine allgemeine Spielstärke.</p></div>
         <div className="coach-phase-grid">{ratedPhases.map(phase=><article className="coach-phase-card" key={phase.id}>
           <span>{phase.label}</span><b>{phase.rating}</b><small>{phase.description}</small>
-          <div><strong>{phase.territory === null ? '–' : `${phase.territory > 0 ? '+' : ''}${fmt(phase.territory)}`}</strong><small>Gebiete netto</small></div>
-          <div><strong>{phase.income === null ? '–' : `+${fmt(phase.income)}`}</strong><small>Gold verdient</small></div>
+          <div><strong>{phase.territoryRate === null ? '–' : `${phase.territoryRate.toFixed(1).replace('.',',')}`}</strong><small>Gebiete pro Minute</small></div>
+          <div><strong>{phase.incomeRate === null ? '–' : `${Math.round(phase.incomeRate).toLocaleString('de-DE')}`}</strong><small>Brutto-Gold pro Minute</small></div>
           <div><strong>{phase.attackCount}</strong><small>Angriffsbefehle</small></div>
           {phase.strengthLabels.length > 0 && <p><strong>Das lief gut:</strong> {phase.strengthLabels.join(' · ')}</p>}
           <p>{phase.targetPressureWins > 0 ? `${phase.targetPressureWins} Ziele verloren innerhalb von 30 Sekunden nach einem deiner Befehle Gebiet.` : 'Kein entsprechender Ziel-Gebietsverlust im erfassten 30-Sekunden-Fenster.'}</p>
         </article>)}</div>
-        <small className="coach-phase-note">Grenze: Gebietszuwachs und Bruttoeinnahmen sind messbar, aber nicht automatisch Spielqualität. Bei zu wenigen Stichproben wird keine Phasenbewertung vergeben.</small>
-      </section>}
+        <small className="coach-phase-note">Die Phasenwerte zeigen beobachtete Raten, keine Ursache oder optimale Strategie. Ein Gebietszuwachs nach einem Angriff beweist nicht, dass dieser Befehl ihn verursacht hat. Bei zu wenigen Stichproben wird keine Einstufung vorgenommen.</small>
+      </div></details>}
       {simulationResult?.status === 'verified' && <section className="coach-history-profile">
         <div className="coach-engine-findings-heading"><span className="coach-report-label">DEINE ENTWICKLUNG ÜBER MEHRERE PARTIEN</span><b>Langfristiges Spielerprofil</b><p>Jede hash-verifizierte Partie wird lokal auf diesem Gerät gespeichert. Die Übersicht zeigt deine letzten Partien für diesen Spielernamen.</p></div>
         {recentPhaseHistory.length < 2 ? <p className="coach-history-empty">{recentPhaseHistory.length === 1 ? 'Eine Partie gespeichert. Nach der nächsten verifizierten Partie werden erste Vergleiche sichtbar.' : 'Noch keine gespeicherten Partien. Analysiere weitere Replays mit erfolgreicher Hash-Prüfung.'}</p> : <>

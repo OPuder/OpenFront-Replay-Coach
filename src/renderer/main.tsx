@@ -186,7 +186,7 @@ function App() {
             <div className="card-heading"><div><span className="studio-eyebrow">SIMULATIONSERGEBNIS</span><h3>{simulationResult.status === 'verified' ? 'Replay erfolgreich reproduziert' : 'Replay nicht vollständig verifiziert'}</h3></div>{simulationResult.status === 'verified' ? <CheckCircle2 size={20}/> : <AlertTriangle size={20}/>}</div>
             <p>{simulationResult.message}</p>
             <div className="details-grid">
-              <Detail label="Simulierte Turns" value={fmt(simulationResult.totalTicks)}/>
+              <Detail label="Rekonstruierte Frames" value={fmt(simulationResult.totalTicks)}/>
               <Detail label="Bestätigte Hashes" value={fmt(simulationResult.verifiedHashes)}/>
               <Detail label="Zustands-Samples" value={fmt(simulationResult.samples.length)}/>
             </div>

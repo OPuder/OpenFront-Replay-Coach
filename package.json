@@ -1,6 +1,6 @@
 {
   "name": "openfront-replay-coach",
-  "version": "2.1.2",
+  "version": "2.1.3",
   "private": true,
   "description": "OpenFront Replay Coach — korrekte Versionsanzeige und transparenter Engine-Status",
   "main": "dist-electron/main.js",
@@ -54,6 +54,12 @@
       {
         "from": "vendor/OpenFrontIO/LICENSE",
         "to": "licenses/OpenFrontIO-AGPL-3.0.txt"
+      }
+    ],
+    "extraFiles": [
+      {
+        "from": "START_HERE.txt",
+        "to": "START_HERE.txt"
       }
     ]
   },

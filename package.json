@@ -1,6 +1,6 @@
 {
   "name": "openfront-replay-coach",
-  "version": "2.2.2",
+  "version": "2.2.3",
   "private": true,
   "description": "OpenFront Replay Coach — korrekte Versionsanzeige und transparenter Engine-Status",
   "main": "dist-electron/main.js",

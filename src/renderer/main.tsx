@@ -385,28 +385,32 @@ function CoachPanel({apiResult,preferredPlayerPublicId,decodedActions,simulation
   const coachTrainingFocus = simulationResult?.status === 'verified'
     ? leadEngineReview?.nextStep ?? 'Prüfe die Zeitachse auf Phasen mit eingehendem Druck, Gebietsverlust und gebundenen Truppen. Wähle daraus genau ein Verhalten, das du in der nächsten Partie bewusst trainierst.'
     : 'Zuerst das Replay mit der passenden Original-Engine reproduzieren und die gespeicherten Hashes abgleichen. Erst danach eine taktische Lektion ableiten.';
+  const replayDurationTicks = simulationResult?.totalTicks ?? 0;
   const selectedPlayerSamples = (simulationResult?.samples ?? [])
-    .map(sample => sample.players.find(player => player.clientID === selectedClientId))
-    .filter((sample): sample is NonNullable<typeof sample> => sample !== undefined);
+    .map(sample => ({ tick: sample.tick, player: sample.players.find(player => player.clientID === selectedClientId) }))
+    .filter((entry): entry is { tick: number; player: NonNullable<typeof entry.player> } => entry.player !== undefined);
+  const lastAliveSample = [...selectedPlayerSamples].reverse().find(entry => entry.player.alive);
+  const firstEliminatedSample = selectedPlayerSamples.find(entry => !entry.player.alive);
+  const playerEliminatedAtSeconds = firstEliminatedSample ? firstEliminatedSample.tick / 10 : null;
+  const lastAliveTick = lastAliveSample?.tick ?? replayDurationTicks;
   const phaseDefinitions = [
     { id: 'early', label: 'Early Game', from: 0, to: 0.3, description: 'Start, Expansion und erste Wirtschaft' },
     { id: 'mid', label: 'Mid Game', from: 0.3, to: 0.7, description: 'Fronten, Zielwahl und Ressourcensteuerung' },
     { id: 'late', label: 'Late Game', from: 0.7, to: 1, description: 'Endphase, Druck und Abschluss' },
   ];
-  const replayDurationTicks = simulationResult?.totalTicks ?? 0;
   const phasePerformance = simulationResult?.status === 'verified' && replayDurationTicks > 0
     ? phaseDefinitions.map(phase => {
         const fromTick = replayDurationTicks * phase.from;
         const toTick = replayDurationTicks * phase.to;
-        const phaseSamples = (simulationResult.samples ?? []).filter(sample => sample.tick >= fromTick && sample.tick <= toTick)
+        const phaseSamples = (simulationResult.samples ?? []).filter(sample => sample.tick >= fromTick && sample.tick <= toTick && sample.tick <= lastAliveTick)
           .flatMap(sample => {
             const player = sample.players.find(player => player.clientID === selectedClientId);
-            return player ? [{ tick: sample.tick, player }] : [];
+            return player?.alive ? [{ tick: sample.tick, player }] : [];
           });
         const first = phaseSamples[0]?.player;
         const last = phaseSamples[phaseSamples.length - 1]?.player;
         const minutes = Math.max(0.1, (phaseSamples[phaseSamples.length - 1]?.tick ?? 0) - (phaseSamples[0]?.tick ?? 0)) / 600;
-        const phaseActions = selectedActionReviews.filter(action => action.seconds * 10 >= fromTick && action.seconds * 10 <= toTick);
+        const phaseActions = selectedActionReviews.filter(action => action.seconds * 10 >= fromTick && action.seconds * 10 <= toTick && action.seconds * 10 <= lastAliveTick);
         const attackActions = phaseActions.filter(action => action.type === 'attack');
         const targetPressureWins = attackActions.filter(action => action.targetDelta30s && action.targetDelta30s.tiles < 0).length;
         const territory = first && last ? last.tiles - first.tiles : null;
@@ -458,8 +462,8 @@ function CoachPanel({apiResult,preferredPlayerPublicId,decodedActions,simulation
     const ir = values.map(item=>item.incomeRate).filter((v):v is number=>v!==null);
     return {...phase,games:values.length,strong,averageTerritory:tr.reduce((a,b)=>a+b,0)/Math.max(1,tr.length),averageIncome:ir.reduce((a,b)=>a+b,0)/Math.max(1,ir.length)};
   });
-  const firstEngineSample = selectedPlayerSamples[0] ?? null;
-  const lastEngineSample = selectedPlayerSamples[selectedPlayerSamples.length - 1] ?? null;
+  const firstEngineSample = selectedPlayerSamples[0]?.player ?? null;
+  const lastEngineSample = lastAliveSample?.player ?? null;
   const incomeSummary = firstEngineSample && lastEngineSample ? {
     gross: lastEngineSample.goldEarned - firstEngineSample.goldEarned,
     trade: lastEngineSample.tradeGold - firstEngineSample.tradeGold,
@@ -484,9 +488,9 @@ function CoachPanel({apiResult,preferredPlayerPublicId,decodedActions,simulation
     start: firstEngineSample.unitCounts[unit.key] ?? 0,
     end: lastEngineSample.unitCounts[unit.key] ?? 0,
   })).filter(unit => unit.start > 0 || unit.end > 0) : [];
-  const maxOutgoingAttacks = Math.max(0, ...selectedPlayerSamples.map(sample => sample.outgoingAttacks));
-  const maxIncomingAttacks = Math.max(0, ...selectedPlayerSamples.map(sample => sample.incomingAttacks));
-  const maxCommittedAttackTroops = Math.max(0, ...selectedPlayerSamples.map(sample => sample.attackTroops));
+  const maxOutgoingAttacks = Math.max(0, ...selectedPlayerSamples.map(sample => sample.player.outgoingAttacks));
+  const maxIncomingAttacks = Math.max(0, ...selectedPlayerSamples.map(sample => sample.player.incomingAttacks));
+  const maxCommittedAttackTroops = Math.max(0, ...selectedPlayerSamples.map(sample => sample.player.attackTroops));
   const targetedAttackReviews = selectedActionReviews.filter(action => action.type === "attack" && action.targetName);
   const attackedPressuredTargets = targetedAttackReviews.filter(action => (action.targetPressureBefore?.otherAttackerCount ?? 0) > 0);
   const targetTerritoryLossCount = targetedAttackReviews.filter(action => (action.targetDelta30s?.tiles ?? 0) < 0).length;

@@ -342,10 +342,30 @@ jobs:
       - name: Build and validate the browser/PWA version
         run: |
           npm run build:web
+          npm run test:phase-survival
           node scripts/smoke-test-web.mjs
 
+      - name: Package the browser/PWA edition
+        env:
+          RELEASE_VERSION: ${{ needs.prepare-release.outputs.version }}
+        run: |
+          set -Eeuo pipefail
+          mkdir -p release/web-pwa
+          cp -a dist/. release/web-pwa/
+          cp -a functions release/web-pwa/functions
+          cp wrangler.toml release/web-pwa/wrangler.toml
+          (cd release/web-pwa && zip -qr "../OpenFront-Replay-Coach-${RELEASE_VERSION}-Web-PWA.zip" .)
+
+      - name: Upload browser/PWA release files
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-web
+          path: release/*-Web-PWA.zip
+          if-no-files-found: error
+          retention-days: 14
+
   publish-release:
-    name: Publish all three editions as one GitHub Release
+    name: Publish all four editions as one GitHub Release
     needs: [prepare-release, validate-engine, build-windows, build-android, build-web]
     if: needs.prepare-release.outputs.skip != 'true'
     runs-on: ubuntu-latest
@@ -364,7 +384,13 @@ jobs:
           name: release-android
           path: release
 
-      - name: Create one release with all three downloads
+      - name: Download browser/PWA ZIP
+        uses: actions/download-artifact@v4
+        with:
+          name: release-web
+          path: release
+
+      - name: Create one release with all four downloads
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ needs.prepare-release.outputs.tag }}
@@ -373,11 +399,12 @@ jobs:
           generate_release_notes: true
           fail_on_unmatched_files: true
           body: |
-            ## Drei Ausgaben – eine Version
+            ## Vier Ausgaben – eine Version
 
             - **Windows Installer:** normal installieren, Desktop-Verknüpfung inklusive.
             - **Windows Portable:** ZIP entpacken und direkt starten, keine Installation.
             - **Android APK:** auf das Handy herunterladen und einmalig installieren. Keine Cloudflare-Anmeldung und kein Play-Store-Konto erforderlich.
+            - **Web/PWA:** ZIP mit `dist/`, Cloudflare-Pages-`functions/` und `wrangler.toml`. Für funktionierende API- und Asset-Proxys auf Cloudflare Pages oder einer kompatiblen Pages-Functions-Umgebung bereitstellen. Dieser Workflow hostet die Web-App nicht automatisch; dafür ist ein eigener Hosting-Zugang nötig.
 
             Die Android-App verwendet Androids native HTTP-Schnittstelle für die öffentlichen OpenFront-Daten und Engine-Assets. Die Daten müssen dafür nicht über einen Cloudflare-Proxy geleitet werden.
 

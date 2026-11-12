@@ -1,4 +1,4 @@
-OPENFRONT REPLAY COACH 2.2.3
+OPENFRONT REPLAY COACH 2.2.4
 
 START OHNE ENTWICKLER-TOOLS
 - INSTALLER: "OpenFront Replay Coach Setup.exe" starten und installieren.
@@ -17,6 +17,12 @@ WICHTIG
 - Die Coaching-Hinweise sind taktische Indikatoren und keine Garantie, dass ein anderer Zug gewonnen hätte.
 - Dein Replay wird lokal verarbeitet. Der Coach lädt es nicht zu einem eigenen Server hoch.
 - Für Kartendaten und die OpenFront-Engine ist eine Verbindung zu den offiziellen OpenFront-Servern erforderlich.
+
+BROWSER / ANDROID
+- Die Browser-Version läuft unter einer HTTPS-Adresse direkt in Chrome, Edge oder Safari.
+- Auf Android kann sie ohne APK direkt im Browser geöffnet werden. Optional lässt sie sich über „Zum Startbildschirm hinzufügen“ wie eine App starten.
+- Für die lokale Replay-Datei nutzt die Web-Version die Dateiauswahl des Browsers. Die Datei wird nicht auf einen Coach-Server hochgeladen.
+- Die Web-Version benötigt für OpenFront-API und Engine-Assets eine erreichbare Verbindung. Offline verfügbar ist nur die App-Oberfläche, nicht die OpenFront-Engine oder der API-Zugriff.
 
 QUELLCODE UND LIZENZ
 Der Coach bindet den OpenFront-Replay-Prozessor und die Engine aus dem fest gepinnten OpenFrontIO-Quellstand ein:

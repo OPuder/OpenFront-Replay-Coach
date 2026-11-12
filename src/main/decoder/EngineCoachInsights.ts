@@ -255,12 +255,12 @@ export function buildEngineCoachInsights(
       id: "targeted-attack-outcomes",
       kind: targetTerritoryLoss.length > 0 || targetNoLongerAlive.length > 0 ? "review" : "observation",
       title: "Was bei deinen Angriffszielen tatsächlich geschah",
-      summary: `Bei ${targetTerritoryLoss.length} von ${targetedAttacks.length} erfassten Spielerangriffen sank das Gebiet des Ziels innerhalb von 30 Sekunden; bei ${ownTerritoryGain.length} stieg zugleich dein eigener Gebietsbestand. ${targetNoLongerAlive.length} Ziele waren am Ende des Fensters nicht mehr am Leben, ${attackStillActive.length} Angriffe liefen noch und ${retreating.length} davon waren im Rückzug.`,
+      summary: `Innerhalb von 30 Sekunden sank das Gebiet bei ${targetTerritoryLoss.length} Zielen und stieg bei ${targetTerritoryGain.length}; dein eigener Gebietsbestand stieg bei ${ownTerritoryGain.length} Angriffen. ${targetNoLongerAlive.length} Ziele waren am Ende des Fensters ausgeschieden, ${attackStillActive.length} Angriffe liefen noch und ${retreating.length} davon waren im Rückzug.`,
       evidence: targetedAttacks.slice(0, 6).map(action => {
         const targetDelta = action.targetDelta30s!;
         const ownDelta = action.delta30s;
         const active = action.activeAttack30s;
-        return `${clock(action.seconds)} → ${action.targetName ?? action.targetId}: Zielgebiet ${targetDelta.tiles > 0 ? "+" : ""}${targetDelta.tiles.toLocaleString("de-DE")}, eigenes Gebiet ${ownDelta ? `${ownDelta.tiles > 0 ? "+" : ""}${ownDelta.tiles.toLocaleString("de-DE")}` : "n/v"}, ${active?.count ? `${active.count} aktiv${active.retreatingCount ? ` / ${active.retreatingCount} Rückzug` : ""}` : "kein aktiver Angriff im Frame"}`;
+        return `${clock(action.seconds)} → ${action.targetName ?? action.targetId}: Zielgebiet ${targetDelta.tiles > 0 ? "+" : ""}${targetDelta.tiles.toLocaleString("de-DE")}, Zieltruppen ${targetDelta.troops > 0 ? "+" : ""}${targetDelta.troops.toLocaleString("de-DE")}, Zielgold ${targetDelta.gold > 0 ? "+" : ""}${targetDelta.gold.toLocaleString("de-DE")}, eigenes Gebiet ${ownDelta ? `${ownDelta.tiles > 0 ? "+" : ""}${ownDelta.tiles.toLocaleString("de-DE")}` : "n/v"}, eigene Truppen ${ownDelta ? `${ownDelta.troops > 0 ? "+" : ""}${ownDelta.troops.toLocaleString("de-DE")}` : "n/v"}, ${action.targetAliveAt30s === false ? "Ziel ausgeschieden" : action.targetAliveAt30s === true ? "Ziel lebt" : "Zielstatus n/v"}, ${active?.count ? `${active.count} aktiv${active.retreatingCount ? ` / ${active.retreatingCount} Rückzug` : ""}` : "kein aktiver Angriff im Frame"}`;
       }).join(" · "),
       nextStep: "Prüfe die markierten Ziele im Replay. Achte darauf, ob das Ziel wirklich Gebiete verlor, ob du selbst Land gewonnen hast und ob der Angriff nach 30 Sekunden noch lief oder zurückgezogen wurde.",
       seconds: targetTerritoryLoss[0]?.seconds ?? targetedAttacks[0]?.seconds ?? null,

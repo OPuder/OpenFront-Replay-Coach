@@ -1,11 +1,11 @@
 import { getOpenFrontBootstrap, jsonError } from "../../_lib/openfront.js";
 
 export async function onRequest({ request }) {
-  if (request.method !== "GET" && request.method !== "HEAD") {
+  if (request.method !== "GET") {
     return jsonError("Only GET is supported.", 405);
   }
   try {
-    const result = await getOpenFrontBootstrap(new URL(request.url).origin);
+    const result = await getOpenFrontBootstrap();
     const manifest = Object.fromEntries(Object.entries(result.manifest).map(([key, value]) => {
       let path = String(value ?? "");
       if (/^https?:\/\//i.test(path)) path = new URL(path).pathname;

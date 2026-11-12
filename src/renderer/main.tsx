@@ -576,7 +576,7 @@ function CoachPanel({apiResult,preferredPlayerPublicId,decodedActions,simulation
           </div>
         </details>)}</div>}
         {supportingEngineInsights.length > 0 && <details className="coach-secondary-details">
-          <summary>Weitere Zustandsbeobachtungen anzeigen ({supportingEngineInsights.length})</summary>
+          <summary>Weitere Engine-Hinweise anzeigen ({supportingEngineInsights.length})</summary>
           <div className="coach-engine-findings-list">{supportingEngineInsights.map(item=><details className={`coach-engine-finding-details finding-${item.kind}`} key={item.id}>
             <summary><b>{item.title}</b>{item.seconds !== null && <time>{clock(item.seconds)}</time>}<small>{item.summary}</small></summary>
             <div className="coach-engine-finding-content"><small><strong>Beleg:</strong> {item.evidence}</small><p>{item.nextStep}</p><small>{item.limitation}</small></div>

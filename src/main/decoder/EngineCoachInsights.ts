@@ -50,7 +50,7 @@ export function buildEngineCoachInsights(
   const tileChange = review.tilesGained;
   findings.push({
     id: "territory-trajectory",
-    kind: tileChange > 0 ? "strength" : tileChange < 0 ? "review" : "observation",
+    kind: "observation",
     title: tileChange > 0 ? "Gebiet netto ausgebaut" : tileChange < 0 ? "Gebietsbestand netto gesunken" : "Gebietsbestand unverändert",
     summary: `Dein Gebietsbestand hat sich über die Partie um ${tileChange > 0 ? "+" : ""}${tileChange.toLocaleString("de-DE")} Felder verändert.`,
     evidence: `Start: ${review.startTiles.toLocaleString("de-DE")} Felder · Ende: ${review.endTiles.toLocaleString("de-DE")} Felder`,

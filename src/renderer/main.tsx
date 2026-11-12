@@ -291,7 +291,7 @@ function TrainingFocus({apiResult,decodedActions}:{apiResult:ApiImportSummary;de
   </div>;
 }
 function selectedPlayerName(players:Array<{name:string;clientID:string|null}>,id:string){return players.find(p=>p.clientID===id)?.name ?? '';}
-function CoachPanel({apiResult,preferredPlayerPublicId,decodedActions,onExport,onSaveReplayJson,onOpenReplay,fmt}:{preferredPlayerPublicId:string|null;apiResult:ApiImportSummary;decodedActions:DecodedAction[];onExport:()=>void;onSaveReplayJson:()=>void;onOpenReplay:()=>void;fmt:(n:number)=>string}) {
+function CoachPanel({apiResult,preferredPlayerPublicId,decodedActions,simulationResult,simulationProgress,onExport,onSaveReplayJson,onOpenReplay,fmt}:{preferredPlayerPublicId:string|null;apiResult:ApiImportSummary;decodedActions:DecodedAction[];simulationResult:ReplaySimulationResult|null;simulationProgress:{percent:number;phase:string}|null;onExport:()=>void;onSaveReplayJson:()=>void;onOpenReplay:()=>void;fmt:(n:number)=>string}) {
   const [analysisTab,setAnalysisTab]=useState<'overview'|'decisions'|'economy'|'military'|'timeline'>('decisions');
   const players=apiResult.playerStats ?? [];
   const preferredPlayer=players.find(p=>preferredPlayerPublicId && p.publicID===preferredPlayerPublicId);
@@ -299,6 +299,8 @@ function CoachPanel({apiResult,preferredPlayerPublicId,decodedActions,onExport,o
   const [selectedClientId,setSelectedClientId]=useState<string>(()=>initialPlayer?.clientID ?? '');
   React.useEffect(()=>{const match=players.find(p=>preferredPlayerPublicId && p.publicID===preferredPlayerPublicId) ?? (players.length===1 ? players[0] : null);setSelectedClientId(match?.clientID ?? '');},[apiResult.gameId,preferredPlayerPublicId]);
   const playerScoped=Boolean(selectedClientId);
+  const selectedPlayerReview = simulationResult?.playerReview?.clientID === selectedClientId ? simulationResult.playerReview : null;
+  const selectedActionReviews = selectedPlayerReview ? (simulationResult?.actionReviews ?? []) : [];
   const playerActions=playerScoped ? decodedActions.filter(a=>a.clientId===selectedClientId) : [];
   const scopedAnalysis=analyzeActions(playerActions,apiResult.durationSeconds ?? 0);
   const details=analyzeDetailedActions(playerActions,apiResult.durationSeconds ?? 0);
@@ -326,13 +328,33 @@ function CoachPanel({apiResult,preferredPlayerPublicId,decodedActions,onExport,o
     {playerScoped && analysisTab==='decisions' && <section id="match-coach-insights" className="coach-insights-section">
       <div className="overview-heading"><div><span className="eyebrow">01 / DEIN SPIELBERICHT</span><h3>Die wichtigsten Erkenntnisse</h3><p>Nach Priorität sortiert. Jede Karte nennt deine Entscheidung, einen konkreten nächsten Prüf- bzw. Handlungsansatz und die Beleggrenze. Zeiten sind Befehlszeitpunkte; Bootszeit = Startbefehl, nicht Ankunft.</p></div></div>
       <div className="coach-engine-status" role="status">
-        <div className="coach-engine-status-title"><b>Engine-Simulation noch nicht aktiv</b><span>Aktionsprotokoll-Modus</span></div>
-        <p>Diese Partie wurde in dieser Version noch nicht mit der OpenFront-Engine rekonstruiert. Deshalb kann der Coach aktuell weder tatsächliche Gebietsgewinne noch Truppenverluste, Goldverläufe oder alternative Spielzüge verlässlich bewerten. Die angezeigten Zeitpunkte sind protokollierte Befehlszeitpunkte.</p>
+        <div className="coach-engine-status-title">
+          <b>{simulationProgress ? 'Original-Engine simuliert die Partie' : simulationResult?.status === 'verified' ? 'Replay erfolgreich hash-verifiziert' : simulationResult ? 'Spielzustände rekonstruiert – nicht vollständig verifiziert' : apiResult.engineCompatibility?.engineVersionCompatible ? 'Engine kompatibel – Simulation noch nicht gestartet' : 'Keine kompatible Engine-Simulation verfügbar'}</b>
+          <span>{simulationProgress ? `${simulationProgress.percent}% · läuft` : simulationResult?.status === 'verified' ? `${fmt(simulationResult.verifiedHashes)} Hashes bestanden` : simulationResult ? 'Status: unverifiziert' : 'Datenbasis prüfen'}</span>
+        </div>
+        <p>{simulationProgress ? simulationProgress.phase : simulationResult?.message ?? apiResult.engineCompatibility?.message ?? 'Die Replay-Engine konnte für diesen Datensatz nicht sicher zugeordnet werden.'}</p>
       </div>
       <div className="coach-report-summary">
         <div><span className="coach-report-label">ZUERST ANSEHEN</span><b>{insights.find(x=>x.kind==='review')?.title ?? 'Keine kritischen Prüfpunkte erkannt'}</b><p>{insights.find(x=>x.kind==='review')?.nextStep ?? 'Für diese Partie liegen keine ausreichend belegten Hinweise vor.'}</p></div>
         <div><span className="coach-report-label">WAS SICHER FESTSTEHT</span><b>{fmt(scopedAnalysis.totalActions)} protokollierte Aktionen</b><p>{fmt(scopedAnalysis.attackCount)} Angriffe · {fmt(scopedAnalysis.boatCount)} Bootsaktionen · {fmt(totalBuilds)} Bauaktionen</p></div>
       </div>
+      {selectedPlayerReview && <section className="coach-state-evidence">
+        <div className="coach-state-evidence-heading"><div><span className="coach-report-label">ORIGINAL-ENGINE · SPIELERZUSTAND</span><b>{selectedPlayerReview.playerName}: Start bis Spielende</b></div><span className="coach-state-source">Rekonstruierte Frames</span></div>
+        <div className="coach-state-grid">
+          <div><small>Gebiete</small><b>{fmt(selectedPlayerReview.startTiles)} → {fmt(selectedPlayerReview.endTiles)}</b><span>{selectedPlayerReview.tilesGained >= 0 ? '+' : ''}{fmt(selectedPlayerReview.tilesGained)} Felder netto</span></div>
+          <div><small>Goldbestand</small><b>{fmt(selectedPlayerReview.startGold)} → {fmt(selectedPlayerReview.endGold)}</b><span>Start- und Endbestand</span></div>
+          <div><small>Truppenbestand</small><b>{fmt(selectedPlayerReview.startTroops)} → {fmt(selectedPlayerReview.endTroops)}</b><span>Start- und Endbestand</span></div>
+          <div><small>Gebietszuwachs-Pause</small><b>{fmt(selectedPlayerReview.longestNoExpansionSeconds)} s</b><span>Längster beobachteter Zeitraum ohne Zuwachs</span></div>
+        </div>
+        <p className="coach-state-caveat">Das sind beobachtete Zustandsunterschiede, keine automatische Bewertung einzelner Befehle. Die längste Pause wird aus gespeicherten Stichproben abgeleitet; sie ist kein Beweis für Leerlauf.</p>
+        {selectedActionReviews.some(item=>item.delta) && <div className="coach-action-outcomes">
+          <b>Eigene Aktionen mit Zustandsvergleich</b>
+          <p>Die Werte zeigen den Zustand direkt vor und nach dem jeweiligen Aktions-Tick. Zeitgleiche Spielereignisse können ebenfalls zu Änderungen beitragen.</p>
+          <div>{selectedActionReviews.filter(item=>item.delta).slice(0,6).map(item=><div className="coach-action-outcome" key={`${item.turn}-${item.type}`}>
+            <time>{clock(item.seconds)}</time><b>{item.label}</b><span>Gebiet {item.delta!.tiles>0?'+':''}{fmt(item.delta!.tiles)} · Gold {item.delta!.gold>0?'+':''}{fmt(item.delta!.gold)} · Truppen {item.delta!.troops>0?'+':''}{fmt(item.delta!.troops)}</span>
+          </div>)}</div>
+        </div>}
+      </section>}
       <div className="coach-report-list">
         {[...insights].filter(x=>x.seconds!==null).sort((a,b)=>(b.priority??0)-(a.priority??0)).map((item,i)=><article className={`coach-report-row insight-${item.kind}`} key={item.id}>
           <div className="coach-report-time"><b>{clock(item.seconds??0)}</b><small>{item.kind==='strength'?'GUT GEMACHT':item.kind==='review'?'PRÜFEN':'BEOBACHTUNG'}</small></div>

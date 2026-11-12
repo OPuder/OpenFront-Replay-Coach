@@ -1,4 +1,28 @@
-import type { ReplayActionReview, ReplaySimulationResult } from "../../renderer/ReplaySimulation";
+interface EnginePlayerReview {
+  playerName: string;
+  clientID: string | null;
+  startTiles: number;
+  endTiles: number;
+  tilesGained: number;
+  startGold: number;
+  endGold: number;
+  startTroops: number;
+  endTroops: number;
+  outgoingAttackSamples: number;
+  longestNoExpansionSeconds: number;
+}
+
+interface EngineActionReview {
+  frame: number;
+  turn: number;
+  seconds: number;
+  type: string;
+  label: string;
+  details: string;
+  before: { tiles: number; gold: number; troops: number } | null;
+  after: { tiles: number; gold: number; troops: number } | null;
+  delta: { tiles: number; gold: number; troops: number } | null;
+}
 
 export type EngineCoachKind = "strength" | "review" | "observation";
 
@@ -19,8 +43,8 @@ export interface EngineCoachInsight {
  * counterfactual engine.
  */
 export function buildEngineCoachInsights(
-  review: NonNullable<ReplaySimulationResult["playerReview"]>,
-  actionReviews: ReplayActionReview[],
+  review: EnginePlayerReview,
+  actionReviews: EngineActionReview[],
 ): EngineCoachInsight[] {
   const findings: EngineCoachInsight[] = [];
   const tileChange = review.tilesGained;

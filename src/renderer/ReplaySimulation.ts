@@ -73,20 +73,27 @@ export async function simulateReplay(
   // sample can otherwise miss the state change that matters for coaching.
   const sampleFrames = new Set<number>();
   const cadence = Math.max(1, Math.floor(sampleEvery));
-  // ReplayProcessor pushes exactly one encoded frame per decompressed turn.
-  // turnNumber is a game-clock value and is NOT the ReplayReader frame index:
-  // compressed records can omit idle ticks, so map actions by their array index.
-  for (let frame = 0; frame < turns.length; frame += cadence) sampleFrames.add(frame);
+  // OpenFront decompresses sparse records by inserting empty turns for every
+  // omitted game tick. ReplayProcessor then emits one frame per decompressed
+  // turn, so frame index equals the original turnNumber (not array position).
+  const totalRecordedFrames = Math.max(
+    Number(record?.info?.num_turns ?? 0),
+    ...turns.map((turn: any) => Number(turn?.turnNumber ?? -1) + 1),
+    0,
+  );
+  for (let frame = 0; frame < totalRecordedFrames; frame += cadence) sampleFrames.add(frame);
   if (preferredClientId) {
-    turns.forEach((turn, frame) => {
-      if ((turn?.intents ?? []).some((intent: any) => String(intent?.clientID ?? "") === preferredClientId)) {
+    turns.forEach((turn: any) => {
+      const frame = Number(turn?.turnNumber);
+      if (Number.isInteger(frame) && frame >= 0 &&
+          (turn?.intents ?? []).some((intent: any) => String(intent?.clientID ?? "") === preferredClientId)) {
         sampleFrames.add(Math.max(0, frame - 1));
         sampleFrames.add(frame);
-        sampleFrames.add(Math.min(turns.length - 1, frame + 1));
+        sampleFrames.add(Math.min(totalRecordedFrames - 1, frame + 1));
       }
     });
   }
-  const orderedSampleFrames = [...sampleFrames].filter(frame => frame >= 0 && frame < turns.length).sort((a,b) => a-b);
+  const orderedSampleFrames = [...sampleFrames].filter(frame => frame >= 0 && frame < totalRecordedFrames).sort((a,b) => a-b);
   let nextSampleIndex = 0;
   let appendQueue = Promise.resolve();
 
@@ -147,7 +154,7 @@ export async function simulateReplay(
             samples.push({ tick: state.tick, frame, players, totalUnits: state.units.size, falloutTiles: state.falloutTiles });
             lastSampledFrame = frame;
           }
-          onProgress(Math.min(99, Math.round((reader.header.totalFrames / Math.max(1, record.turns?.length ?? reader.header.totalFrames)) * 100)), "Spielzustände werden aus Original-Frames rekonstruiert");
+          onProgress(Math.min(99, Math.round((reader.header.totalFrames / Math.max(1, totalRecordedFrames)) * 100)), "Spielzustände werden aus Original-Frames rekonstruiert");
           });
           appendQueue.catch(error => fail(error instanceof Error ? error : new Error(String(error))));
         } else if (msg.type === "done") {
@@ -212,7 +219,9 @@ export async function simulateReplay(
             longestNoExpansionSeconds: Math.round(longestNoExpansionTicks / 10)
           } : null;
           const sampleByFrame = new Map(samples.map(sample => [sample.frame, sample]));
-          const actionReviews: ReplayActionReview[] = target ? turns.flatMap((turn: any, frame: number) => {
+          const actionReviews: ReplayActionReview[] = target ? turns.flatMap((turn: any) => {
+            const frame = Number(turn?.turnNumber);
+            if (!Number.isInteger(frame) || frame < 0 || frame >= totalTicks) return [];
             return (turn?.intents ?? [])
               .filter((intent: any) => String(intent?.clientID ?? "") === String(target.clientID ?? preferredClientId ?? ""))
               .map((intent: any) => {

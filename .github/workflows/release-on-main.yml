@@ -231,6 +231,9 @@ jobs:
       - name: Build the shared renderer and original replay engine
         run: npm run build:web
 
+      - name: Smoke-test native Android configuration
+        run: node scripts/smoke-test-android-config.mjs
+
       - name: Generate the native Android project
         run: |
           npx cap add android

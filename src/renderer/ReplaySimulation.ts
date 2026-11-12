@@ -132,7 +132,7 @@ export async function simulateReplay(
               const outgoingAttacks = Array.isArray(p.outgoingAttacks) ? p.outgoingAttacks : [];
               const incomingAttacks = Array.isArray(p.incomingAttacks) ? p.incomingAttacks : [];
               return {
-                id, name: String(meta.displayName ?? meta.name ?? `Spieler ${id}`),
+                id, name: String(meta.displayName ?? meta.name ?? meta.username ?? `Spieler ${id}`),
                 clientID: meta.clientID == null ? null : String(meta.clientID),
                 alive: Boolean(p.isAlive), gold: Number(p.gold ?? 0), troops: Number(p.troops ?? 0),
                 tiles: Number(p.tilesOwned ?? 0), units: unitsByOwner.get(id) ?? 0,
@@ -147,7 +147,7 @@ export async function simulateReplay(
           cleanup();
           const staticPlayers = readerRef.current?.header.players ?? [];
           const target = staticPlayers.find((p: any) => preferredClientId && p.clientID === preferredClientId)
-            ?? staticPlayers.find((p: any) => /oligenole/i.test(String(p.displayName ?? p.name ?? "")));
+            ?? staticPlayers.find((p: any) => /oligenole/i.test(String(p.displayName ?? p.name ?? p.username ?? "")));
           const playerObservations = target ? samples.map(sample => ({tick:sample.tick, player:sample.players.find(p => p.id === target.smallID)})).filter((x): x is {tick:number;player:NonNullable<typeof x.player>} => Boolean(x.player)) : [];
           const playerSeries = playerObservations.map(x => x.player);
           let longestNoExpansionTicks = 0;
@@ -163,7 +163,7 @@ export async function simulateReplay(
           const lastPlayer = playerSeries[playerSeries.length - 1];
           if (playerObservations.length > 1) longestNoExpansionTicks = Math.max(longestNoExpansionTicks, playerObservations[playerObservations.length-1].tick - flatStartTick);
           const playerReview = firstPlayer && lastPlayer ? {
-            playerName: target.displayName ?? target.name ?? "Dein Spieler",
+            playerName: target.displayName ?? target.name ?? target.username ?? "Dein Spieler",
             startTiles: firstPlayer.tiles,
             endTiles: lastPlayer.tiles,
             tilesGained: lastPlayer.tiles - firstPlayer.tiles,

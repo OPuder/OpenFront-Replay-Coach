@@ -373,7 +373,9 @@ function CoachPanel({apiResult,preferredPlayerPublicId,decodedActions,simulation
     ? buildEngineCoachInsights(selectedPlayerReview, selectedActionReviews, simulationResult.samples)
     : [];
   const orderedEngineInsights = [...engineInsights].sort((a,b)=>({high:0,medium:1,low:2}[a.priority ?? 'low']-({high:0,medium:1,low:2}[b.priority ?? 'low'])));
-  const leadEngineReview = orderedEngineInsights.find(item=>item.kind==='review' && (item.priority==='high' || item.priority==='medium')) ?? null;
+  const primaryEngineReviews = orderedEngineInsights.filter(item=>item.kind==='review' && (item.priority==='high' || item.priority==='medium')).slice(0,3);
+  const supportingEngineInsights = orderedEngineInsights.filter(item=>!primaryEngineReviews.some(primary=>primary.id===item.id));
+  const leadEngineReview = primaryEngineReviews[0] ?? null;
   const coachLeadTitle = simulationResult?.status === 'verified'
     ? leadEngineReview?.title ?? 'Keine einzelne Fehlentscheidung belastbar belegt'
     : 'Noch keine belastbare Coaching-Aussage';
@@ -430,7 +432,7 @@ function CoachPanel({apiResult,preferredPlayerPublicId,decodedActions,simulation
       phase.incomeRate !== null && incomeMedian !== null && phase.incomeRate > incomeMedian ? 'Einkommen über Phasenschnitt' : '',
       phase.targetPressureWins > 0 ? 'Zielgebiet messbar geschwächt' : '',
     ].filter(Boolean);
-    return { ...phase, strengthLabels, rating: !enoughData ? 'Datenlage begrenzt' : strengths >= 2 ? 'Starke Phase' : strengths === 1 ? 'Solide Phase' : 'Hier liegt Potenzial' };
+    return { ...phase, strengthLabels, rating: !enoughData ? 'Zu wenig Daten' : strengths >= 2 ? 'Über deinem Partiedurchschnitt' : strengths === 1 ? 'Gemischtes Bild' : 'Unter deinem Partiedurchschnitt' };
   });
   type SavedPhaseGame = { key:string; gameId:string; playedAt:string; playerName:string; mapName:string; phases:Array<{id:string;label:string;rating:string;territory:number|null;income:number|null;territoryRate:number|null;incomeRate:number|null}> };
   const historyStorageKey = 'openfront-replay-coach.phase-history.v1';
@@ -506,10 +508,17 @@ function CoachPanel({apiResult,preferredPlayerPublicId,decodedActions,simulation
     {playerScoped && analysisTab==='coach' && <section id="match-coach-insights" className="coach-insights-section">
       <div className="overview-heading"><div><span className="eyebrow">01 / DEIN SPIELBERICHT</span><h3>Die wichtigsten Erkenntnisse</h3><p>Nach Priorität sortiert. Jede Karte nennt deine Entscheidung, einen konkreten nächsten Prüf- bzw. Handlungsansatz und die Beleggrenze. Zeiten sind Befehlszeitpunkte; Bootszeit = Startbefehl, nicht Ankunft.</p></div></div>
 
-      <div className="coach-report-summary">
-        <div><span className="coach-report-label">{leadEngineReview ? 'WICHTIGSTER ENGINE-PRÜFPUNKT' : 'COACH-ERGEBNIS'}</span><b>{coachLeadTitle}</b><p>{coachLeadSummary}</p></div>
-        <div><span className="coach-report-label">TRAININGSFOKUS FÜR DIE NÄCHSTE PARTIE</span><b>{leadEngineReview ? 'Genau dieses Muster gezielt verbessern' : simulationResult?.status === 'verified' ? 'Eine überprüfbare Lektion wählen' : 'Zustände zuerst verifizieren'}</b><p>{coachTrainingFocus}</p></div>
-      </div>
+      <section className="coach-lead-card">
+        <div className="coach-lead-top"><span>{leadEngineReview ? 'DEIN WICHTIGSTER LERNMOMENT' : 'COACH-STATUS'}</span>{leadEngineReview?.seconds !== null && leadEngineReview?.seconds !== undefined && <time>{clock(leadEngineReview.seconds)}</time>}</div>
+        <h3>{coachLeadTitle}</h3>
+        <p className="coach-lead-summary">{coachLeadSummary}</p>
+        {leadEngineReview?.decision && <div className="coach-lead-decision"><span>DEINE ENTSCHEIDUNG</span><b>{leadEngineReview.decision}</b></div>}
+        <div className="coach-lead-grid">
+          <div><span>WAS DIE DATEN ZEIGEN</span><p>{leadEngineReview?.evidence ?? 'Die Replay-Daten reichen noch nicht für eine persönliche taktische Diagnose.'}</p></div>
+          <div><span>WAS DU ANDERS TESTEN KANNST</span><p>{leadEngineReview?.alternative ?? coachTrainingFocus}</p></div>
+        </div>
+        <div className="coach-lead-training"><span>DEIN TRAININGSAUFTRAG FÜR DIE NÄCHSTE PARTIE</span><p>{leadEngineReview?.nextStep ?? coachTrainingFocus}</p></div>
+      </section>
       {selectedPlayerReview && <details className="coach-mobile-details">
         <summary>Spielstand und Folgen der Befehle anzeigen</summary>
         <section className="coach-state-evidence">
@@ -533,18 +542,18 @@ function CoachPanel({apiResult,preferredPlayerPublicId,decodedActions,simulation
         </div>}
         </section>
       </details>}
-      {simulationResult?.status === 'verified' && <section className="coach-phase-profile">
-        <div className="coach-engine-findings-heading"><span className="coach-report-label">DEIN SPIELERPROFIL</span><b>Wie liefen deine drei Spielphasen?</b><p>Die Einstufung vergleicht deine Phasen innerhalb dieser Partie. Sie ist kein weltweiter Ranglistenwert.</p></div>
+      {simulationResult?.status === 'verified' && <details className="coach-phase-profile coach-phase-details"><summary>Early-, Mid- und Late-Game-Vergleich öffnen</summary><div className="coach-phase-inner">
+        <div className="coach-engine-findings-heading"><span className="coach-report-label">PHASENVERGLEICH</span><b>Wie hat sich dein Spielverlauf verändert?</b><p>Die Raten machen unterschiedlich lange Phasen vergleichbar. Die Einordnung ist nur ein Vergleich deiner drei Phasen in dieser Partie, keine allgemeine Spielstärke.</p></div>
         <div className="coach-phase-grid">{ratedPhases.map(phase=><article className="coach-phase-card" key={phase.id}>
           <span>{phase.label}</span><b>{phase.rating}</b><small>{phase.description}</small>
-          <div><strong>{phase.territory === null ? '–' : `${phase.territory > 0 ? '+' : ''}${fmt(phase.territory)}`}</strong><small>Gebiete netto</small></div>
-          <div><strong>{phase.income === null ? '–' : `+${fmt(phase.income)}`}</strong><small>Gold verdient</small></div>
+          <div><strong>{phase.territoryRate === null ? '–' : `${phase.territoryRate.toFixed(1).replace('.',',')}`}</strong><small>Gebiete pro Minute</small></div>
+          <div><strong>{phase.incomeRate === null ? '–' : `${Math.round(phase.incomeRate).toLocaleString('de-DE')}`}</strong><small>Brutto-Gold pro Minute</small></div>
           <div><strong>{phase.attackCount}</strong><small>Angriffsbefehle</small></div>
           {phase.strengthLabels.length > 0 && <p><strong>Das lief gut:</strong> {phase.strengthLabels.join(' · ')}</p>}
           <p>{phase.targetPressureWins > 0 ? `${phase.targetPressureWins} Ziele verloren innerhalb von 30 Sekunden nach einem deiner Befehle Gebiet.` : 'Kein entsprechender Ziel-Gebietsverlust im erfassten 30-Sekunden-Fenster.'}</p>
         </article>)}</div>
-        <small className="coach-phase-note">Grenze: Gebietszuwachs und Bruttoeinnahmen sind messbar, aber nicht automatisch Spielqualität. Bei zu wenigen Stichproben wird keine Phasenbewertung vergeben.</small>
-      </section>}
+        <small className="coach-phase-note">Die Phasenwerte zeigen beobachtete Raten, keine Ursache oder optimale Strategie. Ein Gebietszuwachs nach einem Angriff beweist nicht, dass dieser Befehl ihn verursacht hat. Bei zu wenigen Stichproben wird keine Einstufung vorgenommen.</small>
+      </div></details>}
       {simulationResult?.status === 'verified' && <section className="coach-history-profile">
         <div className="coach-engine-findings-heading"><span className="coach-report-label">DEINE ENTWICKLUNG ÜBER MEHRERE PARTIEN</span><b>Langfristiges Spielerprofil</b><p>Jede hash-verifizierte Partie wird lokal auf diesem Gerät gespeichert. Die Übersicht zeigt deine letzten Partien für diesen Spielernamen.</p></div>
         {recentPhaseHistory.length < 2 ? <p className="coach-history-empty">{recentPhaseHistory.length === 1 ? 'Eine Partie gespeichert. Nach der nächsten verifizierten Partie werden erste Vergleiche sichtbar.' : 'Noch keine gespeicherten Partien. Analysiere weitere Replays mit erfolgreicher Hash-Prüfung.'}</p> : <>
@@ -555,8 +564,8 @@ function CoachPanel({apiResult,preferredPlayerPublicId,decodedActions,simulation
         <small className="coach-phase-note">Es werden nur zusammengefasste Phasenwerte gespeichert, keine Replay-Dateien. Der Verlauf bleibt auf diesem Gerät und wird nicht automatisch zwischen Android, Windows und anderen Browsern synchronisiert.</small>
       </section>}
       {orderedEngineInsights.length > 0 && <section className="coach-engine-findings">
-        <div className="coach-engine-findings-heading"><span className="coach-report-label">ZUSTANDS-BASIERTE ERKENNTNISSE</span><b>Was die Original-Engine über deinen Spielverlauf zeigt</b><p>Diese Hinweise beruhen auf rekonstruierten Spielzuständen. Sie benennen überprüfbare Muster, keine automatisch bewiesenen Fehler oder hypothetischen Idealzüge.</p></div>
-        <div className="coach-engine-findings-list">{orderedEngineInsights.slice(0,5).map((item,index)=><details className={`coach-engine-finding-details finding-${item.kind}`} key={item.id} open={index===0}>
+        <div className="coach-engine-findings-heading"><span className="coach-report-label">ENTSCHEIDUNGEN STATT STATISTIK</span><b>Diese drei Situationen solltest du dir ansehen</b><p>Nur priorisierte, persönliche Prüfpunkte stehen hier. Allgemeine Messwerte bleiben bewusst im Hintergrund.</p></div>
+        {primaryEngineReviews.length === 0 ? <p className="coach-no-decision">In diesem Replay wurde kein ausreichend belegter konkreter Entscheidungsmoment erkannt. Das ist kein Beweis für perfektes Spiel – wir zeigen lieber keinen erfundenen Fehler.</p> : <div className="coach-engine-findings-list">{primaryEngineReviews.map((item,index)=><details className={`coach-engine-finding-details finding-${item.kind}`} key={item.id} open={index===0}>
           <summary><span>{item.priority === 'high' ? 'HOHE PRIORITÄT' : item.priority === 'medium' ? 'PRÜFPUNKT' : item.kind === 'strength' ? 'STÄRKE' : item.kind === 'review' ? 'PRÜFEN' : 'BEOBACHTUNG'}</span><b>{item.title}</b>{item.seconds !== null && <time>{clock(item.seconds)}</time>}<small>{item.summary}</small></summary>
           <div className="coach-engine-finding-content">
           {item.decision && <p><strong>Deine Entscheidung:</strong> {item.decision}</p>}
@@ -565,7 +574,14 @@ function CoachPanel({apiResult,preferredPlayerPublicId,decodedActions,simulation
           <p><strong>Nächster Trainingsschritt:</strong> {item.nextStep}</p>
           <small><strong>Sicherheit:</strong> {item.confidence === 'high' ? 'hoch' : item.confidence === 'medium' ? 'mittel' : 'nicht eingestuft'} · <strong>Grenze:</strong> {item.limitation}</small>
           </div>
-        </details>)}</div>
+        </details>)}</div>}
+        {supportingEngineInsights.length > 0 && <details className="coach-secondary-details">
+          <summary>Weitere Engine-Hinweise anzeigen ({supportingEngineInsights.length})</summary>
+          <div className="coach-engine-findings-list">{supportingEngineInsights.map(item=><details className={`coach-engine-finding-details finding-${item.kind}`} key={item.id}>
+            <summary><b>{item.title}</b>{item.seconds !== null && <time>{clock(item.seconds)}</time>}<small>{item.summary}</small></summary>
+            <div className="coach-engine-finding-content"><small><strong>Beleg:</strong> {item.evidence}</small><p>{item.nextStep}</p><small>{item.limitation}</small></div>
+          </details>)}</div>
+        </details>}
       </section>}
       <details className="coach-secondary-details">
         <summary>Weitere allgemeine Aktionshinweise anzeigen</summary>

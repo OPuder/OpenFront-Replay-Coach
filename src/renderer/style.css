@@ -468,3 +468,27 @@ body{background:radial-gradient(ellipse at 76% -10%,#17314b 0,transparent 42%),#
  .coach-phase-card>div>strong{font-size:16px}
  .coach-phase-card>div>small{text-align:right}
 }
+
+
+/* Coach-first dashboard: one clear recommendation, supporting evidence on demand. */
+.coach-lead-card{margin:14px 0;padding:20px;border:1px solid #365b78;border-left:4px solid #66b8d9;border-radius:14px;background:linear-gradient(145deg,#142b40,#0d1b2a);color:#eef6fc}
+.coach-lead-top{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:10px}
+.coach-lead-top>span,.coach-lead-decision>span,.coach-lead-grid>div>span,.coach-lead-training>span{font:800 9px 'Cascadia Code',monospace;letter-spacing:.1em;color:#8ec9e5}
+.coach-lead-top>time{font:700 13px 'Cascadia Code',monospace;color:#b7d9ec}
+.coach-lead-card>h3{margin:0;color:#f5f9fd;font-size:clamp(18px,2.5vw,25px);line-height:1.2}
+.coach-lead-summary{max-width:76ch;margin:9px 0 14px;color:#c5d7e5;font-size:13px;line-height:1.65}
+.coach-lead-decision{display:flex;flex-direction:column;gap:5px;padding:11px 13px;border:1px solid #35516a;border-radius:9px;background:#0b1927}
+.coach-lead-decision>b{color:#f1f6fb;font-size:13px}
+.coach-lead-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:10px}
+.coach-lead-grid>div{min-width:0;padding:12px;border:1px solid #2e485f;border-radius:9px;background:#102236}
+.coach-lead-grid>div>p,.coach-lead-training>p{margin:7px 0 0;color:#d0deea;font-size:12px;line-height:1.65;overflow-wrap:anywhere}
+.coach-lead-training{margin-top:10px;padding:13px;border:1px solid #42715f;border-radius:9px;background:#102a28}
+.coach-lead-training>span{color:#8ed8b4}
+.coach-lead-training>p{color:#d5eee3}
+.coach-no-decision{margin:0;padding:16px;border:1px dashed #456079;border-radius:10px;color:#c1d1df;font-size:12px;line-height:1.6}
+.coach-phase-details{padding:0}
+.coach-phase-details>summary{padding:14px 16px;cursor:pointer;list-style:none;color:#e6f1fa;font-size:13px;font-weight:800}
+.coach-phase-details>summary::-webkit-details-marker{display:none}
+.coach-phase-details[open]>summary{border-bottom:1px solid #304a63}
+.coach-phase-inner{padding:0 14px 14px}
+@media(max-width:700px){.coach-lead-card{padding:14px}.coach-lead-grid{grid-template-columns:1fr}.coach-lead-summary{font-size:12px}}

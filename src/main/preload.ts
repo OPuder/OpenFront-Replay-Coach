@@ -8,6 +8,7 @@ contextBridge.exposeInMainWorld('replayAPI', {
   },
   resolveMapPreview: (gameId: string) => ipcRenderer.invoke('map:resolve-preview', gameId),
   importReplayUrl: (url: string) => ipcRenderer.invoke('replay:import-url', url),
+  getReplayEngineAssets: () => ipcRenderer.invoke('replay:get-engine-assets'),
   saveReplayJson: (gameId: string) => ipcRenderer.invoke('replay:save-json', gameId),
   openOfficialReplay: (gameId: string) => ipcRenderer.invoke('replay:open-official', gameId)
 });

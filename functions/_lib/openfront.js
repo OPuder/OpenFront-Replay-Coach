@@ -1,5 +1,4 @@
 const OPENFRONT_HOME = "https://openfront.io/";
-const OPENFRONT_API = "https://api.openfront.io/public/";
 let bootstrapCache = null;
 let bootstrapFetchedAt = 0;
 
@@ -24,7 +23,7 @@ function readBalancedObject(source, start) {
   return null;
 }
 
-export async function getOpenFrontBootstrap(origin) {
+export async function getOpenFrontBootstrap() {
   if (bootstrapCache && Date.now() - bootstrapFetchedAt < 6 * 60 * 60 * 1000) {
     return { ...bootstrapCache, cdnBase: "/api/openfront/assets" };
   }

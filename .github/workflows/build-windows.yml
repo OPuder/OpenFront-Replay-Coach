@@ -46,11 +46,6 @@ jobs:
       - name: Build original OpenFront replay workers
         run: npm run build:engine
 
-      - name: Set up Coach Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: npm
 
       - name: Install Coach dependencies
         run: npm ci

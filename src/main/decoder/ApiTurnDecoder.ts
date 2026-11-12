@@ -17,6 +17,8 @@ const LABELS: Record<string, { category: DecodedAction["category"]; label: strin
   allianceRequest: { category: "Diplomatie", label: "Bündnis angefragt" },
   allianceExtension: { category: "Diplomatie", label: "Bündnis verlängert" },
   allianceReject: { category: "Diplomatie", label: "Bündnis abgelehnt" },
+  breakAlliance: { category: "Diplomatie", label: "Bündnis beendet" },
+  mark_disconnected: { category: "Spielsteuerung", label: "Verbindung getrennt" },
   toggle_pause: { category: "Spielsteuerung", label: "Spiel pausiert / fortgesetzt" },
 };
 

@@ -254,19 +254,17 @@ export async function simulateReplay(
               });
           }) : [];
           resolve({
-            // The current processor bridge reports a desync, but does not expose a
-            // per-turn list of computed-vs-recorded hashes. Presence of hashes is
-            // not verification. Stay explicitly unverified until that comparison
-            // is implemented and every checkpoint is matched.
-            status: "unverified",
+            // processGameRecord resolves only after every recorded hash has been
+            // compared. Its first mismatch rejects with ReplayDesyncError.
+            status: recordedHashCount > 0 ? "verified" : "unverified",
             totalTicks,
-            verifiedHashes: 0,
+            verifiedHashes: recordedHashCount,
             samples,
             playerReview,
             actionReviews,
             message: recordedHashCount > 0
-              ? `Simulation abgeschlossen. ${recordedHashCount.toLocaleString("de-DE")} gespeicherte Hash-Prüfpunkte gefunden, aber die Einzelvergleiche wurden von der Engine-Schnittstelle nicht zurückgegeben. Daher ist kein erfolgreicher Hash-Abgleich bestätigt.`
-              : "Simulation abgeschlossen, aber das Replay enthält keine Hash-Prüfpunkte. Die Rekonstruktion ist deshalb nicht hash-verifiziert."
+              ? `Simulation abgeschlossen: Alle ${recordedHashCount.toLocaleString("de-DE")} gespeicherten Hash-Prüfpunkte wurden von der Original-Engine erfolgreich abgeglichen.`
+              : "Simulation abgeschlossen, aber das Replay enthält keine Hash-Prüfpunkte. Die Spielzustände wurden rekonstruiert, sind jedoch nicht anhand gespeicherter Hashes verifiziert."
           });
         } else if (msg.type === "error") {
           const detail = msg.message ?? "Unbekannter Replay-Fehler";

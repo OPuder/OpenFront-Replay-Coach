@@ -26,7 +26,7 @@ globalThis.fetch = async (input, init = {}) => {
     });
   }
   if (url.startsWith("https://api.openfront.io/public/game/")) {
-    return Response.json({ gameId: "Game_123", info: {}, turns: [] });
+    return Response.json({ gameId: "Game_123", info: {}, turns: [] }, { headers: { "Content-Length": "48" } });
   }
   if (url.startsWith("https://api.openfront.io/public/player/Player_123/games")) {
     return Response.json({ results: [], nextCursor: null });
@@ -61,6 +61,7 @@ try {
   });
   assert.equal(gameResponse.status, 200);
   assert.equal((await gameResponse.json()).gameId, "Game_123");
+  assert.equal(gameResponse.headers.get("x-replay-content-length"), "48", "Replay byte size was not forwarded to the browser");
 
   const profileResponse = await publicModule.onRequest({
     request: new Request("https://pwa.example/api/openfront/public/player/Player_123"),

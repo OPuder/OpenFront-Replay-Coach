@@ -53,7 +53,25 @@ export async function simulateReplay(
   const readerRef: { current: InstanceType<typeof ReplayReader> | null } = { current: null };
   const samples: ReplayStateSample[] = [];
   let lastSampledFrame = -1;
-  const recordedHashCount = (record.turns ?? []).filter((turn: any) => turn.hash !== null && turn.hash !== undefined).length;
+  const turns: any[] = Array.isArray(record.turns) ? record.turns : [];
+  const recordedHashCount = turns.filter((turn: any) => turn.hash !== null && turn.hash !== undefined).length;
+  // Keep the regular overview cadence, but also capture the frames immediately
+  // before and after every action by the selected player. A 50-frame-only
+  // sample can otherwise miss the state change that matters for coaching.
+  const sampleFrames = new Set<number>();
+  const cadence = Math.max(1, Math.floor(sampleEvery));
+  for (let frame = 0; frame < turns.length; frame += cadence) sampleFrames.add(frame);
+  if (preferredClientId) {
+    turns.forEach((turn, frame) => {
+      if ((turn?.intents ?? []).some((intent: any) => String(intent?.clientID ?? "") === preferredClientId)) {
+        sampleFrames.add(Math.max(0, frame - 1));
+        sampleFrames.add(frame);
+        sampleFrames.add(Math.min(turns.length - 1, frame + 1));
+      }
+    });
+  }
+  const orderedSampleFrames = [...sampleFrames].filter(frame => frame >= 0 && frame < turns.length).sort((a,b) => a-b);
+  let nextSampleIndex = 0;
   let appendQueue = Promise.resolve();
 
   const completion = new Promise<ReplaySimulationResult>((resolve, reject) => {
@@ -83,7 +101,9 @@ export async function simulateReplay(
           const reader = readerRef.current;
           reader.append(msg.append);
           const target = reader.header.totalFrames - 1;
-          for (let frame = lastSampledFrame < 0 ? 0 : lastSampledFrame + sampleEvery; frame <= target; frame += sampleEvery) {
+          while (nextSampleIndex < orderedSampleFrames.length && orderedSampleFrames[nextSampleIndex] <= target) {
+            const frame = orderedSampleFrames[nextSampleIndex++];
+            if (frame <= lastSampledFrame) continue;
             await reader.load(reader.chunkOf(frame));
             const state = reader.seek(frame);
             const unitsByOwner = new Map<number, number>();

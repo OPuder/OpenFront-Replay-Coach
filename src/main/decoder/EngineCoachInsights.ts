@@ -44,6 +44,11 @@ interface EngineStateSample {
   players: EngineSamplePlayer[];
 }
 
+const clock = (seconds: number) => {
+  const total = Math.max(0, Math.floor(seconds));
+  return `${Math.floor(total / 60)}:${String(total % 60).padStart(2, "0")}`;
+};
+
 export type EngineCoachKind = "strength" | "review" | "observation";
 
 export interface EngineCoachInsight {
@@ -180,7 +185,7 @@ export function buildEngineCoachInsights(
         lastFrame = sample.frame;
         const startPlayer = windowStart.players.find((player) => player.clientID === review.clientID);
         const duration = sample.frame - windowStart.frame;
-        if (startPlayer && duration >= 200) {
+        if (startPlayer && duration >= 300) {
           reserveWindows.push({ from: windowStart.frame / 10, to: sample.frame / 10, seconds: duration / 10, ratio: strongestRival > 0 ? startPlayer.troops / strongestRival : 0 });
         }
       } else {

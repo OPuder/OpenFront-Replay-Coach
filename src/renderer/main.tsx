@@ -5,6 +5,7 @@ import './style.css';
 import { analyzeActions } from '../main/decoder/ActionAnalysis';
 import { analyzeDetailedActions } from '../main/decoder/DetailedAnalysis';
 import { buildCoachInsights } from '../main/decoder/CoachInsights';
+import { simulateReplay, type ReplaySimulationResult } from './ReplaySimulation';
 
 function App() {
   const [replay, setReplay] = useState<ReplaySummary | null>(null);
@@ -15,6 +16,8 @@ function App() {
     setMapRefreshKey(key => key + 1);
   }
   const [busy, setBusy] = useState(false);
+  const [simulationProgress, setSimulationProgress] = useState<{percent:number;phase:string}|null>(null);
+  const [simulationResult, setSimulationResult] = useState<ReplaySimulationResult|null>(null);
   const [error, setError] = useState('');
   const [saveNotice, setSaveNotice] = useState('');
   const [url, setUrl] = useState('https://openfront.io/w5/game/e9D8juQg');
@@ -67,7 +70,21 @@ function App() {
       setBusy(false);
     }
   }
-  async function importUrl() { setBusy(true); setError(''); setApiResult(null); try { const result = await window.replayAPI.importReplayUrl(url); if ('canceled' in result) { setError('Speichern abgebrochen. Die API-Antwort wurde nicht lokal abgelegt.'); } else { setApiResult(result); setDecodedActions(result.decodedActions ?? []); setReplay(null); setActivePage('analysis'); } } catch (e) { setError(e instanceof Error ? e.message : String(e)); } finally { setBusy(false); } }
+  async function runEngineReview(result: ApiImportSummary) {
+    setSimulationResult(null);
+    if (!result.record || !result.engineCompatibility?.engineVersionCompatible || !result.engineCompatibility.hashVerificationAvailable) return;
+    setSimulationProgress({percent:0,phase:'Original-Engine wird gestartet'});
+    try {
+      const assets = await window.replayAPI.getReplayEngineAssets();
+      const simulated = await simulateReplay(result.record, assets, (percent, phase) => setSimulationProgress({percent,phase}));
+      setSimulationResult(simulated);
+    } catch (e) {
+      setSimulationResult({status:'unverified',totalTicks:0,verifiedHashes:0,samples:[],message:e instanceof Error ? e.message : String(e)});
+    } finally {
+      setSimulationProgress(null);
+    }
+  }
+  async function importUrl() { setBusy(true); setError(''); setApiResult(null); setSimulationResult(null); try { const result = await window.replayAPI.importReplayUrl(url); if ('canceled' in result) { setError('Speichern abgebrochen. Die API-Antwort wurde nicht lokal abgelegt.'); } else { setApiResult(result); setDecodedActions(result.decodedActions ?? []); setReplay(null); setActivePage('analysis'); await runEngineReview(result); } } catch (e) { setError(e instanceof Error ? e.message : String(e)); } finally { setBusy(false); } }
   async function openReplay() { setBusy(true); setError(''); try { const result = await window.replayAPI.openReplay(); if (result) { setReplay(result); setDecodedActions(result.decodedActions ?? []); setApiResult(null); setActivePage('analysis'); } } catch (e) { setError(e instanceof Error ? e.message : String(e)); } finally { setBusy(false); } }
   async function saveReplayJson() {
     if (!apiResult?.gameId) {
@@ -155,6 +172,21 @@ function App() {
               <Detail label="Hash-Prüfpunkte" value={fmt(apiResult.engineCompatibility.recordedHashCount)}/>
             </div>
             <small>Wichtig: Versionsgleichheit und vorhandene Hashes sind noch kein bestandener Replay-Test. Erst der echte Engine-Lauf kann die Spielrekonstruktion bestätigen.</small>
+          </section>}
+          {simulationProgress && <section className="studio-card" style={{marginTop:16}}>
+            <div className="card-heading"><div><span className="studio-eyebrow">ECHTE ENGINE-SIMULATION</span><h3>{simulationProgress.phase}</h3></div><Activity size={20}/></div>
+            <div className="progress-track"><div className="progress-fill" style={{width:`${simulationProgress.percent}%`}}/></div>
+            <p>{simulationProgress.percent}% – Original-Engine läuft; Spielzustände werden aus den Replay-Frames rekonstruiert.</p>
+          </section>}
+          {simulationResult && <section className="studio-card" style={{marginTop:16}}>
+            <div className="card-heading"><div><span className="studio-eyebrow">SIMULATIONSERGEBNIS</span><h3>{simulationResult.status === 'verified' ? 'Replay erfolgreich reproduziert' : 'Replay nicht vollständig verifiziert'}</h3></div>{simulationResult.status === 'verified' ? <CheckCircle2 size={20}/> : <AlertTriangle size={20}/>}</div>
+            <p>{simulationResult.message}</p>
+            <div className="details-grid">
+              <Detail label="Simulierte Turns" value={fmt(simulationResult.totalTicks)}/>
+              <Detail label="Bestätigte Hashes" value={fmt(simulationResult.verifiedHashes)}/>
+              <Detail label="Zustands-Samples" value={fmt(simulationResult.samples.length)}/>
+            </div>
+            {simulationResult.samples.length > 0 && <p>Letzter erfasster Zustand: Tick {fmt(simulationResult.samples[simulationResult.samples.length-1].tick)} · {simulationResult.samples[simulationResult.samples.length-1].players.length} Spieler · {fmt(simulationResult.samples[simulationResult.samples.length-1].totalUnits)} Einheiten.</p>}
           </section>}
           {apiResult.actionAnalysis && <CoachPanel apiResult={apiResult} preferredPlayerPublicId={playerPage?.profile?.publicId ?? playerPage?.profile?.publicID ?? null} decodedActions={decodedActions} onExport={exportActionsCsv} onSaveReplayJson={()=>void saveReplayJson()} onOpenReplay={()=>window.replayAPI.openOfficialReplay(apiResult.gameId)} fmt={fmt}/>}
           <details className="technical-details studio-card"><summary>Technische Daten und vollständiges Aktionsprotokoll <ChevronDown size={16}/></summary><div className="details-grid">{Object.entries(apiResult.categoryCounts??{}).map(([k,v])=><Detail key={k} label={k} value={fmt(v)}/>)}</div><div className="action-list">{decodedActions.slice(0,200).map((a,i)=><div className="check-row" key={`${a.turn}-${i}`}><div><b>{a.label}</b><small>{clock(a.seconds)} · {a.details}</small></div><span className="pill blue">{a.category}</span></div>)}</div></details>

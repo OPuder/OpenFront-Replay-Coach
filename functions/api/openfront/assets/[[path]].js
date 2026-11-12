@@ -3,7 +3,7 @@ import { getOpenFrontBootstrap, getRoutePath, jsonError } from "../../../_lib/op
 const PREFIX = "/api/openfront/assets/";
 
 export async function onRequest({ request }) {
-  if (request.method !== "GET" && request.method !== "HEAD") {
+  if (request.method !== "GET") {
     return jsonError("Only static GET requests are supported.", 405);
   }
 
@@ -21,8 +21,7 @@ export async function onRequest({ request }) {
   }
 
   try {
-    const origin = new URL(request.url).origin;
-    const bootstrap = await getOpenFrontBootstrap(origin);
+    const bootstrap = await getOpenFrontBootstrap();
     const isListed = Object.values(bootstrap.manifest).some(value => {
       const text = String(value ?? "");
       if (!text) return false;

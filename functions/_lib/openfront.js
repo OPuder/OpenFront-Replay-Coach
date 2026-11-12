@@ -47,7 +47,7 @@ export async function getOpenFrontBootstrap(origin) {
   if (!json) throw new Error("OpenFront asset manifest is incomplete");
 
   const manifest = JSON.parse(json);
-  const cdnMatch = html.match(/cdnBase:\\s*("(?:\\\\.|[^"\\\\])*")/);
+  const cdnMatch = html.match(/cdnBase:\s*("(?:\\.|[^"\\])*")/);
   const cdnBase = cdnMatch ? JSON.parse(cdnMatch[1]) : "";
   bootstrapCache = { manifest, upstreamCdnBase: cdnBase };
   bootstrapFetchedAt = Date.now();

@@ -333,6 +333,27 @@ function TrainingFocus({apiResult,decodedActions}:{apiResult:ApiImportSummary;de
     <div className="training-focus-limit"><AlertTriangle size={15}/><span><b>Was der Coach aktuell sicher sagen kann:</b> Er erkennt protokollierte Befehle und Zeitpunkte. Ob eine Entscheidung gut oder schlecht war, lässt sich erst mit dem rekonstruierten Karten-, Gold-, Truppen- und Grenzstand beurteilen. Deshalb werden hier keine erfundenen „besseren Züge“ ausgegeben.</span></div>
   </div>;
 }
+function ReplayTrendChart({title,description,unit,points}:{title:string;description:string;unit:string;points:Array<{time:number;value:number}>}) {
+  const width=720,height=190,pad=28;
+  const values=points.map(point=>point.value);
+  const min=Math.min(0,...values),max=Math.max(1,...values);
+  const x=(index:number)=>pad+(points.length<=1?0:index/(points.length-1))*(width-pad*2);
+  const y=(value:number)=>height-pad-((value-min)/Math.max(1,max-min))*(height-pad*2);
+  const line=points.map((point,index)=>`${x(index)},${y(point.value)}`).join(' ');
+  const last=points[points.length-1];
+  return <article className="overview-panel replay-trend-card">
+    <div className="overview-panel-title"><div><span className="eyebrow">SPIELVERLAUF</span><h4>{title}</h4></div><b>{last?fmtChartValue(last.value):'–'} {unit}</b></div>
+    <p className="chart-description">{description}</p>
+    <div className="replay-trend-plot"><svg viewBox={`0 0 ${width} ${height}`} role="img" aria-label={`${title}: Verlauf über die Spielzeit`} preserveAspectRatio="none">
+      {[0,0.5,1].map(fraction=><line key={fraction} x1={pad} x2={width-pad} y1={pad+fraction*(height-pad*2)} y2={pad+fraction*(height-pad*2)} className="trend-gridline"/>)}
+      {points.length>1 && <polyline points={line} className="trend-line" vectorEffect="non-scaling-stroke"/>}
+      {last && <circle cx={x(points.length-1)} cy={y(last.value)} r="5" className="trend-point"/>}
+    </svg></div>
+    <div className="trend-axis"><span>{clock(points[0]?.time??0)}</span><span>{clock(last?.time??0)}</span></div>
+    <div className="trend-range"><span>Start: {fmtChartValue(points[0]?.value??0)} {unit}</span><span>Ende: {fmtChartValue(last?.value??0)} {unit}</span></div>
+  </article>;
+}
+function fmtChartValue(value:number){return Math.round(value).toLocaleString('de-DE');}
 function selectedPlayerName(players:Array<{name:string;clientID:string|null}>,id:string){return players.find(p=>p.clientID===id)?.name ?? '';}
 function CoachPanel({apiResult,preferredPlayerPublicId,decodedActions,simulationResult,simulationProgress,onPlayerSelect,onExport,onSaveReplayJson,onOpenReplay,fmt}:{preferredPlayerPublicId:string|null;apiResult:ApiImportSummary;decodedActions:DecodedAction[];simulationResult:ReplaySimulationResult|null;simulationProgress:{percent:number;phase:string}|null;onPlayerSelect:(clientId:string)=>void;onExport:()=>void;onSaveReplayJson:()=>void;onOpenReplay:()=>void;fmt:(n:number)=>string}) {
   const [analysisTab,setAnalysisTab]=useState<'coach'|'overview'|'economy'|'military'|'timeline'|'phases'|'technical'>('coach');
@@ -629,6 +650,10 @@ function CoachPanel({apiResult,preferredPlayerPublicId,decodedActions,simulation
         </div>
         <div className="domain-footnote"><b>Goldbestand im selben Zeitraum</b><p>{fmt(firstEngineSample?.gold ?? 0)} → {fmt(lastEngineSample?.gold ?? 0)} ({incomeSummary.goldChange>0?'+':''}{fmt(incomeSummary.goldChange)}). Das ist die Veränderung des Bestands, nicht der Nettogewinn aus einzelnen Aktionen.</p></div>
       </> : <p className="empty-note">Für den ausgewählten Spieler liegen noch keine Engine-Stichproben zum Einkommen vor. Prüfe die Engine-Kompatibilität oder lade eine Partie mit passenden Prüfpunkten.</p>}
+      {selectedPlayerSamples.length > 1 && <div className="analytics-chart-grid">
+        <ReplayTrendChart title="Goldbestand" description="So hat sich dein verfügbarer Goldbestand während deiner überlebten Spielzeit verändert." unit="Gold" points={selectedPlayerSamples.map(sample=>({time:sample.tick/10,value:sample.gold}))}/>
+        <ReplayTrendChart title="Gebietsentwicklung" description="Deine gehaltenen Felder im Verlauf. Nach dem Ausscheiden werden keine späteren Werte einbezogen." unit="Felder" points={selectedPlayerSamples.map(sample=>({time:sample.tick/10,value:sample.tiles}))}/>
+      </div>}
       <div className="overview-columns section-spaced">
         <article className="overview-panel"><div className="overview-panel-title"><div><span className="eyebrow">BAUAKTIONEN</span><h4>Was du gebaut hast</h4></div><b>{fmt(totalBuilds)}</b></div>
           {builds.length ? <div className="build-list">{builds.slice().sort((a,b)=>b.count-a.count).map(x=><div className="build-row" key={x.unit}><span>{x.unit}</span><div className="build-track"><div style={{width:`${x.count/Math.max(1,...builds.map(v=>v.count))*100}%`}}/></div><b>{fmt(x.count)}</b></div>)}</div> : <p className="empty-note">Keine Bauaktionen dekodiert.</p>}
@@ -647,6 +672,10 @@ function CoachPanel({apiResult,preferredPlayerPublicId,decodedActions,simulation
         <article className="overview-kpi"><span>Max. gebundene Angriffstruppen</span><b>{fmt(maxCommittedAttackTroops)}</b><small>In aktiven Angriffen beobachtet</small></article>
         <article className="overview-kpi"><span>Max. eingehende Angriffe</span><b>{fmt(maxIncomingAttacks)}</b><small>Gleichzeitig beobachteter Druck</small></article>
       </div>
+      {selectedPlayerSamples.length > 1 && <div className="analytics-chart-grid">
+        <ReplayTrendChart title="Truppenbestand" description="Gesamtbestand deiner Truppen laut Original-Engine-Stichproben." unit="Truppen" points={selectedPlayerSamples.map(sample=>({time:sample.tick/10,value:sample.troops}))}/>
+        <ReplayTrendChart title="Gleichzeitige Angriffe" description="Wie viele eigene Angriffe in den erfassten Spielständen gleichzeitig aktiv waren." unit="Angriffe" points={selectedPlayerSamples.map(sample=>({time:sample.tick/10,value:sample.outgoingAttacks}))}/>
+      </div>}
       <div className="overview-columns section-spaced">
         <article className="overview-panel"><div className="overview-panel-title"><div><span className="eyebrow">ZIELAUSWAHL</span><h4>Gegner bereits unter Druck</h4></div><b>{fmt(attackedPressuredTargets.length)}</b></div>
           <p className="domain-subtitle">Von {fmt(targetedAttackReviews.length)} zugeordneten Spielerangriffen trafen {fmt(attackedPressuredTargets.length)} auf ein Ziel, auf das bereits andere Spieler angriffen.</p>
@@ -658,6 +687,19 @@ function CoachPanel({apiResult,preferredPlayerPublicId,decodedActions,simulation
         </article>
       </div>
       <div className="domain-footnote"><b>Einordnung</b><p>Einheiten in aktiven Angriffen sind gebundene Truppen, nicht dein gesamter verfügbarer Truppenbestand. Anzahl und Stärke der Angriffe belegen keine räumliche Front, Reichweite oder Siegchance.</p></div>
+    </section>}
+    {playerScoped && analysisTab==='phases' && <section className="domain-workspace">
+      <div className="overview-heading section-spaced"><div><span className="eyebrow">SPIELPHASEN</span><h3>Early, Mid und Late Game</h3><p>Vergleiche deine Entwicklung innerhalb dieser Partie. Die Werte sind Beobachtungen und keine allgemeine Spielstärke-Bewertung.</p></div></div>
+      {ratedPhases.length ? <div className="phase-visual-grid">{ratedPhases.map(phase=><article className="coach-phase-card" key={phase.id}>
+        <span>{phase.label}</span><b>{phase.rating}</b><small>{phase.description}</small>
+        <div className="phase-visual-metric"><strong>{phase.territoryRate===null?'–':phase.territoryRate.toFixed(1).replace('.',',')}</strong><small>Gebiete pro Minute</small></div>
+        <div className="phase-visual-track"><span style={{width:`${Math.max(0,Math.min(100,(phase.territoryRate??0)/Math.max(1,...ratedPhases.map(p=>p.territoryRate??0))*100))}%`}}/></div>
+        <div className="phase-visual-metric"><strong>{phase.incomeRate===null?'–':Math.round(phase.incomeRate).toLocaleString('de-DE')}</strong><small>Brutto-Gold pro Minute</small></div>
+        <div className="phase-visual-track"><span style={{width:`${Math.max(0,Math.min(100,(phase.incomeRate??0)/Math.max(1,...ratedPhases.map(p=>p.incomeRate??0))*100))}%`}}/></div>
+        <small>{phase.attackCount} Angriffsbefehle · {phase.sampleCount} Stichproben</small>
+      </article>)}</div> : <p className="empty-note">Phasenvergleiche erscheinen nach erfolgreicher Hash-Verifikation der Original-Engine.</p>}
+      <p className="chart-footnote">Phasenwerte vergleichen nur deine eigenen Phasen. Zu wenige Stichproben werden nicht bewertet. Ein zeitgleicher Gebietszuwachs beweist nicht, dass ein einzelner Befehl ihn verursacht hat.</p>
+      {recentPhaseHistory.length>1 && <section className="overview-panel section-spaced"><h4>Deine letzten Partien</h4><div className="coach-history-grid">{phaseTrend.map(phase=><article className="coach-history-card" key={phase.id}><b>{phase.label}</b><strong>{phase.strong}/{phase.games}</strong><small>starke Phasen</small><span>{phase.averageTerritory.toFixed(1)} Gebiete / Min.</span><span>{Math.round(phase.averageIncome).toLocaleString('de-DE')} Gold / Min.</span></article>)}</div></section>}
     </section>}
     {playerScoped && analysisTab==='timeline' && <section id="match-timeline" className="overview-panel timeline-panel"><div className="overview-panel-title"><div><span className="eyebrow">04 / WICHTIGE ZEITPUNKTE</span><h4>Hier lohnt sich ein genauer Blick</h4><p>Automatisch aus dem Protokoll ermittelte Ereignisse – keine nachträgliche Bewertung.</p></div><button className="secondary compact-button" onClick={onOpenReplay}>Im Replay ansehen <ArrowRight size={15}/></button></div>
       {timeline.length ? <div className="event-timeline">{timeline.map((event,i)=><div className="event-item" key={`${event.kind}-${i}`}><div className="event-marker"><span>{String(i+1).padStart(2,'0')}</span></div><div className="event-copy"><div><b>{event.title}</b><span className="event-type">{event.kind}</span></div><p>{event.detail}</p></div><time>{clock(event.time)}</time></div>)}</div> : <p className="empty-note">Keine markierbaren Ereignisse im Protokoll gefunden.</p>}

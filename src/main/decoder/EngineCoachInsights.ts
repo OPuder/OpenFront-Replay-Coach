@@ -168,43 +168,66 @@ export function buildEngineCoachInsights(
   if (review.clientID && samples.length > 2) {
     const ordered = [...samples].sort((a, b) => a.frame - b.frame);
     let windowStart: EngineStateSample | null = null;
+    let lastQualifying: EngineStateSample | null = null;
     let lastFrame = -1;
-    let reserveWindows: Array<{ from: number; to: number; seconds: number; ratio: number }> = [];
+    let ratioAtStart = 0;
+    const reserveWindows: Array<{ from: number; to: number; seconds: number; ratio: number }> = [];
+    const finishWindow = () => {
+      if (!windowStart || !lastQualifying) return;
+      const durationTicks = lastQualifying.frame - windowStart.frame;
+      if (durationTicks >= 300) {
+        reserveWindows.push({
+          from: windowStart.frame / 10,
+          to: lastQualifying.frame / 10,
+          seconds: durationTicks / 10,
+          ratio: ratioAtStart,
+        });
+      }
+    };
     for (const sample of ordered) {
       const own = sample.players.find((player) => player.clientID === review.clientID);
-      if (!own?.alive) { windowStart = null; lastFrame = -1; continue; }
+      if (!own?.alive) {
+        finishWindow();
+        windowStart = null;
+        lastQualifying = null;
+        lastFrame = -1;
+        continue;
+      }
       const rivals = sample.players.filter((player) => player.clientID !== review.clientID && player.alive);
       const strongestRival = rivals.reduce((max, player) => Math.max(max, player.troops), 0);
       const troopAdvantage = strongestRival > 0 && own.troops >= strongestRival * 1.3;
       const noEngagement = own.outgoingAttacks === 0 && own.incomingAttacks === 0;
-      const previous = windowStart?.players.find((player) => player.clientID === review.clientID);
-      const territoryStable = !previous || own.tiles <= previous.tiles;
+      const previousOwn = lastQualifying?.players.find((player) => player.clientID === review.clientID);
+      const territoryStable = !previousOwn || own.tiles <= previousOwn.tiles;
       const qualifies = troopAdvantage && noEngagement && territoryStable;
       if (qualifies) {
-        if (!windowStart || sample.frame - lastFrame > 100) windowStart = sample;
-        lastFrame = sample.frame;
-        const startPlayer = windowStart.players.find((player) => player.clientID === review.clientID);
-        const duration = sample.frame - windowStart.frame;
-        if (startPlayer && duration >= 300) {
-          reserveWindows.push({ from: windowStart.frame / 10, to: sample.frame / 10, seconds: duration / 10, ratio: strongestRival > 0 ? startPlayer.troops / strongestRival : 0 });
+        if (!windowStart || sample.frame - lastFrame > 100) {
+          finishWindow();
+          windowStart = sample;
+          ratioAtStart = strongestRival > 0 ? own.troops / strongestRival : 0;
         }
+        lastQualifying = sample;
+        lastFrame = sample.frame;
       } else {
+        finishWindow();
         windowStart = null;
+        lastQualifying = null;
         lastFrame = -1;
       }
     }
-    reserveWindows = reserveWindows.sort((a, b) => b.seconds - a.seconds).slice(0, 3);
-    if (reserveWindows.length) {
+    finishWindow();
+    const topWindows = reserveWindows.sort((a, b) => b.seconds - a.seconds).slice(0, 3);
+    if (topWindows.length) {
       findings.push({
         id: "troop-advantage-windows",
         kind: "review",
         title: "Truppenüberlegenheit ohne laufendes Gefecht",
-        summary: `Die Engine zeigt ${reserveWindows.length} längere Beobachtungsfenster mit mindestens 30 % mehr Truppen als der stärkste lebende Gegner, ohne laufende eigene oder eingehende Angriffe und ohne beobachteten Gebietszuwachs.`,
-        evidence: reserveWindows.map((window) =>
+        summary: `Die Engine zeigt ${topWindows.length} längere Beobachtungsfenster mit mindestens 30 % mehr Truppen als der stärkste lebende Gegner, ohne laufende eigene oder eingehende Angriffe und ohne beobachteten Gebietszuwachs.`,
+        evidence: topWindows.map((window) =>
           `${clock(window.from)}–${clock(window.to)} · ca. ${Math.round(window.ratio * 100)} % der gegnerischen Truppenstärke`
         ).join(" · "),
         nextStep: "Prüfe auf der Karte, ob in diesen Phasen erreichbare neutrale Gebiete, schwächere Nachbarn oder offene Küstenziele vorhanden waren – oder ob die Reserve für Verteidigung nötig war.",
-        seconds: reserveWindows[0].from,
+        seconds: topWindows[0].from,
         limitation: "Truppenstärke allein beweist keine erreichbare Angriffsgelegenheit. Entfernung, Barrieren, Diplomatie und gegnerische Verstärkungen sind in diesem Hinweis nicht vollständig bewertet.",
       });
     }

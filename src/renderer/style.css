@@ -327,3 +327,9 @@ body{background:radial-gradient(ellipse at 76% -10%,#17314b 0,transparent 42%),#
 @media(prefers-reduced-motion:reduce){
   *,*::before,*::after{scroll-behavior:auto!important;transition:none!important;animation:none!important}
 }
+
+/* 2.2.4 – simulation progress and accessible status */
+.coach-progress-track{height:7px;overflow:hidden;margin-top:13px;border-radius:99px;background:#263c52}
+.coach-progress-track>span{display:block;height:100%;border-radius:inherit;background:linear-gradient(90deg,#58a7d7,#7bd0bf);transition:width .22s ease}
+.coach-engine-status.is-success .coach-progress-track>span{background:#6bc69d}
+@media(prefers-reduced-motion:reduce){.coach-progress-track>span{transition:none}}

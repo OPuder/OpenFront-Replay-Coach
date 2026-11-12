@@ -31,6 +31,9 @@ export interface ReplayActionReview {
   before: { tiles: number; gold: number; troops: number } | null;
   after: { tiles: number; gold: number; troops: number } | null;
   delta: { tiles: number; gold: number; troops: number } | null;
+  delta5s: { tiles: number; gold: number; troops: number } | null;
+  delta10s: { tiles: number; gold: number; troops: number } | null;
+  delta30s: { tiles: number; gold: number; troops: number } | null;
 }
 
 export interface ReplaySimulationResult {
@@ -95,6 +98,11 @@ export async function simulateReplay(
         sampleFrames.add(Math.max(0, frame - 1));
         sampleFrames.add(frame);
         sampleFrames.add(Math.min(totalRecordedFrames - 1, frame + 1));
+        // Capture delayed outcome windows as well as the immediate state.
+        // 10 game ticks per second: +50/+100/+300 frames = +5/+10/+30 sec.
+        for (const offset of [50, 100, 300]) {
+          if (frame + offset < totalRecordedFrames) sampleFrames.add(frame + offset);
+        }
       }
     });
   }
@@ -237,6 +245,17 @@ export async function simulateReplay(
                 const afterPlayer = afterSample?.players.find(p => p.id === target.smallID);
                 const before = beforePlayer ? { tiles: beforePlayer.tiles, gold: beforePlayer.gold, troops: beforePlayer.troops } : null;
                 const after = afterPlayer ? { tiles: afterPlayer.tiles, gold: afterPlayer.gold, troops: afterPlayer.troops } : null;
+                const deltaToFrame = (offset: number) => {
+                  if (!beforePlayer || frame + offset >= totalTicks) return null;
+                  const sample = sampleByFrame.get(frame + offset);
+                  const player = sample?.players.find(p => p.id === target.smallID);
+                  if (!player) return null;
+                  return {
+                    tiles: player.tiles - beforePlayer.tiles,
+                    gold: player.gold - beforePlayer.gold,
+                    troops: player.troops - beforePlayer.troops
+                  };
+                };
                 return {
                   frame,
                   turn: Number(turn?.turnNumber ?? frame),
@@ -255,7 +274,10 @@ export async function simulateReplay(
                     tiles: after.tiles - before.tiles,
                     gold: after.gold - before.gold,
                     troops: after.troops - before.troops
-                  } : null
+                  } : null,
+                  delta5s: deltaToFrame(50),
+                  delta10s: deltaToFrame(100),
+                  delta30s: deltaToFrame(300)
                 };
               });
           }) : [];

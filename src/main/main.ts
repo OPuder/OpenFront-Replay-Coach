@@ -228,26 +228,52 @@ ipcMain.handle('replay:get-engine-assets', async () => {
   return { manifest, cdnBase };
 });
 
+async function resolvePackagedRendererIndex(): Promise<string> {
+  // Electron's app path differs between installed, portable and unpacked builds.
+  // Resolve only real files; never let a missing path fall through to a URL.
+  const candidates = [
+    path.resolve(__dirname, '../dist/index.html'),
+    path.resolve(app.getAppPath(), 'dist/index.html'),
+    path.resolve(process.resourcesPath, 'app.asar/dist/index.html'),
+    path.resolve(process.resourcesPath, 'app/dist/index.html')
+  ];
+  for (const candidate of [...new Set(candidates)]) {
+    try {
+      const stat = await fs.stat(candidate);
+      if (stat.isFile()) {
+        console.info('[ReplayCoach] Renderer-HTML gefunden:', candidate);
+        return candidate;
+      }
+    } catch {
+      // Try the next known layout.
+    }
+  }
+  throw new Error(`Renderer-HTML fehlt. Geprüfte Pfade: ${candidates.join(' | ')}. app.getAppPath=${app.getAppPath()}, __dirname=${__dirname}, resourcesPath=${process.resourcesPath}`);
+}
+
 function createWindow() {
   const win = new BrowserWindow({ width: 1440, height: 940, minWidth: 1050, minHeight: 700,
     title: 'OpenFront Replay Coach', backgroundColor: '#0b1020',
     webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true, nodeIntegration: false, sandbox: true }
   });
-  win.webContents.on('did-fail-load', (_event, errorCode, errorDescription, validatedURL) => {
-    console.error('[ReplayCoach] Renderer konnte nicht geladen werden:', { errorCode, errorDescription, validatedURL });
+  win.webContents.on('did-fail-load', (_event, errorCode, errorDescription, validatedURL, isMainFrame) => {
+    console.error('[ReplayCoach] Renderer konnte nicht geladen werden:', { errorCode, errorDescription, validatedURL, isMainFrame, appPath: app.getAppPath(), exe: app.getPath('exe') });
   });
   win.webContents.on('render-process-gone', (_event, details) => {
     console.error('[ReplayCoach] Renderer-Prozess beendet:', details);
   });
+  win.webContents.on('console-message', (_event, details) => {
+    if (details.level >= 2) console.error('[ReplayCoach] Renderer-Konsole:', details.message, details.sourceId, details.lineNumber);
+  });
   if (isDev) {
-    void win.loadURL('http://localhost:5173');
+    void win.loadURL('http://localhost:5173').catch(error => console.error('[ReplayCoach] Dev-Renderer konnte nicht geladen werden:', error));
   } else {
-    // Resolve packaged assets from Electron's application root, not the compiled
-    // main-process directory. This remains correct inside app.asar and portable builds.
-    const rendererIndex = path.join(app.getAppPath(), 'dist', 'index.html');
-    void win.loadFile(rendererIndex).catch(error => {
-      console.error('[ReplayCoach] Renderer-HTML konnte nicht geöffnet werden:', rendererIndex, error);
-    });
+    void resolvePackagedRendererIndex()
+      .then(rendererIndex => win.loadFile(rendererIndex))
+      .catch(error => {
+        console.error('[ReplayCoach] Renderer-Start fehlgeschlagen:', error);
+        void win.loadURL('data:text/html;charset=utf-8,' + encodeURIComponent(`<!doctype html><meta charset="utf-8"><title>Startfehler</title><style>body{font:15px Segoe UI;background:#0b1020;color:#fff;padding:32px}pre{white-space:pre-wrap;color:#ffb9ae}</style><h2>OpenFront Replay Coach konnte nicht starten</h2><p>Die Programmdateien sind unvollständig. Bitte die Anwendung vollständig entpacken bzw. neu installieren.</p><pre>${String(error).replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]!))}</pre>`));
+      });
   }
 }
 

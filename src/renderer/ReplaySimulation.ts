@@ -166,8 +166,9 @@ export async function simulateReplay(
           }
           cleanup();
           const staticPlayers = readerRef.current?.header.players ?? [];
-          const target = staticPlayers.find((p: any) => preferredClientId && p.clientID === preferredClientId)
-            ?? staticPlayers.find((p: any) => /oligenole/i.test(String(p.displayName ?? p.name ?? p.username ?? "")));
+          const target = preferredClientId
+            ? staticPlayers.find((p: any) => String(p.clientID ?? "") === preferredClientId)
+            : staticPlayers.find((p: any) => /oligenole/i.test(String(p.displayName ?? p.name ?? p.username ?? "")));
           const playerObservations = target ? samples.map(sample => ({tick:sample.tick, player:sample.players.find(p => p.id === target.smallID)})).filter((x): x is {tick:number;player:NonNullable<typeof x.player>} => Boolean(x.player)) : [];
           const playerSeries = playerObservations.map(x => x.player);
           let longestNoExpansionTicks = 0;

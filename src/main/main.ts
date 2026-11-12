@@ -233,7 +233,22 @@ function createWindow() {
     title: 'OpenFront Replay Coach', backgroundColor: '#0b1020',
     webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true, nodeIntegration: false, sandbox: true }
   });
-  if (isDev) void win.loadURL('http://localhost:5173'); else void win.loadFile(path.join(__dirname, '../dist/index.html'));
+  win.webContents.on('did-fail-load', (_event, errorCode, errorDescription, validatedURL) => {
+    console.error('[ReplayCoach] Renderer konnte nicht geladen werden:', { errorCode, errorDescription, validatedURL });
+  });
+  win.webContents.on('render-process-gone', (_event, details) => {
+    console.error('[ReplayCoach] Renderer-Prozess beendet:', details);
+  });
+  if (isDev) {
+    void win.loadURL('http://localhost:5173');
+  } else {
+    // Resolve packaged assets from Electron's application root, not the compiled
+    // main-process directory. This remains correct inside app.asar and portable builds.
+    const rendererIndex = path.join(app.getAppPath(), 'dist', 'index.html');
+    void win.loadFile(rendererIndex).catch(error => {
+      console.error('[ReplayCoach] Renderer-HTML konnte nicht geöffnet werden:', rendererIndex, error);
+    });
+  }
 }
 
 function parseGameId(input: string): string {

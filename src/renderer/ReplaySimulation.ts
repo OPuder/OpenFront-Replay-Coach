@@ -95,7 +95,7 @@ export async function simulateReplay(
               const incomingAttacks = Array.isArray(p.incomingAttacks) ? p.incomingAttacks : [];
               return ({
               id,
-              name: String(meta.displayName ?? meta.name ?? `Spieler ${id}`),
+              name: String(meta.displayName ?? meta.name ?? meta.username ?? `Spieler ${id}`),
               clientID: meta.clientID == null ? null : String(meta.clientID),
               alive: Boolean(p.isAlive),
               gold: Number(p.gold ?? 0),
@@ -148,19 +148,20 @@ export async function simulateReplay(
           const staticPlayers = readerRef.current?.header.players ?? [];
           const target = staticPlayers.find((p: any) => preferredClientId && p.clientID === preferredClientId)
             ?? staticPlayers.find((p: any) => /oligenole/i.test(String(p.displayName ?? p.name ?? "")));
-          const playerSeries = target ? samples.map(sample => sample.players.find(p => p.id === target.smallID)).filter((p): p is NonNullable<typeof p> => Boolean(p)) : [];
+          const playerObservations = target ? samples.map(sample => ({tick:sample.tick, player:sample.players.find(p => p.id === target.smallID)})).filter((x): x is {tick:number;player:NonNullable<typeof x.player>} => Boolean(x.player)) : [];
+          const playerSeries = playerObservations.map(x => x.player);
           let longestNoExpansionTicks = 0;
-          let flatStart = 0;
-          for (let i = 1; i < playerSeries.length; i++) {
+          let flatStartTick = playerObservations[0]?.tick ?? 0;
+          for (let i = 1; i < playerObservations.length; i++) {
             if (playerSeries[i].tiles <= playerSeries[i-1].tiles) {
-              longestNoExpansionTicks = Math.max(longestNoExpansionTicks, (i - flatStart) * sampleEvery);
+              longestNoExpansionTicks = Math.max(longestNoExpansionTicks, playerObservations[i].tick - flatStartTick);
             } else {
-              flatStart = i;
+              flatStartTick = playerObservations[i].tick;
             }
           }
           const firstPlayer = playerSeries[0];
           const lastPlayer = playerSeries[playerSeries.length - 1];
-          if (playerSeries.length > 1) longestNoExpansionTicks = Math.max(longestNoExpansionTicks, (playerSeries.length - 1 - flatStart) * sampleEvery);
+          if (playerObservations.length > 1) longestNoExpansionTicks = Math.max(longestNoExpansionTicks, playerObservations[playerObservations.length-1].tick - flatStartTick);
           const playerReview = firstPlayer && lastPlayer ? {
             playerName: target.displayName ?? target.name ?? "Dein Spieler",
             startTiles: firstPlayer.tiles,

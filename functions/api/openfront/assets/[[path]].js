@@ -12,7 +12,7 @@ export async function onRequest({ request }) {
     return jsonError("Invalid OpenFront asset path.", 400);
   }
   const normalizeAssetPath = (value) => {
-    const raw = String(value ?? "").replace(/^\\/+/, "");
+    const raw = String(value ?? "").replace(/^\/+/, "");
     try { return decodeURIComponent(raw); } catch { return raw; }
   };
   const allowedPath = normalizeAssetPath(assetPath);
@@ -23,18 +23,17 @@ export async function onRequest({ request }) {
   try {
     const origin = new URL(request.url).origin;
     const bootstrap = await getOpenFrontBootstrap(origin);
-    const allowedPath = assetPath.replace(/^\/+/, "");
     const isListed = Object.values(bootstrap.manifest).some(value => {
       const text = String(value ?? "");
       if (!text) return false;
-      if (/^https?:\/\//i.test(text)) return new URL(text).pathname.replace(/^\/+/, "") === allowedPath;
-      return text.replace(/^\/+/, "") === allowedPath;
+      const rawPath = /^https?:\/\//i.test(text) ? new URL(text).pathname : text;
+      return normalizeAssetPath(rawPath) === allowedPath;
     });
     if (!isListed) return jsonError("Asset is not present in the official OpenFront manifest.", 404);
 
     const base = bootstrap.upstreamCdnBase || "https://openfront.io/";
-    const upstream = base.replace(/\/+$/, "") + "/" + allowedPath;
-    const response = await fetch(upstream, {
+    const encodedPath = allowedPath.split("/").map(segment => encodeURIComponent(segment)).join("/");
+    const upstream = base.replace(/\/+$/, "") + "/" + encodedPath;
       method: request.method,
       headers: { Accept: request.headers.get("Accept") || "*/*" },
       redirect: "error",

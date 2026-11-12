@@ -335,7 +335,8 @@ function TrainingFocus({apiResult,decodedActions}:{apiResult:ApiImportSummary;de
 }
 function selectedPlayerName(players:Array<{name:string;clientID:string|null}>,id:string){return players.find(p=>p.clientID===id)?.name ?? '';}
 function CoachPanel({apiResult,preferredPlayerPublicId,decodedActions,simulationResult,simulationProgress,onPlayerSelect,onExport,onSaveReplayJson,onOpenReplay,fmt}:{preferredPlayerPublicId:string|null;apiResult:ApiImportSummary;decodedActions:DecodedAction[];simulationResult:ReplaySimulationResult|null;simulationProgress:{percent:number;phase:string}|null;onPlayerSelect:(clientId:string)=>void;onExport:()=>void;onSaveReplayJson:()=>void;onOpenReplay:()=>void;fmt:(n:number)=>string}) {
-  const [analysisTab,setAnalysisTab]=useState<'overview'|'decisions'|'economy'|'military'|'timeline'>('decisions');
+  const [analysisTab,setAnalysisTab]=useState<'coach'|'details'>('coach');
+  const [dataTab,setDataTab]=useState<'overview'|'economy'|'military'|'timeline'>('overview');
   const players=apiResult.playerStats ?? [];
   const preferredPlayer=players.find(p=>preferredPlayerPublicId && p.publicID===preferredPlayerPublicId);
   const initialPlayer=preferredPlayer ?? (players.length===1 ? players[0] : players.find(p=>/oligenole/i.test(p.name)) ?? null);
@@ -500,8 +501,9 @@ function CoachPanel({apiResult,preferredPlayerPublicId,decodedActions,simulation
       <p>{simulationProgress ? simulationProgress.phase : simulationResult?.message ?? apiResult.engineCompatibility?.message ?? 'Die Replay-Engine konnte für diesen Datensatz nicht sicher zugeordnet werden.'}</p>
       {simulationProgress && <div className="coach-progress-track" role="progressbar" aria-label="Replay wird analysiert" aria-valuemin={0} aria-valuemax={100} aria-valuenow={simulationProgress.percent}><span style={{width:`${Math.max(0,Math.min(100,simulationProgress.percent))}%`}}/></div>}
     </div>}
-    <nav className="review-tabs" aria-label="Analysebereiche">{([{id:"decisions",label:"Dein Coach"},{id:"overview",label:"Partie"},{id:"economy",label:"Wirtschaft"},{id:"military",label:"Militär"},{id:"timeline",label:"Zeitachse"}] as const).map(tab=><button type="button" key={tab.id} className={analysisTab===tab.id?"selected":""} aria-pressed={analysisTab===tab.id} onClick={()=>setAnalysisTab(tab.id)}>{tab.label}</button>)}</nav>
-    {playerScoped && analysisTab==='decisions' && <section id="match-coach-insights" className="coach-insights-section">
+    <nav className="review-tabs coach-primary-tabs" aria-label="Analysebereiche"><button type="button" className={analysisTab==='coach'?'selected':''} aria-pressed={analysisTab==='coach'} onClick={()=>setAnalysisTab('coach')}><Brain size={15}/> Dein Coach</button><button type="button" className={analysisTab==='details'?'selected':''} aria-pressed={analysisTab==='details'} onClick={()=>setAnalysisTab('details')}><Activity size={15}/> Matchdaten</button></nav>
+    {analysisTab==='details' && <nav className="review-tabs coach-data-tabs" aria-label="Matchdaten">{([{id:"overview",label:"Überblick"},{id:"economy",label:"Wirtschaft"},{id:"military",label:"Militär"},{id:"timeline",label:"Zeitachse"}] as const).map(tab=><button type="button" key={tab.id} className={dataTab===tab.id?"selected":""} aria-pressed={dataTab===tab.id} onClick={()=>setDataTab(tab.id)}>{tab.label}</button>)}</nav>}
+    {playerScoped && analysisTab==='coach' && <section id="match-coach-insights" className="coach-insights-section">
       <div className="overview-heading"><div><span className="eyebrow">01 / DEIN SPIELBERICHT</span><h3>Die wichtigsten Erkenntnisse</h3><p>Nach Priorität sortiert. Jede Karte nennt deine Entscheidung, einen konkreten nächsten Prüf- bzw. Handlungsansatz und die Beleggrenze. Zeiten sind Befehlszeitpunkte; Bootszeit = Startbefehl, nicht Ankunft.</p></div></div>
 
       <div className="coach-report-summary">
@@ -577,7 +579,7 @@ function CoachPanel({apiResult,preferredPlayerPublicId,decodedActions,simulation
       </details>
       <div className="coach-report-limit"><b>Was noch nicht seriös bewertet werden kann</b><p>Ob ein Angriff erfolgreich war, wie viele Truppen verloren gingen oder ob ein Bau optimal war, erfordert den rekonstruierten Karten-, Gold- und Truppenstand. Diese Analyse erfindet dafür keine Ergebnisse.</p></div>
     </section>}
-    {playerScoped && analysisTab==='overview' && <section id="match-overview" className="overview-block">
+    {playerScoped && analysisTab==='details' && dataTab==='overview' && <section id="match-overview" className="overview-block">
       <div className="overview-heading"><div><span className="eyebrow">01 / AUF EINEN BLICK</span><h3>Partie in Zahlen</h3></div><span className="source-label"><CheckCircle2 size={14}/> Aus dem Aktionsprotokoll</span></div>
       <div className="overview-kpis">
         <article className="overview-kpi"><span>Gesamtaktionen</span><b>{fmt(scopedAnalysis.totalActions)}</b><small>{scopedAnalysis.actionsPerMinute.toFixed(1).replace('.',',')} Aktionen je Minute</small></article>
@@ -595,7 +597,7 @@ function CoachPanel({apiResult,preferredPlayerPublicId,decodedActions,simulation
         </article>
       </div>
     </section>}
-    {playerScoped && analysisTab==='economy' && <section id="match-economy" className="domain-workspace">
+    {playerScoped && analysisTab==='details' && dataTab==='economy' && <section id="match-economy" className="domain-workspace">
       <div className="overview-heading section-spaced"><div><span className="eyebrow">03 / WIRTSCHAFT</span><h3>Gold, Einkommen und Ausbau</h3><p>Original-Engine-Werte aus den erfassten Spielzuständen. Einnahmen sind brutto; Ausgaben und Gewinn werden hier nicht gleichgesetzt.</p></div></div>
       {incomeSummary ? <>
         <div className="overview-kpis">
@@ -616,7 +618,7 @@ function CoachPanel({apiResult,preferredPlayerPublicId,decodedActions,simulation
         </article>
       </div>
     </section>}
-    {playerScoped && analysisTab==='military' && <section id="match-military" className="domain-workspace">
+    {playerScoped && analysisTab==='details' && dataTab==='military' && <section id="match-military" className="domain-workspace">
       <div className="overview-heading section-spaced"><div><span className="eyebrow">04 / MILITÄR</span><h3>Angriffe und Frontdruck</h3><p>Beobachtete Angriffsbefehle, gleichzeitig aktive Angriffe und bereits bedrängte Ziele.</p></div></div>
       <div className="overview-kpis">
         <article className="overview-kpi"><span>Eigene Angriffsbefehle</span><b>{fmt(scopedAnalysis.attackCount)}</b><small>{firstAttack ? `Erster Befehl bei ${clock(firstAttack.seconds)}` : 'Keine Angriffe protokolliert'}</small></article>
@@ -636,7 +638,7 @@ function CoachPanel({apiResult,preferredPlayerPublicId,decodedActions,simulation
       </div>
       <div className="domain-footnote"><b>Einordnung</b><p>Einheiten in aktiven Angriffen sind gebundene Truppen, nicht dein gesamter verfügbarer Truppenbestand. Anzahl und Stärke der Angriffe belegen keine räumliche Front, Reichweite oder Siegchance.</p></div>
     </section>}
-    {playerScoped && analysisTab==='timeline' && <section id="match-timeline" className="overview-panel timeline-panel"><div className="overview-panel-title"><div><span className="eyebrow">04 / WICHTIGE ZEITPUNKTE</span><h4>Hier lohnt sich ein genauer Blick</h4><p>Automatisch aus dem Protokoll ermittelte Ereignisse – keine nachträgliche Bewertung.</p></div><button className="secondary compact-button" onClick={onOpenReplay}>Im Replay ansehen <ArrowRight size={15}/></button></div>
+    {playerScoped && analysisTab==='details' && dataTab==='timeline' && <section id="match-timeline" className="overview-panel timeline-panel"><div className="overview-panel-title"><div><span className="eyebrow">04 / WICHTIGE ZEITPUNKTE</span><h4>Hier lohnt sich ein genauer Blick</h4><p>Automatisch aus dem Protokoll ermittelte Ereignisse – keine nachträgliche Bewertung.</p></div><button className="secondary compact-button" onClick={onOpenReplay}>Im Replay ansehen <ArrowRight size={15}/></button></div>
       {timeline.length ? <div className="event-timeline">{timeline.map((event,i)=><div className="event-item" key={`${event.kind}-${i}`}><div className="event-marker"><span>{String(i+1).padStart(2,'0')}</span></div><div className="event-copy"><div><b>{event.title}</b><span className="event-type">{event.kind}</span></div><p>{event.detail}</p></div><time>{clock(event.time)}</time></div>)}</div> : <p className="empty-note">Keine markierbaren Ereignisse im Protokoll gefunden.</p>}
     </section>}
 

@@ -2,7 +2,7 @@
   "name": "openfront-replay-coach",
   "version": "2.2.4",
   "private": true,
-  "description": "OpenFront Replay Coach — Desktop, Android und installfreie Web-App",
+  "description": "OpenFront Replay Coach — Windows Desktop und Android-App",
   "main": "dist-electron/main.js",
   "scripts": {
     "dev": "npm run build:engine && npm run build:electron && concurrently -k \"vite\" \"wait-on http://localhost:5173 && electron .\"",
@@ -17,7 +17,9 @@
   "dependencies": {
     "lucide-react": "^0.468.0",
     "react": "^18.3.1",
-    "react-dom": "^18.3.1"
+    "react-dom": "^18.3.1",
+    "@capacitor/android": "8.6.0",
+    "@capacitor/core": "8.6.0"
   },
   "devDependencies": {
     "@types/node": "^22.10.2",
@@ -29,7 +31,8 @@
     "electron-builder": "^25.1.8",
     "typescript": "~5.7.2",
     "vite": "^6.0.5",
-    "wait-on": "^8.0.1"
+    "wait-on": "^8.0.1",
+    "@capacitor/cli": "8.6.0"
   },
   "build": {
     "appId": "de.openfront.replaycoach",

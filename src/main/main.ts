@@ -262,8 +262,8 @@ function createWindow() {
   win.webContents.on('render-process-gone', (_event, details) => {
     console.error('[ReplayCoach] Renderer-Prozess beendet:', details);
   });
-  win.webContents.on('console-message', (_event, details) => {
-    if (details.level >= 2) console.error('[ReplayCoach] Renderer-Konsole:', details.message, details.sourceId, details.lineNumber);
+  win.webContents.on('console-message', (_event, level, message, line, sourceId) => {
+    if (level >= 2) console.error('[ReplayCoach] Renderer-Konsole:', message, sourceId, line);
   });
   if (isDev) {
     void win.loadURL('http://localhost:5173').catch(error => console.error('[ReplayCoach] Dev-Renderer konnte nicht geladen werden:', error));

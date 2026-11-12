@@ -9,7 +9,7 @@ permissions:
   contents: write
 
 concurrency:
-  group: openfront-replay-coach-release-main
+  group: openfront-replay-coach-release-main-v2
   cancel-in-progress: true
 
 jobs:

@@ -5,7 +5,7 @@ on:
   pull_request:
     branches: [main]
   push:
-    branches: [main, coach-strategy-review-2.2.2]
+    branches: [main, coach-front-pressure-2.2.3]
     tags: ["v*"]
 
 permissions:

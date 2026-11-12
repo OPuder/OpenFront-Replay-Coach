@@ -1,0 +1,23 @@
+OPENFRONT REPLAY COACH 1.7.7
+
+Windows: Doppelklick auf START_COACH.bat.
+Beim ersten Start werden npm-Abhaengigkeiten installiert und kompatible Sicherheitsupdates versucht. Danach startet jeder weitere Doppelklick direkt mit npm run dev.
+
+Voraussetzung: Node.js LTS (enthaelt npm) muss installiert sein.
+
+Neu in 1.7.6:
+- Das Konto laedt die gesamte verfuegbare Spielhistorie automatisch ueber alle Cursor-Seiten.
+- Der Fortschritt wird waehrend des Ladens angezeigt.
+- Die vollstaendige Historie und gefundene Kartenvorschauen werden lokal zwischengespeichert.
+- Beim Aktualisieren werden neue Partien gesucht und mit dem lokalen Bestand zusammengefuehrt.
+- Kartenvorschauen werden ueber das offizielle OpenFront-Spielseiten-Metadatum (og:image) aufgeloest. Dadurch wird der von OpenFront generierte, gehashte Asset-Link verwendet statt eines geratenen Dateipfads.
+
+Sicherheit: Der Starter verwendet absichtlich NICHT `npm audit fix --force`. --force kann inkompatible Major-Versionen installieren und die App unbrauchbar machen.
+
+Bekannte Grenze:
+Die taktische Analyse rekonstruiert weiterhin noch keine historischen Gebiets-, Gold-, Produktions- und Truppen-Zustaende. Sie darf deshalb keine angeblich sicheren guten/schlechten Alternativzuege behaupten. Dafuer ist die passende deterministische OpenFront-Engine samt Replay-State-Rekonstruktion erforderlich.
+
+Neu in 1.7.7:
+- JSON-Speicherfrage erscheint beim Analysieren einer Partie aus der Spielbibliothek, nicht mehr beim normalen Link-Abruf.
+- Replay-JSON kann im Match-Review jederzeit neben dem CSV exportiert werden.
+- Kartenbild der Bibliothek wird für das Match-Review wiederverwendet.

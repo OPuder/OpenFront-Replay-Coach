@@ -1,0 +1,18 @@
+OPENFRONT REPLAY COACH 2.0.0
+
+1. ZIP in einen eigenen Ordner entpacken.
+2. START_COACH.bat doppelklicken.
+3. In der Replay-Analyse bei Mehrspielerpartien deinen Spielernamen auswählen.
+4. Danach beziehen sich Coaching, Zeitpunkte, Aktionszahlen und die Wirtschafts-/Militärübersicht nur auf diesen Spieler.
+
+WICHTIG ZU ZEITEN:
+Zeitpunkte zeigen den protokollierten Befehl im Spielzug (10 Ticks = 1 Sekunde).
+Bei Booten ist das die Zeit des Transportbefehls. Die tatsächliche Ankunft/Landung
+ist ein späteres Ereignis und wird nicht mit dem Startbefehl gleichgesetzt.
+
+FACHLICHE GRENZE:
+Diese Version korrigiert die Zuordnung der Aktionen zum ausgewählten Spieler und
+verhindert Lobby-weite Fehlzuordnungen. Eine echte Bewertung von Eroberungen,
+Verlusten, Gold-/Truppenentwicklung und besseren Alternativzügen benötigt noch
+die passende deterministische OpenFront-Engine samt rekonstruierten Spielzuständen.
+Diese Werte werden hier nicht erfunden.

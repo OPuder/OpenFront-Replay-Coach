@@ -350,8 +350,11 @@ jobs:
           RELEASE_VERSION: ${{ needs.prepare-release.outputs.version }}
         run: |
           set -Eeuo pipefail
-          mkdir -p release
-          (cd dist && zip -qr "../release/OpenFront-Replay-Coach-${RELEASE_VERSION}-Web-PWA.zip" .)
+          mkdir -p release/web-pwa
+          cp -a dist/. release/web-pwa/
+          cp -a functions release/web-pwa/functions
+          cp wrangler.toml release/web-pwa/wrangler.toml
+          (cd release/web-pwa && zip -qr "../OpenFront-Replay-Coach-${RELEASE_VERSION}-Web-PWA.zip" .)
 
       - name: Upload browser/PWA release files
         uses: actions/upload-artifact@v4
@@ -401,7 +404,7 @@ jobs:
             - **Windows Installer:** normal installieren, Desktop-Verknüpfung inklusive.
             - **Windows Portable:** ZIP entpacken und direkt starten, keine Installation.
             - **Android APK:** auf das Handy herunterladen und einmalig installieren. Keine Cloudflare-Anmeldung und kein Play-Store-Konto erforderlich.
-            - **Web/PWA:** ZIP mit dem vollständigen statischen Browser-Build. Entpacken und den Inhalt auf einem statischen Webserver bereitstellen; ein Cloudflare-Konto ist dafür nicht erforderlich.
+            - **Web/PWA:** ZIP mit `dist/`, Cloudflare-Pages-`functions/` und `wrangler.toml`. Für funktionierende API- und Asset-Proxys auf Cloudflare Pages oder einer kompatiblen Pages-Functions-Umgebung bereitstellen. Dieser Workflow hostet die Web-App nicht automatisch; dafür ist ein eigener Hosting-Zugang nötig.
 
             Die Android-App verwendet Androids native HTTP-Schnittstelle für die öffentlichen OpenFront-Daten und Engine-Assets. Die Daten müssen dafür nicht über einen Cloudflare-Proxy geleitet werden.
 

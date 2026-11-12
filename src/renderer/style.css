@@ -468,3 +468,5 @@ body{background:radial-gradient(ellipse at 76% -10%,#17314b 0,transparent 42%),#
  .coach-phase-card>div>strong{font-size:16px}
  .coach-phase-card>div>small{text-align:right}
 }
+
+.coach-phase-elimination{margin-top:10px;padding:9px 11px;border-left:2px solid var(--warning);border-radius:0 8px 8px 0;background:#382f1d55;color:#f0d28d;font-size:10px;line-height:1.55}

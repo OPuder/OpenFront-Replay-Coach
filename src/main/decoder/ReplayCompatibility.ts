@@ -1,15 +1,15 @@
 /**
  * Replay/engine compatibility gate.
  *
- * This is intentionally separate from action decoding: a decoded action log
- * is not proof that the original game state can be reproduced.
+ * Matching commits and recorded hashes make a replay eligible for a real
+ * deterministic run. They do not prove that the simulation has passed.
  */
 export const PINNED_OPENFRONT_COMMIT =
   "bc3e3334c573c4959ec6a6745df6826d07233b4d";
 
 export type ReplayCompatibilityStatus =
-  | "verified-compatible"
-  | "compatible-unverified"
+  | "version-compatible-hashes-available"
+  | "version-compatible-no-hashes"
   | "engine-version-mismatch"
   | "missing-engine-version";
 
@@ -18,7 +18,7 @@ export interface ReplayCompatibility {
   replayCommit: string | null;
   engineCommit: string;
   recordedHashCount: number;
-  deterministicReplayAllowed: boolean;
+  engineVersionCompatible: boolean;
   hashVerificationAvailable: boolean;
   message: string;
 }
@@ -32,9 +32,10 @@ export function assessReplayCompatibility(
     record && typeof record === "object" && "game" in record
       ? (record as { game?: unknown }).game
       : record;
-  const obj = root && typeof root === "object"
-    ? (root as Record<string, unknown>)
-    : {};
+  const obj =
+    root && typeof root === "object"
+      ? (root as Record<string, unknown>)
+      : {};
   const replayCommit =
     typeof obj.gitCommit === "string" && obj.gitCommit.length > 0
       ? obj.gitCommit
@@ -45,6 +46,7 @@ export function assessReplayCompatibility(
     const hash = (turn as Record<string, unknown>).hash;
     return hash !== null && hash !== undefined;
   }).length;
+  const hashVerificationAvailable = recordedHashCount > 0;
 
   if (!replayCommit) {
     return {
@@ -52,10 +54,10 @@ export function assessReplayCompatibility(
       replayCommit: null,
       engineCommit,
       recordedHashCount,
-      deterministicReplayAllowed: false,
-      hashVerificationAvailable: recordedHashCount > 0,
+      engineVersionCompatible: false,
+      hashVerificationAvailable,
       message:
-        "Im Replay fehlt die Engine-Commit-ID. Eine deterministische Wiedergabe darf nicht als kompatibel angenommen werden.",
+        "Im Replay fehlt die Engine-Commit-ID. Eine Wiedergabe kann deshalb nicht sicher derselben Spielversion zugeordnet werden.",
     };
   }
 
@@ -65,34 +67,34 @@ export function assessReplayCompatibility(
       replayCommit,
       engineCommit,
       recordedHashCount,
-      deterministicReplayAllowed: false,
-      hashVerificationAvailable: recordedHashCount > 0,
+      engineVersionCompatible: false,
+      hashVerificationAvailable,
       message:
         "Die Replay-Version stimmt nicht mit der eingebundenen Engine überein. Eine Simulation mit dieser Engine wäre nicht verlässlich.",
     };
   }
 
-  if (recordedHashCount === 0) {
+  if (!hashVerificationAvailable) {
     return {
-      status: "compatible-unverified",
+      status: "version-compatible-no-hashes",
       replayCommit,
       engineCommit,
       recordedHashCount,
-      deterministicReplayAllowed: true,
+      engineVersionCompatible: true,
       hashVerificationAvailable: false,
       message:
-        "Die Engine-Version passt, aber das Replay enthält keine Hash-Prüfpunkte. Die Wiedergabe wäre nicht anhand des Originals verifizierbar.",
+        "Die Engine-Version passt, aber das Replay enthält keine Hash-Prüfpunkte. Eine Simulation wäre damit nicht anhand des Originals verifizierbar.",
     };
   }
 
   return {
-    status: "verified-compatible",
+    status: "version-compatible-hashes-available",
     replayCommit,
     engineCommit,
     recordedHashCount,
-    deterministicReplayAllowed: true,
+    engineVersionCompatible: true,
     hashVerificationAvailable: true,
     message:
-      "Engine-Version stimmt überein und Hash-Prüfpunkte sind vorhanden. Die Simulation muss diese Hashes trotzdem noch tatsächlich bestehen.",
+      "Engine-Version stimmt überein und Hash-Prüfpunkte sind vorhanden. Ob die Simulation korrekt ist, steht erst nach dem tatsächlichen Abgleich aller Hashes fest.",
   };
 }

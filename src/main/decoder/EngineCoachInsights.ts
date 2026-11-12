@@ -126,6 +126,10 @@ export interface EngineCoachInsight {
   nextStep: string;
   seconds: number | null;
   limitation: string;
+  priority?: "high" | "medium" | "low";
+  decision?: string;
+  alternative?: string;
+  confidence?: "high" | "medium";
 }
 
 /**

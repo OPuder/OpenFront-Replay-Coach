@@ -492,3 +492,35 @@ body{background:radial-gradient(ellipse at 76% -10%,#17314b 0,transparent 42%),#
 .coach-phase-details[open]>summary{border-bottom:1px solid #304a63}
 .coach-phase-inner{padding:0 14px 14px}
 @media(max-width:700px){.coach-lead-card{padding:14px}.coach-lead-grid{grid-template-columns:1fr}.coach-lead-summary{font-size:12px}}
+
+
+/* Simplified analysis navigation and visual replay analytics */
+.analysis-navigation{display:grid;gap:10px;margin:18px 0 22px;padding:16px;border:1px solid var(--border,#293548);border-radius:16px;background:var(--panel,rgba(20,29,43,.72))}
+.analysis-navigation-heading{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+.analysis-navigation-heading b{font-size:15px;color:var(--text,#f4f7fb)}
+.analysis-navigation-heading span,.chart-description{font-size:12px;color:var(--muted,#9aa8bb)}
+.coach-primary-tabs{display:grid!important;grid-template-columns:repeat(7,minmax(0,1fr));gap:8px!important}
+.coach-primary-tabs button{min-width:0;min-height:48px;display:flex;align-items:center;justify-content:center;gap:7px;padding:9px 8px!important;border-radius:11px!important;font-size:13px!important;white-space:nowrap}
+.coach-primary-tabs button.selected{box-shadow:inset 0 0 0 1px var(--accent,#6ea8fe);background:rgba(76,137,222,.16)!important}
+.analytics-chart-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin:18px 0}
+.replay-trend-card{min-width:0;overflow:hidden}
+.replay-trend-card .overview-panel-title{align-items:flex-start}
+.replay-trend-card .overview-panel-title h4{margin:5px 0 0}
+.replay-trend-card .overview-panel-title>b{font-size:16px;white-space:nowrap}
+.chart-description{line-height:1.5;margin:8px 0 4px}
+.replay-trend-plot{width:100%;height:180px;margin-top:8px}
+.replay-trend-plot svg{display:block;width:100%;height:100%;overflow:visible}
+.trend-gridline{stroke:rgba(148,163,184,.2);stroke-width:1;stroke-dasharray:4 5}
+.trend-line{fill:none;stroke:#65a9ff;stroke-width:2.8;stroke-linecap:round;stroke-linejoin:round}
+.trend-point{fill:#65a9ff;stroke:var(--panel,#172235);stroke-width:3}
+.trend-axis,.trend-range{display:flex;justify-content:space-between;gap:10px;color:var(--muted,#9aa8bb);font-size:11px}
+.trend-range{margin-top:8px;padding-top:8px;border-top:1px solid rgba(148,163,184,.16)}
+.phase-visual-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
+.phase-visual-grid .coach-phase-card{min-width:0}
+.phase-visual-metric{display:flex;align-items:baseline;justify-content:space-between;gap:8px;margin-top:14px}
+.phase-visual-metric strong{font-size:20px}
+.phase-visual-metric small{color:var(--muted,#9aa8bb)}
+.phase-visual-track{height:8px;border-radius:20px;background:rgba(148,163,184,.16);overflow:hidden;margin-top:6px}
+.phase-visual-track span{display:block;height:100%;border-radius:20px;background:linear-gradient(90deg,#397bd5,#62b5c8)}
+@media(max-width:900px){.coach-primary-tabs{grid-template-columns:repeat(4,minmax(0,1fr))}.phase-visual-grid{grid-template-columns:1fr}}
+@media(max-width:600px){.analysis-navigation{padding:12px}.coach-primary-tabs{grid-template-columns:repeat(2,minmax(0,1fr))}.coach-primary-tabs button{justify-content:flex-start;padding:10px!important}.analytics-chart-grid{grid-template-columns:1fr}.replay-trend-plot{height:155px}.trend-range{font-size:10px}}

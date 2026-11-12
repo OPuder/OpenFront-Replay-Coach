@@ -1,19 +1,13 @@
 /**
- * Thin host entry for the pinned upstream replay pipeline.
- *
- * The simulation, hash verification, map decoding and replay encoding remain
- * in the upstream OpenFront source. This file only exposes both workers to
- * the Coach renderer.
+ * Host entry for the pinned upstream replay pipeline and state reader.
+ * Simulation, hash verification, map decoding and frame reconstruction are
+ * imported unchanged from the pinned OpenFront source.
  */
 import EngineWorker from "../vendor/OpenFrontIO/packages/engine/src/worker/Worker.worker.ts?worker&inline";
 import ReplayProcessorWorker from "./ReplayProcessor.worker.ts?worker&inline";
+export { ReplayReader } from "../vendor/OpenFrontIO/src/client/replay/codec/decode/ReplayReader";
+export { gunzipInBrowser } from "../vendor/OpenFrontIO/src/client/replay/BrowserGzip";
 
-export function createReplayWorkers(): {
-  engine: Worker;
-  processor: Worker;
-} {
-  return {
-    engine: new EngineWorker(),
-    processor: new ReplayProcessorWorker(),
-  };
+export function createReplayWorkers(): { engine: Worker; processor: Worker } {
+  return { engine: new EngineWorker(), processor: new ReplayProcessorWorker() };
 }

@@ -185,3 +185,145 @@ body{background:radial-gradient(ellipse at 76% -10%,#17314b 0,transparent 42%),#
 .coach-engine-finding>small{display:block;padding-top:6px;border-top:1px solid #2b4055;color:#a9bfd1;font-size:9px;line-height:1.5;overflow-wrap:anywhere}
 .coach-engine-finding>small strong,.coach-engine-finding>p strong{color:#9bc6e3}
 @media(max-width:760px){.coach-engine-findings-list{grid-template-columns:1fr}}
+
+
+/* 2.2.4 – shared desktop/mobile product polish */
+.coach-engine-status{border-left-width:4px}
+.coach-engine-status.is-success{border-color:#3d856a;background:rgba(38,112,82,.15)}
+.coach-engine-status.is-success .coach-status-indicator,.coach-engine-status.is-success .coach-engine-status-title strong{color:#8ee0b8}
+.coach-engine-status.is-warning{border-color:#a87939;background:rgba(130,86,22,.12)}
+.coach-engine-status.is-running{border-color:#4d88ac;background:rgba(36,104,145,.14)}
+.coach-status-indicator{display:inline-flex;align-items:center;gap:6px;padding:5px 8px;border-radius:6px;background:#1a2c40;font-size:9px!important;font-weight:800;letter-spacing:.08em}
+.coach-engine-status-title>b{flex:1;min-width:220px;font-size:12px}
+.coach-engine-status-title>strong{font:700 11px 'Cascadia Code',monospace;color:#c0d8ee}
+.coach-report-list{max-height:none;overflow:visible;padding-right:0}
+.coach-report-row{grid-template-columns:84px minmax(0,1fr);gap:13px;border-radius:12px;padding:14px 16px}
+.coach-report-body p,.coach-report-evidence,.coach-report-action{font-size:11px;line-height:1.6}
+.coach-engine-findings{padding:18px}
+.coach-engine-findings-list{gap:11px}
+.coach-engine-finding{padding:15px}
+.coach-engine-finding>b{font-size:13px}
+.coach-engine-finding>p{font-size:11px;line-height:1.6}
+.coach-engine-finding>small{font-size:10px;line-height:1.6}
+.domain-workspace{margin-top:14px}
+.domain-subtitle{font-size:11px;line-height:1.6;color:#b4c3d5}
+.coach-stock-list{display:flex;flex-direction:column;gap:0}
+.coach-stock-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:11px 0;border-top:1px solid #2c4058}
+.coach-stock-row>span{min-width:0;color:#c9d8e7;font-size:11px;line-height:1.45}
+.coach-stock-row>b{flex:none;color:#f2f6fc;font:700 11px 'Cascadia Code',monospace}
+.coach-stock-row i{padding:0 5px;color:#7ea8c9;font-style:normal}
+.domain-workspace .overview-kpi b{font-size:clamp(19px,2vw,27px)}
+.domain-workspace .overview-panel{min-width:0}
+.domain-workspace .domain-footnote{margin-top:14px}
+.review-tabs{z-index:6;backdrop-filter:blur(14px)}
+.review-tabs button{min-height:40px;padding:10px 15px;font-size:12px}
+.player-scope-bar{margin-top:12px}
+.player-scope-bar select{min-height:44px}
+.studio-button,.game-card-action{min-height:42px}
+.studio-main{min-height:100vh}
+.studio-header{position:relative}
+.studio-footer{padding-bottom:8px}
+@media(max-width:900px){
+  .studio-shell{grid-template-columns:200px minmax(0,1fr)}
+  .studio-sidebar{padding-left:10px;padding-right:10px}
+  .studio-main{padding-left:20px;padding-right:20px}
+  .game-library-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media(max-width:760px){
+  :root{font-size:14px}
+  html{scroll-padding-top:12px}
+  body{min-width:320px}
+  .studio-shell{display:block;min-height:100dvh}
+  .studio-sidebar{
+    position:fixed;inset:auto 0 0;width:100%;height:auto;min-height:68px;
+    display:flex;flex-direction:row;align-items:center;justify-content:space-around;
+    gap:4px;padding:5px 8px calc(5px + env(safe-area-inset-bottom));
+    border:0;border-top:1px solid #314965;background:rgba(9,20,33,.96);
+    box-shadow:0 -12px 32px #0005;backdrop-filter:blur(18px);z-index:50
+  }
+  .studio-brand,.studio-nav-label,.studio-sidebar-bottom{display:none}
+  .studio-nav{
+    flex:1;min-width:0;max-width:120px;height:54px;margin:0;padding:5px 2px;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
+    gap:4px;border-radius:10px;font-size:9px;line-height:1.1;white-space:nowrap
+  }
+  .studio-nav svg{width:19px;height:19px;flex:none}
+  .studio-nav.active{box-shadow:inset 0 2px #72c9ee}
+  .studio-main{width:100%;max-width:none;min-height:100dvh;padding:18px 13px calc(92px + env(safe-area-inset-bottom))}
+  .studio-header{align-items:flex-start;flex-direction:column;gap:12px;margin-bottom:15px;padding-bottom:14px}
+  .studio-header h1{font-size:clamp(24px,7vw,32px);letter-spacing:-1px}
+  .studio-header p{font-size:11px;line-height:1.55}
+  .studio-header-actions{width:100%}
+  .studio-header-actions button{width:100%}
+  .welcome-strip{padding:17px;gap:14px}
+  .welcome-strip h2{font-size:20px;line-height:1.2}
+  .profile-loader{width:100%;max-width:none}
+  .stat-grid{gap:8px;margin:10px 0}
+  .stat-card{padding:12px}
+  .stat-card>b{font-size:23px}
+  .stat-top{font-size:8px}
+  .dashboard-grid,.overview-columns,.domain-grid{grid-template-columns:1fr;gap:10px}
+  .studio-card,.overview-panel,.domain-panel{padding:14px;border-radius:13px}
+  .game-library-grid,.recent-game-grid{grid-template-columns:1fr}
+  .game-card-visual{height:175px}
+  .library-toolbar{align-items:stretch}
+  .library-filters{width:100%;gap:7px}
+  .library-filters select{max-width:none;min-width:0;flex:1}
+  .search-box{width:100%;min-width:0}
+  .search-box input{width:100%;min-width:0}
+  .analysis-hero{grid-template-columns:1fr}
+  .analysis-map-preview{height:190px}
+  .analysis-hero-side{display:grid;grid-template-columns:1fr 1fr;gap:8px;border-left:0;border-top:1px solid #344c67}
+  .analysis-hero-side>.studio-eyebrow,.analysis-hero-side>b{grid-column:1/-1}
+  .analysis-hero-side button{width:100%;white-space:normal;text-align:center;padding:8px;font-size:9px}
+  .map-overlay{left:15px;bottom:14px}
+  .map-overlay h2{font-size:23px}
+  .player-scope-bar{align-items:stretch;flex-direction:column;padding:13px;margin:12px 0}
+  .player-scope-bar select{width:100%;max-width:none;min-width:0}
+  .review-tabs{position:sticky;top:0;display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:3px;padding:5px;margin:10px 0 13px}
+  .review-tabs button{min-width:0;min-height:42px;padding:7px 2px;font-size:9px;white-space:normal;line-height:1.15}
+  .overview-heading{align-items:flex-start;flex-direction:column;gap:8px;margin:17px 0 11px}
+  .overview-heading h3{font-size:19px}
+  .overview-kpis{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+  .overview-kpi{padding:12px}
+  .overview-kpi b{font-size:22px}
+  .category-row{grid-template-columns:18px minmax(65px,82px) minmax(30px,1fr) 33px 30px;gap:5px}
+  .activity-chart-row{grid-template-columns:63px minmax(30px,1fr) 35px;gap:7px}
+  .coach-engine-status{padding:12px;margin:10px 0}
+  .coach-engine-status-title{align-items:flex-start;flex-direction:column;gap:7px}
+  .coach-engine-status-title>b{min-width:0}
+  .coach-report-summary{grid-template-columns:1fr;gap:10px;padding:13px}
+  .coach-report-row{grid-template-columns:1fr;gap:7px;padding:12px}
+  .coach-report-time{flex-direction:row;align-items:center;justify-content:space-between}
+  .coach-report-time>b{font-size:16px}
+  .coach-report-time>small{font-size:8px}
+  .coach-action-outcome{grid-template-columns:54px minmax(0,1fr);gap:7px;padding:10px 5px}
+  .coach-action-outcome>span{grid-column:1/-1;line-height:1.55}
+  .coach-action-outcome>small{grid-column:1/-1}
+  .coach-engine-findings-list{grid-template-columns:1fr}
+  .coach-state-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .coach-state-grid>div{padding:10px}
+  .coach-stock-row{gap:7px}
+  .coach-stock-row>span{font-size:10px}
+  .coach-stock-row>b{font-size:10px}
+  .military-split{grid-template-columns:1fr 1fr}
+  .military-builds{grid-template-columns:1fr 1fr}
+  .event-item{grid-template-columns:30px minmax(0,1fr) 46px;gap:8px}
+  .event-copy b{font-size:10px}
+  .event-copy p{font-size:9px}
+  .event-item time{font-size:9px}
+  .technical-details{margin-top:12px}
+  .technical-details>summary{font-size:11px;line-height:1.4}
+  .studio-footer{flex-direction:column;gap:5px;margin-top:20px}
+}
+@media(max-width:390px){
+  .studio-main{padding-left:10px;padding-right:10px}
+  .studio-nav{font-size:8px}
+  .review-tabs button{font-size:8px}
+  .overview-kpi b{font-size:19px}
+  .analysis-hero-side{grid-template-columns:1fr}
+  .analysis-hero-side>.studio-eyebrow,.analysis-hero-side>b{grid-column:auto}
+}
+@media(prefers-reduced-motion:reduce){
+  *,*::before,*::after{scroll-behavior:auto!important;transition:none!important;animation:none!important}
+}

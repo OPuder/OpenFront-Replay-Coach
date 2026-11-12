@@ -446,9 +446,14 @@ function CoachPanel({apiResult,preferredPlayerPublicId,decodedActions,simulation
       </section>}
       {engineInsights.length > 0 && <section className="coach-engine-findings">
         <div className="coach-engine-findings-heading"><span className="coach-report-label">ZUSTANDS-BASIERTE ERKENNTNISSE</span><b>Was die Original-Engine über deinen Spielverlauf zeigt</b><p>Diese Hinweise beruhen auf rekonstruierten Spielzuständen. Sie benennen überprüfbare Muster, keine automatisch bewiesenen Fehler oder hypothetischen Idealzüge.</p></div>
-        <div className="coach-engine-findings-list">{engineInsights.map(item=><article className={`coach-engine-finding finding-${item.kind}`} key={item.id}>
-          <div><span>{item.kind === 'strength' ? 'STÄRKE' : item.kind === 'review' ? 'PRÜFEN' : 'BEOBACHTUNG'}</span>{item.seconds !== null && <time>{clock(item.seconds)}</time>}</div>
-          <b>{item.title}</b><p>{item.summary}</p><small><strong>Beleg:</strong> {item.evidence}</small><p><strong>Nächster Schritt:</strong> {item.nextStep}</p><small><strong>Einordnung:</strong> {item.limitation}</small>
+        <div className="coach-engine-findings-list">{[...engineInsights].sort((a,b)=>({high:0,medium:1,low:2}[a.priority ?? 'low']-({high:0,medium:1,low:2}[b.priority ?? 'low']))).map(item=><article className={`coach-engine-finding finding-${item.kind}`} key={item.id}>
+          <div><span>{item.priority === 'high' ? 'HOHE PRIORITÄT' : item.priority === 'medium' ? 'PRÜFPUNKT' : item.kind === 'strength' ? 'STÄRKE' : item.kind === 'review' ? 'PRÜFEN' : 'BEOBACHTUNG'}</span>{item.seconds !== null && <time>{clock(item.seconds)}</time>}</div>
+          <b>{item.title}</b><p>{item.summary}</p>
+          {item.decision && <p><strong>Deine Entscheidung:</strong> {item.decision}</p>}
+          <small><strong>Beleg:</strong> {item.evidence}</small>
+          {item.alternative && <div className="coach-report-action"><b>Mögliche bessere Entscheidungsprüfung</b><span>{item.alternative}</span></div>}
+          <p><strong>Trainingsaufgabe:</strong> {item.nextStep}</p>
+          <small><strong>Sicherheit:</strong> {item.confidence === 'high' ? 'hoch' : item.confidence === 'medium' ? 'mittel' : 'nicht eingestuft'} · <strong>Grenze:</strong> {item.limitation}</small>
         </article>)}</div>
       </section>}
       <div className="coach-report-list">

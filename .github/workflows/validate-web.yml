@@ -44,6 +44,9 @@ jobs:
       - name: Build browser application and replay workers
         run: npm run build:web
 
+      - name: Test player-elimination phase regression
+        run: npm run test:phase-survival
+
       - name: Smoke-test PWA output
         run: node scripts/smoke-test-web.mjs
 

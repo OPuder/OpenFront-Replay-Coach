@@ -52,6 +52,24 @@ export interface ReplayStateSample {
   falloutTiles: number;
 }
 
+export interface ReplayFrontContext {
+  activeTargetCount: number;
+  outgoingAttackCount: number;
+  outgoingAttackTroops: number;
+  incomingAttackCount: number;
+  incomingAttackTroops: number;
+  incomingAttackerNames: string[];
+}
+
+export interface ReplayTargetPressure {
+  incomingAttackCount: number;
+  incomingAttackTroops: number;
+  otherAttackCount: number;
+  otherAttackerCount: number;
+  otherAttackerNames: string[];
+  retreatingOtherAttackCount: number;
+}
+
 export interface ReplayActionReview {
   frame: number;
   turn: number;
@@ -73,6 +91,8 @@ export interface ReplayActionReview {
   targetAliveBefore: boolean | null;
   targetAliveAt10s: boolean | null;
   targetAliveAt30s: boolean | null;
+  ownFrontContextBefore: ReplayFrontContext | null;
+  targetPressureBefore: ReplayTargetPressure | null;
   activeAttack10s: ReplayActiveAttackSummary | null;
   activeAttack30s: ReplayActiveAttackSummary | null;
 }
@@ -311,6 +331,38 @@ export async function simulateReplay(
             trainGold: player.trainGold,
             piracyGold: player.piracyGold,
           });
+          const summarizeFrontContext = (player: ReplayStateSample["players"][number] | undefined): ReplayFrontContext | null => {
+            if (!player) return null;
+            const activeTargets = new Set(player.outgoingAttackDetails.map(attack => attack.targetID));
+            const incomingAttackerIDs = new Set(player.incomingAttackDetails.map(attack => attack.attackerID));
+            const nameBySmallID = new Map(replayPlayerMetadata.map((meta: any) => [Number(meta.smallID), String(meta.displayName ?? meta.name ?? `Spieler ${meta.smallID}`)]));
+            return {
+              activeTargetCount: activeTargets.size,
+              outgoingAttackCount: player.outgoingAttackDetails.length,
+              outgoingAttackTroops: player.outgoingAttackDetails.reduce((sum, attack) => sum + attack.troops, 0),
+              incomingAttackCount: player.incomingAttackDetails.length,
+              incomingAttackTroops: player.incomingAttackDetails.reduce((sum, attack) => sum + attack.troops, 0),
+              incomingAttackerNames: [...incomingAttackerIDs].map(id => nameBySmallID.get(id) ?? `Spieler ${id}`),
+            };
+          };
+          const summarizeTargetPressure = (
+            targetPlayer: ReplayStateSample["players"][number] | null,
+            selectedSmallID: number,
+          ): ReplayTargetPressure | null => {
+            if (!targetPlayer) return null;
+            const attacks = targetPlayer.incomingAttackDetails;
+            const otherAttacks = attacks.filter(attack => attack.attackerID !== selectedSmallID);
+            const otherAttackerIDs = new Set(otherAttacks.map(attack => attack.attackerID));
+            const nameBySmallID = new Map(replayPlayerMetadata.map((meta: any) => [Number(meta.smallID), String(meta.displayName ?? meta.name ?? `Spieler ${meta.smallID}`)]));
+            return {
+              incomingAttackCount: attacks.length,
+              incomingAttackTroops: attacks.reduce((sum, attack) => sum + attack.troops, 0),
+              otherAttackCount: otherAttacks.length,
+              otherAttackerCount: otherAttackerIDs.size,
+              otherAttackerNames: [...otherAttackerIDs].map(id => nameBySmallID.get(id) ?? `Spieler ${id}`),
+              retreatingOtherAttackCount: otherAttacks.filter(attack => attack.retreating).length,
+            };
+          };
           const difference = (current: ReturnType<typeof metrics>, before: ReturnType<typeof metrics>) => ({
             tiles: current.tiles - before.tiles,
             gold: current.gold - before.gold,
@@ -407,6 +459,8 @@ export async function simulateReplay(
                   targetDelta10s: targetDeltaToFrame(100),
                   targetDelta30s: targetDeltaToFrame(300),
                   targetAliveBefore: targetBeforePlayer?.alive ?? null,
+                  ownFrontContextBefore: summarizeFrontContext(beforePlayer),
+                  targetPressureBefore: summarizeTargetPressure(targetBeforePlayer, target.smallID),
                   targetAliveAt10s: targetAliveAt(100),
                   targetAliveAt30s: targetAliveAt(300),
                   activeAttack10s: summarizeActiveAttack(frame, 100, targetSmallID),

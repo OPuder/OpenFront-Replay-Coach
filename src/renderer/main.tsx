@@ -5,6 +5,7 @@ import './style.css';
 import { analyzeActions } from '../main/decoder/ActionAnalysis';
 import { analyzeDetailedActions } from '../main/decoder/DetailedAnalysis';
 import { buildCoachInsights } from '../main/decoder/CoachInsights';
+import { buildEngineCoachInsights } from '../main/decoder/EngineCoachInsights';
 import { simulateReplay, type ReplaySimulationResult } from './ReplaySimulation';
 
 function App() {
@@ -320,6 +321,7 @@ function CoachPanel({apiResult,preferredPlayerPublicId,decodedActions,simulation
   const totalBuilds=builds.reduce((sum,x)=>sum+x.count,0);
   const formatPct=(n:number)=>`${Math.round(n)} %`;
   const insights=buildCoachInsights(playerActions,apiResult.durationSeconds ?? 0);
+  const engineInsights = selectedPlayerReview ? buildEngineCoachInsights(selectedPlayerReview, selectedActionReviews) : [];
   return <section id="analyse" className="coach-workspace review-v2">
     <div className="review-topline"><div><div className="eyebrow">MATCH CENTER / PARTIEÜBERSICHT</div><h2>{apiResult.mapName}</h2><p>{apiResult.gameMode} <span>·</span> {apiResult.gameType} <span>·</span> {clock(apiResult.durationSeconds ?? 0)} <span>·</span> Match-ID {apiResult.gameId}</p></div><div className="review-actions"><button className="secondary" onClick={onExport}><DownloadCloud size={16}/> CSV exportieren</button><button className="secondary" onClick={onSaveReplayJson}><FileUp size={16}/> Replay-JSON speichern</button><button className="primary" onClick={onOpenReplay}><Gamepad2 size={17}/> Replay öffnen</button></div></div>
     <div className="player-scope-bar"><div><b>Wessen Spielverlauf soll gecoacht werden?</b><small>{selectedPlayerName(players,selectedClientId) ? `Persönliche Analyse für ${selectedPlayerName(players,selectedClientId)}. Fremde Spieleraktionen sind ausgeschlossen.` : 'Die Aktionsliste enthält Befehle aller Spieler. Für persönliche Empfehlungen muss zuerst dein Spieler ausgewählt werden.'}</small></div><select aria-label="Spieler für Coaching auswählen" value={selectedClientId} onChange={e=>setSelectedClientId(e.target.value)}><option value="">Spieler auswählen …</option>{players.filter(p=>p.clientID).map(p=><option key={p.clientID!} value={p.clientID!}>{p.name}</option>)}</select></div>
@@ -339,7 +341,7 @@ function CoachPanel({apiResult,preferredPlayerPublicId,decodedActions,simulation
         <div><span className="coach-report-label">WAS SICHER FESTSTEHT</span><b>{fmt(scopedAnalysis.totalActions)} protokollierte Aktionen</b><p>{fmt(scopedAnalysis.attackCount)} Angriffe · {fmt(scopedAnalysis.boatCount)} Bootsaktionen · {fmt(totalBuilds)} Bauaktionen</p></div>
       </div>
       {selectedPlayerReview && <section className="coach-state-evidence">
-        <div className="coach-state-evidence-heading"><div><span className="coach-report-label">ORIGINAL-ENGINE · SPIELERZUSTAND</span><b>{selectedPlayerReview.playerName}: Start bis Spielende</b></div><span className="coach-state-source">Rekonstruierte Frames</span></div>
+        <div className="coach-state-evidence-heading"><div><span className="coach-report-label">ORIGINAL-ENGINE · SPIELERZUSTAND</span><b>{selectedPlayerReview.playerName}: Start bis Spielende</b></div><span className="coach-state-source">{simulationResult?.status === 'verified' ? 'Hash-verifiziert' : 'Ohne Hash-Verifikation'}</span></div>
         <div className="coach-state-grid">
           <div><small>Gebiete</small><b>{fmt(selectedPlayerReview.startTiles)} → {fmt(selectedPlayerReview.endTiles)}</b><span>{selectedPlayerReview.tilesGained >= 0 ? '+' : ''}{fmt(selectedPlayerReview.tilesGained)} Felder netto</span></div>
           <div><small>Goldbestand</small><b>{fmt(selectedPlayerReview.startGold)} → {fmt(selectedPlayerReview.endGold)}</b><span>Start- und Endbestand</span></div>
@@ -354,6 +356,13 @@ function CoachPanel({apiResult,preferredPlayerPublicId,decodedActions,simulation
             <time>{clock(item.seconds)}</time><b>{item.label}</b><span>Gebiet {item.delta!.tiles>0?'+':''}{fmt(item.delta!.tiles)} · Gold {item.delta!.gold>0?'+':''}{fmt(item.delta!.gold)} · Truppen {item.delta!.troops>0?'+':''}{fmt(item.delta!.troops)}</span>
           </div>)}</div>
         </div>}
+      </section>}
+      {engineInsights.length > 0 && <section className="coach-engine-findings">
+        <div className="coach-engine-findings-heading"><span className="coach-report-label">ZUSTANDS-BASIERTE ERKENNTNISSE</span><b>Was die Original-Engine über deinen Spielverlauf zeigt</b><p>Diese Hinweise beruhen auf rekonstruierten Spielzuständen. Sie benennen überprüfbare Muster, keine automatisch bewiesenen Fehler oder hypothetischen Idealzüge.</p></div>
+        <div className="coach-engine-findings-list">{engineInsights.map(item=><article className={`coach-engine-finding finding-${item.kind}`} key={item.id}>
+          <div><span>{item.kind === 'strength' ? 'STÄRKE' : item.kind === 'review' ? 'PRÜFEN' : 'BEOBACHTUNG'}</span>{item.seconds !== null && <time>{clock(item.seconds)}</time>}</div>
+          <b>{item.title}</b><p>{item.summary}</p><small><strong>Beleg:</strong> {item.evidence}</small><p><strong>Nächster Schritt:</strong> {item.nextStep}</p><small><strong>Einordnung:</strong> {item.limitation}</small>
+        </article>)}</div>
       </section>}
       <div className="coach-report-list">
         {[...insights].filter(x=>x.seconds!==null).sort((a,b)=>(b.priority??0)-(a.priority??0)).map((item,i)=><article className={`coach-report-row insight-${item.kind}`} key={item.id}>

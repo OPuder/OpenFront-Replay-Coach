@@ -3,8 +3,6 @@ name: Validate Web and PWA
 on:
   pull_request:
     branches: [main]
-  push:
-    branches: [main, coach-ux-overhaul-2.2.4]
   workflow_dispatch:
 
 permissions:

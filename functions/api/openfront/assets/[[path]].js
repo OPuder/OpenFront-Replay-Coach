@@ -34,6 +34,7 @@ export async function onRequest({ request }) {
     const base = bootstrap.upstreamCdnBase || "https://openfront.io/";
     const encodedPath = allowedPath.split("/").map(segment => encodeURIComponent(segment)).join("/");
     const upstream = base.replace(/\/+$/, "") + "/" + encodedPath;
+    const response = await fetch(upstream, {
       method: request.method,
       headers: { Accept: request.headers.get("Accept") || "*/*" },
       redirect: "error",

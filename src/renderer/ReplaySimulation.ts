@@ -38,7 +38,7 @@ export interface ReplaySimulationResult {
   totalTicks: number;
   verifiedHashes: number;
   samples: ReplayStateSample[];
-  playerReview: null | { playerName: string; startTiles: number; endTiles: number; tilesGained: number; startGold: number; endGold: number; startTroops: number; endTroops: number; outgoingAttackSamples: number; longestNoExpansionSeconds: number };
+  playerReview: null | { playerName: string; clientID: string | null; startTiles: number; endTiles: number; tilesGained: number; startGold: number; endGold: number; startTroops: number; endTroops: number; outgoingAttackSamples: number; longestNoExpansionSeconds: number };
   actionReviews: ReplayActionReview[];
   message: string;
 }
@@ -72,6 +72,11 @@ export async function simulateReplay(
   // before and after every action by the selected player. A 50-frame-only
   // sample can otherwise miss the state change that matters for coaching.
   const sampleFrames = new Set<number>();
+  const replayPlayers = Array.isArray(record?.info?.players) ? record.info.players : [];
+  const selectedPlayerMeta = preferredClientId
+    ? replayPlayers.find((player: any) => String(player?.clientID ?? "") === preferredClientId)
+    : replayPlayers.find((player: any) => /oligenole/i.test(String(player?.displayName ?? player?.name ?? player?.username ?? "")));
+  const selectedClientId = selectedPlayerMeta?.clientID == null ? null : String(selectedPlayerMeta.clientID);
   const cadence = Math.max(1, Math.floor(sampleEvery));
   // OpenFront decompresses sparse records by inserting empty turns for every
   // omitted game tick. ReplayProcessor then emits one frame per decompressed
@@ -82,11 +87,11 @@ export async function simulateReplay(
     0,
   );
   for (let frame = 0; frame < totalRecordedFrames; frame += cadence) sampleFrames.add(frame);
-  if (preferredClientId) {
+  if (selectedClientId) {
     turns.forEach((turn: any) => {
       const frame = Number(turn?.turnNumber);
       if (Number.isInteger(frame) && frame >= 0 &&
-          (turn?.intents ?? []).some((intent: any) => String(intent?.clientID ?? "") === preferredClientId)) {
+          (turn?.intents ?? []).some((intent: any) => String(intent?.clientID ?? "") === selectedClientId)) {
         sampleFrames.add(Math.max(0, frame - 1));
         sampleFrames.add(frame);
         sampleFrames.add(Math.min(totalRecordedFrames - 1, frame + 1));
@@ -189,8 +194,8 @@ export async function simulateReplay(
           }
           cleanup();
           const staticPlayers = readerRef.current?.header.players ?? [];
-          const target = preferredClientId
-            ? staticPlayers.find((p: any) => String(p.clientID ?? "") === preferredClientId)
+          const target = selectedClientId
+            ? staticPlayers.find((p: any) => String(p.clientID ?? "") === selectedClientId)
             : staticPlayers.find((p: any) => /oligenole/i.test(String(p.displayName ?? p.name ?? p.username ?? "")));
           const playerObservations = target ? samples.map(sample => ({tick:sample.tick, player:sample.players.find(p => p.id === target.smallID)})).filter((x): x is {tick:number;player:NonNullable<typeof x.player>} => Boolean(x.player)) : [];
           const playerSeries = playerObservations.map(x => x.player);
@@ -208,6 +213,7 @@ export async function simulateReplay(
           if (playerObservations.length > 1) longestNoExpansionTicks = Math.max(longestNoExpansionTicks, playerObservations[playerObservations.length-1].tick - flatStartTick);
           const playerReview = firstPlayer && lastPlayer ? {
             playerName: target.displayName ?? target.name ?? target.username ?? "Dein Spieler",
+            clientID: target.clientID == null ? null : String(target.clientID),
             startTiles: firstPlayer.tiles,
             endTiles: lastPlayer.tiles,
             tilesGained: lastPlayer.tiles - firstPlayer.tiles,
@@ -254,13 +260,17 @@ export async function simulateReplay(
               });
           }) : [];
           resolve({
+            // processGameRecord resolves only after every recorded hash has been
+            // compared. Its first mismatch rejects with ReplayDesyncError.
             status: recordedHashCount > 0 ? "verified" : "unverified",
             totalTicks,
             verifiedHashes: recordedHashCount,
             samples,
             playerReview,
             actionReviews,
-            message: recordedHashCount > 0 ? "Simulation abgeschlossen; alle gespeicherten Hash-Prüfpunkte wurden ohne Abweichung abgeglichen." : "Simulation abgeschlossen, aber es waren keine Hash-Prüfpunkte im Replay vorhanden."
+            message: recordedHashCount > 0
+              ? `Simulation abgeschlossen: Alle ${recordedHashCount.toLocaleString("de-DE")} gespeicherten Hash-Prüfpunkte wurden von der Original-Engine erfolgreich abgeglichen.`
+              : "Simulation abgeschlossen, aber das Replay enthält keine Hash-Prüfpunkte. Die Spielzustände wurden rekonstruiert, sind jedoch nicht anhand gespeicherter Hashes verifiziert."
           });
         } else if (msg.type === "error") {
           const detail = msg.message ?? "Unbekannter Replay-Fehler";

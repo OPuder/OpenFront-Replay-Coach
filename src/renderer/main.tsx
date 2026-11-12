@@ -5,6 +5,7 @@ import './style.css';
 import { analyzeActions } from '../main/decoder/ActionAnalysis';
 import { analyzeDetailedActions } from '../main/decoder/DetailedAnalysis';
 import { buildCoachInsights } from '../main/decoder/CoachInsights';
+import { buildEngineCoachInsights } from '../main/decoder/EngineCoachInsights';
 import { simulateReplay, type ReplaySimulationResult } from './ReplaySimulation';
 
 function App() {
@@ -73,7 +74,7 @@ function App() {
   }
   async function runEngineReview(result: ApiImportSummary) {
     setSimulationResult(null);
-    if (!result.record || !result.engineCompatibility?.engineVersionCompatible || !result.engineCompatibility.hashVerificationAvailable) return;
+    if (!result.record || !result.engineCompatibility?.engineVersionCompatible) return;
     setSimulationProgress({percent:0,phase:'Original-Engine wird gestartet'});
     try {
       const assets = await window.replayAPI.getReplayEngineAssets();
@@ -167,6 +168,8 @@ function App() {
       {activePage==='analysis' && <>
         {apiResult ? <>
           <div className="analysis-hero studio-card"><div className="analysis-map-preview"><MapPreview map={apiResult.mapName} src={apiResult.previewUrl} refreshKey={mapRefreshKey}/><div className="map-overlay"><span className="studio-eyebrow">MATCH REVIEW</span><h2>{apiResult.mapName}</h2><p>{apiResult.gameMode} · {apiResult.gameType} · {clock(apiResult.durationSeconds??0)} · {fmt(apiResult.playerCount??0)} Spieler</p></div></div><div className="analysis-hero-side"><span className="studio-eyebrow">MATCH ID</span><b>{apiResult.gameId}</b><button className="studio-button primary" onClick={()=>window.replayAPI.openOfficialReplay(apiResult.gameId)}><Gamepad2 size={16}/> Original-Replay ansehen</button><button className="studio-button subtle" onClick={exportActionsCsv}><DownloadCloud size={16}/> Aktionsprotokoll exportieren</button></div></div>
+          {apiResult.actionAnalysis && <CoachPanel apiResult={apiResult} preferredPlayerPublicId={playerPage?.profile?.publicId ?? playerPage?.profile?.publicID ?? null} decodedActions={decodedActions} simulationResult={simulationResult} simulationProgress={simulationProgress} onExport={exportActionsCsv} onSaveReplayJson={()=>void saveReplayJson()} onOpenReplay={()=>window.replayAPI.openOfficialReplay(apiResult.gameId)} fmt={fmt}/>}
+          <details className="technical-details studio-card engine-diagnostics"><summary>Engine-Simulation, Hash-Abgleich und technische Zustände <ChevronDown size={16}/></summary>
           {apiResult.engineCompatibility && <section className="studio-card" style={{marginTop:16}}>
             <div className="card-heading"><div><span className="studio-eyebrow">ENGINE-KOMPATIBILITÄT</span><h3>{apiResult.engineCompatibility.status === 'version-compatible-hashes-available' ? 'Version passt – Hash-Abgleich kann starten' : apiResult.engineCompatibility.status === 'version-compatible-no-hashes' ? 'Version passt – keine Hash-Prüfpunkte' : 'Keine sichere Engine-Wiedergabe möglich'}</h3></div>{apiResult.engineCompatibility.engineVersionCompatible ? <CheckCircle2 size={20}/> : <AlertTriangle size={20}/>}</div>
             <p>{apiResult.engineCompatibility.message}</p>
@@ -176,11 +179,6 @@ function App() {
               <Detail label="Hash-Prüfpunkte" value={fmt(apiResult.engineCompatibility.recordedHashCount)}/>
             </div>
             <small>Wichtig: Versionsgleichheit und vorhandene Hashes sind noch kein bestandener Replay-Test. Erst der echte Engine-Lauf kann die Spielrekonstruktion bestätigen.</small>
-          </section>}
-          {simulationProgress && <section className="studio-card" style={{marginTop:16}}>
-            <div className="card-heading"><div><span className="studio-eyebrow">ECHTE ENGINE-SIMULATION</span><h3>{simulationProgress.phase}</h3></div><Activity size={20}/></div>
-            <div className="progress-track"><div className="progress-fill" style={{width:`${simulationProgress.percent}%`}}/></div>
-            <p>{simulationProgress.percent}% – Original-Engine läuft; Spielzustände werden aus den Replay-Frames rekonstruiert.</p>
           </section>}
           {simulationResult && <section className="studio-card" style={{marginTop:16}}>
             <div className="card-heading"><div><span className="studio-eyebrow">SIMULATIONSERGEBNIS</span><h3>{simulationResult.status === 'verified' ? 'Replay erfolgreich reproduziert' : 'Replay nicht vollständig verifiziert'}</h3></div>{simulationResult.status === 'verified' ? <CheckCircle2 size={20}/> : <AlertTriangle size={20}/>}</div>
@@ -212,7 +210,7 @@ function App() {
               </tbody></table></div>
             </div>}
           </section>}
-          {apiResult.actionAnalysis && <CoachPanel apiResult={apiResult} preferredPlayerPublicId={playerPage?.profile?.publicId ?? playerPage?.profile?.publicID ?? null} decodedActions={decodedActions} onExport={exportActionsCsv} onSaveReplayJson={()=>void saveReplayJson()} onOpenReplay={()=>window.replayAPI.openOfficialReplay(apiResult.gameId)} fmt={fmt}/>}
+          </details>
           <details className="technical-details studio-card"><summary>Technische Daten und vollständiges Aktionsprotokoll <ChevronDown size={16}/></summary><div className="details-grid">{Object.entries(apiResult.categoryCounts??{}).map(([k,v])=><Detail key={k} label={k} value={fmt(v)}/>)}</div><div className="action-list">{decodedActions.slice(0,200).map((a,i)=><div className="check-row" key={`${a.turn}-${i}`}><div><b>{a.label}</b><small>{clock(a.seconds)} · {a.details}</small></div><span className="pill blue">{a.category}</span></div>)}</div></details>
         </> : replay ? <section className="studio-card"><div className="analysis-hero"><MapPreview map={replay.mapName} refreshKey={mapRefreshKey}/><div><span className="studio-eyebrow">LOKALES REPLAY</span><h2>{replay.mapName}</h2><p>{replay.gameId} · {replay.mode}</p><button className="studio-button primary" onClick={()=>window.replayAPI.openOfficialReplay(replay.gameId)}>Original-Replay ansehen</button></div></div><p>Die lokale Datei wurde erkannt. Für die taktische Rekonstruktion muss die passende OpenFront-Engine eingebunden werden.</p></section> : <section className="empty-account studio-card"><Brain size={30}/><h2>Wähle zuerst eine Partie</h2><p>Öffne deine Spielbibliothek oder importiere einen Match-Link.</p><button className="studio-button primary" onClick={()=>navigateTo('games')}>Meine Partien öffnen</button><div className="profile-loader"><input value={url} onChange={e=>setUrl(e.target.value)} placeholder="OpenFront-Match-Link"/><button className="studio-button subtle" onClick={importUrl} disabled={busy}>Link abrufen</button></div></section>}
       </>}
@@ -288,7 +286,7 @@ function TrainingFocus({apiResult,decodedActions}:{apiResult:ApiImportSummary;de
   </div>;
 }
 function selectedPlayerName(players:Array<{name:string;clientID:string|null}>,id:string){return players.find(p=>p.clientID===id)?.name ?? '';}
-function CoachPanel({apiResult,preferredPlayerPublicId,decodedActions,onExport,onSaveReplayJson,onOpenReplay,fmt}:{preferredPlayerPublicId:string|null;apiResult:ApiImportSummary;decodedActions:DecodedAction[];onExport:()=>void;onSaveReplayJson:()=>void;onOpenReplay:()=>void;fmt:(n:number)=>string}) {
+function CoachPanel({apiResult,preferredPlayerPublicId,decodedActions,simulationResult,simulationProgress,onExport,onSaveReplayJson,onOpenReplay,fmt}:{preferredPlayerPublicId:string|null;apiResult:ApiImportSummary;decodedActions:DecodedAction[];simulationResult:ReplaySimulationResult|null;simulationProgress:{percent:number;phase:string}|null;onExport:()=>void;onSaveReplayJson:()=>void;onOpenReplay:()=>void;fmt:(n:number)=>string}) {
   const [analysisTab,setAnalysisTab]=useState<'overview'|'decisions'|'economy'|'military'|'timeline'>('decisions');
   const players=apiResult.playerStats ?? [];
   const preferredPlayer=players.find(p=>preferredPlayerPublicId && p.publicID===preferredPlayerPublicId);
@@ -296,6 +294,8 @@ function CoachPanel({apiResult,preferredPlayerPublicId,decodedActions,onExport,o
   const [selectedClientId,setSelectedClientId]=useState<string>(()=>initialPlayer?.clientID ?? '');
   React.useEffect(()=>{const match=players.find(p=>preferredPlayerPublicId && p.publicID===preferredPlayerPublicId) ?? (players.length===1 ? players[0] : null);setSelectedClientId(match?.clientID ?? '');},[apiResult.gameId,preferredPlayerPublicId]);
   const playerScoped=Boolean(selectedClientId);
+  const selectedPlayerReview = simulationResult?.playerReview?.clientID === selectedClientId ? simulationResult.playerReview : null;
+  const selectedActionReviews = selectedPlayerReview ? (simulationResult?.actionReviews ?? []) : [];
   const playerActions=playerScoped ? decodedActions.filter(a=>a.clientId===selectedClientId) : [];
   const scopedAnalysis=analyzeActions(playerActions,apiResult.durationSeconds ?? 0);
   const details=analyzeDetailedActions(playerActions,apiResult.durationSeconds ?? 0);
@@ -306,30 +306,62 @@ function CoachPanel({apiResult,preferredPlayerPublicId,decodedActions,onExport,o
   const peak=[...buckets].sort((a,b)=>b.total-a.total)[0];
   const firstAttack=playerActions.find(a=>a.type==='attack');
   const firstBuild=playerActions.find(a=>a.type==='build_unit');
+  const firstBoat=playerActions.find(a=>a.type==='boat');
+  const largestStateWindow = selectedActionReviews.filter(action=>action.delta).slice().sort((a,b)=>Math.abs(b.delta!.tiles)-Math.abs(a.delta!.tiles))[0];
   const categories=Object.entries(scopedAnalysis.categoryCounts).sort((a,b)=>b[1]-a[1]);
   const timeline=[
     firstBuild ? {time:firstBuild.seconds,title:'Dein erster protokollierter Bau',detail:firstBuild.details || firstBuild.label,kind:'Bau',turn:firstBuild.turn} : null,
     firstAttack ? {time:firstAttack.seconds,title:'Erster protokollierter Angriff',detail:firstAttack.details || firstAttack.label,kind:'Angriff',turn:firstAttack.turn} : null,
+    firstBoat ? {time:firstBoat.seconds,title:'Erster Bootstransport',detail:firstBoat.details || firstBoat.label,kind:'Marine',turn:firstBoat.turn} : null,
+    largestStateWindow ? {time:largestStateWindow.seconds,title:'Größte Gebietsänderung im direkten Aktionsfenster',detail:`${largestStateWindow.label} · Gebiet ${largestStateWindow.delta!.tiles>0?'+':''}${fmt(largestStateWindow.delta!.tiles)} · Gold ${largestStateWindow.delta!.gold>0?'+':''}${fmt(largestStateWindow.delta!.gold)} · Truppen ${largestStateWindow.delta!.troops>0?'+':''}${fmt(largestStateWindow.delta!.troops)}`,kind:'Engine-Zustand',turn:largestStateWindow.turn} : null,
     peak ? {time:(buckets.indexOf(peak)*300),title:'Aktivster Fünf-Minuten-Abschnitt',detail:`${fmt(peak.total)} Aktionen · ${peak.attacks} Angriffe · ${peak.boats} Bootsaktionen · ${peak.builds} Bauaktionen`,kind:'Aktivität',turn:null} : null
   ].filter(Boolean).sort((a,b)=>(a?.time??0)-(b?.time??0)) as Array<{time:number;title:string;detail:string;kind:string;turn:number|null}>;
   const totalBuilds=builds.reduce((sum,x)=>sum+x.count,0);
   const formatPct=(n:number)=>`${Math.round(n)} %`;
   const insights=buildCoachInsights(playerActions,apiResult.durationSeconds ?? 0);
+  const engineInsights = selectedPlayerReview ? buildEngineCoachInsights(selectedPlayerReview, selectedActionReviews) : [];
   return <section id="analyse" className="coach-workspace review-v2">
     <div className="review-topline"><div><div className="eyebrow">MATCH CENTER / PARTIEÜBERSICHT</div><h2>{apiResult.mapName}</h2><p>{apiResult.gameMode} <span>·</span> {apiResult.gameType} <span>·</span> {clock(apiResult.durationSeconds ?? 0)} <span>·</span> Match-ID {apiResult.gameId}</p></div><div className="review-actions"><button className="secondary" onClick={onExport}><DownloadCloud size={16}/> CSV exportieren</button><button className="secondary" onClick={onSaveReplayJson}><FileUp size={16}/> Replay-JSON speichern</button><button className="primary" onClick={onOpenReplay}><Gamepad2 size={17}/> Replay öffnen</button></div></div>
     <div className="player-scope-bar"><div><b>Wessen Spielverlauf soll gecoacht werden?</b><small>{selectedPlayerName(players,selectedClientId) ? `Persönliche Analyse für ${selectedPlayerName(players,selectedClientId)}. Fremde Spieleraktionen sind ausgeschlossen.` : 'Die Aktionsliste enthält Befehle aller Spieler. Für persönliche Empfehlungen muss zuerst dein Spieler ausgewählt werden.'}</small></div><select aria-label="Spieler für Coaching auswählen" value={selectedClientId} onChange={e=>setSelectedClientId(e.target.value)}><option value="">Spieler auswählen …</option>{players.filter(p=>p.clientID).map(p=><option key={p.clientID!} value={p.clientID!}>{p.name}</option>)}</select></div>
     {!playerScoped && <div className="player-scope-empty"><b>Persönliche Analyse noch nicht gestartet</b><p>Wähle deinen Namen aus der Liste. Danach beziehen sich Zeitpunkte, Angriffe, Bootsaktionen und Bauentscheidungen ausschließlich auf diesen Spieler – nicht auf die gesamte Lobby.</p></div>}
-    <nav className="review-tabs" aria-label="Analysebereiche">{([{id:"overview",label:"Übersicht"},{id:"decisions",label:"Coaching"},{id:"economy",label:"Wirtschaft & Bau"},{id:"military",label:"Militär & Marine"},{id:"timeline",label:"Zeitpunkte"}] as const).map(tab=><button type="button" key={tab.id} className={analysisTab===tab.id?"selected":""} aria-pressed={analysisTab===tab.id} onClick={()=>setAnalysisTab(tab.id)}>{tab.label}</button>)}</nav>
+    <nav className="review-tabs" aria-label="Analysebereiche">{([{id:"decisions",label:"Coaching"},{id:"overview",label:"Übersicht"},{id:"economy",label:"Wirtschaft & Bau"},{id:"military",label:"Militär & Marine"},{id:"timeline",label:"Zeitpunkte"}] as const).map(tab=><button type="button" key={tab.id} className={analysisTab===tab.id?"selected":""} aria-pressed={analysisTab===tab.id} onClick={()=>setAnalysisTab(tab.id)}>{tab.label}</button>)}</nav>
     {playerScoped && analysisTab==='decisions' && <section id="match-coach-insights" className="coach-insights-section">
       <div className="overview-heading"><div><span className="eyebrow">01 / DEIN SPIELBERICHT</span><h3>Die wichtigsten Erkenntnisse</h3><p>Nach Priorität sortiert. Jede Karte nennt deine Entscheidung, einen konkreten nächsten Prüf- bzw. Handlungsansatz und die Beleggrenze. Zeiten sind Befehlszeitpunkte; Bootszeit = Startbefehl, nicht Ankunft.</p></div></div>
       <div className="coach-engine-status" role="status">
-        <div className="coach-engine-status-title"><b>Engine-Simulation noch nicht aktiv</b><span>Aktionsprotokoll-Modus</span></div>
-        <p>Diese Partie wurde in dieser Version noch nicht mit der OpenFront-Engine rekonstruiert. Deshalb kann der Coach aktuell weder tatsächliche Gebietsgewinne noch Truppenverluste, Goldverläufe oder alternative Spielzüge verlässlich bewerten. Die angezeigten Zeitpunkte sind protokollierte Befehlszeitpunkte.</p>
+        <div className="coach-engine-status-title">
+          <b>{simulationProgress ? 'Original-Engine simuliert die Partie' : simulationResult?.status === 'verified' ? 'Replay erfolgreich hash-verifiziert' : simulationResult ? 'Spielzustände rekonstruiert – nicht vollständig verifiziert' : apiResult.engineCompatibility?.engineVersionCompatible ? 'Engine kompatibel – Simulation noch nicht gestartet' : 'Keine kompatible Engine-Simulation verfügbar'}</b>
+          <span>{simulationProgress ? `${simulationProgress.percent}% · läuft` : simulationResult?.status === 'verified' ? `${fmt(simulationResult.verifiedHashes)} Hashes bestanden` : simulationResult ? 'Status: unverifiziert' : 'Datenbasis prüfen'}</span>
+        </div>
+        <p>{simulationProgress ? simulationProgress.phase : simulationResult?.message ?? apiResult.engineCompatibility?.message ?? 'Die Replay-Engine konnte für diesen Datensatz nicht sicher zugeordnet werden.'}</p>
       </div>
       <div className="coach-report-summary">
         <div><span className="coach-report-label">ZUERST ANSEHEN</span><b>{insights.find(x=>x.kind==='review')?.title ?? 'Keine kritischen Prüfpunkte erkannt'}</b><p>{insights.find(x=>x.kind==='review')?.nextStep ?? 'Für diese Partie liegen keine ausreichend belegten Hinweise vor.'}</p></div>
         <div><span className="coach-report-label">WAS SICHER FESTSTEHT</span><b>{fmt(scopedAnalysis.totalActions)} protokollierte Aktionen</b><p>{fmt(scopedAnalysis.attackCount)} Angriffe · {fmt(scopedAnalysis.boatCount)} Bootsaktionen · {fmt(totalBuilds)} Bauaktionen</p></div>
       </div>
+      {selectedPlayerReview && <section className="coach-state-evidence">
+        <div className="coach-state-evidence-heading"><div><span className="coach-report-label">ORIGINAL-ENGINE · SPIELERZUSTAND</span><b>{selectedPlayerReview.playerName}: Start bis Spielende</b></div><span className="coach-state-source">{simulationResult?.status === 'verified' ? 'Hash-verifiziert' : 'Ohne Hash-Verifikation'}</span></div>
+        <div className="coach-state-grid">
+          <div><small>Gebiete</small><b>{fmt(selectedPlayerReview.startTiles)} → {fmt(selectedPlayerReview.endTiles)}</b><span>{selectedPlayerReview.tilesGained >= 0 ? '+' : ''}{fmt(selectedPlayerReview.tilesGained)} Felder netto</span></div>
+          <div><small>Goldbestand</small><b>{fmt(selectedPlayerReview.startGold)} → {fmt(selectedPlayerReview.endGold)}</b><span>Start- und Endbestand</span></div>
+          <div><small>Truppenbestand</small><b>{fmt(selectedPlayerReview.startTroops)} → {fmt(selectedPlayerReview.endTroops)}</b><span>Start- und Endbestand</span></div>
+          <div><small>Gebietszuwachs-Pause</small><b>{fmt(selectedPlayerReview.longestNoExpansionSeconds)} s</b><span>Längster beobachteter Zeitraum ohne Zuwachs</span></div>
+        </div>
+        <p className="coach-state-caveat">Das sind beobachtete Zustandsunterschiede, keine automatische Bewertung einzelner Befehle. Die längste Pause wird aus gespeicherten Stichproben abgeleitet; sie ist kein Beweis für Leerlauf.</p>
+        {selectedActionReviews.some(item=>item.delta) && <div className="coach-action-outcomes">
+          <b>Eigene Aktionen mit Zustandsvergleich</b>
+          <p>Die Werte zeigen den Zustand direkt vor und nach dem jeweiligen Aktions-Tick. Zeitgleiche Spielereignisse können ebenfalls zu Änderungen beitragen.</p>
+          <div>{selectedActionReviews.filter(item=>item.delta).slice(0,6).map(item=><div className="coach-action-outcome" key={`${item.turn}-${item.type}`}>
+            <time>{clock(item.seconds)}</time><b>{item.label}</b><span>Gebiet {item.delta!.tiles>0?'+':''}{fmt(item.delta!.tiles)} · Gold {item.delta!.gold>0?'+':''}{fmt(item.delta!.gold)} · Truppen {item.delta!.troops>0?'+':''}{fmt(item.delta!.troops)}</span>
+          </div>)}</div>
+        </div>}
+      </section>}
+      {engineInsights.length > 0 && <section className="coach-engine-findings">
+        <div className="coach-engine-findings-heading"><span className="coach-report-label">ZUSTANDS-BASIERTE ERKENNTNISSE</span><b>Was die Original-Engine über deinen Spielverlauf zeigt</b><p>Diese Hinweise beruhen auf rekonstruierten Spielzuständen. Sie benennen überprüfbare Muster, keine automatisch bewiesenen Fehler oder hypothetischen Idealzüge.</p></div>
+        <div className="coach-engine-findings-list">{engineInsights.map(item=><article className={`coach-engine-finding finding-${item.kind}`} key={item.id}>
+          <div><span>{item.kind === 'strength' ? 'STÄRKE' : item.kind === 'review' ? 'PRÜFEN' : 'BEOBACHTUNG'}</span>{item.seconds !== null && <time>{clock(item.seconds)}</time>}</div>
+          <b>{item.title}</b><p>{item.summary}</p><small><strong>Beleg:</strong> {item.evidence}</small><p><strong>Nächster Schritt:</strong> {item.nextStep}</p><small><strong>Einordnung:</strong> {item.limitation}</small>
+        </article>)}</div>
+      </section>}
       <div className="coach-report-list">
         {[...insights].filter(x=>x.seconds!==null).sort((a,b)=>(b.priority??0)-(a.priority??0)).map((item,i)=><article className={`coach-report-row insight-${item.kind}`} key={item.id}>
           <div className="coach-report-time"><b>{clock(item.seconds??0)}</b><small>{item.kind==='strength'?'GUT GEMACHT':item.kind==='review'?'PRÜFEN':'BEOBACHTUNG'}</small></div>

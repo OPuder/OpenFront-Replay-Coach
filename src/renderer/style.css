@@ -140,3 +140,48 @@ body{background:radial-gradient(ellipse at 76% -10%,#17314b 0,transparent 42%),#
 .coach-engine-status-title{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
 .coach-engine-status-title span{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:#e5bd73}
 .coach-engine-status p{margin:8px 0 0;color:#c4cfdd;line-height:1.55;font-size:13px}
+
+
+/* 2.2.0 – engine-backed coaching is the primary review; diagnostics stay secondary. */
+.engine-progress-card{margin-top:12px;padding:15px 18px}
+.engine-diagnostics{margin-top:14px}
+.engine-diagnostics>summary{display:flex;align-items:center;justify-content:space-between;gap:12px;cursor:pointer;list-style:none}
+.engine-diagnostics>summary::-webkit-details-marker{display:none}
+.engine-diagnostics[open]>summary{padding-bottom:12px;border-bottom:1px solid #2b435b;margin-bottom:12px}
+.coach-state-evidence{margin:14px 0;padding:15px 16px;border:1px solid #385875;border-radius:12px;background:linear-gradient(115deg,rgba(27,57,82,.8),rgba(13,27,43,.95))}
+.coach-state-evidence-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:12px}
+.coach-state-evidence-heading>div{display:flex;flex-direction:column;gap:5px}
+.coach-state-evidence-heading>div>b{font-size:13px;color:#f0f6fc}
+.coach-state-source{font-size:10px;color:#9eb8cf;text-transform:uppercase;letter-spacing:.08em}
+.coach-state-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+.coach-state-grid>div{display:flex;flex-direction:column;gap:5px;min-width:0;padding:11px;border:1px solid #304a63;border-radius:9px;background:#0d1d2d}
+.coach-state-grid small{font-size:10px;color:#a9bfd4}
+.coach-state-grid b{font:700 15px 'Cascadia Code',monospace;color:#f3f7fc;overflow-wrap:anywhere}
+.coach-state-grid span{font-size:10px;line-height:1.4;color:#8ec5dc}
+.coach-state-caveat{margin:10px 0 0;color:#aebfd0;font-size:10px;line-height:1.55}
+.coach-action-outcomes{margin-top:14px;padding-top:12px;border-top:1px solid #304a63}
+.coach-action-outcomes>b{font-size:12px;color:#e7f0f8}
+.coach-action-outcomes>p{margin:5px 0 9px;color:#aebfd0;font-size:10px;line-height:1.5}
+.coach-action-outcome{display:grid;grid-template-columns:62px minmax(120px,1fr) minmax(0,2fr);gap:10px;align-items:center;padding:8px 10px;border-top:1px solid rgba(65,91,116,.45)}
+.coach-action-outcome time{font:700 11px 'Cascadia Code',monospace;color:#8ec5dc}
+.coach-action-outcome>b{font-size:11px;color:#edf4fa}
+.coach-action-outcome>span{font-size:10px;color:#bacbda;overflow-wrap:anywhere}
+@media(max-width:760px){.coach-state-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.coach-action-outcome{grid-template-columns:55px 1fr}.coach-action-outcome>span{grid-column:2}}
+@media(max-width:420px){.coach-state-grid{grid-template-columns:1fr}.engine-diagnostics>summary{align-items:flex-start}}
+
+
+.coach-engine-findings{margin:14px 0;padding:15px 16px;border:1px solid #304a63;border-radius:12px;background:#0e1c2b}
+.coach-engine-findings-heading{display:flex;flex-direction:column;gap:5px;margin-bottom:12px}
+.coach-engine-findings-heading>b{font-size:13px;color:#f1f6fb}
+.coach-engine-findings-heading>p{margin:0;color:#aebfd0;font-size:10px;line-height:1.5}
+.coach-engine-findings-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
+.coach-engine-finding{min-width:0;padding:12px;border:1px solid #2d455d;border-left:3px solid #7898b5;border-radius:9px;background:#122438}
+.coach-engine-finding.finding-strength{border-left-color:#59bd91}
+.coach-engine-finding.finding-review{border-left-color:#e0ad55}
+.coach-engine-finding>div{display:flex;justify-content:space-between;gap:8px;margin-bottom:7px}
+.coach-engine-finding>div>span,.coach-engine-finding>div>time{font-size:9px;letter-spacing:.07em;color:#a8bfd4}
+.coach-engine-finding>b{display:block;color:#f0f5fb;font-size:12px}
+.coach-engine-finding>p{margin:6px 0;color:#c4d2df;font-size:10px;line-height:1.5}
+.coach-engine-finding>small{display:block;padding-top:6px;border-top:1px solid #2b4055;color:#a9bfd1;font-size:9px;line-height:1.5;overflow-wrap:anywhere}
+.coach-engine-finding>small strong,.coach-engine-finding>p strong{color:#9bc6e3}
+@media(max-width:760px){.coach-engine-findings-list{grid-template-columns:1fr}}

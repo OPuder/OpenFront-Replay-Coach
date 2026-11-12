@@ -1,4 +1,3 @@
-
 name: Build Windows app
 
 on:
@@ -9,6 +8,9 @@ on:
     branches: [main]
     paths:
       - "src/**"
+      - "engine-build/**"
+      - "vendor/OpenFrontIO"
+      - ".gitmodules"
       - "package.json"
       - "package-lock.json"
       - "vite.config.ts"
@@ -21,18 +23,36 @@ permissions:
 jobs:
   build-windows:
     runs-on: windows-latest
-    timeout-minutes: 30
+    timeout-minutes: 60
     steps:
       - name: Check out source
         uses: actions/checkout@v4
 
-      - name: Set up Node.js
+      - name: Check out only the pinned public OpenFront source
+        run: git submodule update --init --depth 1 vendor/OpenFrontIO
+
+      - name: Set up upstream Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24.15.0"
+
+      - name: Set up upstream npm
+        run: npm install --global npm@12.1.0
+
+      - name: Install pinned OpenFront workspaces
+        working-directory: vendor/OpenFrontIO
+        run: npm ci --ignore-scripts
+
+      - name: Build original OpenFront replay workers
+        run: npm run build:engine
+
+      - name: Set up Coach Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
 
-      - name: Install dependencies
+      - name: Install Coach dependencies
         run: npm ci
 
       - name: Build and package

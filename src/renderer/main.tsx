@@ -8,6 +8,7 @@ import { analyzeDetailedActions } from '../main/decoder/DetailedAnalysis';
 import { buildCoachInsights } from '../main/decoder/CoachInsights';
 import { buildEngineCoachInsights } from '../main/decoder/EngineCoachInsights';
 import type { ReplaySimulationResult } from './ReplaySimulation';
+import { selectPlayerSurvivalWindow } from './phaseSurvival';
 import { installBrowserReplayAPI } from './platform/BrowserReplayAPI';
 
 // Electron provides its API through the isolated preload; normal browsers use
@@ -386,14 +387,13 @@ function CoachPanel({apiResult,preferredPlayerPublicId,decodedActions,simulation
     ? leadEngineReview?.nextStep ?? 'Prüfe die Zeitachse auf Phasen mit eingehendem Druck, Gebietsverlust und gebundenen Truppen. Wähle daraus genau ein Verhalten, das du in der nächsten Partie bewusst trainierst.'
     : 'Zuerst das Replay mit der passenden Original-Engine reproduzieren und die gespeicherten Hashes abgleichen. Erst danach eine taktische Lektion ableiten.';
   const replayDurationTicks = simulationResult?.totalTicks ?? 0;
-  const selectedPlayerSamples = (simulationResult?.samples ?? [])
-    .map(sample => ({ tick: sample.tick, player: sample.players.find(player => player.clientID === selectedClientId) }))
-    .filter((entry): entry is { tick: number; player: NonNullable<typeof entry.player> } => entry.player !== undefined);
-  const firstAliveSample = selectedPlayerSamples.find(entry => entry.player.alive);
-  const lastAliveSample = [...selectedPlayerSamples].reverse().find(entry => entry.player.alive);
-  const firstEliminatedSample = selectedPlayerSamples.find(entry => !entry.player.alive);
-  const playerEliminatedAtSeconds = firstEliminatedSample ? firstEliminatedSample.tick / 10 : null;
-  const lastAliveTick = lastAliveSample?.tick ?? replayDurationTicks;
+  const {
+    alivePlayerSamples,
+    firstAliveSample,
+    lastAliveSample,
+    playerEliminatedAtSeconds,
+    lastAliveTick,
+  } = selectPlayerSurvivalWindow(simulationResult?.samples ?? [], selectedClientId, replayDurationTicks);
   const phaseDefinitions = [
     { id: 'early', label: 'Early Game', from: 0, to: 0.3, description: 'Start, Expansion und erste Wirtschaft' },
     { id: 'mid', label: 'Mid Game', from: 0.3, to: 0.7, description: 'Fronten, Zielwahl und Ressourcensteuerung' },
@@ -403,11 +403,7 @@ function CoachPanel({apiResult,preferredPlayerPublicId,decodedActions,simulation
     ? phaseDefinitions.map(phase => {
         const fromTick = replayDurationTicks * phase.from;
         const toTick = replayDurationTicks * phase.to;
-        const phaseSamples = (simulationResult.samples ?? []).filter(sample => sample.tick >= fromTick && sample.tick <= toTick && sample.tick <= lastAliveTick)
-          .flatMap(sample => {
-            const player = sample.players.find(player => player.clientID === selectedClientId);
-            return player?.alive ? [{ tick: sample.tick, player }] : [];
-          });
+        const phaseSamples = alivePlayerSamples.filter(sample => sample.tick >= fromTick && sample.tick <= toTick);
         const first = phaseSamples[0]?.player;
         const last = phaseSamples[phaseSamples.length - 1]?.player;
         const minutes = Math.max(0.1, (phaseSamples[phaseSamples.length - 1]?.tick ?? 0) - (phaseSamples[0]?.tick ?? 0)) / 600;
@@ -489,9 +485,9 @@ function CoachPanel({apiResult,preferredPlayerPublicId,decodedActions,simulation
     start: firstEngineSample.unitCounts[unit.key] ?? 0,
     end: lastEngineSample.unitCounts[unit.key] ?? 0,
   })).filter(unit => unit.start > 0 || unit.end > 0) : [];
-  const maxOutgoingAttacks = Math.max(0, ...selectedPlayerSamples.map(sample => sample.player.outgoingAttacks));
-  const maxIncomingAttacks = Math.max(0, ...selectedPlayerSamples.map(sample => sample.player.incomingAttacks));
-  const maxCommittedAttackTroops = Math.max(0, ...selectedPlayerSamples.map(sample => sample.player.attackTroops));
+  const maxOutgoingAttacks = Math.max(0, ...alivePlayerSamples.map(sample => sample.player.outgoingAttacks));
+  const maxIncomingAttacks = Math.max(0, ...alivePlayerSamples.map(sample => sample.player.incomingAttacks));
+  const maxCommittedAttackTroops = Math.max(0, ...alivePlayerSamples.map(sample => sample.player.attackTroops));
   const targetedAttackReviews = selectedActionReviews.filter(action => action.type === "attack" && action.targetName);
   const attackedPressuredTargets = targetedAttackReviews.filter(action => (action.targetPressureBefore?.otherAttackerCount ?? 0) > 0);
   const targetTerritoryLossCount = targetedAttackReviews.filter(action => (action.targetDelta30s?.tiles ?? 0) < 0).length;

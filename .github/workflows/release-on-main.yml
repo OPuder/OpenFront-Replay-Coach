@@ -344,6 +344,22 @@ jobs:
           npm run build:web
           node scripts/smoke-test-web.mjs
 
+      - name: Package the browser/PWA edition
+        env:
+          RELEASE_VERSION: ${{ needs.prepare-release.outputs.version }}
+        run: |
+          set -Eeuo pipefail
+          mkdir -p release
+          (cd dist && zip -qr "../release/OpenFront-Replay-Coach-${RELEASE_VERSION}-Web-PWA.zip" .)
+
+      - name: Upload browser/PWA release files
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-web
+          path: release/*-Web-PWA.zip
+          if-no-files-found: error
+          retention-days: 14
+
   publish-release:
     name: Publish all three editions as one GitHub Release
     needs: [prepare-release, validate-engine, build-windows, build-android, build-web]
@@ -364,7 +380,13 @@ jobs:
           name: release-android
           path: release
 
-      - name: Create one release with all three downloads
+      - name: Download browser/PWA ZIP
+        uses: actions/download-artifact@v4
+        with:
+          name: release-web
+          path: release
+
+      - name: Create one release with all four downloads
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ needs.prepare-release.outputs.tag }}
@@ -378,6 +400,7 @@ jobs:
             - **Windows Installer:** normal installieren, Desktop-Verknüpfung inklusive.
             - **Windows Portable:** ZIP entpacken und direkt starten, keine Installation.
             - **Android APK:** auf das Handy herunterladen und einmalig installieren. Keine Cloudflare-Anmeldung und kein Play-Store-Konto erforderlich.
+            - **Web/PWA:** ZIP mit dem vollständigen statischen Browser-Build. Entpacken und den Inhalt auf einem statischen Webserver bereitstellen; ein Cloudflare-Konto ist dafür nicht erforderlich.
 
             Die Android-App verwendet Androids native HTTP-Schnittstelle für die öffentlichen OpenFront-Daten und Engine-Assets. Die Daten müssen dafür nicht über einen Cloudflare-Proxy geleitet werden.
 

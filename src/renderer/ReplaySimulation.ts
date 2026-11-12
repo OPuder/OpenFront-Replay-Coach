@@ -12,6 +12,10 @@ export interface ReplayStateSample {
     troops: number;
     tiles: number;
     units: number;
+    outgoingAttacks: number;
+    incomingAttacks: number;
+    attackTroops: number;
+    allies: number;
   }>;
   totalUnits: number;
   falloutTiles: number;
@@ -82,16 +86,26 @@ export async function simulateReplay(
             const state = reader.seek(frame);
             const unitsByOwner = new Map<number, number>();
             for (const unit of state.units.values() as Iterable<any>) unitsByOwner.set(Number(unit.ownerID), (unitsByOwner.get(Number(unit.ownerID)) ?? 0) + 1);
-            const players = [...state.players.entries()].map(([id, p]: [number, any]) => ({
+            const playerMeta = new Map(reader.header.players.map((p: any) => [p.smallID, p]));
+            const players = [...state.players.entries()].map(([id, p]: [number, any]) => {
+              const meta: any = playerMeta.get(id) ?? {};
+              const outgoingAttacks = Array.isArray(p.outgoingAttacks) ? p.outgoingAttacks : [];
+              const incomingAttacks = Array.isArray(p.incomingAttacks) ? p.incomingAttacks : [];
+              return ({
               id,
-              name: String(p.displayName ?? p.name ?? p.clientID ?? `Spieler ${id}`),
-              clientID: p.clientID == null ? null : String(p.clientID),
+              name: String(meta.displayName ?? meta.name ?? `Spieler ${id}`),
+              clientID: meta.clientID == null ? null : String(meta.clientID),
               alive: Boolean(p.isAlive),
               gold: Number(p.gold ?? 0),
               troops: Number(p.troops ?? 0),
               tiles: Number(p.tilesOwned ?? 0),
-              units: unitsByOwner.get(id) ?? 0
-            }));
+              units: unitsByOwner.get(id) ?? 0,
+              outgoingAttacks: outgoingAttacks.length,
+              incomingAttacks: incomingAttacks.length,
+              attackTroops: outgoingAttacks.reduce((sum: number, attack: any) => sum + Number(attack.troops ?? 0), 0),
+              allies: Array.isArray(p.allies) ? p.allies.length : 0
+            });
+            });
             samples.push({ tick: state.tick, frame, players, totalUnits: state.units.size, falloutTiles: state.falloutTiles });
             lastSampledFrame = frame;
           }

@@ -83,7 +83,7 @@ function App() {
       const simulated = await simulateReplay(result.record, assets, (percent, phase) => setSimulationProgress({percent,phase}), 50, preferredClientId);
       setSimulationResult(simulated);
     } catch (e) {
-      setSimulationResult({status:'unverified',totalTicks:0,verifiedHashes:0,samples:[],playerReview:null,message:e instanceof Error ? e.message : String(e)});
+      setSimulationResult({status:'unverified',totalTicks:0,verifiedHashes:0,samples:[],playerReview:null,actionReviews:[],message:e instanceof Error ? e.message : String(e)});
     } finally {
       setSimulationProgress(null);
     }
@@ -198,6 +198,19 @@ function App() {
               <Detail label="Längste Phase ohne Gebietszuwachs" value={`${fmt(simulationResult.playerReview.longestNoExpansionSeconds)} s`}/>
             </div>}
             {simulationResult.playerReview && <small>Diese Werte stammen aus rekonstruierten Spielzuständen. Eine lange Phase ohne Gebietszuwachs ist zunächst ein Prüfzeitraum – nicht automatisch ein Spielfehler.</small>}
+            {simulationResult.actionReviews.length > 0 && <div style={{marginTop:16}}>
+              <h4>Eigene Aktionen im Zustandvergleich</h4>
+              <p className="muted">Vergleich des letzten erfassten Zustands vor und nach dem Aktions-Tick. Veränderungen sind zeitlich zugeordnet, aber nicht automatisch allein durch den Befehl verursacht.</p>
+              <div className="table-wrap"><table><thead><tr><th>Zeit</th><th>Aktion</th><th>Gebiet Δ</th><th>Gold Δ</th><th>Truppen Δ</th></tr></thead><tbody>
+                {simulationResult.actionReviews.filter(a=>['attack','boat','build_unit','upgrade_structure'].includes(a.type)).slice(0,100).map(a=><tr key={a.frame}>
+                  <td>{Math.floor(a.seconds/60)}:{String(Math.floor(a.seconds%60)).padStart(2,'0')}</td>
+                  <td><b>{a.label}</b><small>{a.details || `Spielzug ${a.turn}`}</small></td>
+                  <td>{a.delta ? (a.delta.tiles>0?'+':'')+fmt(a.delta.tiles) : '–'}</td>
+                  <td>{a.delta ? (a.delta.gold>0?'+':'')+fmt(a.delta.gold) : '–'}</td>
+                  <td>{a.delta ? (a.delta.troops>0?'+':'')+fmt(a.delta.troops) : '–'}</td>
+                </tr>)}
+              </tbody></table></div>
+            </div>}
           </section>}
           {apiResult.actionAnalysis && <CoachPanel apiResult={apiResult} preferredPlayerPublicId={playerPage?.profile?.publicId ?? playerPage?.profile?.publicID ?? null} decodedActions={decodedActions} onExport={exportActionsCsv} onSaveReplayJson={()=>void saveReplayJson()} onOpenReplay={()=>window.replayAPI.openOfficialReplay(apiResult.gameId)} fmt={fmt}/>}
           <details className="technical-details studio-card"><summary>Technische Daten und vollständiges Aktionsprotokoll <ChevronDown size={16}/></summary><div className="details-grid">{Object.entries(apiResult.categoryCounts??{}).map(([k,v])=><Detail key={k} label={k} value={fmt(v)}/>)}</div><div className="action-list">{decodedActions.slice(0,200).map((a,i)=><div className="check-row" key={`${a.turn}-${i}`}><div><b>{a.label}</b><small>{clock(a.seconds)} · {a.details}</small></div><span className="pill blue">{a.category}</span></div>)}</div></details>

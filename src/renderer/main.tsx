@@ -63,6 +63,7 @@ function App() {
         setReplay(null);
         setMapRefreshKey(key => key + 1);
         setActivePage('analysis');
+        await runEngineReview(result);
       }
     } catch(e) {
       setError(e instanceof Error ? e.message : String(e));

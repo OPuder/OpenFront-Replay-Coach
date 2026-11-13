@@ -542,18 +542,20 @@ function CoachPanel({apiResult,preferredPlayerPublicId,decodedActions,simulation
       </nav>
     </div>}
     {playerScoped && workspaceTab==='coach' && <section id="match-coach-insights" className="coach-insights-section">
-      <div className="overview-heading"><div><span className="eyebrow">01 / DEIN SPIELBERICHT</span><h3>Die wichtigsten Erkenntnisse</h3><p>Nach Priorität sortiert. Jede Karte nennt deine Entscheidung, einen konkreten nächsten Prüf- bzw. Handlungsansatz und die Beleggrenze. Zeiten sind Befehlszeitpunkte; Bootszeit = Startbefehl, nicht Ankunft.</p></div></div>
+      <div className="overview-heading"><div><span className="eyebrow">DEIN COACH</span><h3>Das solltest du als Nächstes verbessern</h3></div></div>
 
-      <section className="coach-lead-card">
-        <div className="coach-lead-top"><span>{leadEngineReview ? 'DEIN WICHTIGSTER LERNMOMENT' : 'COACH-STATUS'}</span>{leadEngineReview?.seconds !== null && leadEngineReview?.seconds !== undefined && <time>{clock(leadEngineReview.seconds)}</time>}</div>
+      <section className="coach-lead-card coach-compact-card">
+        <div className="coach-lead-top"><span>{leadEngineReview ? 'WICHTIGSTER LERNPUNKT' : 'COACH-STATUS'}</span>{leadEngineReview?.seconds !== null && leadEngineReview?.seconds !== undefined && <time>{clock(leadEngineReview.seconds)}</time>}</div>
         <h3>{coachLeadTitle}</h3>
         <p className="coach-lead-summary">{coachLeadSummary}</p>
-        {leadEngineReview?.decision && <div className="coach-lead-decision"><span>DEINE ENTSCHEIDUNG</span><b>{leadEngineReview.decision}</b></div>}
-        <div className="coach-lead-grid">
-          <div><span>WAS DIE DATEN ZEIGEN</span><p>{leadEngineReview?.evidence ?? 'Die Replay-Daten reichen noch nicht für eine persönliche taktische Diagnose.'}</p></div>
-          <div><span>WAS DU ANDERS TESTEN KANNST</span><p>{leadEngineReview?.alternative ?? coachTrainingFocus}</p></div>
-        </div>
-        <div className="coach-lead-training"><span>DEIN TRAININGSAUFTRAG FÜR DIE NÄCHSTE PARTIE</span><p>{leadEngineReview?.nextStep ?? coachTrainingFocus}</p></div>
+        {leadEngineReview?.decision && <div className="coach-lead-decision"><span>DEIN ZUG</span><b>{leadEngineReview.decision}</b></div>}
+        <div className="coach-lead-training"><span>BEIM NÄCHSTEN MAL</span><p>{leadEngineReview?.nextStep ?? coachTrainingFocus}</p></div>
+        <details className="coach-proof-details">
+          <summary>Warum der Coach das empfiehlt</summary>
+          <div><b>Beobachtung</b><p>{leadEngineReview?.evidence ?? 'Für diese Partie liegt noch kein belastbarer Engine-Beleg vor.'}</p></div>
+          {leadEngineReview?.alternative && <div><b>Alternative</b><p>{leadEngineReview.alternative}</p></div>}
+          {leadEngineReview?.limitation && <div><b>Grenze der Aussage</b><p>{leadEngineReview.limitation}</p></div>}
+        </details>
       </section>
       {selectedPlayerReview && <details className="coach-mobile-details">
         <summary>Spielstand und Folgen der Befehle anzeigen</summary>
@@ -601,8 +603,8 @@ function CoachPanel({apiResult,preferredPlayerPublicId,decodedActions,simulation
         <small className="coach-phase-note">Es werden nur zusammengefasste Phasenwerte gespeichert, keine Replay-Dateien. Der Verlauf bleibt auf diesem Gerät und wird nicht automatisch zwischen Android, Windows und anderen Browsern synchronisiert.</small>
       </section>}
       {orderedEngineInsights.length > 0 && <section className="coach-engine-findings">
-        <div className="coach-engine-findings-heading"><span className="coach-report-label">ENTSCHEIDUNGEN STATT STATISTIK</span><b>Diese drei Situationen solltest du dir ansehen</b><p>Nur priorisierte, persönliche Prüfpunkte stehen hier. Allgemeine Messwerte bleiben bewusst im Hintergrund.</p></div>
-        {primaryEngineReviews.length === 0 ? <p className="coach-no-decision">In diesem Replay wurde kein ausreichend belegter konkreter Entscheidungsmoment erkannt. Das ist kein Beweis für perfektes Spiel – wir zeigen lieber keinen erfundenen Fehler.</p> : <div className="coach-engine-findings-list">{primaryEngineReviews.map((item,index)=><details className={`coach-engine-finding-details finding-${item.kind}`} key={item.id} open={index===0}>
+        <div className="coach-engine-findings-heading"><span className="coach-report-label">ENTSCHEIDUNGEN STATT STATISTIK</span><b>Weitere Lernpunkte</b><p>Nur wenn es noch etwas Wichtiges gibt.</p></div>
+        {primaryEngineReviews.length === 0 ? <p className="coach-no-decision">In diesem Replay wurde kein ausreichend belegter konkreter Entscheidungsmoment erkannt. Das ist kein Beweis für perfektes Spiel – wir zeigen lieber keinen erfundenen Fehler.</p> : <div className="coach-engine-findings-list">{primaryEngineReviews.slice(1).map((item,index)=><details className={`coach-engine-finding-details finding-${item.kind}`} key={item.id}>
           <summary><span>{item.priority === 'high' ? 'HOHE PRIORITÄT' : item.priority === 'medium' ? 'PRÜFPUNKT' : item.kind === 'strength' ? 'STÄRKE' : item.kind === 'review' ? 'PRÜFEN' : 'BEOBACHTUNG'}</span><b>{item.title}</b>{item.seconds !== null && <time>{clock(item.seconds)}</time>}<small>{item.summary}</small></summary>
           <div className="coach-engine-finding-content">
           {item.decision && <p><strong>Deine Entscheidung:</strong> {item.decision}</p>}
@@ -630,7 +632,7 @@ function CoachPanel({apiResult,preferredPlayerPublicId,decodedActions,simulation
       </div>
 
       </details>
-      <div className="coach-report-limit"><b>Was noch nicht seriös bewertet werden kann</b><p>Ob ein Angriff erfolgreich war, wie viele Truppen verloren gingen oder ob ein Bau optimal war, erfordert den rekonstruierten Karten-, Gold- und Truppenstand. Diese Analyse erfindet dafür keine Ergebnisse.</p></div>
+      <details className="coach-report-limit"><summary>Was der Coach noch nicht sicher beurteilen kann</summary><p>Ob ein Angriff erfolgreich war, wie viele Truppen verloren gingen oder ob ein Bau optimal war, erfordert den rekonstruierten Karten-, Gold- und Truppenstand.</p></details>
     </section>}
     {playerScoped && workspaceTab==='replay' && <section className="replay-workspace">
       <div className="replay-stage">

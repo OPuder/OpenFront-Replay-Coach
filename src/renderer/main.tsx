@@ -74,7 +74,15 @@ function App() {
   }
   async function refreshStoredMatches(id:string,matches:StoredMatchEntry[]):Promise<BatchMatchItem[]> {
     const refreshed=matches.map(refreshStoredMatch);
-    await Promise.all(refreshed.map(item=>saveImportedMatch(id,item)).map(promise=>promise.catch(storageError=>console.warn('[ReplayCoach] Aktualisierte Engine-Kompatibilität konnte nicht gespeichert werden:',storageError))));
+    const writes=refreshed.map(item=>{
+      const stored:StoredMatchEntry={
+        ...item,
+        status:item.status==='queued'||item.status==='running'?'loaded':item.status,
+        analysisStatus:item.analysisStatus==='queued'||item.analysisStatus==='running'?'pending':item.analysisStatus,
+      };
+      return saveImportedMatch(id,stored).catch(storageError=>console.warn('[ReplayCoach] Aktualisierte Engine-Kompatibilität konnte nicht gespeichert werden:',storageError));
+    });
+    await Promise.all(writes);
     return refreshed;
   }
   const [batchProgress, setBatchProgress] = useState<{done:number;total:number;gameId:string}|null>(null);

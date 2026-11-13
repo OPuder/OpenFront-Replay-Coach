@@ -835,7 +835,7 @@ function CoachPanel({apiResult,preferredPlayerPublicId,decodedActions,simulation
         <div className="pro-coach-phase-panel"><div className="pro-coach-subhead"><b>Phasenleistung</b><span>Vergleich innerhalb dieser Partie</span></div>
           <div className="pro-coach-phase-bars">{proCoachReport.phases.map(phase=><div className="pro-coach-phase-row" key={phase.id}><div className="pro-coach-phase-label"><b>{phase.label}</b><span>{phase.momentumIndex===null?'Nicht genug Daten':`Impuls ${phase.momentumIndex}/100`}</span></div><div className="pro-coach-bar"><i style={{width:`${phase.momentumIndex??0}%`}}/></div><small>Gebiet {phase.territoryPerMinute===null?'–':`${phase.territoryPerMinute.toFixed(1).replace('.',',')} / Min.`} · Gold {phase.incomePerMinute===null?'–':`${Math.round(phase.incomePerMinute).toLocaleString('de-DE')} / Min.`} · Truppen {phase.troopChangePerMinute===null?'–':`${phase.troopChangePerMinute>0?'+':''}${Math.round(phase.troopChangePerMinute).toLocaleString('de-DE')} / Min.`} · {phase.attacks} Angriffe</small></div>)}</div>
         </div>
-        
+      </section>}
       <section className="coach-training-loop" aria-labelledby="training-loop-title">
         <div className="coach-training-loop-heading"><span className="coach-report-label">VOM REPLAY INS TRAINING</span><b id="training-loop-title">Dein Trainingsziel</b><p>Eine Sache bewusst in der nächsten Partie ausprobieren – statt zehn Statistiken gleichzeitig zu verfolgen.</p></div>
         {trainingGoal ? <div className={`coach-training-goal ${trainingGoal.completed?'is-complete':''}`}>
@@ -848,7 +848,7 @@ function CoachPanel({apiResult,preferredPlayerPublicId,decodedActions,simulation
           <small className="coach-training-goal-note">Das Ziel bleibt lokal auf diesem Gerät gespeichert. Ob du es umgesetzt hast, markierst du selbst – der Coach behauptet nicht, dein Verhalten ohne neue Replay-Daten gemessen zu haben.</small>
         </div> : (proCoachReport?.findings[0] || leadEngineReview) && simulationResult?.status==='verified' ? <div className="coach-training-goal-empty">
           <div><b>{leadEngineReview?.title ?? proCoachReport?.findings[0]?.title ?? 'Dein nächster Trainingsfokus'}</b><p>{leadEngineReview?.nextStep ?? proCoachReport?.trainingRule ?? coachTrainingFocus}</p></div>
-          <button type="button" className="studio-button primary" onClick={()=>setTrainingGoal({title:proCoachReport?.findings[0]?.title ?? leadEngineReview?.title ?? 'Trainingsfokus',instruction:proCoachReport?.trainingRule ?? leadEngineReview?.nextStep ?? coachTrainingFocus,gameId:apiResult.gameId,mapName:apiResult.mapName,createdAt:new Date().toISOString(),completed:false})}>Als Trainingsziel übernehmen <ArrowRight size={15}/></button>
+          <button type="button" className="studio-button primary" onClick={()=>setTrainingGoal({title:leadEngineReview?.title ?? proCoachReport?.findings[0]?.title ?? 'Trainingsfokus',instruction:leadEngineReview?.nextStep ?? proCoachReport?.trainingRule ?? coachTrainingFocus,gameId:apiResult.gameId,mapName:apiResult.mapName,createdAt:new Date().toISOString(),completed:false})}>Als Trainingsziel übernehmen <ArrowRight size={15}/></button>
         </div> : <div className="coach-training-goal-empty">
           <div><b>Noch kein belegtes Trainingsziel</b><p>Sobald die Original-Engine eine konkrete Situation ausreichend belegt, kannst du daraus ein Ziel für die nächste Partie übernehmen. Wir erfinden vorher keine Taktikempfehlung.</p></div>
         </div>}

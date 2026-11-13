@@ -117,16 +117,13 @@ jobs:
 
       - name: Check out only the pinned public OpenFront source
         timeout-minutes: 10
-        run: git submodule update --init --depth 1 vendor/OpenFrontIO
+        run: git submodule update --init --depth 1 vendor/OpenFrontIO vendor/OpenFrontIO-8b5d071eed95
 
       - name: Verify the exact upstream revision
         shell: bash
         run: |
-          expected="bc3e3334c573c4959ec6a6745df6826d07233b4d"
-          actual="$(git -C vendor/OpenFrontIO rev-parse HEAD)"
-          echo "Expected: $expected"
-          echo "Actual:   $actual"
-          test "$actual" = "$expected"
+          test "$(git -C vendor/OpenFrontIO rev-parse HEAD)" = "bc3e3334c573c4959ec6a6745df6826d07233b4d"
+          test "$(git -C vendor/OpenFrontIO-8b5d071eed95 rev-parse HEAD)" = "8b5d071eed95f07c701b32e4c64e95b03f8577c1"
 
       - name: Set up Node.js and npm
         uses: actions/setup-node@v4
@@ -138,6 +135,10 @@ jobs:
 
       - name: Install pinned upstream dependencies
         working-directory: vendor/OpenFrontIO
+        run: npm ci --ignore-scripts
+
+      - name: Install exact historical OpenFront engine dependencies
+        working-directory: vendor/OpenFrontIO-8b5d071eed95
         run: npm ci --ignore-scripts
 
       - name: Type-check the original engine and replay pipeline
@@ -163,7 +164,7 @@ jobs:
 
       - name: Check out only the pinned public OpenFront source
         timeout-minutes: 10
-        run: git submodule update --init --depth 1 vendor/OpenFrontIO
+        run: git submodule update --init --depth 1 vendor/OpenFrontIO vendor/OpenFrontIO-8b5d071eed95
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
@@ -175,6 +176,10 @@ jobs:
 
       - name: Install pinned OpenFront dependencies
         working-directory: vendor/OpenFrontIO
+        run: npm ci --ignore-scripts
+
+      - name: Install exact historical OpenFront engine dependencies
+        working-directory: vendor/OpenFrontIO-8b5d071eed95
         run: npm ci --ignore-scripts
 
       - name: Install Coach dependencies
@@ -219,7 +224,7 @@ jobs:
 
       - name: Check out only the pinned public OpenFront source
         timeout-minutes: 10
-        run: git submodule update --init --depth 1 vendor/OpenFrontIO
+        run: git submodule update --init --depth 1 vendor/OpenFrontIO vendor/OpenFrontIO-8b5d071eed95
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
@@ -232,6 +237,10 @@ jobs:
 
       - name: Install pinned OpenFront dependencies
         working-directory: vendor/OpenFrontIO
+        run: npm ci --ignore-scripts
+
+      - name: Install exact historical OpenFront engine dependencies
+        working-directory: vendor/OpenFrontIO-8b5d071eed95
         run: npm ci --ignore-scripts
 
       - name: Install Coach and Capacitor dependencies
@@ -329,7 +338,7 @@ jobs:
 
       - name: Check out pinned OpenFront engine
         timeout-minutes: 10
-        run: git submodule update --init --depth 1 vendor/OpenFrontIO
+        run: git submodule update --init --depth 1 vendor/OpenFrontIO vendor/OpenFrontIO-8b5d071eed95
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
@@ -342,6 +351,10 @@ jobs:
 
       - name: Install pinned OpenFront dependencies
         working-directory: vendor/OpenFrontIO
+        run: npm ci --ignore-scripts
+
+      - name: Install exact historical OpenFront engine dependencies
+        working-directory: vendor/OpenFrontIO-8b5d071eed95
         run: npm ci --ignore-scripts
 
       - name: Install Coach dependencies

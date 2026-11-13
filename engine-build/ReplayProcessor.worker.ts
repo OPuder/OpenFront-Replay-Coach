@@ -3,11 +3,11 @@
  * The simulation and hash checks are imported unchanged from the pinned
  * upstream source. Only bootstrap asset configuration is supplied at runtime.
  */
-import { assetUrl } from "../vendor/OpenFrontIO/packages/shared/src/AssetUrls";
-import { FetchGameMapLoader } from "../vendor/OpenFrontIO/packages/shared/src/FetchGameMapLoader";
-import { gzipInBrowser } from "../vendor/OpenFrontIO/src/client/replay/BrowserGzip";
-import { processGameRecord, ReplayDesyncError } from "../vendor/OpenFrontIO/src/client/replay/processor/ReplayProcessor";
-import type { ProcessorRequest, ProcessorResponse } from "../vendor/OpenFrontIO/src/client/replay/ProcessorMessages";
+import { assetUrl } from "@openfront-source/packages/shared/src/AssetUrls";
+import { FetchGameMapLoader } from "@openfront-source/packages/shared/src/FetchGameMapLoader";
+import { gzipInBrowser } from "@openfront-source/src/client/replay/BrowserGzip";
+import { processGameRecord, ReplayDesyncError } from "@openfront-source/src/client/replay/processor/ReplayProcessor";
+import type { ProcessorRequest, ProcessorResponse } from "@openfront-source/src/client/replay/ProcessorMessages";
 
 type CoachProcessorRequest = ProcessorRequest & {
   assetManifest: Record<string, string>;
@@ -30,7 +30,7 @@ ctx.addEventListener("message", (e: MessageEvent<CoachProcessorRequest>) => {
   processGameRecord(record, {
     engine: (gameStart, map) => {
       // Lazy import keeps worker startup deterministic after runtime config.
-      return import("../vendor/OpenFrontIO/src/client/replay/processor/WorkerReplayEngine")
+      return import("@openfront-source/src/client/replay/processor/WorkerReplayEngine")
         .then(({ startWorkerEngine }) => startWorkerEngine(engine, gameStart, map));
     },
     mapLoader,

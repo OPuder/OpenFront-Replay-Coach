@@ -163,12 +163,9 @@ function App() {
     setSimulationProgress({percent:0,phase:'Original-Engine wird gestartet'});
     try {
       // Defer the heavy original-engine worker until an actual replay review is requested.
-      const [{ manifest, cdnBase }, { simulateReplay }] = await Promise.all([
-        window.replayAPI.getReplayEngineAssets(),
-        import('./ReplaySimulation'),
-      ]);
+      const { simulateReplay, buildReplayEngineAssets } = await import('./ReplaySimulation');
       if (requestId !== engineReviewRunId.current) return;
-      const assets = { manifest, cdnBase };
+      const assets = buildReplayEngineAssets(result.record);
       let preferredClientId: string | null;
       if (selectedClientId !== undefined) {
         preferredClientId = selectedClientId || null;
@@ -286,7 +283,7 @@ function App() {
       </>}
       {activePage==='analysis' && <>
         {apiResult ? <>
-          <div className="analysis-hero studio-card"><div className="analysis-map-preview"><MapPreview map={apiResult.mapName} src={apiResult.previewUrl} refreshKey={mapRefreshKey}/><div className="map-overlay"><span className="studio-eyebrow">MATCH REVIEW</span><h2>{apiResult.mapName}</h2><p>{apiResult.gameMode} · {apiResult.gameType} · {clock(apiResult.durationSeconds??0)} · {fmt(apiResult.playerCount??0)} Spieler</p></div></div><div className="analysis-hero-side"><span className="studio-eyebrow">MATCH ID</span><b>{apiResult.gameId}</b>{apiResult.engineCompatibility && <div className={`compatibility-notice ${apiResult.engineCompatibility.engineVersionCompatible ? 'compatible' : 'limited'}`}><span>{apiResult.engineCompatibility.engineVersionCompatible ? 'ENGINE KOMPATIBEL' : 'IMPORT ERFOLGREICH · ENGINE NICHT PASSEND'}</span><small>{apiResult.engineCompatibility.engineVersionCompatible ? 'Hash-Prüfung wird separat ausgewertet.' : 'Die Partie ist geladen. Nur die vollständige Original-Engine-Prüfung ist mit dieser fest eingebundenen Version nicht möglich.'}</small></div>}<button className="studio-button primary" onClick={()=>window.replayAPI.openOfficialReplay(apiResult.gameId)}><Gamepad2 size={16}/> Original-Replay ansehen</button><button className="studio-button subtle" onClick={exportActionsCsv}><DownloadCloud size={16}/> CSV exportieren</button><button className="studio-button subtle" onClick={()=>void saveReplayJson()}><FileUp size={16}/> Replay-JSON speichern</button></div></div>
+          <div className="analysis-hero studio-card"><div className="analysis-map-preview"><MapPreview map={apiResult.mapName} src={apiResult.previewUrl} refreshKey={mapRefreshKey}/><div className="map-overlay"><span className="studio-eyebrow">MATCH REVIEW</span><h2>{apiResult.mapName}</h2><p>{apiResult.gameMode} · {apiResult.gameType} · {clock(apiResult.durationSeconds??0)} · {fmt(apiResult.playerCount??0)} Spieler</p></div></div><div className="analysis-hero-side"><span className="studio-eyebrow">MATCH ID</span><b>{apiResult.gameId}</b>{apiResult.engineCompatibility && <div className={`compatibility-notice ${apiResult.engineCompatibility.engineVersionCompatible ? 'compatible' : 'limited'}`}><span>{apiResult.engineCompatibility.engineVersionCompatible ? 'ENGINE KOMPATIBEL' : 'IMPORT ERFOLGREICH · ENGINE NICHT PASSEND'}</span><small>{apiResult.engineCompatibility.engineVersionCompatible ? 'Hash-Prüfung wird separat ausgewertet.' : 'Die Replay-Version ist erkannt, aber ihr exakter Original-Engine-Build ist noch nicht enthalten. Eine Simulation mit einer anderen Version wird bewusst verhindert.'}</small></div>}<button className="studio-button primary" onClick={()=>window.replayAPI.openOfficialReplay(apiResult.gameId)}><Gamepad2 size={16}/> Original-Replay ansehen</button><button className="studio-button subtle" onClick={exportActionsCsv}><DownloadCloud size={16}/> CSV exportieren</button><button className="studio-button subtle" onClick={()=>void saveReplayJson()}><FileUp size={16}/> Replay-JSON speichern</button></div></div>
           {apiResult.actionAnalysis && <CoachPanel apiResult={apiResult} preferredPlayerPublicId={playerPage?.profile?.publicId ?? playerPage?.profile?.publicID ?? null} decodedActions={decodedActions} simulationResult={simulationResult} simulationProgress={simulationProgress} onPlayerSelect={(clientId)=>void runEngineReview(apiResult,clientId)} onExport={exportActionsCsv} onSaveReplayJson={()=>void saveReplayJson()} onOpenReplay={()=>window.replayAPI.openOfficialReplay(apiResult.gameId)} fmt={fmt}/>}
           <details className="technical-details studio-card engine-diagnostics"><summary>Engine-Simulation, Hash-Abgleich und technische Zustände <ChevronDown size={16}/></summary>
           {apiResult.engineCompatibility && <section className="studio-card" style={{marginTop:16}}>

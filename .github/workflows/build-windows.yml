@@ -21,7 +21,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Check out only the pinned public OpenFront source
-        run: git submodule update --init --depth 1 vendor/OpenFrontIO
+        run: git submodule update --init --depth 1 vendor/OpenFrontIO vendor/OpenFrontIO-8b5d071eed95
 
       - name: Set up upstream Node.js
         uses: actions/setup-node@v4
@@ -33,6 +33,10 @@ jobs:
 
       - name: Install pinned OpenFront workspaces
         working-directory: vendor/OpenFrontIO
+        run: npm ci --ignore-scripts
+
+      - name: Install exact historical OpenFront engine dependencies
+        working-directory: vendor/OpenFrontIO-8b5d071eed95
         run: npm ci --ignore-scripts
 
       - name: Build original OpenFront replay workers

@@ -1,0 +1,85 @@
+name: Replay compatibility regression gates
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: replay-compatibility-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  replay-compatibility:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+        with:
+          submodules: false
+
+      - name: Check out the exact public OpenFront engine
+        run: git submodule update --init --depth 1 vendor/OpenFrontIO vendor/OpenFrontIO-8b5d071eed95
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24.15.0"
+          cache: npm
+
+      - name: Set up pinned npm
+        run: npm install --global npm@12.1.0
+
+      - name: Install Coach dependencies
+        run: npm ci
+
+      - name: Install pinned OpenFront engine workspaces
+        working-directory: vendor/OpenFrontIO
+        run: npm ci --ignore-scripts
+
+      - name: Install historical Europe engine workspaces
+        working-directory: vendor/OpenFrontIO-8b5d071eed95
+        run: npm ci --ignore-scripts
+
+      - name: Build all exact replay engine worker bundles
+        run: npm run build:engine
+
+      - name: Verify source pin and engine checkout cannot drift
+        run: npm run validate:engine-pin
+
+      - name: Verify the actual Europe replay and all coaching regressions
+        env:
+          OPENFRONT_REPLAY_ID: c2R2JHZgUi
+          OPENFRONT_REPLAY_EXPECTED_COMMIT: 8b5d071eed95f07c701b32e4c64e95b03f8577c1
+          OPENFRONT_REPLAY_EXPECTED_MAP: Europe
+          OPENFRONT_REPLAY_EXPECTED_PLAYERS: "2"
+          OPENFRONT_REPLAY_EXPECTED_TURNS: "1334"
+          OPENFRONT_REPLAY_EXPECTED_HASHES: "1006"
+        run: npm run test:coach
+
+      - name: Verify the actual Levant replay metadata
+        env:
+          OPENFRONT_REPLAY_ID: dLNCLHCvMK
+          OPENFRONT_REPLAY_EXPECTED_COMMIT: bc3e3334c573c4959ec6a6745df6826d07233b4d
+          OPENFRONT_REPLAY_EXPECTED_MAP: Levant
+        run: node --import ./vendor/OpenFrontIO/node_modules/tsx/dist/loader.mjs --test scripts/public-replay-compatibility.test.mjs
+
+      - name: Run the Europe replay through its exact original engine and verify all hashes
+        env:
+          OPENFRONT_REPLAY_ID: c2R2JHZgUi
+          OPENFRONT_REPLAY_EXPECTED_COMMIT: 8b5d071eed95f07c701b32e4c64e95b03f8577c1
+          OPENFRONT_REPLAY_EXPECTED_MAP: Europe
+        run: xvfb-run -a ./node_modules/.bin/electron --no-sandbox scripts/replay-engine-browser-test.mjs
+
+      - name: Run the Levant replay through its exact original engine and verify all hashes
+        env:
+          OPENFRONT_REPLAY_ID: dLNCLHCvMK
+          OPENFRONT_REPLAY_EXPECTED_COMMIT: bc3e3334c573c4959ec6a6745df6826d07233b4d
+          OPENFRONT_REPLAY_EXPECTED_MAP: Levant
+        run: xvfb-run -a ./node_modules/.bin/electron --no-sandbox scripts/replay-engine-browser-test.mjs

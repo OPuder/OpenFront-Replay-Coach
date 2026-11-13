@@ -1,12 +1,10 @@
 import { unwrapGameRecord } from "./GameRecordShape";
-/**
- * Replay/engine compatibility gate.
- *
- * Matching commits and recorded hashes make a replay eligible for a real
- * deterministic run. They do not prove that the simulation has passed.
- */
-export const PINNED_OPENFRONT_COMMIT =
-  "bc3e3334c573c4959ec6a6745df6826d07233b4d";
+import {
+  PINNED_OPENFRONT_COMMIT,
+  SUPPORTED_OPENFRONT_COMMITS,
+} from "./ReplayEngineCatalog";
+
+export { PINNED_OPENFRONT_COMMIT, SUPPORTED_OPENFRONT_COMMITS } from "./ReplayEngineCatalog";
 
 export type ReplayCompatibilityStatus =
   | "version-compatible-hashes-available"
@@ -27,13 +25,18 @@ export interface ReplayCompatibility {
 /** Accepts an unknown API object; never assumes a malformed record is valid. */
 export function assessReplayCompatibility(
   record: unknown,
-  engineCommit = PINNED_OPENFRONT_COMMIT,
+  engineCommit?: string,
 ): ReplayCompatibility {
   const obj = unwrapGameRecord(record);
   const replayCommit =
-    typeof obj.gitCommit === "string" && obj.gitCommit.length > 0
-      ? obj.gitCommit
+    typeof obj.gitCommit === "string" && /^[0-9a-f]{7,40}$/i.test(obj.gitCommit)
+      ? obj.gitCommit.toLowerCase()
       : null;
+  const selectedEngineCommit =
+    engineCommit ??
+    (replayCommit && SUPPORTED_OPENFRONT_COMMITS.some((commit) => commit === replayCommit)
+      ? replayCommit
+      : PINNED_OPENFRONT_COMMIT);
   const turns = Array.isArray(obj.turns) ? obj.turns : [];
   const recordedHashCount = turns.filter((turn) => {
     if (!turn || typeof turn !== "object") return false;
@@ -46,25 +49,25 @@ export function assessReplayCompatibility(
     return {
       status: "missing-engine-version",
       replayCommit: null,
-      engineCommit,
+      engineCommit: selectedEngineCommit,
       recordedHashCount,
       engineVersionCompatible: false,
       hashVerificationAvailable,
       message:
-        "Im Replay fehlt die Engine-Commit-ID. Eine Wiedergabe kann deshalb nicht sicher derselben Spielversion zugeordnet werden.",
+        "Im Replay fehlt eine gültige Engine-Commit-ID. Eine Wiedergabe kann deshalb nicht sicher derselben Spielversion zugeordnet werden.",
     };
   }
 
-  if (replayCommit !== engineCommit) {
+  if (replayCommit !== selectedEngineCommit) {
     return {
       status: "engine-version-mismatch",
       replayCommit,
-      engineCommit,
+      engineCommit: selectedEngineCommit,
       recordedHashCount,
       engineVersionCompatible: false,
       hashVerificationAvailable,
       message:
-        "Die Replay-Version stimmt nicht mit der eingebundenen Engine überein. Eine Simulation mit dieser Engine wäre nicht verlässlich.",
+        "Die Replay-Version stimmt nicht mit einer eingebundenen Original-Engine überein. Eine Simulation mit einer anderen Version wäre nicht verlässlich.",
     };
   }
 
@@ -72,7 +75,7 @@ export function assessReplayCompatibility(
     return {
       status: "version-compatible-no-hashes",
       replayCommit,
-      engineCommit,
+      engineCommit: selectedEngineCommit,
       recordedHashCount,
       engineVersionCompatible: true,
       hashVerificationAvailable: false,
@@ -84,11 +87,11 @@ export function assessReplayCompatibility(
   return {
     status: "version-compatible-hashes-available",
     replayCommit,
-    engineCommit,
+    engineCommit: selectedEngineCommit,
     recordedHashCount,
     engineVersionCompatible: true,
     hashVerificationAvailable: true,
     message:
-      "Engine-Version stimmt überein und Hash-Prüfpunkte sind vorhanden. Ob die Simulation korrekt ist, steht erst nach dem tatsächlichen Abgleich aller Hashes fest.",
+      "Die exakte Original-Engine ist verfügbar und Hash-Prüfpunkte sind vorhanden. Ob die Simulation korrekt ist, steht erst nach dem tatsächlichen Abgleich aller Hashes fest.",
   };
 }

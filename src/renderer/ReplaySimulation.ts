@@ -1,5 +1,5 @@
 import { unwrapGameRecord } from "../main/decoder/GameRecordShape";
-import { createReplayWorkers, ReplayReader, gunzipInBrowser } from "./engine/replay-engine.js";
+import { loadReplayEngineModule } from "./engineRegistry";
 
 export interface ReplayStateDelta {
   tiles: number;
@@ -119,7 +119,44 @@ interface ProcessorResponse {
   desync?: boolean;
   message?: string;
 }
-interface EngineAssets { manifest: Record<string,string>; cdnBase: string }
+export interface EngineAssets { manifest: Record<string,string>; cdnBase: string }
+
+function replayMapAssetId(value: unknown): string {
+  const aliases: Record<string, string> = {
+    "tourney 2 teams": "tourney1",
+    "tourney 3 teams": "tourney2",
+    "tourney 4 teams": "tourney3",
+    "tourney 8 teams": "tourney4",
+    "amazon river": "amazonriver",
+    "bab el-mandeb strait": "babelmandebstrait",
+    "world inverted": "worldinverted",
+    "southeast asia": "southeastasia",
+  };
+  const key = String(value ?? "").trim().toLowerCase();
+  return aliases[key] ?? key.replace(/[\s.()]+/g, "").replace(/[^a-z0-9_-]/g, "");
+}
+
+/**
+ * Resolve map assets from the exact public source commit that produced this
+ * replay. This avoids depending on the live game's mutable bootstrap manifest.
+ */
+export function buildReplayEngineAssets(input: unknown): EngineAssets {
+  const record = unwrapGameRecord(input);
+  const commit = typeof record.gitCommit === "string" ? record.gitCommit.toLowerCase() : "";
+  if (!/^[0-9a-f]{40}$/.test(commit)) {
+    throw new Error("Das Replay enthält keine vollständige OpenFront-Engine-Commit-ID.");
+  }
+  const mapId = replayMapAssetId(record.info?.config?.gameMap ?? record.config?.gameMap);
+  if (!/^[a-z0-9_-]{2,80}$/.test(mapId)) {
+    throw new Error("Die Karten-ID im Replay kann nicht sicher aufgelöst werden.");
+  }
+  const base = `https://raw.githubusercontent.com/openfrontio/OpenFrontIO/${commit}/resources/maps/${mapId}/`;
+  const manifest: Record<string, string> = {};
+  for (const file of ["map.bin", "map4x.bin", "map16x.bin", "manifest.json", "thumbnail.webp"]) {
+    manifest[`maps/${mapId}/${file}`] = base + file;
+  }
+  return { manifest, cdnBase: "" };
+}
 
 export async function simulateReplay(
   record: any,
@@ -128,13 +165,15 @@ export async function simulateReplay(
   sampleEvery = 50,
   preferredClientId: string | null = null,
 ): Promise<ReplaySimulationResult> {
+  record = unwrapGameRecord(record);
+  const engineModule = await loadReplayEngineModule(String(record.gitCommit ?? ""));
+  const { createReplayWorkers, ReplayReader, gunzipInBrowser } = engineModule;
   const workers = createReplayWorkers();
   const channel = new MessageChannel();
   workers.engine.postMessage({ type: "connect", port: channel.port1 }, [channel.port1]);
   const readerRef: { current: InstanceType<typeof ReplayReader> | null } = { current: null };
   const samples: ReplayStateSample[] = [];
   let lastSampledFrame = -1;
-  record = unwrapGameRecord(record);
   const turns: any[] = Array.isArray(record.turns) ? record.turns : [];
   const recordedHashCount = turns.filter((turn: any) => turn.hash !== null && turn.hash !== undefined).length;
   // Keep the regular overview cadence, but also capture the frames immediately
@@ -340,7 +379,7 @@ export async function simulateReplay(
             if (!player) return null;
             const activeTargets = new Set(player.outgoingAttackDetails.map(attack => attack.targetID));
             const incomingAttackerIDs = new Set(player.incomingAttackDetails.map(attack => attack.attackerID));
-            const nameBySmallID = new Map(replayPlayerMetadata.map((meta: any) => [Number(meta.smallID), String(meta.displayName ?? meta.name ?? `Spieler ${meta.smallID}`)]));
+            const nameBySmallID = new Map<number, string>(replayPlayerMetadata.map((meta: any): [number, string] => [Number(meta.smallID), String(meta.displayName ?? meta.name ?? `Spieler ${meta.smallID}`)]));
             return {
               activeTargetCount: activeTargets.size,
               outgoingTargetIds: [...activeTargets],
@@ -359,7 +398,7 @@ export async function simulateReplay(
             const attacks = targetPlayer.incomingAttackDetails;
             const otherAttacks = attacks.filter(attack => attack.attackerID !== selectedSmallID);
             const otherAttackerIDs = new Set(otherAttacks.map(attack => attack.attackerID));
-            const nameBySmallID = new Map(replayPlayerMetadata.map((meta: any) => [Number(meta.smallID), String(meta.displayName ?? meta.name ?? `Spieler ${meta.smallID}`)]));
+            const nameBySmallID = new Map<number, string>(replayPlayerMetadata.map((meta: any): [number, string] => [Number(meta.smallID), String(meta.displayName ?? meta.name ?? `Spieler ${meta.smallID}`)]));
             return {
               incomingAttackCount: attacks.length,
               incomingAttackTroops: attacks.reduce((sum, attack) => sum + attack.troops, 0),

@@ -10,11 +10,12 @@
     "start": "electron .",
     "dist:win": "npm run build && electron-builder --win nsis",
     "build:electron": "tsc -p tsconfig.electron.json",
-    "build:engine": "node vendor/OpenFrontIO/node_modules/vite/bin/vite.js build --config engine-build/vite.config.mjs",
+    "build:engine": "node scripts/build-engines.mjs",
     "build:web": "npm run build:engine && tsc --noEmit && vite build",
     "preview:web": "vite preview",
     "test:phase-survival": "node --test scripts/phase-survival.test.mjs",
-    "test:coach": "node --test scripts/phase-survival.test.mjs scripts/pro-coach-algorithm.test.mjs scripts/game-record-shape.test.mjs"
+    "test:coach": "node --import ./vendor/OpenFrontIO/node_modules/tsx/dist/loader.mjs --test scripts/phase-survival.test.mjs scripts/pro-coach-algorithm.test.mjs scripts/game-record-shape.test.mjs scripts/replay-compatibility.test.mjs scripts/public-replay-compatibility.test.mjs",
+    "validate:engine-pin": "node scripts/validate-engine-pin.mjs"
   },
   "dependencies": {
     "lucide-react": "^0.468.0",

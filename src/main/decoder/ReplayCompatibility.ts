@@ -31,8 +31,8 @@ export function assessReplayCompatibility(
 ): ReplayCompatibility {
   const obj = unwrapGameRecord(record);
   const replayCommit =
-    typeof obj.gitCommit === "string" && obj.gitCommit.length > 0
-      ? obj.gitCommit
+    typeof obj.gitCommit === "string" && /^[0-9a-f]{7,40}$/i.test(obj.gitCommit)
+      ? obj.gitCommit.toLowerCase()
       : null;
   const turns = Array.isArray(obj.turns) ? obj.turns : [];
   const recordedHashCount = turns.filter((turn) => {
@@ -51,7 +51,7 @@ export function assessReplayCompatibility(
       engineVersionCompatible: false,
       hashVerificationAvailable,
       message:
-        "Im Replay fehlt die Engine-Commit-ID. Eine Wiedergabe kann deshalb nicht sicher derselben Spielversion zugeordnet werden.",
+        "Im Replay fehlt eine gültige Engine-Commit-ID. Eine Wiedergabe kann deshalb nicht sicher derselben Spielversion zugeordnet werden.",
     };
   }
 

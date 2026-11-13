@@ -1223,3 +1223,24 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{ou
   .pro-coach-finding-compact{padding:13px}
 }
 @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}button{transition:none}}
+
+/* Active Performance Studio workspace surfaces. */
+:root{
+  --studio-bg:#070d19;--studio-panel:#101c30;--studio-panel2:#14243c;
+  --studio-line:#294363;--studio-text:#f2f7ff;--studio-muted:#a7bad2;
+  --studio-cyan:#7bdcff;--studio-blue:#58aef7;
+}
+.studio-sidebar{background:#0a1426f5;border-right-color:#263e60}
+.studio-brand-icon{background:linear-gradient(145deg,#8de3ff,#398cf0);color:#07172a;box-shadow:0 8px 26px #348fe955}
+.studio-nav{color:#aabdd5}
+.studio-nav:hover{background:#162b48;color:#f4f8ff}
+.studio-nav.active{background:linear-gradient(105deg,#1c3c60,#172e4b);border-color:#3978ad;color:#f1f8ff;box-shadow:inset 3px 0 #65caff,0 8px 24px #0003}
+.studio-nav.active svg{color:#83dcff}
+.studio-main{background:transparent}
+.studio-header{border-bottom-color:#263e60}
+.studio-eyebrow,.studio-nav-label{color:#83c8f5}
+.studio-card{border-color:#2b4668;background:linear-gradient(145deg,#14243b,#101c30)}
+.studio-button.primary{background:linear-gradient(135deg,#8de4ff,#4aa9f5);border-color:#5dbcf1;color:#06182a;box-shadow:0 8px 22px #3ba5ee2b}
+.studio-button.primary:hover{filter:brightness(1.06);box-shadow:0 10px 28px #3ba5ee44}
+.studio-button.subtle{background:#172b46;border-color:#385a7e;color:#dcecff}
+.studio-button.subtle:hover{background:#203b5e;border-color:#5d8fbe}

@@ -85,7 +85,6 @@ jobs:
         run: node scripts/set-android-version.mjs "$(node -p "require('./package.json').version")"
 
       - name: Validate permanent keystore credentials
-        if: ${{ env.ANDROID_KEYSTORE_BASE64 != '' }}
         env:
           ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}

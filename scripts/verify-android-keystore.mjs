@@ -29,14 +29,22 @@ try {
   }
   writeFileSync(file, bytes, { mode: 0o600 });
 
-  const check = spawnSync("keytool", [
+  const storeCheck = spawnSync("keytool", [
+    "-list", "-keystore", file, "-storepass", storePassword
+  ], { encoding: "utf8", windowsHide: true });
+
+  if (storeCheck.status !== 0) {
+    throw new Error("Android keystore validation failed: the keystore file or ANDROID_KEYSTORE_PASSWORD is invalid.");
+  }
+
+  const aliasCheck = spawnSync("keytool", [
     "-list", "-keystore", file, "-storepass", storePassword, "-alias", alias, "-keypass", keyPassword
   ], { encoding: "utf8", windowsHide: true });
 
-  if (check.status !== 0) {
-    const output = `${check.stderr ?? ""}\n${check.stdout ?? ""}`;
-    const detail = output.split(/\r?\n/).find(line => /password was incorrect|Keystore was tampered|does not exist|key password/i.test(line));
-    throw new Error(detail ? `Android keystore validation failed: ${detail.trim()}` : "Android keystore validation failed. Check the keystore file, alias and both passwords.");
+  if (aliasCheck.status !== 0) {
+    const output = `${aliasCheck.stderr ?? ""}\n${aliasCheck.stdout ?? ""}`;
+    const detail = output.split(/\r?\n/).find(line => /password was incorrect|does not exist|key password/i.test(line));
+    throw new Error(detail ? `Android key/alias validation failed: ${detail.trim()}` : "Android key/alias validation failed. Check ANDROID_KEY_ALIAS and ANDROID_KEY_PASSWORD.");
   }
 
   console.log("Android keystore file, store password, alias and key password validated successfully.");

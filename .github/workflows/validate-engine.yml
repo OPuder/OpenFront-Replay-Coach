@@ -61,5 +61,9 @@ jobs:
         working-directory: vendor/OpenFrontIO
         run: npm run typecheck
 
-      - name: Bundle the original replay and engine workers for Electron
+      - name: Type-check historical Europe engine and replay pipeline
+        working-directory: vendor/OpenFrontIO-8b5d071eed95
+        run: npm run typecheck
+
+      - name: Bundle all exact replay engine workers for Electron
         run: npm run build:engine

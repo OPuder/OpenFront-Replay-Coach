@@ -126,10 +126,10 @@ jobs:
           grep -F "versionName='$version'" /tmp/apk-badging.txt
           echo "Verified APK signing mode: $APK_SIGNING_MODE"
 
-      - name: Upload Android validation APK
+      - name: Upload validated Android APK
         uses: actions/upload-artifact@v4
         with:
-          name: OpenFront-Replay-Coach-Android-Debug
-          path: android/app/build/outputs/apk/debug/app-debug.apk
+          name: OpenFront-Replay-Coach-Android-Validated
+          path: ${{ env.APK_PATH }}
           if-no-files-found: error
           retention-days: 14

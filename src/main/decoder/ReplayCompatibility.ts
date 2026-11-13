@@ -1,3 +1,4 @@
+import { unwrapGameRecord } from "./GameRecordShape";
 /**
  * Replay/engine compatibility gate.
  *
@@ -28,14 +29,7 @@ export function assessReplayCompatibility(
   record: unknown,
   engineCommit = PINNED_OPENFRONT_COMMIT,
 ): ReplayCompatibility {
-  const root =
-    record && typeof record === "object" && "game" in record
-      ? (record as { game?: unknown }).game
-      : record;
-  const obj =
-    root && typeof root === "object"
-      ? (root as Record<string, unknown>)
-      : {};
+  const obj = unwrapGameRecord(record);
   const replayCommit =
     typeof obj.gitCommit === "string" && obj.gitCommit.length > 0
       ? obj.gitCommit

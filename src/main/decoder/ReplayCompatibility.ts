@@ -34,7 +34,7 @@ export function assessReplayCompatibility(
       : null;
   const selectedEngineCommit =
     engineCommit ??
-    (replayCommit && SUPPORTED_OPENFRONT_COMMITS.includes(replayCommit)
+    (replayCommit && SUPPORTED_OPENFRONT_COMMITS.some((commit) => commit === replayCommit)
       ? replayCommit
       : PINNED_OPENFRONT_COMMIT);
   const turns = Array.isArray(obj.turns) ? obj.turns : [];

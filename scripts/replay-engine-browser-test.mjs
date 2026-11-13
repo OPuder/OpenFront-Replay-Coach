@@ -87,7 +87,7 @@ async function main() {
   assert.equal(abortResult.aborted, true, "An in-flight replay simulation must terminate on cancellation");
   console.log("In-flight simulation cancellation: passed");
   await window.webContents.executeJavaScript(
-    `window.__saveStoreTest(${JSON.stringify(GAME_ID)}, ${JSON.stringify(result)})`,
+    `window.__saveStoreTest(${JSON.stringify(GAME_ID)}, ${JSON.stringify(result.simulation)})`,
     true,
   );
   await new Promise((resolve) => {

@@ -10,6 +10,7 @@ import { buildEngineCoachInsights } from '../main/decoder/EngineCoachInsights';
 import { buildProCoachReport } from '../main/decoder/ProCoachAlgorithm';
 import { buildLongitudinalCoachReport } from '../main/decoder/LongitudinalCoach';
 import { selectPrimaryCoachInsights } from '../main/decoder/CoachInsightSelection';
+import { buildReplayTimeline } from '../main/decoder/CoachTimeline';
 import { runSequentialBatchAnalysis } from './BatchAnalysisRunner';
 import { assessReplayCompatibility } from '../main/decoder/ReplayCompatibility';
 import type { ReplaySimulationResult } from './ReplaySimulation';
@@ -605,6 +606,7 @@ function fmtChartValue(value:number){return Math.round(value).toLocaleString('de
 function selectedPlayerName(players:Array<{name:string;clientID:string|null}>,id:string){return players.find(p=>p.clientID===id)?.name ?? '';}
 function CoachPanel({apiResult,preferredPlayerPublicId,decodedActions,simulationResult,simulationProgress,onPlayerSelect,onExport,onSaveReplayJson,onOpenReplay,fmt}:{preferredPlayerPublicId:string|null;apiResult:ApiImportSummary;decodedActions:DecodedAction[];simulationResult:ReplaySimulationResult|null;simulationProgress:{percent:number;phase:string}|null;onPlayerSelect:(clientId:string)=>void;onExport:()=>void;onSaveReplayJson:()=>void;onOpenReplay:()=>void;fmt:(n:number)=>string}) {
   const [workspaceTab,setWorkspaceTab]=useState<'coach'|'replay'|'analysis'>('coach');
+  const [selectedTimelineId,setSelectedTimelineId]=useState<string|null>(null);
   type TrainingGoal = { title:string; instruction:string; gameId:string; mapName:string; createdAt:string; completed:boolean };
   const [trainingGoal,setTrainingGoal]=useState<TrainingGoal|null>(()=>{try{return JSON.parse(localStorage.getItem('openfront-coach-training-goal')||'null') as TrainingGoal|null;}catch{return null;}});
   React.useEffect(()=>{try{if(trainingGoal)localStorage.setItem('openfront-coach-training-goal',JSON.stringify(trainingGoal));else localStorage.removeItem('openfront-coach-training-goal');}catch{/* Local storage may be unavailable in private browser contexts. */}},[trainingGoal]);
@@ -650,6 +652,9 @@ function CoachPanel({apiResult,preferredPlayerPublicId,decodedActions,simulation
     : null;
 
   const { ordered: orderedEngineInsights, primary: primaryEngineInsights, supporting: supportingEngineInsights } = selectPrimaryCoachInsights(engineInsights);
+  const replayTimeline = buildReplayTimeline(timeline, primaryEngineInsights);
+  const selectedTimelineEntry = replayTimeline.find(event => event.id === selectedTimelineId) ?? replayTimeline[0] ?? null;
+  React.useEffect(()=>{setSelectedTimelineId(null);},[apiResult.gameId]);
   const leadEngineInsight = primaryEngineInsights[0] ?? null;
   const coachLeadTitle = simulationResult?.status === 'verified'
     ? leadEngineInsight?.title ?? 'Keine einzelne Fehlentscheidung belastbar belegt'

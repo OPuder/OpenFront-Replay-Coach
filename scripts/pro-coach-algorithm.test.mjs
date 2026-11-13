@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { buildProCoachReport } from '../src/main/decoder/ProCoachAlgorithm.ts';
+import { selectPrimaryCoachInsights } from '../src/main/decoder/CoachInsightSelection.ts';
 
 const player=(overrides={})=>({clientID:'p1',alive:true,tiles:100,gold:500,goldEarned:1000,troops:300,outgoingAttackDetails:[],incomingAttackDetails:[],allies:0,betrayals:0,unitCounts:{City:2},...overrides});
 const sample=(tick,p)=>({tick,frame:tick,players:[player(p)]});
@@ -58,4 +59,32 @@ test('does not treat a missing target observation as a failed attack window',()=
  assert.ok(finding);
  assert.match(finding.decision,/4 von 6 Angriffen/);
  assert.match(finding.consequence,/0 von 4 auswertbaren Fenstern/);
+});
+
+
+test('match coach exposes at most three high/medium engine reviews and keeps the rest as supporting evidence', () => {
+  const insights = [
+    { id: 'low-review', kind: 'review', priority: 'low', title: 'Low' },
+    { id: 'medium-a', kind: 'review', priority: 'medium', title: 'Medium A' },
+    { id: 'high-a', kind: 'review', priority: 'high', title: 'High A' },
+    { id: 'observation', kind: 'observation', priority: 'high', title: 'Observation' },
+    { id: 'high-b', kind: 'review', priority: 'high', title: 'High B' },
+    { id: 'medium-b', kind: 'review', priority: 'medium', title: 'Medium B' },
+    { id: 'medium-c', kind: 'review', priority: 'medium', title: 'Medium C' },
+  ];
+  const result = selectPrimaryCoachInsights(insights);
+  assert.deepEqual(result.primary.map(item => item.id), ['high-a', 'high-b', 'medium-a']);
+  assert.equal(result.primary.length, 3);
+  assert.deepEqual(result.supporting.map(item => item.id), ['observation', 'low-review', 'medium-b', 'medium-c']);
+  assert.equal(result.ordered.length, insights.length);
+});
+
+test('match coach does not promote strengths or observations into negative decision reviews', () => {
+  const insights = [
+    { id: 'strength', kind: 'strength', priority: 'high', title: 'Strength' },
+    { id: 'observation', kind: 'observation', priority: 'medium', title: 'Observation' },
+  ];
+  const result = selectPrimaryCoachInsights(insights);
+  assert.deepEqual(result.primary, []);
+  assert.equal(result.supporting.length, 2);
 });

@@ -108,6 +108,114 @@ function App() {
     if(runId===batchRunId.current) { setBatchProgress({done,total:games.length,gameId:''}); setBatchBusy(false); }
   }
   function cancelBatchImport() { batchRunId.current++; setBatchBusy(false); setBatchProgress(current=>current?{...current,gameId:''}:null); }
+  function cancelBatchAnalysis() {
+    batchAnalysisRunId.current++;
+    batchAnalysisAbort.current?.abort();
+    batchAnalysisAbort.current=null;
+    setBatchAnalysisBusy(false);
+    setBatchAnalysisProgress(null);
+    setBatchMatches(current=>current.map(item=>item.analysisStatus==='queued'||item.analysisStatus==='running'?{...item,analysisStatus:'pending'}:item));
+  }
+  function resolveProfileClientId(result: ApiImportSummary): string | null {
+    const players=result.record?.info?.players??[];
+    const publicId=String(playerPage?.profile?.publicId??playerPage?.profile?.publicID??'');
+    let player=publicId?players.find((p:any)=>String(p.publicID??p.publicId??'')===publicId):undefined;
+    if(!player) {
+      const name=String(playerPage?.profile?.username??playerPage?.profile?.displayName??'').trim().toLowerCase();
+      if(name) player=players.find((p:any)=>String(p.username??p.displayName??p.name??'').trim().toLowerCase()===name);
+    }
+    return player?.clientID==null?null:String(player.clientID);
+  }
+  async function persistBatchItem(item: BatchMatchItem) {
+    if(!playerPage) return;
+    const stored: StoredMatchEntry={
+      game:item.game,
+      result:item.result,
+      status:item.status==='queued'||item.status==='running'?'loaded':item.status,
+      error:item.error,
+      simulation:item.simulation,
+      analysisStatus:item.analysisStatus==='queued'||item.analysisStatus==='running'?'pending':item.analysisStatus,
+      analysisError:item.analysisError,
+    };
+    await saveImportedMatch(playerPage.playerId,stored);
+  }
+  async function analyzeSelectedGames(gameIds=selectedGameIds) {
+    if(!playerPage||batchBusy||batchAnalysisBusy||gameIds.length===0) return;
+    const candidates=gameIds.map(id=>batchMatches.find(item=>item.game.gameId===id)).filter((item):item is BatchMatchItem=>Boolean(item?.result));
+    if(!candidates.length) return;
+    const runId=++batchAnalysisRunId.current;
+    const controller=new AbortController();
+    batchAnalysisAbort.current=controller;
+    setBatchAnalysisBusy(true); setError('');
+    setBatchAnalysisProgress({done:0,total:candidates.length,gameId:'',percent:0,phase:'Analyse wird vorbereitet'});
+    let done=0;
+    try {
+      const {simulateReplay,buildReplayEngineAssets}=await import('./ReplaySimulation');
+      for(const original of candidates) {
+        if(runId!==batchAnalysisRunId.current||controller.signal.aborted) break;
+        const item=batchMatches.find(entry=>entry.game.gameId===original.game.gameId)??original;
+        setBatchAnalysisProgress({done,total:candidates.length,gameId:item.game.gameId,percent:0,phase:'Partie wird vorbereitet'});
+        if(item.analysisStatus==='verified'&&item.simulation?.status==='verified') {
+          done++;
+          setBatchAnalysisProgress({done,total:candidates.length,gameId:'',percent:100,phase:'Bereits verifiziert'});
+          continue;
+        }
+        const updateItem=async(patch:Partial<BatchMatchItem>,persist=true)=>{
+          const updated={...item,...patch};
+          setBatchMatches(current=>current.map(entry=>entry.game.gameId===item.game.gameId?updated:entry));
+          if(persist) {
+            try { await persistBatchItem(updated); }
+            catch(storageError) { console.warn('[ReplayCoach] Analyseergebnis konnte nicht lokal gesichert werden:',storageError); }
+          }
+          return updated;
+        };
+        if(!item.result?.record||item.result.engineCompatibility?.engineVersionCompatible!==true) {
+          await updateItem({analysisStatus:'unsupported',analysisError:item.result?.engineCompatibility?.message??'Keine passende Original-Engine für dieses Replay verfügbar.',simulation:undefined});
+          done++;
+          continue;
+        }
+        const preferredClientId=resolveProfileClientId(item.result);
+        if(!preferredClientId) {
+          await updateItem({analysisStatus:'failed',analysisError:'Das OpenFront-Profil konnte keinem Spieler dieser Partie eindeutig zugeordnet werden.'});
+          done++;
+          continue;
+        }
+        await updateItem({analysisStatus:'running',analysisError:undefined},false);
+        try {
+          const assets=buildReplayEngineAssets(item.result.record);
+          const simulated=await simulateReplay(
+            item.result.record,
+            assets,
+            (percent,phase)=>{
+              if(runId===batchAnalysisRunId.current) setBatchAnalysisProgress({done,total:candidates.length,gameId:item.game.gameId,percent,phase});
+            },
+            50,
+            preferredClientId,
+            controller.signal,
+          );
+          if(runId!==batchAnalysisRunId.current||controller.signal.aborted) break;
+          await updateItem({
+            simulation:simulated,
+            analysisStatus:simulated.status==='verified'?'verified':'unverified',
+            analysisError:simulated.status==='verified'?undefined:simulated.message,
+          });
+        } catch(analysisError) {
+          if(controller.signal.aborted||runId!==batchAnalysisRunId.current) break;
+          await updateItem({analysisStatus:'failed',analysisError:analysisError instanceof Error?analysisError.message:String(analysisError)});
+        }
+        done++;
+        if(runId===batchAnalysisRunId.current) setBatchAnalysisProgress({done,total:candidates.length,gameId:'',percent:100,phase:'Partie abgeschlossen'});
+      }
+    } catch(analysisError) {
+      if(runId===batchAnalysisRunId.current) setError(analysisError instanceof Error?analysisError.message:String(analysisError));
+    } finally {
+      if(runId===batchAnalysisRunId.current) {
+        batchAnalysisAbort.current=null;
+        setBatchAnalysisBusy(false);
+        setBatchAnalysisProgress(null);
+      }
+    }
+  }
   function openBatchMatch(gameId:string) {
     const item=batchMatches.find(entry=>entry.game.gameId===gameId);
     if (!item?.result) return;

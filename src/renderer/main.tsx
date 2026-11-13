@@ -125,7 +125,7 @@ function App() {
         const status: 'engine-mismatch' | 'loaded'=imported.engineCompatibility?.engineVersionCompatible===false ? 'engine-mismatch' : 'loaded';
         const entry:BatchMatchItem={game,result:imported,status,analysisStatus:status==='engine-mismatch'?'unsupported':'pending'};
         setBatchMatches(current=>[...current.filter(item=>item.game.gameId!==game.gameId),entry]);
-        try { await saveImportedMatch(playerPage.playerId,entry); } catch(storageError) { console.warn('[ReplayCoach] Replay wurde geladen, konnte aber nicht lokal gesichert werden:',storageError); setError(`Partie ${game.gameId} geladen, aber lokale Speicherung fehlgeschlagen: ${storageError instanceof Error?storageError.message:String(storageError)}`); }
+        try { await persistBatchItem(entry); } catch(storageError) { console.warn('[ReplayCoach] Replay wurde geladen, konnte aber nicht lokal gesichert werden:',storageError); setError(`Partie ${game.gameId} geladen, aber lokale Speicherung fehlgeschlagen: ${storageError instanceof Error?storageError.message:String(storageError)}`); }
       } catch (e) {
         if(runId!==batchRunId.current) break;
         const entry:BatchMatchItem={game,status:'failed',analysisStatus:'failed',error:e instanceof Error?e.message:String(e)};
@@ -267,7 +267,7 @@ function App() {
         }
         const entry:BatchMatchItem={...(cachedItem??{}),game:selectedGame??{gameId},result,status:result.engineCompatibility?.engineVersionCompatible===false?'engine-mismatch':'loaded',analysisStatus:cachedItem?.analysisStatus??(result.engineCompatibility?.engineVersionCompatible===false?'unsupported':'pending')};
         setBatchMatches(current=>[...current.filter(item=>item.game.gameId!==gameId),entry]);
-        if(playerPage) void saveImportedMatch(playerPage.playerId,entry).catch(storageError=>console.warn('[ReplayCoach] Replay konnte nicht lokal gespeichert werden:',storageError));
+        if(playerPage) void persistBatchItem(entry).catch(storageError=>console.warn('[ReplayCoach] Replay konnte nicht lokal gespeichert werden:',storageError));
         setApiResult(result);
         setDecodedActions(result.decodedActions ?? []);
         setReplay(null);

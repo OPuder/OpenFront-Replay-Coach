@@ -79,12 +79,12 @@ test('match coach exposes at most three high/medium engine reviews and keeps the
   assert.equal(result.ordered.length, insights.length);
 });
 
-test('match coach does not promote strengths or observations into negative decision reviews', () => {
+test('match coach can promote a verified strength without promoting generic observations', () => {
   const insights = [
     { id: 'strength', kind: 'strength', priority: 'high', title: 'Strength' },
     { id: 'observation', kind: 'observation', priority: 'medium', title: 'Observation' },
   ];
   const result = selectPrimaryCoachInsights(insights);
-  assert.deepEqual(result.primary, []);
-  assert.equal(result.supporting.length, 2);
+  assert.deepEqual(result.primary.map(item => item.id), ['strength']);
+  assert.deepEqual(result.supporting.map(item => item.id), ['observation']);
 });

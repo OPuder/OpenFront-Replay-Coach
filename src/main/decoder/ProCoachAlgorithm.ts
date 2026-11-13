@@ -118,9 +118,9 @@ export function buildProCoachReport(
   const negativeWindows=evaluatedAttackActions.filter(a=>(a.delta30s?.troops??0)<0&&(a.delta30s?.tiles??0)<=0&&a.targetDelta30s!==null&&(a.targetDelta30s?.tiles??0)>=0);
   if(evaluatedAttackActions.length>=3){
     const ratio=positiveWindows.length/evaluatedAttackActions.length;
-    const worst=negativeWindows[0]??attackActions.find(a=>(a.delta30s?.tiles??0)<=0);
+    const worst=negativeWindows[0]??evaluatedAttackActions.find(a=>(a.delta30s?.tiles??0)<=0);
     findings.push({
-      id:'attack-follow-through',priority:negativeWindows.length>=Math.max(2,Math.ceil(attackActions.length*.35))?'high':'medium',
+      id:'attack-follow-through',priority:negativeWindows.length>=Math.max(2,Math.ceil(evaluatedAttackActions.length*.35))?'high':'medium',
       confidence:confidenceFor(alive.length,evaluatedAttackActions.length),title:negativeWindows.length?'Angriffe mit hoher Truppenbindung prüfen':'Angriffe mit sichtbarer Gebietsreaktion',
       decision:`${evaluatedAttackActions.length} von ${attackActions.length} Angriffen hatten auswertbare 30-Sekunden-Gebietsdaten.`,
       consequence:`${positiveWindows.length} von ${evaluatedAttackActions.length} auswertbaren Fenstern zeigten eigenen Gebietszuwachs oder Gebietsverlust beim Ziel; ${negativeWindows.length} zeigten Truppenrückgang ohne entsprechende Gebietsreaktion.`,
@@ -172,7 +172,7 @@ export function buildProCoachReport(
   const incomeDelta=start&&end?end.goldEarned-start.goldEarned:null;
   const durationMinutes=Math.max(0,endSeconds/60);
   const coverage=confidenceFor(alive.length,actions.length);
-  const attackRatio=attackActions.length?positiveWindows.length/attackActions.length:null;
+  const attackRatio=evaluatedAttackActions.length?positiveWindows.length/evaluatedAttackActions.length:null;
   const attackCommands=actions.filter(a=>a.type==='attack'&&a.ownFrontContextBefore);
   const loadedFrontCount=attackCommands.filter(a=>(a.ownFrontContextBefore?.activeTargetCount??0)>0||(a.ownFrontContextBefore?.incomingAttackCount??0)>0).length;
   const frontPressureRatio=attackCommands.length?loadedFrontCount/attackCommands.length:null;
@@ -180,7 +180,7 @@ export function buildProCoachReport(
   const metrics=[
     {label:'Gebiet netto',value:territoryDelta===null?'–':(territoryDelta>0?'+':'')+fmt(territoryDelta),note:'Start bis letzter aktiver Zustand',confidence:coverage},
     {label:'Brutto-Gold / Min.',value:incomeDelta===null||durationMinutes<=0?'–':fmt(incomeDelta/durationMinutes),note:'Kumulierte Einnahmen, keine Nettorendite',confidence:coverage},
-    {label:'Angriffs-Folgefenster',value:attackRatio===null?'–':`${fmt(attackRatio*100)} %`,note:`${positiveWindows.length}/${attackActions.length} mit positiver Gebietsreaktion binnen 30 s`,confidence:confidenceFor(alive.length,attackActions.length)},
+    {label:'Angriffs-Folgefenster',value:attackRatio===null?'–':`${fmt(attackRatio*100)} %`,note:`${positiveWindows.length}/${evaluatedAttackActions.length} auswertbare Folgefenster mit positiver Gebietsreaktion binnen 30 s`,confidence:confidenceFor(alive.length,evaluatedAttackActions.length)},
     {label:'Truppenbilanz / Min.',value:troopChange===null?'–':`${troopChange>0?'+':''}${fmt(troopChange/durationMinutes)}`,note:'Nettoänderung im aktiven Beobachtungszeitraum',confidence:coverage},
     {label:'Frontdruck',value:frontPressureRatio===null?'–':`${fmt(frontPressureRatio*100)} %`,note:`${loadedFrontCount}/${attackCommands.length} Angriffe bei bereits aktiver Bindung oder eingehendem Druck`,confidence:confidenceFor(alive.length,attackCommands.length)},
     {label:'Stärkster Impuls',value:strongest?.label??'–',note:strongest?'Innerhalb dieser Partie':'Zu wenig vergleichbare Phasendaten',confidence:coverage}

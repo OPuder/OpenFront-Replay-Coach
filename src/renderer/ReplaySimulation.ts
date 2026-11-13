@@ -361,7 +361,7 @@ export async function simulateReplay(
             const attacks = targetPlayer.incomingAttackDetails;
             const otherAttacks = attacks.filter(attack => attack.attackerID !== selectedSmallID);
             const otherAttackerIDs = new Set(otherAttacks.map(attack => attack.attackerID));
-            const nameBySmallID = new Map(replayPlayerMetadata.map((meta: any) => [Number(meta.smallID), String(meta.displayName ?? meta.name ?? `Spieler ${meta.smallID}`)]));
+            const nameBySmallID = new Map<number, string>(replayPlayerMetadata.map((meta: any): [number, string] => [Number(meta.smallID), String(meta.displayName ?? meta.name ?? `Spieler ${meta.smallID}`)]));
             return {
               incomingAttackCount: attacks.length,
               incomingAttackTroops: attacks.reduce((sum, attack) => sum + attack.troops, 0),

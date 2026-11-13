@@ -610,3 +610,35 @@ body{background:radial-gradient(ellipse at 76% -10%,#17314b 0,transparent 42%),#
  .studio-footer{padding-bottom:10px}
 }
 @media(min-width:761px){.studio-mobile-nav{display:none}}
+
+
+/* Coach: one clear takeaway, details only on demand */
+.coach-compact-card{padding:18px;margin:12px 0 18px}
+.coach-compact-card .coach-lead-summary{font-size:14px;line-height:1.5;margin:8px 0 12px;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.coach-compact-card .coach-lead-decision{padding:10px 12px}
+.coach-compact-card .coach-lead-training{margin-top:9px;padding:11px 12px}
+.coach-compact-card .coach-lead-training>p{display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;font-size:12px;line-height:1.5}
+.coach-proof-details{margin-top:10px;border-top:1px solid #35516a}
+.coach-proof-details>summary{padding:11px 2px 2px;cursor:pointer;color:#9ed6f1;font-size:11px;font-weight:800;list-style:none}
+.coach-proof-details>summary::-webkit-details-marker{display:none}
+.coach-proof-details>summary:after{content:'＋';float:right;font-size:14px}
+.coach-proof-details[open]>summary:after{content:'−'}
+.coach-proof-details>div{margin-top:9px;padding:10px 11px;border-radius:9px;background:#0d1d2c}
+.coach-proof-details>div>b{font-size:10px;color:#9ed6f1}
+.coach-proof-details>div>p{margin:4px 0 0;color:#c1d1df;font-size:11px;line-height:1.5}
+.coach-engine-findings-heading{margin:14px 0 8px}
+.coach-engine-findings-list{grid-template-columns:1fr;gap:7px}
+.coach-engine-finding-details>summary{padding:10px 12px;gap:4px 8px}
+.coach-engine-finding-details>summary>b{font-size:12px}
+.coach-engine-finding-content{padding:0 12px 11px}
+.coach-report-limit{margin-top:12px;padding:0 12px;border:1px solid #2b4359;border-radius:10px;background:#0f1d2b}
+.coach-report-limit>summary{padding:11px 0;cursor:pointer;color:#91a9bd;font-size:10px;font-weight:700;list-style:none}
+.coach-report-limit>summary::-webkit-details-marker{display:none}
+.coach-report-limit>p{margin:0 0 12px;color:#9eb2c4;font-size:10px;line-height:1.5}
+@media(max-width:760px){
+ .coach-compact-card{padding:15px;margin:9px 0 14px}
+ .coach-compact-card>h3{font-size:20px;line-height:1.25}
+ .coach-compact-card .coach-lead-summary{font-size:13px;-webkit-line-clamp:2}
+ .coach-compact-card .coach-lead-training>p{-webkit-line-clamp:2}
+ .coach-proof-details>div{padding:9px}
+}

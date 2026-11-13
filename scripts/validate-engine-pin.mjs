@@ -6,6 +6,7 @@ const engines = JSON.parse(readFileSync('engine-build/engines.json', 'utf8'));
 assert.ok(Array.isArray(engines) && engines.length >= 2, 'At least two replay engine revisions must be registered');
 
 const compatibility = readFileSync('src/main/decoder/ReplayCompatibility.ts', 'utf8');
+const catalog = readFileSync('src/main/decoder/ReplayEngineCatalog.ts', 'utf8');
 const registry = readFileSync('src/renderer/engineRegistry.ts', 'utf8');
 const seenCommits = new Set();
 
@@ -17,6 +18,8 @@ for (const engine of engines) {
 
   const checkout = execFileSync('git', ['-C', engine.source, 'rev-parse', 'HEAD'], { encoding: 'utf8' }).trim();
   assert.equal(checkout, engine.commit, `Submodule ${engine.source} must be exactly ${engine.commit}`);
+  assert.ok(catalog.includes(engine.commit), `Shared TypeScript catalog is missing ${engine.commit}`);
+  assert.ok(catalog.includes(engine.bundleId), `Shared TypeScript catalog is missing ${engine.bundleId}`);
   assert.ok(registry.includes(engine.commit), `Runtime registry is missing ${engine.commit}`);
   assert.ok(registry.includes(`replay-engine-${engine.bundleId}.js`), `Runtime bundle mapping is missing ${engine.bundleId}`);
 }

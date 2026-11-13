@@ -836,11 +836,15 @@ function CoachPanel({apiResult,preferredPlayerPublicId,decodedActions,simulation
           <div className="pro-coach-phase-bars">{proCoachReport.phases.map(phase=><div className="pro-coach-phase-row" key={phase.id}><div className="pro-coach-phase-label"><b>{phase.label}</b><span>{phase.momentumIndex===null?'Nicht genug Daten':`Impuls ${phase.momentumIndex}/100`}</span></div><div className="pro-coach-bar"><i style={{width:`${phase.momentumIndex??0}%`}}/></div><small>Gebiet {phase.territoryPerMinute===null?'–':`${phase.territoryPerMinute.toFixed(1).replace('.',',')} / Min.`} · Gold {phase.incomePerMinute===null?'–':`${Math.round(phase.incomePerMinute).toLocaleString('de-DE')} / Min.`} · Truppen {phase.troopChangePerMinute===null?'–':`${phase.troopChangePerMinute>0?'+':''}${Math.round(phase.troopChangePerMinute).toLocaleString('de-DE')} / Min.`} · {phase.attacks} Angriffe</small></div>)}</div>
         </div>
         <div className="pro-coach-findings"><div className="pro-coach-subhead"><b>Deine drei wichtigsten Entscheidungen</b><span>Priorisiert nach Risiko und Datenlage</span></div>
-          {proCoachReport.findings.length ? proCoachReport.findings.map((finding,index)=><article className="pro-coach-finding" key={finding.id}>
+          {proCoachReport.findings.length ? proCoachReport.findings.map((finding,index)=><article className="pro-coach-finding pro-coach-finding-compact" key={finding.id}>
             <div className="pro-coach-finding-top"><span>{index+1}. LERNMOMENT</span><span className={`pro-coach-priority priority-${finding.priority}`}>{finding.priority==='high'?'HOHE PRIORITÄT':finding.priority==='medium'?'MITTLERE PRIORITÄT':'BEOBACHTUNG'}</span>{finding.seconds!==null&&<time>{clock(finding.seconds)}</time>}</div>
-            <h4>{finding.title}</h4><div className="pro-coach-decision-grid"><div><b>Deine Entscheidung</b><p>{finding.decision}</p></div><div><b>Beobachtete Folge</b><p>{finding.consequence}</p></div><div><b>Bessere Prüfoption</b><p>{finding.alternative}</p></div><div className="training-rule"><b>Regel fürs nächste Spiel</b><p>{finding.trainingRule}</p></div></div>
-            <details><summary>Messwerte und Grenzen</summary><p>{finding.evidence}</p><small>{finding.caveat} Datenvertrauen: {finding.confidence==='high'?'hoch':finding.confidence==='medium'?'mittel':'niedrig'}.</small></details>
-          </article>) : <div className="pro-coach-no-finding"><b>Kein belastbarer taktischer Fehler erkannt</b><p>Die verfügbaren Daten liefern keinen ausreichend starken Hinweis für eine negative Bewertung. Das ist kein Beweis für optimale Entscheidungen.</p></div>}
+            <h4>{finding.title}</h4>
+            <div className="pro-coach-finding-outcome"><span>WAS PASSIERT IST</span><p>{finding.consequence}</p></div>
+            <div className="pro-coach-finding-action"><span>NÄCHSTES MAL</span><p>{finding.trainingRule}</p></div>
+            <details><summary>Entscheidung, Alternative und Belege</summary>
+              <div className="pro-coach-finding-details"><div><b>Deine Entscheidung</b><p>{finding.decision}</p></div><div><b>Bessere Prüfoption</b><p>{finding.alternative}</p></div><div><b>Replay-Beleg</b><p>{finding.evidence}</p></div><div><b>Einordnung</b><p>{finding.caveat} Datenvertrauen: {finding.confidence==='high'?'hoch':finding.confidence==='medium'?'mittel':'niedrig'}.</p></div></div>
+            </details>
+          </article>) : <div className="pro-coach-no-finding"><b>Kein belastbarer taktischer Fehler erkannt</b><p>Es gibt keinen ausreichend starken Replay-Beleg für eine negative Bewertung. Das ist kein Beweis für optimale Entscheidungen.</p></div>}
         </div>
         <div className="pro-coach-training-rule"><span>NÄCHSTE PARTIE · DEIN TRAININGSFOKUS</span><b>{proCoachReport.trainingRule}</b></div>
       </section>}

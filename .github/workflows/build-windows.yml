@@ -39,12 +39,11 @@ jobs:
         working-directory: vendor/OpenFrontIO-8b5d071eed95
         run: npm ci --ignore-scripts
 
-      - name: Build original OpenFront replay workers
-        run: npm run build:engine
-
-
       - name: Install Coach dependencies
         run: npm ci
+
+      - name: Build original OpenFront replay workers
+        run: npm run build:engine
 
       - name: Build and package
         run: npm run build && npx electron-builder --win nsis zip --publish never

@@ -9,6 +9,7 @@ import { buildCoachInsights } from '../main/decoder/CoachInsights';
 import { buildEngineCoachInsights } from '../main/decoder/EngineCoachInsights';
 import { buildProCoachReport } from '../main/decoder/ProCoachAlgorithm';
 import { buildLongitudinalCoachReport } from '../main/decoder/LongitudinalCoach';
+import { runSequentialBatchAnalysis } from './BatchAnalysisRunner';
 import { assessReplayCompatibility } from '../main/decoder/ReplayCompatibility';
 import type { ReplaySimulationResult } from './ReplaySimulation';
 import { selectPlayerSurvivalWindow } from './phaseSurvival';
@@ -174,68 +175,44 @@ function App() {
     const runId=++batchAnalysisRunId.current;
     const controller=new AbortController();
     batchAnalysisAbort.current=controller;
-    const candidateIds=new Set(candidates.map(item=>item.game.gameId));
-    setBatchMatches(current=>current.map(item=>candidateIds.has(item.game.gameId)&&item.analysisStatus!=='verified'?{...item,analysisStatus:'queued'}:item));
     setBatchAnalysisBusy(true); setError('');
     setBatchAnalysisProgress({done:0,total:candidates.length,gameId:'',percent:0,phase:'Analyse wird vorbereitet'});
-    let done=0;
     try {
       const {simulateReplay,buildReplayEngineAssets}=await import('./ReplaySimulation');
-      for(const original of candidates) {
-        if(runId!==batchAnalysisRunId.current||controller.signal.aborted) break;
-        const item=batchMatches.find(entry=>entry.game.gameId===original.game.gameId)??original;
-        setBatchAnalysisProgress({done,total:candidates.length,gameId:item.game.gameId,percent:0,phase:'Partie wird vorbereitet'});
-        if(item.analysisStatus==='verified'&&item.simulation?.status==='verified') {
-          done++;
-          setBatchAnalysisProgress({done,total:candidates.length,gameId:'',percent:100,phase:'Bereits verifiziert'});
-          continue;
-        }
-        const updateItem=async(patch:Partial<BatchMatchItem>,persist=true)=>{
-          const updated={...item,...patch};
+      if(runId!==batchAnalysisRunId.current||controller.signal.aborted) return;
+      await runSequentialBatchAnalysis<BatchMatchItem,ReplaySimulationResult>(candidates,{
+        signal:controller.signal,
+        getId:item=>item.game.gameId,
+        isCompatible:item=>Boolean(item.result?.record&&item.result.engineCompatibility?.engineVersionCompatible===true),
+        analyze:async(item,onProgress,signal)=>{
+          const result=item.result!;
+          const preferredClientId=resolveProfileClientId(result);
+          if(!preferredClientId) throw new Error('Das OpenFront-Profil konnte keinem Spieler dieser Partie eindeutig zugeordnet werden.');
+          const assets=buildReplayEngineAssets(result.record);
+          return simulateReplay(result.record,assets,onProgress,50,preferredClientId,signal);
+        },
+        onStatus:async(item,status,simulation,error)=>{
+          const analysisError=status==='unsupported'
+            ? item.result?.engineCompatibility?.message??error
+            : status==='unverified'?simulation?.message
+            : status==='failed'?error
+            : undefined;
+          const updated:BatchMatchItem={
+            ...item,
+            analysisStatus:status,
+            simulation:status==='verified'||status==='unverified'?simulation:status==='unsupported'?undefined:item.simulation,
+            analysisError,
+          };
           setBatchMatches(current=>current.map(entry=>entry.game.gameId===item.game.gameId?updated:entry));
-          if(persist) {
+          if(status==='verified'||status==='unverified'||status==='unsupported'||status==='failed') {
             try { await persistBatchItem(updated); }
             catch(storageError) { console.warn('[ReplayCoach] Analyseergebnis konnte nicht lokal gesichert werden:',storageError); }
           }
-          return updated;
-        };
-        if(!item.result?.record||item.result.engineCompatibility?.engineVersionCompatible!==true) {
-          await updateItem({analysisStatus:'unsupported',analysisError:item.result?.engineCompatibility?.message??'Keine passende Original-Engine für dieses Replay verfügbar.',simulation:undefined});
-          done++;
-          continue;
-        }
-        const preferredClientId=resolveProfileClientId(item.result);
-        if(!preferredClientId) {
-          await updateItem({analysisStatus:'failed',analysisError:'Das OpenFront-Profil konnte keinem Spieler dieser Partie eindeutig zugeordnet werden.'});
-          done++;
-          continue;
-        }
-        await updateItem({analysisStatus:'running',analysisError:undefined},false);
-        try {
-          const assets=buildReplayEngineAssets(item.result.record);
-          const simulated=await simulateReplay(
-            item.result.record,
-            assets,
-            (percent,phase)=>{
-              if(runId===batchAnalysisRunId.current) setBatchAnalysisProgress({done,total:candidates.length,gameId:item.game.gameId,percent,phase});
-            },
-            50,
-            preferredClientId,
-            controller.signal,
-          );
-          if(runId!==batchAnalysisRunId.current||controller.signal.aborted) break;
-          await updateItem({
-            simulation:simulated,
-            analysisStatus:simulated.status==='verified'?'verified':'unverified',
-            analysisError:simulated.status==='verified'?undefined:simulated.message,
-          });
-        } catch(analysisError) {
-          if(controller.signal.aborted||runId!==batchAnalysisRunId.current) break;
-          await updateItem({analysisStatus:'failed',analysisError:analysisError instanceof Error?analysisError.message:String(analysisError)});
-        }
-        done++;
-        if(runId===batchAnalysisRunId.current) setBatchAnalysisProgress({done,total:candidates.length,gameId:'',percent:100,phase:'Partie abgeschlossen'});
-      }
+        },
+        onProgress:progress=>{
+          if(runId===batchAnalysisRunId.current) setBatchAnalysisProgress(progress);
+        },
+      });
     } catch(analysisError) {
       if(runId===batchAnalysisRunId.current) setError(analysisError instanceof Error?analysisError.message:String(analysisError));
     } finally {

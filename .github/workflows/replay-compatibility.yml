@@ -36,10 +36,26 @@ jobs:
       - name: Install Coach dependencies
         run: npm ci
 
+      - name: Install pinned OpenFront engine workspaces
+        working-directory: vendor/OpenFrontIO
+        run: npm ci --ignore-scripts
+
+      - name: Install historical Europe engine workspaces
+        working-directory: vendor/OpenFrontIO-8b5d071eed95
+        run: npm ci --ignore-scripts
+
+      - name: Build all exact replay engine worker bundles
+        run: npm run build:engine
+
       - name: Verify source pin and engine checkout cannot drift
         run: npm run validate:engine-pin
 
-      - name: Verify the actual Europe replay from the public OpenFront API
+      - name: Verify the actual Europe replay and all coaching regressions
         env:
           OPENFRONT_REPLAY_ID: c2R2JHZgUi
         run: npm run test:coach
+
+      - name: Run the Europe replay through its exact original engine and verify all hashes
+        env:
+          OPENFRONT_REPLAY_ID: c2R2JHZgUi
+        run: xvfb-run -a ./node_modules/.bin/electron --no-sandbox scripts/replay-engine-browser-test.mjs

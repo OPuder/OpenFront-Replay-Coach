@@ -145,7 +145,11 @@ jobs:
         working-directory: vendor/OpenFrontIO
         run: npm run typecheck
 
-      - name: Build the original replay workers
+      - name: Type-check the historical Europe engine and replay pipeline
+        working-directory: vendor/OpenFrontIO-8b5d071eed95
+        run: npm run typecheck
+
+      - name: Build all exact replay engine workers
         run: |
           npm ci
           npm run build:engine

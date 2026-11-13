@@ -3,6 +3,7 @@ import { test } from 'node:test';
 import {
   assessReplayCompatibility,
   PINNED_OPENFRONT_COMMIT,
+  SUPPORTED_OPENFRONT_COMMITS,
 } from '../src/main/decoder/ReplayCompatibility.ts';
 
 const matchingRecord = (overrides = {}) => ({
@@ -73,4 +74,25 @@ test('invalid turn collections do not crash compatibility assessment', () => {
   const result = assessReplayCompatibility(matchingRecord({ turns: null }));
   assert.equal(result.recordedHashCount, 0);
   assert.equal(result.status, 'version-compatible-no-hashes');
+});
+
+test('the Europe replay commit has its own exact supported engine build', () => {
+  const europeCommit = '8b5d071eed95f07c701b32e4c64e95b03f8577c1';
+  assert.ok(SUPPORTED_OPENFRONT_COMMITS.includes(europeCommit));
+  const result = assessReplayCompatibility({
+    gitCommit: europeCommit,
+    info: { players: [] },
+    turns: [{ turnNumber: 0, hash: 0 }],
+  });
+  assert.equal(result.status, 'version-compatible-hashes-available');
+  assert.equal(result.engineVersionCompatible, true);
+  assert.equal(result.engineCommit, europeCommit);
+});
+
+test('an unknown third engine build stays blocked instead of falling back to a bundled engine', () => {
+  const result = assessReplayCompatibility(matchingRecord({
+    gitCommit: 'fedcba9876543210fedcba9876543210fedcba98',
+  }));
+  assert.equal(result.status, 'engine-version-mismatch');
+  assert.equal(result.engineVersionCompatible, false);
 });

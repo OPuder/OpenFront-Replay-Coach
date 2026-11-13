@@ -1097,3 +1097,17 @@ body{
 .match-import-controls input{min-width:0;min-height:44px;padding:0 13px;border:1px solid #2d4569;border-radius:10px;background:#0a1426;color:#edf5ff;font-size:11px}
 .match-import-controls input:focus{outline:2px solid #4daeff;outline-offset:1px}
 @media(max-width:720px){.match-import-bar{grid-template-columns:1fr;gap:13px;padding:16px}.match-import-controls{grid-template-columns:1fr}.match-import-controls button{width:100%}}
+
+
+/* 2.2.19 – multi-match replay import */
+.batch-toolbar{display:flex;align-items:center;justify-content:space-between;gap:14px;margin-top:12px}
+.batch-toolbar>div:first-child{display:flex;flex-direction:column;gap:5px}.batch-toolbar b{font-size:12px}.batch-toolbar small{color:#a9bad0;font-size:9px;line-height:1.5}
+.batch-toolbar>div:last-child{display:flex;gap:8px;flex-wrap:wrap}
+.batch-progress{display:grid;grid-template-columns:1fr auto;gap:8px 16px;margin-top:12px}.batch-progress b{font-size:11px}.batch-progress>span{color:#a9bad0;font-size:10px}
+.batch-progress-track{grid-column:1/-1;height:7px;overflow:hidden;border-radius:99px;background:#263c56}.batch-progress-track i{display:block;height:100%;border-radius:99px;background:linear-gradient(90deg,#78baff,#72d2c5);transition:width .2s}
+.batch-results{margin-top:12px}.batch-result-row{display:grid;grid-template-columns:minmax(0,1fr) auto auto;align-items:center;gap:12px;padding:10px 0;border-top:1px solid #293e55}.batch-result-row>div{display:flex;flex-direction:column;gap:4px;min-width:0}.batch-result-row b{font-size:11px}.batch-result-row small{color:#91a8c0;font:9px 'Cascadia Code',monospace;overflow-wrap:anywhere}.batch-status{font-size:8px;font-weight:900;letter-spacing:.4px}.batch-status.loaded{color:#78d9bd}.batch-status.engine-mismatch{color:#f0c16b}.batch-status.failed,.batch-error{color:#f19b91}
+.game-card.selected{border-color:#69c9e9;box-shadow:0 0 0 1px #69c9e966,0 12px 30px #0004}
+.game-select{position:absolute;z-index:3;right:10px;top:10px;display:flex;align-items:center;gap:6px;padding:6px 8px;border:1px solid #8bbbd4;border-radius:7px;background:#0b1a2be8;color:#eef8ff;font-size:9px;font-weight:800;cursor:pointer}
+.game-select input{width:14px;height:14px;margin:0;accent-color:#69c9e9}
+.game-card-visual .game-result{left:10px;top:10px}
+@media(max-width:760px){.batch-toolbar{align-items:stretch;flex-direction:column}.batch-toolbar>div:last-child{width:100%}.batch-toolbar>div:last-child button{flex:1}.batch-result-row{grid-template-columns:1fr auto}.batch-result-row .text-action{grid-column:1/-1;justify-self:start}.batch-progress{grid-template-columns:1fr}.batch-progress>span{grid-row:2}.batch-progress-track{grid-row:3}}

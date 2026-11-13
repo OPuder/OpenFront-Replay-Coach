@@ -558,14 +558,14 @@ function CoachPanel({apiResult,preferredPlayerPublicId,decodedActions,simulation
       </nav>
     </div>}
     {playerScoped && workspaceTab==='coach' && <section id="match-coach-insights" className="coach-insights-section">
-      <div className="overview-heading"><div><span className="eyebrow">DEIN COACH</span><h3>Dein wichtigster Lernpunkt</h3></div></div>
+      <div className="overview-heading"><div><span className="eyebrow">DEIN COACH</span><h3>Dein Coaching</h3></div></div>
 
-      <section className="coach-lead-card coach-compact-card">
-        <div className="coach-lead-top"><span>{leadEngineReview ? 'WICHTIGSTER LERNPUNKT' : 'COACH-STATUS'}</span>{leadEngineReview?.seconds !== null && leadEngineReview?.seconds !== undefined && <time>{clock(leadEngineReview.seconds)}</time>}</div>
+      <section className="coach-lead-card coach-compact-card coach-hero-redesign">
+        <div className="coach-lead-top"><span>{leadEngineReview ? 'DEIN FOKUS FÜR DIE NÄCHSTE PARTIE' : 'COACH-STATUS'}</span>{leadEngineReview?.seconds !== null && leadEngineReview?.seconds !== undefined && <time>{clock(leadEngineReview.seconds)}</time>}</div>
         <h3>{coachLeadTitle}</h3>
         <p className="coach-lead-summary">{coachLeadSummary}</p>
         {leadEngineReview?.decision && <div className="coach-lead-decision"><span>WAS DU GEMACHT HAST</span><b>{leadEngineReview.decision}</b></div>}
-        <div className="coach-lead-training"><span>WAS DU NÄCHSTES MAL TESTEST</span><p>{leadEngineReview?.nextStep ?? coachTrainingFocus}</p></div>
+        <div className="coach-lead-training"><span>NÄCHSTER SCHRITT</span><p>{leadEngineReview?.nextStep ?? coachTrainingFocus}</p></div>
         <details className="coach-proof-details">
           <summary>Belege und Details anzeigen</summary>
           <div><b>Beobachtung</b><p>{leadEngineReview?.evidence ?? 'Für diese Partie liegt noch kein belastbarer Engine-Beleg vor.'}</p></div>
@@ -596,7 +596,7 @@ function CoachPanel({apiResult,preferredPlayerPublicId,decodedActions,simulation
         </div>}
         </section>
       </details>}
-      {simulationResult?.status === 'verified' && <details className="coach-phase-profile coach-phase-details"><summary>Early-, Mid- und Late-Game-Vergleich öffnen</summary><div className="coach-phase-inner">
+      {simulationResult?.status === 'verified' && <section className="coach-phase-profile coach-phase-details coach-phase-redesign"><div className="coach-phase-inner">
         <div className="coach-engine-findings-heading"><span className="coach-report-label">PHASENVERGLEICH</span><b>Wie hat sich dein Spielverlauf verändert?</b><p>Die Raten machen unterschiedlich lange Phasen vergleichbar. Die Einordnung ist nur ein Vergleich deiner drei Phasen in dieser Partie, keine allgemeine Spielstärke.</p></div>
         {!alivePlayerSamples.length && <p className="coach-no-decision">Für diesen Spieler wurde kein aktiver Spielzustand erkannt. Deshalb zeigen wir weder eine Ausscheidungszeit noch Leistungsraten an. Prüfe die Spielerauswahl oder lade das Replay erneut.</p>}
         <div className="coach-phase-grid">{ratedPhases.map(phase=><article className="coach-phase-card" key={phase.id}>
@@ -609,7 +609,7 @@ function CoachPanel({apiResult,preferredPlayerPublicId,decodedActions,simulation
           {phase.id === 'late' && playerEliminatedAtSeconds !== null && <p className="coach-phase-elimination">Der ausgewählte Spieler ist bei {clock(playerEliminatedAtSeconds)} ausgeschieden. Zustände danach werden nicht als seine Leistung gewertet.</p>}
         </article>)}</div>
         <small className="coach-phase-note">Die Phasenwerte zeigen beobachtete Raten, keine Ursache oder optimale Strategie. Ein Gebietszuwachs nach einem Angriff beweist nicht, dass dieser Befehl ihn verursacht hat. Bei zu wenigen Stichproben wird keine Einstufung vorgenommen.</small>
-      </div></details>}
+      </div></section>}
       {simulationResult?.status === 'verified' && <section className="coach-history-profile">
         <div className="coach-engine-findings-heading"><span className="coach-report-label">DEINE ENTWICKLUNG ÜBER MEHRERE PARTIEN</span><b>Langfristiges Spielerprofil</b><p>Jede hash-verifizierte Partie wird lokal auf diesem Gerät gespeichert. Die Übersicht zeigt deine letzten Partien für diesen Spielernamen.</p></div>
         {recentPhaseHistory.length < 2 ? <p className="coach-history-empty">{recentPhaseHistory.length === 1 ? 'Eine Partie gespeichert. Nach der nächsten verifizierten Partie werden erste Vergleiche sichtbar.' : 'Noch keine gespeicherten Partien. Analysiere weitere Replays mit erfolgreicher Hash-Prüfung.'}</p> : <>

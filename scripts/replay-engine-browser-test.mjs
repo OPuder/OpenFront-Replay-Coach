@@ -120,7 +120,7 @@ async function main() {
 
   const input = JSON.stringify({ record, assets }).replaceAll("<", "\\u003c");
   const result = await window.webContents.executeJavaScript(
-    `window.__runReplayTest(${input}.record, ${input}.assets)`,
+    `const payload = ${input}; window.__runReplayTest(payload.record, payload.assets)`,
     true,
   );
   assert.equal(result.status, "verified", "Original engine must reproduce the real Europe replay");

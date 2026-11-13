@@ -30,7 +30,7 @@ jobs:
       # The upstream repository declares a private nested submodule that is
       # unrelated to replay simulation. Initialize only the public engine.
       - name: Check out only the pinned public OpenFront source
-        run: git submodule update --init --depth 1 vendor/OpenFrontIO
+        run: git submodule update --init --depth 1 vendor/OpenFrontIO vendor/OpenFrontIO-8b5d071eed95
 
       - name: Verify exact engine revision
         shell: bash
@@ -51,6 +51,10 @@ jobs:
 
       - name: Install pinned upstream workspaces
         working-directory: vendor/OpenFrontIO
+        run: npm ci --ignore-scripts
+
+      - name: Install exact historical OpenFront engine dependencies
+        working-directory: vendor/OpenFrontIO-8b5d071eed95
         run: npm ci --ignore-scripts
 
       - name: Type-check original engine and replay pipeline

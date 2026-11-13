@@ -615,8 +615,8 @@ function CoachPanel({apiResult,preferredPlayerPublicId,decodedActions,simulation
           </div>
           <small className="coach-training-goal-note">Das Ziel bleibt lokal auf diesem Gerät gespeichert. Ob du es umgesetzt hast, markierst du selbst – der Coach behauptet nicht, dein Verhalten ohne neue Replay-Daten gemessen zu haben.</small>
         </div> : (proCoachReport?.findings[0] || leadEngineReview) && simulationResult?.status==='verified' ? <div className="coach-training-goal-empty">
-          <div><b>{leadEngineReview.title}</b><p>{leadEngineReview.nextStep}</p></div>
-          <button type="button" className="studio-button primary" onClick={()=>setTrainingGoal({title:proCoachReport?.findings[0]?.title ?? leadEngineReview.title,instruction:proCoachReport?.trainingRule ?? leadEngineReview.nextStep,gameId:apiResult.gameId,mapName:apiResult.mapName,createdAt:new Date().toISOString(),completed:false})}>Als Trainingsziel übernehmen <ArrowRight size={15}/></button>
+          <div><b>{proCoachReport?.findings[0]?.title ?? leadEngineReview?.title ?? 'Dein nächster Trainingsfokus'}</b><p>{proCoachReport?.trainingRule ?? leadEngineReview?.nextStep ?? coachTrainingFocus}</p></div>
+          <button type="button" className="studio-button primary" onClick={()=>setTrainingGoal({title:proCoachReport?.findings[0]?.title ?? leadEngineReview?.title ?? 'Trainingsfokus',instruction:proCoachReport?.trainingRule ?? leadEngineReview?.nextStep ?? coachTrainingFocus,gameId:apiResult.gameId,mapName:apiResult.mapName,createdAt:new Date().toISOString(),completed:false})}>Als Trainingsziel übernehmen <ArrowRight size={15}/></button>
         </div> : <div className="coach-training-goal-empty">
           <div><b>Noch kein belegtes Trainingsziel</b><p>Sobald die Original-Engine eine konkrete Situation ausreichend belegt, kannst du daraus ein Ziel für die nächste Partie übernehmen. Wir erfinden vorher keine Taktikempfehlung.</p></div>
         </div>}

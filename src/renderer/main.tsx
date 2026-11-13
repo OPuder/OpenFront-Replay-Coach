@@ -163,12 +163,9 @@ function App() {
     setSimulationProgress({percent:0,phase:'Original-Engine wird gestartet'});
     try {
       // Defer the heavy original-engine worker until an actual replay review is requested.
-      const [{ manifest, cdnBase }, { simulateReplay }] = await Promise.all([
-        window.replayAPI.getReplayEngineAssets(),
-        import('./ReplaySimulation'),
-      ]);
+      const { simulateReplay, buildReplayEngineAssets } = await import('./ReplaySimulation');
       if (requestId !== engineReviewRunId.current) return;
-      const assets = { manifest, cdnBase };
+      const assets = buildReplayEngineAssets(result.record);
       let preferredClientId: string | null;
       if (selectedClientId !== undefined) {
         preferredClientId = selectedClientId || null;

@@ -31,7 +31,7 @@ export default {
   },
   build: {
     outDir: path.join(root, "src", "renderer", "engine"),
-    emptyOutDir: true,
+    emptyOutDir: false,
     sourcemap: false,
     minify: "esbuild",
     target: "es2022",

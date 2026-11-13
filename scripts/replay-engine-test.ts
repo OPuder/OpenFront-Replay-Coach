@@ -3,6 +3,7 @@ import { loadImportedMatches, saveImportedMatch } from "../src/renderer/matchSto
 
 declare global {
   interface Window {
+    __testAbort?: (record: unknown) => Promise<{ aborted: boolean }>;
     __saveStoreTest?: (gameId: string, simulation: unknown) => Promise<void>;
     __verifyStoreTest?: (gameId: string) => Promise<{ analysisStatus?: string; simulationStatus?: string; sampleCount: number }>;
     __runReplayTest?: (record: unknown) => Promise<{
@@ -54,4 +55,19 @@ window.__verifyStoreTest = async (gameId) => {
     simulationStatus: saved?.simulation?.status,
     sampleCount: saved?.simulation?.samples?.length ?? 0,
   };
+};
+
+window.__testAbort = async (record) => {
+  const controller = new AbortController();
+  const clientId = Array.isArray((record as any)?.info?.players)
+    ? String((record as any).info.players[0]?.clientID ?? "") || null
+    : null;
+  const running = simulateReplay(record, buildReplayEngineAssets(record), () => undefined, 50, clientId, controller.signal);
+  window.setTimeout(() => controller.abort(), 50);
+  try {
+    await running;
+    return { aborted: false };
+  } catch (error) {
+    return { aborted: error instanceof Error && error.name === "AbortError" };
+  }
 };

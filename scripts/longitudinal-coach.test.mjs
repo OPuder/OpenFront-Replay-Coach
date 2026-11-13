@@ -1,0 +1,101 @@
+import assert from 'node:assert/strict';
+import { test } from 'node:test';
+import { buildLongitudinalCoachReport } from '../src/main/decoder/LongitudinalCoach.ts';
+
+const makeSimulation = (overrides = {}) => ({
+  status: 'verified',
+  totalTicks: 7000,
+  verifiedHashes: 100,
+  samples: Array.from({ length: 15 }, (_, i) => ({
+    tick: i * 500,
+    frame: i * 500,
+    players: [{
+      clientID: 'p1',
+      alive: true,
+      tiles: 100 + i,
+      gold: 500 + i * 10,
+      goldEarned: 100 + i * 20,
+      troops: 300 + i * 5,
+      outgoingAttackDetails: [],
+      incomingAttackDetails: [],
+      allies: 0,
+      betrayals: 0,
+      unitCounts: { City: 2 },
+    }],
+  })),
+  playerReview: { clientID: 'p1' },
+  actionReviews: Array.from({ length: 6 }, (_, i) => ({
+    seconds: 30 + i * 40,
+    type: 'attack',
+    label: 'Attack',
+    targetName: 'Target',
+    delta10s: { tiles: 0, gold: -10, troops: -20 },
+    delta30s: { tiles: 0, gold: -30, troops: -80 },
+    targetDelta30s: { tiles: 0, gold: 0, troops: 0 },
+    ownFrontContextBefore: null,
+    targetPressureBefore: null,
+  })),
+  ...overrides,
+});
+
+const match = (gameId, overrides = {}) => ({
+  gameId,
+  mapName: 'Europe',
+  mode: 'Free For All',
+  type: 'Private',
+  durationSeconds: 700,
+  analysisStatus: 'verified',
+  simulation: makeSimulation(),
+  ...overrides,
+});
+
+test('recurring findings use only fully verified matches in the same mode and type', () => {
+  const report = buildLongitudinalCoachReport([
+    match('a'),
+    match('b', { mapName: 'Levant' }),
+    match('c', { analysisStatus: 'unverified', simulation: makeSimulation({ status: 'unverified' }) }),
+    match('d', { mode: 'Teams' }),
+    match('e', { analysisStatus: 'unsupported', simulation: undefined }),
+  ]);
+  assert.equal(report.status, 'ready');
+  assert.equal(report.importedMatches, 5);
+  assert.equal(report.verifiedMatches, 3);
+  assert.equal(report.excludedMatches, 2);
+  assert.equal(report.comparableMatches, 2);
+  assert.equal(report.comparableGroup, 'Free For All · Private');
+  assert.ok(report.recurringFindings.some(finding => finding.id === 'attack-follow-through'));
+  assert.equal(report.recurringFindings.find(finding => finding.id === 'attack-follow-through')?.occurrences, 2);
+});
+
+test('one verified match never becomes a recurring coaching claim', () => {
+  const report = buildLongitudinalCoachReport([
+    match('a'),
+    match('b', { analysisStatus: 'failed', simulation: makeSimulation({ status: 'unverified' }) }),
+  ]);
+  assert.equal(report.status, 'insufficient-data');
+  assert.equal(report.comparableMatches, 1);
+  assert.equal(report.recurringFindings.length, 0);
+});
+
+test('unverified and unsupported matches cannot influence phase patterns', () => {
+  const report = buildLongitudinalCoachReport([
+    match('a'),
+    match('b', { analysisStatus: 'unsupported', simulation: undefined }),
+    match('c', { analysisStatus: 'unverified', simulation: makeSimulation({ status: 'unverified' }) }),
+  ]);
+  assert.equal(report.verifiedMatches, 1);
+  assert.equal(report.excludedMatches, 2);
+  assert.equal(report.phaseSummaries.reduce((sum, phase) => sum + phase.matchesWithData, 0), 3);
+  assert.equal(report.recurringFindings.length, 0);
+});
+
+test('mixed modes are not combined into a misleading longitudinal cohort', () => {
+  const report = buildLongitudinalCoachReport([
+    match('a'),
+    match('b', { mode: 'Teams' }),
+    match('c', { mode: 'Teams' }),
+  ]);
+  assert.equal(report.verifiedMatches, 3);
+  assert.equal(report.comparableMatches, 2);
+  assert.equal(report.comparableGroup, 'Teams · Private');
+});

@@ -542,16 +542,16 @@ function CoachPanel({apiResult,preferredPlayerPublicId,decodedActions,simulation
       </nav>
     </div>}
     {playerScoped && workspaceTab==='coach' && <section id="match-coach-insights" className="coach-insights-section">
-      <div className="overview-heading"><div><span className="eyebrow">DEIN COACH</span><h3>Das solltest du als Nächstes verbessern</h3></div></div>
+      <div className="overview-heading"><div><span className="eyebrow">DEIN COACH</span><h3>Dein wichtigster Lernpunkt</h3></div></div>
 
       <section className="coach-lead-card coach-compact-card">
         <div className="coach-lead-top"><span>{leadEngineReview ? 'WICHTIGSTER LERNPUNKT' : 'COACH-STATUS'}</span>{leadEngineReview?.seconds !== null && leadEngineReview?.seconds !== undefined && <time>{clock(leadEngineReview.seconds)}</time>}</div>
         <h3>{coachLeadTitle}</h3>
         <p className="coach-lead-summary">{coachLeadSummary}</p>
-        {leadEngineReview?.decision && <div className="coach-lead-decision"><span>DEIN ZUG</span><b>{leadEngineReview.decision}</b></div>}
-        <div className="coach-lead-training"><span>BEIM NÄCHSTEN MAL</span><p>{leadEngineReview?.nextStep ?? coachTrainingFocus}</p></div>
+        {leadEngineReview?.decision && <div className="coach-lead-decision"><span>WAS DU GEMACHT HAST</span><b>{leadEngineReview.decision}</b></div>}
+        <div className="coach-lead-training"><span>WAS DU NÄCHSTES MAL TESTEST</span><p>{leadEngineReview?.nextStep ?? coachTrainingFocus}</p></div>
         <details className="coach-proof-details">
-          <summary>Warum der Coach das empfiehlt</summary>
+          <summary>Belege und Details anzeigen</summary>
           <div><b>Beobachtung</b><p>{leadEngineReview?.evidence ?? 'Für diese Partie liegt noch kein belastbarer Engine-Beleg vor.'}</p></div>
           {leadEngineReview?.alternative && <div><b>Alternative</b><p>{leadEngineReview.alternative}</p></div>}
           {leadEngineReview?.limitation && <div><b>Grenze der Aussage</b><p>{leadEngineReview.limitation}</p></div>}

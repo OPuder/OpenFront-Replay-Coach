@@ -75,7 +75,7 @@ test('match coach exposes at most three high/medium engine reviews and keeps the
   const result = selectPrimaryCoachInsights(insights);
   assert.deepEqual(result.primary.map(item => item.id), ['high-a', 'high-b', 'medium-a']);
   assert.equal(result.primary.length, 3);
-  assert.deepEqual(result.supporting.map(item => item.id), ['observation', 'low-review', 'medium-b', 'medium-c']);
+  assert.deepEqual(result.supporting.map(item => item.id), ['observation', 'medium-b', 'medium-c', 'low-review']);
   assert.equal(result.ordered.length, insights.length);
 });
 

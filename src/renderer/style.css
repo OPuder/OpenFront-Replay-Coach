@@ -527,3 +527,86 @@ body{background:radial-gradient(ellipse at 76% -10%,#17314b 0,transparent 42%),#
 .phase-visual-track span{display:block;height:100%;border-radius:20px;background:linear-gradient(90deg,#397bd5,#62b5c8)}
 @media(max-width:900px){.coach-primary-tabs{grid-template-columns:repeat(4,minmax(0,1fr))}.phase-visual-grid{grid-template-columns:1fr}}
 @media(max-width:600px){.analysis-navigation{padding:12px}.coach-primary-tabs{grid-template-columns:repeat(2,minmax(0,1fr))}.coach-primary-tabs button{justify-content:flex-start;padding:10px!important}.analytics-chart-grid{grid-template-columns:1fr}.replay-trend-plot{height:155px}.trend-range{font-size:10px}}
+
+
+/* Coach-first workspace redesign */
+.studio-shell{grid-template-columns:248px minmax(0,1fr);max-width:100%;min-height:100vh}
+.studio-sidebar{background:linear-gradient(180deg,#0d1928,#0a1420);border-color:#23384d;padding:26px 16px}
+.studio-brand-icon{background:linear-gradient(145deg,#9bdcff,#4f8fc9);color:#071725;box-shadow:0 8px 28px #4e9bd633}
+.studio-nav{min-height:48px;border-radius:13px;color:#a9bbcc}
+.studio-nav.active{background:linear-gradient(110deg,#1c3a55,#142b41);border-color:#3f6785;color:#f1f7fc;box-shadow:inset 3px 0 #75c9f2,0 10px 30px #0003}
+.studio-nav.active svg{color:#8bd8ff}
+.studio-main{max-width:1680px;padding:34px clamp(18px,3.4vw,56px) 110px}
+.studio-header{position:relative;align-items:center;border-bottom-color:#263b50}
+.studio-eyebrow{color:#8dcdf0}
+.studio-header h1{letter-spacing:-1.5px}
+.studio-header p{max-width:720px}
+.studio-mobile-nav{display:none}
+.workspace-switcher{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:22px 0 24px}
+.workspace-switcher>button{display:flex;align-items:center;gap:13px;min-height:76px;padding:14px 17px;text-align:left;border:1px solid #2c4359;border-radius:15px;background:linear-gradient(145deg,#14263a,#101f30);color:#b4c8da;cursor:pointer}
+.workspace-switcher>button>svg{width:23px;height:23px;flex:none;color:#83bfe2}
+.workspace-switcher>button span{display:flex;flex-direction:column;gap:5px}
+.workspace-switcher>button b{font-size:13px;color:#eaf3fb}
+.workspace-switcher>button small{font-size:10px;color:#91a9bd;line-height:1.4}
+.workspace-switcher>button.selected{background:linear-gradient(145deg,#1c3d59,#173149);border-color:#68a9d3;box-shadow:inset 0 0 0 1px #68a9d344,0 10px 28px #0002}
+.workspace-switcher>button.selected>svg{color:#a5e0ff}
+.analysis-navigation{margin:0 0 20px;padding:13px 15px;border:1px solid #293f53;border-radius:14px;background:#0f1c2a}
+.analysis-navigation-heading{display:flex;justify-content:space-between;gap:12px;align-items:center;margin-bottom:9px;color:#d8e7f3;font-size:11px}
+.analysis-navigation-heading span{font-size:10px;color:#8da6bb}
+.review-tabs.coach-primary-tabs{display:flex;gap:7px;flex-wrap:wrap}
+.review-tabs.coach-primary-tabs button{min-height:36px;padding:0 12px;border:1px solid transparent;border-radius:9px;background:transparent;color:#9fb4c7;font-size:10px}
+.review-tabs.coach-primary-tabs button.selected{background:#1d3850;border-color:#416b8a;color:#e7f5ff}
+.replay-workspace{display:grid;gap:16px}
+.replay-stage{display:grid;grid-template-columns:minmax(0,1.8fr) minmax(210px,.7fr);gap:14px}
+.replay-stage-map{position:relative;min-height:340px;overflow:hidden;border:1px solid #35516b;border-radius:18px;background:#0b1725}
+.replay-stage-map>.map-preview{position:absolute;inset:0;height:100%;border:0;border-radius:0;opacity:.8}
+.replay-stage-map>.map-preview img{width:100%;height:100%;object-fit:cover}
+.replay-stage-map:after{content:"";position:absolute;inset:25% 0 0;background:linear-gradient(0deg,#081522 0%,#081522d9 42%,transparent 100%);pointer-events:none}
+.replay-stage-overlay{position:absolute;z-index:1;left:24px;right:24px;bottom:23px}
+.replay-stage-overlay h3{font-size:28px;letter-spacing:-.8px;margin:7px 0}
+.replay-stage-overlay p{font-size:11px;color:#c0d1df;margin:0 0 14px}
+.replay-stage-side{display:flex;flex-direction:column;justify-content:center;gap:17px;padding:23px;border:1px solid #2d455c;border-radius:18px;background:linear-gradient(150deg,#14283c,#101e2d)}
+.replay-stage-side>div{display:flex;align-items:baseline;justify-content:space-between;padding-bottom:12px;border-bottom:1px solid #2b4054}
+.replay-stage-side>div b{font-size:25px;color:#f1f7fb}
+.replay-stage-side>div small{font-size:10px;color:#9db2c5}
+.replay-stage-side p{margin:0;color:#93aabd;font-size:10px;line-height:1.7}
+.replay-timeline-panel{padding:22px;border:1px solid #2b4359;border-radius:18px;background:#101e2d}
+.replay-event-button{width:100%;text-align:left;background:transparent;color:inherit;border:0;cursor:pointer}
+.replay-event-button:hover{background:#192d40}
+.studio-footer{margin-top:32px}
+.coach-lead-card{background:linear-gradient(145deg,#16334a,#102437);border-color:#3a6480}
+.coach-lead-top span,.coach-lead-grid>div>span,.coach-lead-training>span{color:#9ed9f7}
+.coach-lead-training{border-color:#315a70;background:#102337}
+.coach-lead-training p{color:#e4f3fc}
+@media(max-width:760px){
+ .studio-shell{display:block;padding-bottom:88px}
+ .studio-sidebar{position:relative;height:auto;padding:12px 14px 9px;border-bottom:1px solid #263d53}
+ .studio-brand{padding:0 4px 8px}
+ .studio-sidebar .studio-nav-label,.studio-sidebar>.studio-nav,.studio-sidebar-bottom{display:none}
+ .studio-mobile-nav{position:fixed;z-index:30;left:10px;right:10px;bottom:calc(10px + env(safe-area-inset-bottom));display:grid;grid-template-columns:repeat(3,1fr);gap:5px;padding:7px;border:1px solid #38536d;border-radius:17px;background:#0b1928f2;box-shadow:0 14px 45px #0009;backdrop-filter:blur(18px)}
+ .studio-mobile-nav button{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;min-height:55px;border:1px solid transparent;border-radius:12px;background:transparent;color:#91a8bb;font-size:9px;font-weight:700}
+ .studio-mobile-nav button svg{width:19px;height:19px}
+ .studio-mobile-nav button.active{background:#1c3b56;border-color:#4d7899;color:#eff8ff}
+ .studio-main{padding:20px 13px 34px}
+ .studio-header{gap:12px;margin-bottom:17px;padding-bottom:17px}
+ .studio-header h1{font-size:28px}
+ .studio-header p{font-size:11px}
+ .studio-header-actions{width:100%}
+ .studio-header-actions button{width:100%}
+ .workspace-switcher{grid-template-columns:1fr;gap:8px;margin:15px 0}
+ .workspace-switcher>button{min-height:62px;padding:11px 14px}
+ .analysis-navigation{padding:10px;margin-bottom:14px}
+ .analysis-navigation-heading{align-items:flex-start;flex-direction:column;gap:3px}
+ .review-tabs.coach-primary-tabs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:5px}
+ .review-tabs.coach-primary-tabs button{justify-content:center;padding:0 5px;font-size:9px}
+ .replay-stage{grid-template-columns:1fr}
+ .replay-stage-map{min-height:250px}
+ .replay-stage-side{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;padding:15px}
+ .replay-stage-side>.eyebrow,.replay-stage-side>p{grid-column:1/-1}
+ .replay-stage-side>div{display:flex;flex-direction:column;gap:3px;border:0;padding:0}
+ .replay-stage-side>div b{font-size:19px}
+ .replay-timeline-panel{padding:15px}
+ .replay-event-button{gap:8px}
+ .studio-footer{padding-bottom:10px}
+}
+@media(min-width:761px){.studio-mobile-nav{display:none}}

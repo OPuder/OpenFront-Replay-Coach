@@ -180,12 +180,17 @@ function App() {
   return <div className="studio-shell">
     <aside className="studio-sidebar">
       <div className="studio-brand"><div className="studio-brand-icon"><Gamepad2 size={22}/></div><div><b>REPLAY COACH</b><small>PERFORMANCE STUDIO</small></div></div>
-      <div className="studio-nav-label">WORKSPACE</div>
+      <div className="studio-nav-label">DEIN WORKSPACE</div>
       <button className={`studio-nav ${activePage==='dashboard'?'active':''}`} onClick={()=>navigateTo('dashboard')}><LayoutDashboard size={17}/>Dashboard</button>
       <button className={`studio-nav ${activePage==='games'?'active':''}`} onClick={()=>navigateTo('games')}><ListChecks size={17}/>Meine Partien</button>
-      <button className={`studio-nav ${activePage==='analysis'?'active':''}`} onClick={()=>navigateTo('analysis')} disabled={!apiResult && !replay}><Brain size={17}/>Replay-Analyse</button>
-      <div className="studio-sidebar-bottom"><span><ShieldCheck size={14}/>{isDesktopShell ? 'Lokal auf diesem PC' : isMobileDevice ? 'Mobil im Browser' : 'Im Browser geöffnet'}</span><small>OpenFront Replay Coach · 2.2.11</small></div>
+      <button className={`studio-nav ${activePage==='analysis'?'active':''}`} onClick={()=>navigateTo('analysis')} disabled={!apiResult && !replay}><Brain size={17}/>Coach & Replay</button>
+      <div className="studio-sidebar-bottom"><span><ShieldCheck size={14}/>{isDesktopShell ? 'Lokal auf diesem PC' : isMobileDevice ? 'Mobil im Browser' : 'Im Browser geöffnet'}</span><small>OpenFront Replay Coach · 2.3.0</small></div>
     </aside>
+    <nav className="studio-mobile-nav" aria-label="Hauptnavigation">
+      <button className={activePage==='dashboard'?'active':''} onClick={()=>navigateTo('dashboard')}><LayoutDashboard/><span>Dashboard</span></button>
+      <button className={activePage==='games'?'active':''} onClick={()=>navigateTo('games')}><ListChecks/><span>Partien</span></button>
+      <button className={activePage==='analysis'?'active':''} onClick={()=>navigateTo('analysis')} disabled={!apiResult && !replay}><Brain/><span>Coach</span></button>
+    </nav>
     <main className="studio-main">
       <header className="studio-header"><div><div className="studio-eyebrow">OPENFRONT / PERFORMANCE STUDIO</div><h1>{activePage==='dashboard'?'Dein Performance-Dashboard':activePage==='games'?'Deine Spielbibliothek':'Match Review'}</h1><p>{activePage==='dashboard'?'Deine Entwicklung, letzte Partien und nächste Trainingsschwerpunkte.':activePage==='games'?'Finde eine Partie und öffne ihre Karten- und Aktionsübersicht.':'Spielverlauf, beobachtete Entscheidungen und Replay an einem Ort.'}</p></div><div className="studio-header-actions"><button className="studio-button subtle" onClick={openReplay} disabled={busy}><FileUp size={16}/> Replay importieren</button></div></header>
       {error && <div className="error"><AlertTriangle size={18}/>{error}</div>}{saveNotice && <div className="success"><CheckCircle2 size={18}/>{saveNotice}</div>}
@@ -357,7 +362,8 @@ function ReplayTrendChart({title,description,unit,points}:{title:string;descript
 function fmtChartValue(value:number){return Math.round(value).toLocaleString('de-DE');}
 function selectedPlayerName(players:Array<{name:string;clientID:string|null}>,id:string){return players.find(p=>p.clientID===id)?.name ?? '';}
 function CoachPanel({apiResult,preferredPlayerPublicId,decodedActions,simulationResult,simulationProgress,onPlayerSelect,onExport,onSaveReplayJson,onOpenReplay,fmt}:{preferredPlayerPublicId:string|null;apiResult:ApiImportSummary;decodedActions:DecodedAction[];simulationResult:ReplaySimulationResult|null;simulationProgress:{percent:number;phase:string}|null;onPlayerSelect:(clientId:string)=>void;onExport:()=>void;onSaveReplayJson:()=>void;onOpenReplay:()=>void;fmt:(n:number)=>string}) {
-  const [analysisTab,setAnalysisTab]=useState<'coach'|'overview'|'economy'|'military'|'timeline'|'phases'|'technical'>('coach');
+  const [workspaceTab,setWorkspaceTab]=useState<'coach'|'replay'|'analysis'>('coach');
+  const [analysisTab,setAnalysisTab]=useState<'overview'|'economy'|'military'|'timeline'|'phases'|'technical'>('overview');
   const players=apiResult.playerStats ?? [];
   const preferredPlayer=players.find(p=>preferredPlayerPublicId && p.publicID===preferredPlayerPublicId);
   const initialPlayer=preferredPlayer ?? (players.length===1 ? players[0] : players.find(p=>/oligenole/i.test(p.name)) ?? null);
@@ -524,13 +530,18 @@ function CoachPanel({apiResult,preferredPlayerPublicId,decodedActions,simulation
       <p>{simulationProgress ? simulationProgress.phase : simulationResult?.message ?? apiResult.engineCompatibility?.message ?? 'Die Replay-Engine konnte für diesen Datensatz nicht sicher zugeordnet werden.'}</p>
       {simulationProgress && <div className="coach-progress-track" role="progressbar" aria-label="Replay wird analysiert" aria-valuemin={0} aria-valuemax={100} aria-valuenow={simulationProgress.percent}><span style={{width:`${Math.max(0,Math.min(100,simulationProgress.percent))}%`}}/></div>}
     </div>}
-    <div className="analysis-navigation">
-      <div className="analysis-navigation-heading"><b>Analysebereiche</b><span>Wähle aus, was du ansehen möchtest</span></div>
-      <nav className="review-tabs coach-primary-tabs" aria-label="Analysebereiche">
-        {([{id:'coach',label:'Coach',icon:<Brain size={16}/>},{id:'overview',label:'Überblick',icon:<LayoutDashboard size={16}/>},{id:'economy',label:'Wirtschaft',icon:<TrendingUp size={16}/>},{id:'military',label:'Militär',icon:<Swords size={16}/>},{id:'timeline',label:'Zeitachse',icon:<Clock3 size={16}/>},{id:'phases',label:'Spielphasen',icon:<Activity size={16}/>},{id:'technical',label:'Rohdaten',icon:<HardDrive size={16}/>} ] as const).map(tab=><button type="button" key={tab.id} className={analysisTab===tab.id?'selected':''} aria-pressed={analysisTab===tab.id} onClick={()=>setAnalysisTab(tab.id)}>{tab.icon}{tab.label}</button>)}
-      </nav>
+    <div className="workspace-switcher">
+      <button type="button" className={workspaceTab==='coach'?'selected':''} onClick={()=>setWorkspaceTab('coach')}><Brain size={18}/><span><b>Dein Coach</b><small>Fehler verstehen und besser spielen</small></span></button>
+      <button type="button" className={workspaceTab==='replay'?'selected':''} onClick={()=>setWorkspaceTab('replay')}><Map size={18}/><span><b>Replay ansehen</b><small>Spielverlauf und Zeitpunkte</small></span></button>
+      <button type="button" className={workspaceTab==='analysis'?'selected':''} onClick={()=>setWorkspaceTab('analysis')}><TrendingUp size={18}/><span><b>Analyse</b><small>Wirtschaft, Militär und Phasen</small></span></button>
     </div>
-    {playerScoped && analysisTab==='coach' && <section id="match-coach-insights" className="coach-insights-section">
+    {workspaceTab==='analysis' && <div className="analysis-navigation">
+      <div className="analysis-navigation-heading"><b>Analysewerkzeuge</b><span>Wähle einen Bereich</span></div>
+      <nav className="review-tabs coach-primary-tabs" aria-label="Analysewerkzeuge">
+        {([{id:'overview',label:'Überblick',icon:<LayoutDashboard size={16}/>},{id:'economy',label:'Wirtschaft',icon:<TrendingUp size={16}/>},{id:'military',label:'Militär',icon:<Swords size={16}/>},{id:'timeline',label:'Zeitachse',icon:<Clock3 size={16}/>},{id:'phases',label:'Spielphasen',icon:<Activity size={16}/>},{id:'technical',label:'Rohdaten',icon:<HardDrive size={16}/>} ] as const).map(tab=><button type="button" key={tab.id} className={analysisTab===tab.id?'selected':''} aria-pressed={analysisTab===tab.id} onClick={()=>setAnalysisTab(tab.id)}>{tab.icon}{tab.label}</button>)}
+      </nav>
+    </div>}
+    {playerScoped && workspaceTab==='coach' && <section id="match-coach-insights" className="coach-insights-section">
       <div className="overview-heading"><div><span className="eyebrow">01 / DEIN SPIELBERICHT</span><h3>Die wichtigsten Erkenntnisse</h3><p>Nach Priorität sortiert. Jede Karte nennt deine Entscheidung, einen konkreten nächsten Prüf- bzw. Handlungsansatz und die Beleggrenze. Zeiten sind Befehlszeitpunkte; Bootszeit = Startbefehl, nicht Ankunft.</p></div></div>
 
       <section className="coach-lead-card">
@@ -621,7 +632,16 @@ function CoachPanel({apiResult,preferredPlayerPublicId,decodedActions,simulation
       </details>
       <div className="coach-report-limit"><b>Was noch nicht seriös bewertet werden kann</b><p>Ob ein Angriff erfolgreich war, wie viele Truppen verloren gingen oder ob ein Bau optimal war, erfordert den rekonstruierten Karten-, Gold- und Truppenstand. Diese Analyse erfindet dafür keine Ergebnisse.</p></div>
     </section>}
-    {playerScoped && analysisTab==='overview' && <section id="match-overview" className="overview-block">
+    {playerScoped && workspaceTab==='replay' && <section className="replay-workspace">
+      <div className="replay-stage">
+        <div className="replay-stage-map"><MapPreview map={apiResult.mapName} src={apiResult.previewUrl}/><div className="replay-stage-overlay"><span className="eyebrow">DEINE PARTIE</span><h3>{apiResult.mapName}</h3><p>{apiResult.gameMode} · {apiResult.gameType} · {clock(apiResult.durationSeconds??0)}</p><button className="studio-button primary" onClick={onOpenReplay}><Gamepad2 size={16}/>Original-Replay öffnen</button></div></div>
+        <div className="replay-stage-side"><span className="eyebrow">MATCH-ÜBERSICHT</span><div><b>{fmt(apiResult.playerCount??0)}</b><small>Spieler</small></div><div><b>{fmt(playerActions.length)}</b><small>Deine Aktionen</small></div><div><b>{fmt(timeline.length)}</b><small>Markierte Zeitpunkte</small></div><p>Wähle unten einen Zeitpunkt, um die entsprechende Situation im Original-Replay zu prüfen.</p></div>
+      </div>
+      <div className="replay-timeline-panel"><div className="overview-heading"><div><span className="eyebrow">MATCH-TIMELINE</span><h3>Wichtige Momente deiner Partie</h3></div></div>
+        {timeline.length ? <div className="event-timeline">{timeline.map((event,i)=><button type="button" className="event-item replay-event-button" key={`${event.kind}-${i}`} onClick={onOpenReplay}><span className="event-marker"><span>{String(i+1).padStart(2,'0')}</span></span><span className="event-copy"><span><b>{event.title}</b><span className="event-type">{event.kind}</span></span><span>{event.detail}</span></span><time>{clock(event.time)}</time></button>)}</div> : <p className="empty-note">Für diese Partie wurden keine markierbaren Ereignisse gefunden.</p>}
+      </div>
+    </section>}
+    {playerScoped && workspaceTab==='analysis' && analysisTab==='overview' && <section id="match-overview" className="overview-block">
       <div className="overview-heading"><div><span className="eyebrow">01 / AUF EINEN BLICK</span><h3>Partie in Zahlen</h3></div><span className="source-label"><CheckCircle2 size={14}/> Aus dem Aktionsprotokoll</span></div>
       <div className="overview-kpis">
         <article className="overview-kpi"><span>Gesamtaktionen</span><b>{fmt(scopedAnalysis.totalActions)}</b><small>{scopedAnalysis.actionsPerMinute.toFixed(1).replace('.',',')} Aktionen je Minute</small></article>
@@ -639,7 +659,7 @@ function CoachPanel({apiResult,preferredPlayerPublicId,decodedActions,simulation
         </article>
       </div>
     </section>}
-    {playerScoped && analysisTab==='economy' && <section id="match-economy" className="domain-workspace">
+    {playerScoped && workspaceTab==='analysis' && analysisTab==='economy' && <section id="match-economy" className="domain-workspace">
       <div className="overview-heading section-spaced"><div><span className="eyebrow">03 / WIRTSCHAFT</span><h3>Gold, Einkommen und Ausbau</h3><p>Original-Engine-Werte aus den erfassten Spielzuständen. Einnahmen sind brutto; Ausgaben und Gewinn werden hier nicht gleichgesetzt.</p></div></div>
       {incomeSummary ? <>
         <div className="overview-kpis">
@@ -664,7 +684,7 @@ function CoachPanel({apiResult,preferredPlayerPublicId,decodedActions,simulation
         </article>
       </div>
     </section>}
-    {playerScoped && analysisTab==='military' && <section id="match-military" className="domain-workspace">
+    {playerScoped && workspaceTab==='analysis' && analysisTab==='military' && <section id="match-military" className="domain-workspace">
       <div className="overview-heading section-spaced"><div><span className="eyebrow">04 / MILITÄR</span><h3>Angriffe und Frontdruck</h3><p>Beobachtete Angriffsbefehle, gleichzeitig aktive Angriffe und bereits bedrängte Ziele.</p></div></div>
       <div className="overview-kpis">
         <article className="overview-kpi"><span>Eigene Angriffsbefehle</span><b>{fmt(scopedAnalysis.attackCount)}</b><small>{firstAttack ? `Erster Befehl bei ${clock(firstAttack.seconds)}` : 'Keine Angriffe protokolliert'}</small></article>
@@ -688,7 +708,7 @@ function CoachPanel({apiResult,preferredPlayerPublicId,decodedActions,simulation
       </div>
       <div className="domain-footnote"><b>Einordnung</b><p>Einheiten in aktiven Angriffen sind gebundene Truppen, nicht dein gesamter verfügbarer Truppenbestand. Anzahl und Stärke der Angriffe belegen keine räumliche Front, Reichweite oder Siegchance.</p></div>
     </section>}
-    {playerScoped && analysisTab==='phases' && <section className="domain-workspace">
+    {playerScoped && workspaceTab==='analysis' && analysisTab==='phases' && <section className="domain-workspace">
       <div className="overview-heading section-spaced"><div><span className="eyebrow">SPIELPHASEN</span><h3>Early, Mid und Late Game</h3><p>Vergleiche deine Entwicklung innerhalb dieser Partie. Die Werte sind Beobachtungen und keine allgemeine Spielstärke-Bewertung.</p></div></div>
       {ratedPhases.length ? <div className="phase-visual-grid">{ratedPhases.map(phase=><article className="coach-phase-card" key={phase.id}>
         <span>{phase.label}</span><b>{phase.rating}</b><small>{phase.description}</small>
@@ -701,11 +721,11 @@ function CoachPanel({apiResult,preferredPlayerPublicId,decodedActions,simulation
       <p className="chart-footnote">Phasenwerte vergleichen nur deine eigenen Phasen. Zu wenige Stichproben werden nicht bewertet. Ein zeitgleicher Gebietszuwachs beweist nicht, dass ein einzelner Befehl ihn verursacht hat.</p>
       {recentPhaseHistory.length>1 && <section className="overview-panel section-spaced"><h4>Deine letzten Partien</h4><div className="coach-history-grid">{phaseTrend.map(phase=><article className="coach-history-card" key={phase.id}><b>{phase.label}</b><strong>{phase.strong}/{phase.games}</strong><small>starke Phasen</small><span>{phase.averageTerritory.toFixed(1)} Gebiete / Min.</span><span>{Math.round(phase.averageIncome).toLocaleString('de-DE')} Gold / Min.</span></article>)}</div></section>}
     </section>}
-    {playerScoped && analysisTab==='timeline' && <section id="match-timeline" className="overview-panel timeline-panel"><div className="overview-panel-title"><div><span className="eyebrow">04 / WICHTIGE ZEITPUNKTE</span><h4>Hier lohnt sich ein genauer Blick</h4><p>Automatisch aus dem Protokoll ermittelte Ereignisse – keine nachträgliche Bewertung.</p></div><button className="secondary compact-button" onClick={onOpenReplay}>Im Replay ansehen <ArrowRight size={15}/></button></div>
+    {playerScoped && workspaceTab==='analysis' && analysisTab==='timeline' && <section id="match-timeline" className="overview-panel timeline-panel"><div className="overview-panel-title"><div><span className="eyebrow">04 / WICHTIGE ZEITPUNKTE</span><h4>Hier lohnt sich ein genauer Blick</h4><p>Automatisch aus dem Protokoll ermittelte Ereignisse – keine nachträgliche Bewertung.</p></div><button className="secondary compact-button" onClick={onOpenReplay}>Im Replay ansehen <ArrowRight size={15}/></button></div>
       {timeline.length ? <div className="event-timeline">{timeline.map((event,i)=><div className="event-item" key={`${event.kind}-${i}`}><div className="event-marker"><span>{String(i+1).padStart(2,'0')}</span></div><div className="event-copy"><div><b>{event.title}</b><span className="event-type">{event.kind}</span></div><p>{event.detail}</p></div><time>{clock(event.time)}</time></div>)}</div> : <p className="empty-note">Keine markierbaren Ereignisse im Protokoll gefunden.</p>}
     </section>}
 
-    {playerScoped && analysisTab==='technical' && <details className="technical-details" open><summary>Technische Rohdaten und vollständige Aktionsliste <ChevronDown size={16}/></summary><div className="details-grid">{Object.entries(scopedAnalysis.categoryCounts).map(([k,v])=><Detail key={k} label={k} value={fmt(v)}/>)}</div><h3>Alle Bauaktionen</h3><div className="details-grid">{builds.map(x=><Detail key={x.unit} label={x.unit} value={fmt(x.count)}/>)}</div><div className="action-list">{playerActions.slice(0,200).map((a,i)=><div className="check-row" key={`${a.turn}-${i}`}><div><b>{a.label}</b><small>Spielzug {a.turn} · {clock(a.seconds)} · {a.details}</small></div><span className="pill blue">{a.category}</span></div>)}</div>{playerActions.length>200&&<p className="muted">Die Anzeige zeigt 200 von {fmt(playerActions.length)} Aktionen. Der CSV-Export enthält alle Aktionen.</p>}</details>}
+    {playerScoped && workspaceTab==='analysis' && analysisTab==='technical' && <details className="technical-details" open><summary>Technische Rohdaten und vollständige Aktionsliste <ChevronDown size={16}/></summary><div className="details-grid">{Object.entries(scopedAnalysis.categoryCounts).map(([k,v])=><Detail key={k} label={k} value={fmt(v)}/>)}</div><h3>Alle Bauaktionen</h3><div className="details-grid">{builds.map(x=><Detail key={x.unit} label={x.unit} value={fmt(x.count)}/>)}</div><div className="action-list">{playerActions.slice(0,200).map((a,i)=><div className="check-row" key={`${a.turn}-${i}`}><div><b>{a.label}</b><small>Spielzug {a.turn} · {clock(a.seconds)} · {a.details}</small></div><span className="pill blue">{a.category}</span></div>)}</div>{playerActions.length>200&&<p className="muted">Die Anzeige zeigt 200 von {fmt(playerActions.length)} Aktionen. Der CSV-Export enthält alle Aktionen.</p>}</details>}
   </section>;
 }
 

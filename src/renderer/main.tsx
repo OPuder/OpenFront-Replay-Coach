@@ -130,7 +130,7 @@ function App() {
         if(runId!==batchRunId.current) break;
         const entry:BatchMatchItem={game,status:'failed',analysisStatus:'failed',error:e instanceof Error?e.message:String(e)};
         setBatchMatches(current=>[...current.filter(item=>item.game.gameId!==game.gameId),entry]);
-        try { await saveImportedMatch(playerPage.playerId,entry); } catch(storageError) { console.warn('[ReplayCoach] Importfehler konnte nicht lokal gespeichert werden:',storageError); }
+        try { await persistBatchItem(entry); } catch(storageError) { console.warn('[ReplayCoach] Importfehler konnte nicht lokal gespeichert werden:',storageError); }
       }
       done++;
     }

@@ -72,7 +72,7 @@ async function main() {
 
   const input = JSON.stringify(record).replaceAll("<", "\\u003c");
   const result = await window.webContents.executeJavaScript(
-    `window.__runReplayTest(${input})`,
+    `window.__runReplayTest(${input}, ${JSON.stringify(GAME_ID)})`,
     true,
   );
   assert.equal(result.status, "verified", "Original engine must reproduce the real Europe replay");
@@ -86,10 +86,6 @@ async function main() {
   );
   assert.equal(abortResult.aborted, true, "An in-flight replay simulation must terminate on cancellation");
   console.log("In-flight simulation cancellation: passed");
-  await window.webContents.executeJavaScript(
-    `window.__saveStoreTest(${JSON.stringify(GAME_ID)}, ${JSON.stringify(result.simulation)})`,
-    true,
-  );
   await new Promise((resolve) => {
     window.webContents.once("did-finish-load", resolve);
     window.webContents.reload();

@@ -1,8 +1,8 @@
-import { simulateReplay } from "../src/renderer/ReplaySimulation";
+import { buildReplayEngineAssets, simulateReplay } from "../src/renderer/ReplaySimulation";
 
 declare global {
   interface Window {
-    __runReplayTest?: (record: unknown, assets: { manifest: Record<string, string>; cdnBase: string }) => Promise<{
+    __runReplayTest?: (record: unknown) => Promise<{
       status: string;
       verifiedHashes: number;
       totalTicks: number;
@@ -11,7 +11,8 @@ declare global {
   }
 }
 
-window.__runReplayTest = async (record, assets) => {
+window.__runReplayTest = async (record) => {
+  const assets = buildReplayEngineAssets(record);
   const result = await simulateReplay(
     record,
     assets,

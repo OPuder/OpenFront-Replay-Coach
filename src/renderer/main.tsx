@@ -614,7 +614,7 @@ function CoachPanel({apiResult,preferredPlayerPublicId,decodedActions,simulation
             <button type="button" className="text-action" onClick={()=>setTrainingGoal(null)}>Trainingsziel entfernen</button>
           </div>
           <small className="coach-training-goal-note">Das Ziel bleibt lokal auf diesem Gerät gespeichert. Ob du es umgesetzt hast, markierst du selbst – der Coach behauptet nicht, dein Verhalten ohne neue Replay-Daten gemessen zu haben.</small>
-        </div> : leadEngineReview && simulationResult?.status==='verified' ? <div className="coach-training-goal-empty">
+        </div> : (proCoachReport?.findings[0] || leadEngineReview) && simulationResult?.status==='verified' ? <div className="coach-training-goal-empty">
           <div><b>{leadEngineReview.title}</b><p>{leadEngineReview.nextStep}</p></div>
           <button type="button" className="studio-button primary" onClick={()=>setTrainingGoal({title:proCoachReport?.findings[0]?.title ?? leadEngineReview.title,instruction:proCoachReport?.trainingRule ?? leadEngineReview.nextStep,gameId:apiResult.gameId,mapName:apiResult.mapName,createdAt:new Date().toISOString(),completed:false})}>Als Trainingsziel übernehmen <ArrowRight size={15}/></button>
         </div> : <div className="coach-training-goal-empty">

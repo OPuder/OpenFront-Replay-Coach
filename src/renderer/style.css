@@ -832,3 +832,45 @@ button:focus-visible, select:focus-visible { outline:2px solid var(--rc-cyan); o
   .studio-mobile-nav button { min-height:60px; }
   .studio-main { padding-inline:11px; }
 }
+
+
+/* Coach training loop: turn one verified replay finding into a practical next-match goal. */
+.coach-training-loop{
+  margin:16px 0 22px;padding:clamp(17px,3vw,24px);
+  border:1px solid #36536d;border-radius:18px;
+  background:linear-gradient(145deg,rgba(19,42,61,.94),rgba(12,27,42,.96));
+}
+.coach-training-loop-heading{display:flex;flex-direction:column;gap:6px;margin-bottom:14px}
+.coach-training-loop-heading>b{font-size:clamp(19px,3vw,24px);letter-spacing:-.025em;color:#f1f7fc}
+.coach-training-loop-heading>p{max-width:62ch;margin:0;color:#aebfd0;font-size:13px;line-height:1.55}
+.coach-training-goal,.coach-training-goal-empty{
+  padding:16px;border:1px solid #38556d;border-radius:14px;background:rgba(7,20,32,.62)
+}
+.coach-training-goal{border-left:4px solid #72c5a0}
+.coach-training-goal.is-complete{border-left-color:#7896ad;opacity:.86}
+.coach-training-goal-status{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px}
+.coach-training-goal-status>span{font:800 10px 'Cascadia Code',monospace;letter-spacing:.12em;color:#8ed8b4}
+.coach-training-goal-status>small,.coach-training-goal-note{color:#91a9bd;font-size:11px}
+.coach-training-goal h4{margin:10px 0 6px;color:#f0f6fc;font-size:18px;line-height:1.3}
+.coach-training-goal>p,.coach-training-goal-empty p{margin:0;color:#c4d4e2;font-size:13px;line-height:1.6}
+.coach-training-goal-actions{display:flex;flex-wrap:wrap;align-items:center;gap:12px;margin-top:14px}
+.coach-training-goal-note{display:block;margin-top:12px;line-height:1.5}
+.coach-training-goal-empty{display:flex;align-items:flex-start;justify-content:space-between;gap:16px}
+.coach-training-goal-empty>div{min-width:0}
+.coach-training-goal-empty b{display:block;margin-bottom:5px;color:#e8f1f8;font-size:14px}
+.coach-training-goal-empty .studio-button{flex-shrink:0}
+.coach-deep-dive{margin:14px 0;border:1px solid #304a63;border-radius:15px;background:rgba(12,27,42,.72);overflow:hidden}
+.coach-deep-dive>summary{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:16px 18px;cursor:pointer;list-style:none;color:#e6f1fa;font-size:14px;font-weight:800}
+.coach-deep-dive>summary::-webkit-details-marker{display:none}
+.coach-deep-dive>summary:after{content:'＋';color:#8ec9e5;font-size:18px}
+.coach-deep-dive[open]>summary{border-bottom:1px solid #304a63}
+.coach-deep-dive[open]>summary:after{content:'−'}
+.coach-deep-dive>summary span{margin-left:auto;color:#91a9bd;font-size:11px;font-weight:500;text-align:right}
+.coach-deep-dive>.coach-phase-profile,.coach-deep-dive>.coach-history-profile{margin:0;border:0;border-radius:0;background:transparent}
+@media(max-width:760px){
+ .coach-training-goal-empty{flex-direction:column;align-items:stretch}
+ .coach-training-goal-empty .studio-button{width:100%;justify-content:center}
+ .coach-deep-dive>summary{align-items:flex-start;flex-wrap:wrap}
+ .coach-deep-dive>summary span{width:100%;margin-left:0;text-align:left}
+ .coach-training-goal-actions{align-items:stretch}
+}

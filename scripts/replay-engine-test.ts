@@ -4,20 +4,18 @@ import { loadImportedMatches, saveImportedMatch } from "../src/renderer/matchSto
 declare global {
   interface Window {
     __testAbort?: (record: unknown) => Promise<{ aborted: boolean }>;
-    __saveStoreTest?: (gameId: string, simulation: unknown) => Promise<void>;
     __verifyStoreTest?: (gameId: string) => Promise<{ analysisStatus?: string; simulationStatus?: string; sampleCount: number }>;
-    __runReplayTest?: (record: unknown) => Promise<{
+    __runReplayTest?: (record: unknown, gameId: string) => Promise<{
       status: string;
       verifiedHashes: number;
       samples: number;
       totalTicks: number;
       playerReview: unknown;
-      simulation: unknown;
     }>;
   }
 }
 
-window.__runReplayTest = async (record) => {
+window.__runReplayTest = async (record, gameId) => {
   const assets = buildReplayEngineAssets(record);
   const result = await simulateReplay(
     record,
@@ -29,25 +27,21 @@ window.__runReplayTest = async (record) => {
     50,
     Array.isArray((record as any)?.info?.players) ? String((record as any).info.players.find((player: any) => player?.clientID)?.clientID ?? "") || null : null,
   );
+  await saveImportedMatch("ci-persistence-player", {
+    game: { gameId, map: "CI replay", mode: "Free For All", type: "Private" } as any,
+    status: "loaded",
+    analysisStatus: result.status === "verified" ? "verified" : "unverified",
+    simulation: result,
+  });
   return {
     status: result.status,
     verifiedHashes: result.verifiedHashes,
     samples: result.samples.length,
     totalTicks: result.totalTicks,
     playerReview: result.playerReview,
-    simulation: result,
   };
 };
 document.getElementById("status")!.textContent = "Replay engine test harness ready";
-
-window.__saveStoreTest = async (gameId, simulation) => {
-  await saveImportedMatch("ci-persistence-player", {
-    game: { gameId, map: "CI replay", mode: "Free For All", type: "Private" } as any,
-    status: "loaded",
-    analysisStatus: "verified",
-    simulation: simulation as any,
-  });
-};
 
 window.__verifyStoreTest = async (gameId) => {
   const matches = await loadImportedMatches("ci-persistence-player");

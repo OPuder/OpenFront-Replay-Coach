@@ -87,7 +87,7 @@ friend's machine must not need Node.js, npm, Git, or a source checkout.
 
 ## Acceptance tests before calling the integration complete
 
-1. Both Levant and Europe fixtures parse against their respective upstream schemas.
+1. Both Levant and Europe fixtures are accepted by their respective exact upstream engine builds.
 2. Each fixture selects only its exact `gitCommit` worker bundle.
 3. Unknown and malformed commits are rejected before simulation.
 4. Replay simulation starts and loads the correct map assets online as designed.

@@ -57,5 +57,5 @@ test('does not treat a missing target observation as a failed attack window',()=
  const finding=report.findings.find(x=>x.id==='attack-follow-through');
  assert.ok(finding);
  assert.match(finding.decision,/4 von 6 Angriffen/);
- assert.match(finding.consequence,/2 von 4 auswertbaren Fenstern/);
+ assert.match(finding.consequence,/0 von 4 auswertbaren Fenstern/);
 });

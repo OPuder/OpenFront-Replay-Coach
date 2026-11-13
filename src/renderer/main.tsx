@@ -68,7 +68,7 @@ function App() {
   const [typeFilter, setTypeFilter] = useState('all');
   const [gameSearch, setGameSearch] = useState('');
   React.useEffect(() => { let active=true; const restore=async()=>{ try { const savedId=window.localStorage.getItem('ofrc:last-player-id'); if(!savedId) return; const [page,matches]=await Promise.all([loadPlayerLibrary(savedId),loadImportedMatches(savedId)]); if(!active || !page) return; setPlayerId(savedId); setPlayerPage(page); setBatchMatches(matches); } catch(e) { console.warn('[ReplayCoach] Gespeicherte Spielbibliothek konnte nicht geladen werden:',e); } }; void restore(); return ()=>{active=false;}; }, []);
-  async function loadPlayer() { setPlayerBusy(true); setError(''); setPlayerProgress({loaded:0,pages:0,status:'Profil wird geladen …'}); try { const page = await window.replayAPI.loadPlayer(playerId, progress => setPlayerProgress(progress)); setPlayerPage(page); setSelectedGameIds([]); const matches=await loadImportedMatches(page.playerId); setBatchMatches(matches); await savePlayerLibrary(page); window.localStorage.setItem('ofrc:last-player-id',page.playerId); } catch(e) { setError(e instanceof Error ? e.message : String(e)); } finally { setPlayerBusy(false); } }
+  async function loadPlayer() { cancelBatchAnalysis(); cancelBatchImport(); setPlayerBusy(true); setError(''); setPlayerProgress({loaded:0,pages:0,status:'Profil wird geladen …'}); try { const page = await window.replayAPI.loadPlayer(playerId, progress => setPlayerProgress(progress)); setPlayerPage(page); setSelectedGameIds([]); const matches=await loadImportedMatches(page.playerId); setBatchMatches(matches); await savePlayerLibrary(page); window.localStorage.setItem('ofrc:last-player-id',page.playerId); } catch(e) { setError(e instanceof Error ? e.message : String(e)); } finally { setPlayerBusy(false); } }
   function toggleGameSelection(gameId:string) { setSelectedGameIds(current => current.includes(gameId) ? current.filter(id=>id!==gameId) : [...current,gameId]); }
   function selectFilteredGames() { const ids=filteredGames.map(game=>game.gameId); setSelectedGameIds(current=>ids.every(id=>current.includes(id)) ? current.filter(id=>!ids.includes(id)) : [...new Set([...current,...ids])]); }
   async function loadSelectedGames(gameIds=selectedGameIds) {
@@ -303,6 +303,12 @@ function App() {
       const preferredClientId = selectedClientId !== undefined
         ? selectedClientId || null
         : resolveProfileClientId(result);
+      if(libraryGame && selectedClientId===undefined && !preferredClientId) {
+        const failure:ReplaySimulationResult={status:'unverified',totalTicks:0,verifiedHashes:0,samples:[],playerReview:null,actionReviews:[],message:'Das OpenFront-Profil konnte keinem Spieler dieser Partie eindeutig zugeordnet werden.'};
+        setSimulationResult(failure);
+        await persist({analysisStatus:'failed',analysisError:failure.message,simulation:failure});
+        return;
+      }
       const simulated = await simulateReplay(
         result.record,
         assets,
@@ -372,10 +378,10 @@ function App() {
   const longitudinalReport=React.useMemo(()=>buildLongitudinalCoachReport(importedBatchMatches.map(item=>({
     gameId:item.game.gameId,
     mapName:String(item.game.map??item.result?.mapName??'Unbekannt'),
-    mode:String(item.game.mode??'Unbekannt'),
-    type:String(item.game.type??'Unbekannt'),
+    mode:String(item.game.mode??item.result?.gameMode??'Unbekannt'),
+    type:String(item.game.type??item.result?.gameType??'Unbekannt'),
     playedAt:item.game.start??null,
-    durationSeconds:item.game.durationSeconds??null,
+    durationSeconds:item.game.durationSeconds??item.result?.durationSeconds??null,
     analysisStatus:item.analysisStatus??(item.status==='engine-mismatch'?'unsupported':'pending'),
     simulation:item.simulation??null,
   }))),[batchMatches]);

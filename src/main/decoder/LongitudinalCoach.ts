@@ -210,7 +210,7 @@ export function buildLongitudinalCoachReport(
     status,
     importedMatches: imported.length,
     verifiedMatches: verified.length,
-    excludedMatches: imported.length - verified.length,
+    excludedMatches: imported.length - comparable.length,
     comparableMatches: comparable.length,
     comparableGroup: groupLabel,
     confidence,

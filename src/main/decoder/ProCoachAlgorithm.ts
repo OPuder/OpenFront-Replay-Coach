@@ -113,9 +113,9 @@ export function buildProCoachReport(
   const findings:ProCoachFinding[]=[];
   const attackActions=actions.filter(a=>a.type==='attack'&&a.delta30s);
   // Missing target observations are unknown, not a zero territorial response.
-  const evaluatedAttackActions=attackActions.filter(a=>(a.delta30s?.tiles??0)>0||a.targetDelta30s!==null);
+  const evaluatedAttackActions=attackActions.filter(a=>(a.delta30s?.tiles??0)>0||a.targetDelta30s!=null);
   const positiveWindows=evaluatedAttackActions.filter(a=>(a.delta30s?.tiles??0)>0||(a.targetDelta30s?.tiles??0)<0);
-  const negativeWindows=evaluatedAttackActions.filter(a=>(a.delta30s?.troops??0)<0&&(a.delta30s?.tiles??0)<=0&&a.targetDelta30s!==null&&(a.targetDelta30s?.tiles??0)>=0);
+  const negativeWindows=evaluatedAttackActions.filter(a=>(a.delta30s?.troops??0)<0&&(a.delta30s?.tiles??0)<=0&&a.targetDelta30s!=null&&(a.targetDelta30s?.tiles??0)>=0);
   if(evaluatedAttackActions.length>=3){
     const ratio=positiveWindows.length/evaluatedAttackActions.length;
     const worst=negativeWindows[0]??evaluatedAttackActions.find(a=>(a.delta30s?.tiles??0)<=0);

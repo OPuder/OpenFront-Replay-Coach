@@ -97,10 +97,13 @@ export function buildProCoachReport(
     const start=def.from*endSeconds, end=def.to*endSeconds;
     const subset=alive.filter(x=>{const sec=(x.sample.tick-(first?.sample.tick??0))/10;return sec>=start && sec<=end;});
     const a=subset[0],b=subset.at(-1);
+    // Use the interval actually covered by observations, not the nominal phase length.
+    const observedMinutes=a&&b?Math.max(0,(b.sample.tick-a.sample.tick)/600):0;
     const minutes=Math.max(0,(end-start)/60);
-    const territoryPerMinute=a&&b&&minutes>0?(b.player.tiles-a.player.tiles)/minutes:null;
-    const incomePerMinute=a&&b&&minutes>0?(b.player.goldEarned-a.player.goldEarned)/minutes:null;
-    const troopChangePerMinute=a&&b&&minutes>0?(b.player.troops-a.player.troops)/minutes:null;
+    const enoughObservedSpan=subset.length>=2&&observedMinutes>=1/6;
+    const territoryPerMinute=enoughObservedSpan?(b!.player.tiles-a!.player.tiles)/observedMinutes:null;
+    const incomePerMinute=enoughObservedSpan?(b!.player.goldEarned-a!.player.goldEarned)/observedMinutes:null;
+    const troopChangePerMinute=enoughObservedSpan?(b!.player.troops-a!.player.troops)/observedMinutes:null;
     const attacks=actions.filter(x=>x.type==='attack'&&x.seconds>=start&&x.seconds<end).length;
     return {id:def.id,label:def.label,fromSeconds:start,toSeconds:end,minutes,territoryPerMinute,incomePerMinute,troopChangePerMinute,attacks,activeSamples:subset.length,momentumIndex:null as number|null};
   });
@@ -109,19 +112,21 @@ export function buildProCoachReport(
   const phases=phasesBase.map(p=>({...p,momentumIndex:p.territoryPerMinute===null||peak<=0?null:Math.round(clamp((Math.max(0,p.territoryPerMinute)+Math.max(0,p.incomePerMinute??0)/1000)/peak*100))}));
   const findings:ProCoachFinding[]=[];
   const attackActions=actions.filter(a=>a.type==='attack'&&a.delta30s);
-  const positiveWindows=attackActions.filter(a=>(a.delta30s?.tiles??0)>0||(a.targetDelta30s?.tiles??0)<0);
-  const negativeWindows=attackActions.filter(a=>(a.delta30s?.troops??0)<0&&(a.delta30s?.tiles??0)<=0&&(a.targetDelta30s?.tiles??0)>=0);
-  if(attackActions.length>=3){
-    const ratio=positiveWindows.length/attackActions.length;
+  // Missing target observations are unknown, not a zero territorial response.
+  const evaluatedAttackActions=attackActions.filter(a=>(a.delta30s?.tiles??0)>0||a.targetDelta30s!==null);
+  const positiveWindows=evaluatedAttackActions.filter(a=>(a.delta30s?.tiles??0)>0||(a.targetDelta30s?.tiles??0)<0);
+  const negativeWindows=evaluatedAttackActions.filter(a=>(a.delta30s?.troops??0)<0&&(a.delta30s?.tiles??0)<=0&&a.targetDelta30s!==null&&(a.targetDelta30s?.tiles??0)>=0);
+  if(evaluatedAttackActions.length>=3){
+    const ratio=positiveWindows.length/evaluatedAttackActions.length;
     const worst=negativeWindows[0]??attackActions.find(a=>(a.delta30s?.tiles??0)<=0);
     findings.push({
       id:'attack-follow-through',priority:negativeWindows.length>=Math.max(2,Math.ceil(attackActions.length*.35))?'high':'medium',
-      confidence:confidenceFor(alive.length,attackActions.length),title:negativeWindows.length?'Angriffe mit hoher Truppenbindung prüfen':'Angriffe mit sichtbarer Gebietsreaktion',
-      decision:`${attackActions.length} Angriffsbefehle wurden mit 30-Sekunden-Folgefenstern ausgewertet.`,
-      consequence:`${positiveWindows.length} von ${attackActions.length} Fenstern zeigten eigenen Gebietszuwachs oder Gebietsverlust beim Ziel; ${negativeWindows.length} zeigten Truppenrückgang ohne entsprechende Gebietsreaktion.`,
+      confidence:confidenceFor(alive.length,evaluatedAttackActions.length),title:negativeWindows.length?'Angriffe mit hoher Truppenbindung prüfen':'Angriffe mit sichtbarer Gebietsreaktion',
+      decision:`${evaluatedAttackActions.length} von ${attackActions.length} Angriffen hatten auswertbare 30-Sekunden-Gebietsdaten.`,
+      consequence:`${positiveWindows.length} von ${evaluatedAttackActions.length} auswertbaren Fenstern zeigten eigenen Gebietszuwachs oder Gebietsverlust beim Ziel; ${negativeWindows.length} zeigten Truppenrückgang ohne entsprechende Gebietsreaktion.`,
       alternative:'Vor einem weiteren Befehl kurz Zielzustand, eigene aktive Angriffe und eingehenden Druck vergleichen. Bei hoher Bindung erst laufende Angriffe auswerten, statt automatisch ein weiteres Ziel zu öffnen.',
       trainingRule:'Vor jedem Folgeangriff: gebundene Truppen + eingehenden Druck prüfen und nur dann ein weiteres Ziel öffnen, wenn die Reserve danach noch tragfähig ist.',
-      evidence:worst?`${clock(worst.seconds)} · ${worst.targetName??'Ziel nicht benannt'} · eigene Truppen ${fmt(worst.delta30s?.troops??0)} · eigenes Gebiet ${fmt(worst.delta30s?.tiles??0)} · Zielgebiet ${fmt(worst.targetDelta30s?.tiles??0)}`:`${fmt(ratio*100)} % der Folgefenster zeigten eine positive Gebietsreaktion.`,
+      evidence:worst?`${clock(worst.seconds)} · ${worst.targetName??'Ziel nicht benannt'} · eigene Truppen ${fmt(worst.delta30s?.troops??0)} · eigenes Gebiet ${fmt(worst.delta30s?.tiles??0)} · Zielgebiet ${fmt(worst.targetDelta30s?.tiles??0)}`:`${fmt(ratio*100)} % der auswertbaren Folgefenster zeigten eine positive Gebietsreaktion.`,
       seconds:worst?.seconds??attackActions[0]?.seconds??null,
       caveat:'30 Sekunden sind ein Beobachtungsfenster, kein vollständiger Kampfabschluss. Andere Angriffe, passive Eroberungen und Reisezeiten wirken mit; daraus folgt keine sichere Kausalität.'
     });

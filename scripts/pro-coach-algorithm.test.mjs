@@ -49,13 +49,13 @@ test('uses the observed sample interval for phase rates instead of the nominal p
 
 test('does not treat a missing target observation as a failed attack window',()=>{
  const samples=Array.from({length:15},(_,i)=>sample(i*500,{tiles:100+i,goldEarned:100+i*20}));
- const actions=Array.from({length:4},(_,i)=>action(30+i*40,{
+ const actions=Array.from({length:6},(_,i)=>action(30+i*40,{
    delta30s:{tiles:0,gold:-30,troops:-80},
-   targetDelta30s:i<2?{tiles:0,gold:0,troops:0}:null
+   targetDelta30s:i<4?{tiles:0,gold:0,troops:0}:null
  }));
  const report=buildProCoachReport(samples,actions,'p1',700);
  const finding=report.findings.find(x=>x.id==='attack-follow-through');
  assert.ok(finding);
- assert.match(finding.decision,/2 von 4 Angriffen/);
- assert.match(finding.consequence,/2 auswertbaren Fenstern/);
+ assert.match(finding.decision,/4 von 6 Angriffen/);
+ assert.match(finding.consequence,/2 von 4 auswertbaren Fenstern/);
 });

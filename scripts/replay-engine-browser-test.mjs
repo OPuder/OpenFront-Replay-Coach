@@ -64,7 +64,7 @@ async function loadAssets() {
   const objectText = readBalancedObject(html, marker + "assetManifest:".length);
   assert.ok(objectText, "OpenFront asset manifest must be complete");
   const manifest = JSON.parse(objectText);
-  const cdnMatch = html.match(/cdnBase:\\s*("(?:\\\\.|[^"\\\\])*")/);
+  const cdnMatch = html.match(/cdnBase:\s*("(?:\\.|[^"\\])*")/);
   const cdnBase = cdnMatch ? JSON.parse(cdnMatch[1]) : "";
   assert.ok(Object.keys(manifest).length > 0, "Asset manifest must not be empty");
   return { manifest, cdnBase };

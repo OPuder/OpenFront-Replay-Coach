@@ -63,7 +63,7 @@ export function assessReplayCompatibility(
     return {
       status: "engine-version-mismatch",
       replayCommit,
-      engineCommit,
+      engineCommit: selectedEngineCommit,
       recordedHashCount,
       engineVersionCompatible: false,
       hashVerificationAvailable,
@@ -76,7 +76,7 @@ export function assessReplayCompatibility(
     return {
       status: "version-compatible-no-hashes",
       replayCommit,
-      engineCommit,
+      engineCommit: selectedEngineCommit,
       recordedHashCount,
       engineVersionCompatible: true,
       hashVerificationAvailable: false,

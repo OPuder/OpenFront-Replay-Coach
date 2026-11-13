@@ -20,6 +20,7 @@ window.__runReplayTest = async (record, assets) => {
       if (status) status.textContent = `${percent}% — ${phase}`;
     },
     50,
+    Array.isArray((record as any)?.info?.players) ? String((record as any).info.players.find((player: any) => player?.clientID)?.clientID ?? "") || null : null,
   );
   return {
     status: result.status,

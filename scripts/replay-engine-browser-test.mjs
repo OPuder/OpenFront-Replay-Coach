@@ -80,6 +80,28 @@ async function main() {
   assert.ok(result.totalTicks > 0, "Replay must produce reconstructed frames");
   assert.ok(result.samples > 0, "Replay must produce player state samples");
   assert.ok(result.playerReview, "Selected player's state review must be reconstructed");
+  await window.webContents.executeJavaScript(
+    `window.__saveStoreTest(${JSON.stringify(GAME_ID)}, ${JSON.stringify(result)})`,
+    true,
+  );
+  await new Promise((resolve) => {
+    window.webContents.once("did-finish-load", resolve);
+    window.webContents.reload();
+  });
+  for (let attempt = 0; attempt < 80; attempt++) {
+    const ready = await window.webContents.executeJavaScript("typeof window.__verifyStoreTest === 'function'");
+    if (ready) break;
+    if (attempt === 79) throw new Error("IndexedDB persistence verification harness did not initialize after refresh");
+    await new Promise((resolve) => setTimeout(resolve, 250));
+  }
+  const persisted = await window.webContents.executeJavaScript(
+    `window.__verifyStoreTest(${JSON.stringify(GAME_ID)})`,
+    true,
+  );
+  assert.equal(persisted.analysisStatus, "verified", "Verified analysis status must survive a refresh");
+  assert.equal(persisted.simulationStatus, "verified", "Verified engine simulation must survive a refresh");
+  assert.ok(persisted.sampleCount > 0, "Persisted simulation samples must survive a refresh");
+  console.log("IndexedDB persistence:", JSON.stringify(persisted));
   console.log(JSON.stringify({
     gameId: GAME_ID,
     engineCommit: EXPECTED_COMMIT,

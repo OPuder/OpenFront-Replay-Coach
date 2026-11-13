@@ -33,6 +33,9 @@ jobs:
           node-version: "24.15.0"
           cache: npm
 
+      - name: Set up pinned npm
+        run: npm install --global npm@12.1.0
+
       - name: Install Coach dependencies
         run: npm ci
 

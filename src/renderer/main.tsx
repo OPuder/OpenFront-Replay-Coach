@@ -8,10 +8,11 @@ import { analyzeDetailedActions } from '../main/decoder/DetailedAnalysis';
 import { buildCoachInsights } from '../main/decoder/CoachInsights';
 import { buildEngineCoachInsights } from '../main/decoder/EngineCoachInsights';
 import { buildProCoachReport } from '../main/decoder/ProCoachAlgorithm';
+import { buildLongitudinalCoachReport } from '../main/decoder/LongitudinalCoach';
 import type { ReplaySimulationResult } from './ReplaySimulation';
 import { selectPlayerSurvivalWindow } from './phaseSurvival';
 import { installBrowserReplayAPI } from './platform/BrowserReplayAPI';
-import { loadImportedMatches, loadPlayerLibrary, saveImportedMatch, savePlayerLibrary } from './matchStore';
+import { loadImportedMatches, loadPlayerLibrary, saveImportedMatch, savePlayerLibrary, type StoredAnalysisStatus, type StoredMatchEntry } from './matchStore';
 
 // Electron provides its API through the isolated preload; normal browsers use
 // the browser adapter so the same React interface powers Windows and Android.
@@ -24,6 +25,11 @@ if (!Capacitor.isNativePlatform() && typeof window !== 'undefined' && window.isS
   }, { once: true });
 }
 
+
+type BatchMatchItem = Omit<StoredMatchEntry, 'status'> & {
+  status: StoredMatchEntry['status'] | 'queued' | 'running';
+  analysisStatus?: StoredAnalysisStatus | 'queued' | 'running';
+};
 
 function App() {
   const [replay, setReplay] = useState<ReplaySummary | null>(null);
@@ -45,7 +51,11 @@ function App() {
   const [url, setUrl] = useState('');
   const [apiResult, setApiResult] = useState<ApiImportSummary | null>(null);
   const [selectedGameIds, setSelectedGameIds] = useState<string[]>([]);
-  const [batchMatches, setBatchMatches] = useState<Array<{game:PlayerGame;result?:ApiImportSummary;status:'queued'|'running'|'loaded'|'engine-mismatch'|'failed';error?:string}>>([]);
+  const [batchMatches, setBatchMatches] = useState<BatchMatchItem[]>([]);
+  const [batchAnalysisBusy, setBatchAnalysisBusy] = useState(false);
+  const [batchAnalysisProgress, setBatchAnalysisProgress] = useState<{done:number;total:number;gameId:string;percent:number;phase:string}|null>(null);
+  const batchAnalysisRunId = React.useRef(0);
+  const batchAnalysisAbort = React.useRef<AbortController|null>(null);
   const [batchBusy, setBatchBusy] = useState(false);
   const [batchProgress, setBatchProgress] = useState<{done:number;total:number;gameId:string}|null>(null);
   const [decodedActions, setDecodedActions] = useState<DecodedAction[]>([]);

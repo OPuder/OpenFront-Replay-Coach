@@ -48,6 +48,9 @@ jobs:
       - name: Test player-elimination phase regression
         run: npm run test:phase-survival
 
+      - name: Test pro coaching algorithm and phase analytics
+        run: npm run test:coach
+
       - name: Smoke-test packaged Windows renderer
         run: node scripts/smoke-test-windows.mjs
 

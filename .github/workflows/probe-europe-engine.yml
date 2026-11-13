@@ -14,6 +14,7 @@ jobs:
       - name: Read the supplied public replay metadata
         env:
           GAME_ID: c2R2JHZgUi
+          EXPECTED_ENGINE_COMMIT: 8b5d071eed95f07c701b32e4c64e95b03f8577c1
         run: |
           node --input-type=module <<'NODE'
           const url = `https://api.openfront.io/public/game/${process.env.GAME_ID}`;
@@ -38,4 +39,19 @@ jobs:
           console.log('Hash checkpoints:', Array.isArray(record?.turns) ? record.turns.filter(t => t?.hash !== null && t?.hash !== undefined).length : 0);
           console.log('Map:', record?.info?.config?.gameMap ?? 'unknown');
           console.log('Players:', record?.info?.players?.length ?? 'unknown');
+          const shellResponse = await fetch(`https://replay.openfront.io/${process.env.GAME_ID}`, {
+            headers: { Accept: 'text/html', 'User-Agent': 'Mozilla/5.0 OpenFront-Replay-Coach-CI/1.0' },
+            signal: AbortSignal.timeout(25000)
+          });
+          console.log('Versioned shell HTTP:', shellResponse.status);
+          console.log('Versioned shell content type:', shellResponse.headers.get('content-type'));
+          if (shellResponse.ok) {
+            const html = await shellResponse.text();
+            console.log('Shell has assetManifest:', html.includes('assetManifest:'));
+            console.log('Shell has cdnBase:', html.includes('cdnBase:'));
+            console.log('Shell has commit:', html.includes(process.env.EXPECTED_ENGINE_COMMIT));
+            console.log('Shell HTML size:', html.length);
+          } else {
+            console.log((await shellResponse.text()).slice(0, 500));
+          }
           NODE

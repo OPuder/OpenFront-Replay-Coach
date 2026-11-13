@@ -39,3 +39,23 @@ test('front overload is distinguished from proof of a bad attack',()=>{
  assert.ok(report.findings.some(x=>x.id==='front-load'));
  assert.match(report.findings.find(x=>x.id==='front-load').caveat,/nicht zwingend getrennte geografische Fronten/);
 });
+
+
+test('uses the observed sample interval for phase rates instead of the nominal phase length',()=>{
+ const samples=[sample(0,{tiles:100,goldEarned:100}),sample(100,{tiles:120,goldEarned:160}),sample(200,{tiles:140,goldEarned:220}),sample(300,{tiles:160,goldEarned:280}),sample(400,{tiles:180,goldEarned:340}),sample(500,{tiles:200,goldEarned:400})];
+ const report=buildProCoachReport(samples,[],'p1',1000);
+ assert.equal(report.phases[0].territoryPerMinute,120);
+});
+
+test('does not treat a missing target observation as a failed attack window',()=>{
+ const samples=Array.from({length:15},(_,i)=>sample(i*500,{tiles:100+i,goldEarned:100+i*20}));
+ const actions=Array.from({length:6},(_,i)=>action(30+i*40,{
+   delta30s:{tiles:0,gold:-30,troops:-80},
+   targetDelta30s:i<4?{tiles:0,gold:0,troops:0}:null
+ }));
+ const report=buildProCoachReport(samples,actions,'p1',700);
+ const finding=report.findings.find(x=>x.id==='attack-follow-through');
+ assert.ok(finding);
+ assert.match(finding.decision,/4 von 6 Angriffen/);
+ assert.match(finding.consequence,/0 von 4 auswertbaren Fenstern/);
+});

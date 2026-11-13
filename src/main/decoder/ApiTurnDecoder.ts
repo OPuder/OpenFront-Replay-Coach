@@ -1,3 +1,4 @@
+import { unwrapGameRecord } from "./GameRecordShape";
 export type DecodedAction = {
   turn: number;
   seconds: number;
@@ -30,7 +31,7 @@ function fmt(value: unknown): string {
 }
 
 export function decodeApiGameRecord(record: any) {
-  const root = record?.game ?? record;
+  const root = unwrapGameRecord(record);
   const info = root?.info;
   const turns = root?.turns;
   if (!info || !Array.isArray(turns)) {

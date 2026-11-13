@@ -1,3 +1,4 @@
+import { unwrapGameRecord } from "../../main/decoder/GameRecordShape";
 import { decodeApiGameRecord } from "../../main/decoder/ApiTurnDecoder";
 import { analyzeActions } from "../../main/decoder/ActionAnalysis";
 import { analyzeDetailedActions } from "../../main/decoder/DetailedAnalysis";
@@ -185,7 +186,7 @@ async function resolveOfficialMapPreview(mapName: string): Promise<string | null
 }
 
 function summarizeRecord(record: any, gameId: string, fileSize: number): ApiImportSummary {
-  const root = record?.game ?? record;
+  const root = unwrapGameRecord(record);
   const info = root?.info ?? {};
   const config = info?.config ?? root?.config ?? {};
   const players = info?.players ?? root?.players ?? [];

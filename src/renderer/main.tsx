@@ -459,7 +459,13 @@ function CoachPanel({apiResult,preferredPlayerPublicId,decodedActions,simulation
       phase.incomeRate !== null && incomeMedian !== null && phase.incomeRate > incomeMedian ? 'Einkommen über Phasenschnitt' : '',
       phase.targetPressureWins > 0 ? 'Zielgebiet messbar geschwächt' : '',
     ].filter(Boolean);
-    return { ...phase, strengthLabels, rating: !enoughData ? 'Zu wenig Daten' : strengths >= 2 ? 'Messbarer Fortschritt' : strengths === 1 ? 'Gemischtes Bild' : 'Keine relative Stärke erkannt' };
+    const belowTerritory = phase.territoryRate !== null && territoryMedian !== null && phase.territoryRate < territoryMedian;
+    const belowIncome = phase.incomeRate !== null && incomeMedian !== null && phase.incomeRate < incomeMedian;
+    const aboveTerritory = phase.territoryRate !== null && territoryMedian !== null && phase.territoryRate > territoryMedian;
+    const aboveIncome = phase.incomeRate !== null && incomeMedian !== null && phase.incomeRate > incomeMedian;
+    const assessment = !enoughData ? 'Nicht sicher bewertbar' : belowTerritory && belowIncome ? 'Schwächste Phase' : aboveTerritory && aboveIncome ? 'Stärkste Phase' : 'Gemischte Entwicklung';
+    const hint = !enoughData ? 'Zu wenige Messpunkte für eine faire Einschätzung.' : belowTerritory && belowIncome ? 'Gebietszuwachs und Einkommen lagen unter deinen anderen Spielphasen.' : aboveTerritory && aboveIncome ? 'Gebietszuwachs und Einkommen lagen über deinen anderen Spielphasen.' : 'Gebiet und Einkommen entwickelten sich unterschiedlich.';
+    return { ...phase, strengthLabels, rating: assessment, assessment, hint };
   });
   type SavedPhaseGame = { key:string; gameId:string; playedAt:string; playerName:string; mapName:string; phases:Array<{id:string;label:string;rating:string;territory:number|null;income:number|null;territoryRate:number|null;incomeRate:number|null}> };
   const historyStorageKey = 'openfront-replay-coach.phase-history.v1';
@@ -712,13 +718,14 @@ function CoachPanel({apiResult,preferredPlayerPublicId,decodedActions,simulation
     </section>}
     {playerScoped && workspaceTab==='analysis' && analysisTab==='phases' && <section className="domain-workspace">
       <div className="overview-heading section-spaced"><div><span className="eyebrow">SPIELPHASEN</span><h3>Early, Mid und Late Game</h3><p>Vergleiche deine Entwicklung innerhalb dieser Partie. Die Werte sind Beobachtungen und keine allgemeine Spielstärke-Bewertung.</p></div></div>
-      {ratedPhases.length ? <div className="phase-visual-grid">{ratedPhases.map(phase=><article className="coach-phase-card" key={phase.id}>
-        <span>{phase.label}</span><b>{phase.rating}</b><small>{phase.description}</small>
-        <div className="phase-visual-metric"><strong>{phase.territoryRate===null?'–':phase.territoryRate.toFixed(1).replace('.',',')}</strong><small>Gebiete pro Minute</small></div>
-        <div className="phase-visual-track"><span style={{width:`${Math.max(0,Math.min(100,(phase.territoryRate??0)/Math.max(1,...ratedPhases.map(p=>p.territoryRate??0))*100))}%`}}/></div>
-        <div className="phase-visual-metric"><strong>{phase.incomeRate===null?'–':Math.round(phase.incomeRate).toLocaleString('de-DE')}</strong><small>Brutto-Gold pro Minute</small></div>
-        <div className="phase-visual-track"><span style={{width:`${Math.max(0,Math.min(100,(phase.incomeRate??0)/Math.max(1,...ratedPhases.map(p=>p.incomeRate??0))*100))}%`}}/></div>
-        <small>{phase.attackCount} Angriffsbefehle · {phase.sampleCount} Stichproben</small>
+      {ratedPhases.length ? <div className="phase-visual-grid phase-quick-grid">{ratedPhases.map(phase=><article className={"coach-phase-card phase-quick-card " + (phase.assessment==='Schwächste Phase'?'phase-needs-work':phase.assessment==='Stärkste Phase'?'phase-strong':'')} key={phase.id}>
+        <span>{phase.label}</span><b>{phase.assessment}</b>
+        <p>{phase.hint}</p>
+        <div className="phase-quick-stats">
+          <div><strong>{phase.territoryRate===null?'–':phase.territoryRate.toFixed(1).replace('.',',')}</strong><small>Gebiete/Min.</small></div>
+          <div><strong>{phase.incomeRate===null?'–':Math.round(phase.incomeRate).toLocaleString('de-DE')}</strong><small>Gold/Min.</small></div>
+          <div><strong>{phase.attackCount}</strong><small>Angriffe</small></div>
+        </div>
       </article>)}</div> : <p className="empty-note">Phasenvergleiche erscheinen nach erfolgreicher Hash-Verifikation der Original-Engine.</p>}
       <p className="chart-footnote">Phasenwerte vergleichen nur deine eigenen Phasen. Zu wenige Stichproben werden nicht bewertet. Ein zeitgleicher Gebietszuwachs beweist nicht, dass ein einzelner Befehl ihn verursacht hat.</p>
       {recentPhaseHistory.length>1 && <section className="overview-panel section-spaced"><h4>Deine letzten Partien</h4><div className="coach-history-grid">{phaseTrend.map(phase=><article className="coach-history-card" key={phase.id}><b>{phase.label}</b><strong>{phase.strong}/{phase.games}</strong><small>starke Phasen</small><span>{phase.averageTerritory.toFixed(1)} Gebiete / Min.</span><span>{Math.round(phase.averageIncome).toLocaleString('de-DE')} Gold / Min.</span></article>)}</div></section>}

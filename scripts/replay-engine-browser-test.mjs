@@ -78,6 +78,7 @@ async function main() {
   assert.equal(result.status, "verified", "Original engine must reproduce the real Europe replay");
   assert.equal(result.verifiedHashes, recordedHashes, "Every recorded replay hash must be verified");
   assert.ok(result.totalTicks > 0, "Replay must produce reconstructed frames");
+  assert.ok(result.samples > 0, "Replay must produce player state samples");
   assert.ok(result.playerReview, "Selected player's state review must be reconstructed");
   console.log(JSON.stringify({
     gameId: GAME_ID,

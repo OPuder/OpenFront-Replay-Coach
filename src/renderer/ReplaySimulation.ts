@@ -1,5 +1,5 @@
 import { unwrapGameRecord } from "../main/decoder/GameRecordShape";
-import { createReplayWorkers, ReplayReader, gunzipInBrowser } from "./engine/replay-engine.js";
+import { loadReplayEngineModule } from "./engineRegistry";
 
 export interface ReplayStateDelta {
   tiles: number;
@@ -128,13 +128,15 @@ export async function simulateReplay(
   sampleEvery = 50,
   preferredClientId: string | null = null,
 ): Promise<ReplaySimulationResult> {
+  record = unwrapGameRecord(record);
+  const engineModule = await loadReplayEngineModule(String(record.gitCommit ?? ""));
+  const { createReplayWorkers, ReplayReader, gunzipInBrowser } = engineModule;
   const workers = createReplayWorkers();
   const channel = new MessageChannel();
   workers.engine.postMessage({ type: "connect", port: channel.port1 }, [channel.port1]);
   const readerRef: { current: InstanceType<typeof ReplayReader> | null } = { current: null };
   const samples: ReplayStateSample[] = [];
   let lastSampledFrame = -1;
-  record = unwrapGameRecord(record);
   const turns: any[] = Array.isArray(record.turns) ? record.turns : [];
   const recordedHashCount = turns.filter((turn: any) => turn.hash !== null && turn.hash !== undefined).length;
   // Keep the regular overview cadence, but also capture the frames immediately

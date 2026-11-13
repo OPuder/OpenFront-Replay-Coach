@@ -295,6 +295,105 @@ export function buildEngineCoachInsights(
     });
   }
 
+
+  // Positive evidence: an own-territory increase and target-territory decrease
+  // in the same short window, with no other attacker recorded before the order.
+  // This is an observed outcome pattern, not a causal success claim.
+  const cleanAttackGrowth = targetedAttacks.filter(action =>
+    action.delta30s !== null &&
+    action.targetDelta30s !== null &&
+    action.delta30s.tiles > 0 &&
+    action.targetDelta30s.tiles < 0 &&
+    action.targetPressureBefore !== null &&
+    action.targetPressureBefore.otherAttackerCount === 0
+  );
+  if (cleanAttackGrowth.length > 0) {
+    findings.push({
+      id: "attack-territory-conversion",
+      kind: "strength",
+      priority: "medium",
+      title: "Gebietszuwachs bei eigenen Angriffen beobachtet",
+      summary: `Bei ${cleanAttackGrowth.length} Angriffsfenstern stieg dein eigener Gebietsbestand, während das jeweilige Ziel innerhalb von 30 Sekunden Gebiet verlor. Vor diesen Befehlen war kein anderer Angreifer auf das Ziel erfasst.`,
+      evidence: cleanAttackGrowth.slice(0, 4).map(action =>
+        `${clock(action.seconds)} → ${action.targetName ?? action.targetId}: eigenes Gebiet +${action.delta30s!.tiles.toLocaleString("de-DE")} · Zielgebiet ${action.targetDelta30s!.tiles.toLocaleString("de-DE")} · eigener Truppenbestand ${action.delta30s!.troops > 0 ? "+" : ""}${action.delta30s!.troops.toLocaleString("de-DE")}`
+      ).join(" · "),
+      decision: cleanAttackGrowth[0].label + (cleanAttackGrowth[0].targetName ? ` auf ${cleanAttackGrowth[0].targetName}` : ""),
+      alternative: "Vergleiche diese Ziele mit Angriffen ohne Gebietszuwachs: Welche Unterschiede bei Zielstärke, Timing und eigener Reserve waren sichtbar?",
+      nextStep: "Markiere diese Situationen als positives Muster. Prüfe im Replay, welche Zielwahl und Truppenreserve dabei zusammenkamen, und teste dieselbe Vorbereitung in einer weiteren Partie.",
+      seconds: cleanAttackGrowth[0].seconds,
+      confidence: "medium",
+      limitation: "Die Veränderungen liegen im selben 30-Sekunden-Fenster; andere zeitgleiche Ereignisse können mitwirken. Kein anderer Angreifer war vor dem Befehl erfasst, spätere Unterstützung oder passive Gebietsänderungen sind damit aber nicht ausgeschlossen.",
+    });
+  }
+
+  // Positive defensive evidence: incoming attacks were recorded, and the
+  // player's territory was stable or higher in a later 10–30 second sample.
+  // This describes resilience in the observed state, not proven interception.
+  if (review.clientID && samples.length > 1) {
+    const ordered = [...samples].sort((a, b) => a.frame - b.frame);
+    const defensiveWindows: Array<{
+      seconds: number;
+      durationSeconds: number;
+      incomingAttacks: number;
+      incomingTroops: number;
+      territoryDelta: number;
+      troopDelta: number;
+    }> = [];
+    let nextAllowedFrame = -1;
+
+    for (let i = 0; i < ordered.length; i++) {
+      const beforeSample = ordered[i];
+      if (beforeSample.frame < nextAllowedFrame) continue;
+      const ownBefore = beforeSample.players.find(player => player.clientID === review.clientID);
+      if (!ownBefore?.alive || ownBefore.incomingAttacks <= 0) continue;
+
+      let afterSample: EngineStateSample | null = null;
+      for (let j = i + 1; j < ordered.length; j++) {
+        const elapsedFrames = ordered[j].frame - beforeSample.frame;
+        if (elapsedFrames > 300) break;
+        if (elapsedFrames >= 100) {
+          afterSample = ordered[j];
+          break;
+        }
+      }
+      if (!afterSample) continue;
+      const ownAfter = afterSample.players.find(player => player.clientID === review.clientID);
+      if (!ownAfter?.alive || ownAfter.tiles < ownBefore.tiles) continue;
+      const incomingTroops = ownBefore.incomingAttackDetails.reduce((sum, attack) => sum + Math.max(0, attack.troops), 0);
+      if (incomingTroops <= 0) continue;
+
+      const durationFrames = afterSample.frame - beforeSample.frame;
+      defensiveWindows.push({
+        seconds: beforeSample.frame / 10,
+        durationSeconds: Math.round(durationFrames / 10),
+        incomingAttacks: ownBefore.incomingAttacks,
+        incomingTroops,
+        territoryDelta: ownAfter.tiles - ownBefore.tiles,
+        troopDelta: ownAfter.troops - ownBefore.troops,
+      });
+      nextAllowedFrame = afterSample.frame;
+    }
+
+    if (defensiveWindows.length > 0) {
+      findings.push({
+        id: "defensive-resilience",
+        kind: "strength",
+        priority: "medium",
+        title: "Gebiet trotz eingehendem Angriffsdruck gehalten",
+        summary: `In ${defensiveWindows.length} überprüften Zeitfenstern waren eingehende Angriffe erfasst; dein Gebietsbestand blieb über mindestens 10 Sekunden stabil oder stieg.`,
+        evidence: defensiveWindows.slice(0, 4).map(window =>
+          `${clock(window.seconds)} · ${window.incomingAttacks} eingehende Angriffe / ${window.incomingTroops.toLocaleString("de-DE")} Truppen · Gebiet ${window.territoryDelta > 0 ? "+" : ""}${window.territoryDelta.toLocaleString("de-DE")} · Truppen ${window.troopDelta > 0 ? "+" : ""}${window.troopDelta.toLocaleString("de-DE")}`
+        ).join(" · "),
+        decision: "Dein Gebietsbestand blieb in diesen Fenstern trotz registrierter eingehender Angriffe stabil oder wuchs.",
+        alternative: "Vergleiche diese Situationen mit späteren Gebietsverlusten: Waren deine Reserven, Frontverteilung oder Verbündeten-Unterstützung anders?",
+        nextStep: "Prüfe diese Zeitpunkte auf der Karte und notiere, welche Positionierung oder Reserve du beibehalten solltest, wenn du erneut unter Druck gerätst.",
+        seconds: defensiveWindows[0].seconds,
+        confidence: "medium",
+        limitation: "Eingehende Angriffsobjekte können noch unterwegs sein. Stabiler Gebietsbestand beweist nicht, dass du Angriffe selbst abgewehrt hast; Reisezeit, Gelände, Verbündete und andere Ereignisse wirken mit.",
+      });
+    }
+  }
+
   const attackCommands = actionReviews.filter(action => action.type === "attack" && action.ownFrontContextBefore);
   if (attackCommands.length > 0) {
     const attacksAgainstPressuredTargets = attackCommands.filter(action => (action.targetPressureBefore?.otherAttackerCount ?? 0) > 0);

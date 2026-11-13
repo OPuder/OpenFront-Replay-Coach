@@ -24,5 +24,5 @@ for (const engine of engines) {
   assert.ok(registry.includes(`replay-engine-${engine.bundleId}.js`), `Runtime bundle mapping is missing ${engine.bundleId}`);
 }
 
-assert.ok(compatibility.includes('engine-build/engines.json'), 'Compatibility gate must use the engine catalog');
+assert.ok(compatibility.includes('./ReplayEngineCatalog'), 'Compatibility gate must use the shared exact engine catalog');
 console.log(`Verified ${engines.length} exact replay engine revisions and runtime mappings.`);

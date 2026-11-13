@@ -1,10 +1,14 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
+import { unwrapGameRecord } from '../src/main/decoder/GameRecordShape.ts';
+import { assessReplayCompatibilityCore } from '../src/main/decoder/ReplayCompatibilityCore.mjs';
 import {
-  assessReplayCompatibility,
   PINNED_OPENFRONT_COMMIT,
   SUPPORTED_OPENFRONT_COMMITS,
-} from '../src/main/decoder/ReplayCompatibility.ts';
+} from '../src/main/decoder/ReplayEngineCatalog.ts';
+
+const assessReplayCompatibility = (record, engineCommit) =>
+  assessReplayCompatibilityCore(unwrapGameRecord(record), engineCommit, SUPPORTED_OPENFRONT_COMMITS, PINNED_OPENFRONT_COMMIT);
 
 const matchingRecord = (overrides = {}) => ({
   gitCommit: PINNED_OPENFRONT_COMMIT,

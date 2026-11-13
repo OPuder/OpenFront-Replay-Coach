@@ -1,14 +1,26 @@
 # Deterministic replay engine integration
 
-## Pinned engine revision
+## Exact replay engine catalog
 
-The first integration target is OpenFrontIO commit
-`bc3e3334c573c4959ec6a6745df6826d07233b4d`.
+The Coach bundles each supported upstream revision independently. The replay's
+full `gitCommit` selects exactly one worker bundle; there is no fallback to a
+different build.
 
-This is the engine revision recorded by the supplied Levant replay
-(`dLNCLHCvMK`). It is a deliberate pin, not a claim that every replay uses
-this revision. OpenFront's replay processor documents that simulation is
-deterministic only within the build that produced the record.
+| Replay fixture | Exact OpenFrontIO commit | Bundle |
+| --- | --- | --- |
+| Levant (`dLNCLHCvMK`) | `bc3e3334c573c4959ec6a6745df6826d07233b4d` | `replay-engine-bc3e3334c573.js` |
+| Europe (`c2R2JHZgUi`) | `8b5d071eed95f07c701b32e4c64e95b03f8577c1` | `replay-engine-8b5d071eed95.js` |
+
+The two exact source revisions are tracked as separate public OpenFrontIO
+submodules and declared in `engine-build/engines.json`. CI checks that each
+submodule SHA, compatibility catalog entry, runtime loader and output bundle
+name agree. The Europe fixture is fetched from the public replay API in the
+compatibility workflow and its map, player count, turn count, commit and hash
+checkpoint count are asserted.
+
+OpenFront's replay processor documents that simulation is deterministic only
+within the build that produced the record. Unknown commits remain blocked
+until their exact upstream source revision is added and built.
 
 ## Required processing pipeline
 
@@ -49,9 +61,10 @@ Relevant upstream files at the pinned revision:
 The upstream repository is a private npm-workspace monorepo. The engine,
 engine-api, engine-lib, shared, and zbin packages are local workspaces at
 version `0.0.0`; they are not independently installable public packages.
-The upstream root currently declares Node `>=24.15.0 <25`, npm
-`>=12.1.0 <13`, Vite 8, and TypeScript 7. The coach currently uses Node 22
-in CI, Vite 6, and TypeScript 5.7. Do not merge the upstream root package
+The upstream revisions declare Node `>=24.15.0 <25`, npm
+`>=12.1.0 <13`, Vite 8, and TypeScript 7. The coach keeps its own toolchain
+separate and builds each worker with the Vite installation belonging to that
+exact upstream submodule. Do not merge the upstream root package
 configuration into the Electron app. Build the pinned engine as a separate
 workspace/build input and bundle only the required workers and runtime
 dependencies into the desktop application.
@@ -74,15 +87,15 @@ friend's machine must not need Node.js, npm, Git, or a source checkout.
 
 ## Acceptance tests before calling the integration complete
 
-1. The supplied Levant replay parses with the pinned upstream schema.
-2. The supplied replay's `gitCommit` equals the pinned engine revision.
-3. Replay simulation starts and loads the correct map assets offline/online
-   as designed.
-4. Every recorded hash is checked; the first mismatch is reported with turn,
+1. Both Levant and Europe fixtures parse against their respective upstream schemas.
+2. Each fixture selects only its exact `gitCommit` worker bundle.
+3. Unknown and malformed commits are rejected before simulation.
+4. Replay simulation starts and loads the correct map assets online as designed.
+5. Every recorded hash is checked; the first mismatch is reported with turn,
    expected hash, and computed hash.
-5. Frames before the verification boundary decode into stable snapshots.
-6. Player selection maps to the correct engine player ID.
-7. At least one known action sequence is cross-checked against the original
-   replay and resulting unit/tile state.
-8. Windows installer and portable ZIP both contain the workers/assets and
+6. Frames before the verification boundary decode into stable snapshots.
+7. Player selection maps to the correct engine player ID.
+8. At least one known action sequence per supported build is cross-checked
+   against the original replay and resulting unit/tile state.
+9. Windows installer and portable ZIP both contain all workers/assets and
    launch on a clean Windows machine without Node/npm installed.

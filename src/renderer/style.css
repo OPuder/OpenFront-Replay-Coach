@@ -642,3 +642,18 @@ body{background:radial-gradient(ellipse at 76% -10%,#17314b 0,transparent 42%),#
  .coach-compact-card .coach-lead-training>p{-webkit-line-clamp:2}
  .coach-proof-details>div{padding:9px}
 }
+
+
+/* Compact Early / Mid / Late phase diagnosis */
+.phase-quick-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.phase-quick-card{padding:14px;min-width:0}
+.phase-quick-card>span{display:block;font-size:11px;font-weight:800;color:#9ecce2}
+.phase-quick-card>b{display:block;margin-top:7px;font-size:15px;line-height:1.25}
+.phase-quick-card>p{margin:7px 0 12px;font-size:11px;line-height:1.45;color:#aebfd0}
+.phase-quick-card.phase-needs-work{border-color:#c99b50}
+.phase-quick-card.phase-strong{border-color:#4d9b82}
+.phase-quick-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px}
+.phase-quick-stats>div{min-width:0;padding-top:8px;border-top:1px solid #385169}
+.phase-quick-stats strong{display:block;font-size:15px;line-height:1.2;overflow-wrap:anywhere}
+.phase-quick-stats small{display:block;margin-top:4px;font-size:9px;line-height:1.2;color:#9eb2c4}
+@media(max-width:760px){.phase-quick-grid{grid-template-columns:1fr}.phase-quick-card{padding:13px}.phase-quick-card>b{font-size:14px}}

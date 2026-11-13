@@ -1,9 +1,19 @@
-type StoredMatch = {
-  playerId: string;
+import type { ReplaySimulationResult } from "./ReplaySimulation";
+
+export type StoredMatchStatus = "loaded" | "engine-mismatch" | "failed";
+export type StoredAnalysisStatus = "verified" | "unverified" | "unsupported" | "failed";
+export type StoredMatchEntry = {
   game: PlayerGame;
   result?: ApiImportSummary;
-  status: "loaded" | "engine-mismatch" | "failed";
+  status: StoredMatchStatus;
   error?: string;
+  simulation?: ReplaySimulationResult;
+  analysisStatus?: StoredAnalysisStatus;
+  analysisError?: string;
+};
+
+type StoredMatch = StoredMatchEntry & {
+  playerId: string;
   updatedAt: number;
 };
 
@@ -63,13 +73,13 @@ export async function loadPlayerLibrary(playerId: string): Promise<PlayerPage | 
   return profiles.find(profile => profile.playerId === playerId) ?? null;
 }
 
-export async function saveImportedMatch(playerId: string, item: Omit<StoredMatch, "playerId" | "updatedAt">): Promise<void> {
+export async function saveImportedMatch(playerId: string, item: StoredMatchEntry): Promise<void> {
   await writeRecord<StoredMatch>(MATCH_STORE, { ...item, playerId, updatedAt: Date.now() });
 }
 
-export async function loadImportedMatches(playerId: string): Promise<Array<Omit<StoredMatch, "playerId" | "updatedAt">>> {
+export async function loadImportedMatches(playerId: string): Promise<StoredMatchEntry[]> {
   const matches = await readAll<StoredMatch>(MATCH_STORE);
   return matches.filter(item => item.playerId === playerId)
     .sort((a,b) => b.updatedAt - a.updatedAt)
-    .map(({game,result,status,error}) => ({game,result,status,error}));
+    .map(({game,result,status,error,simulation,analysisStatus,analysisError}) => ({game,result,status,error,simulation,analysisStatus,analysisError}));
 }

@@ -121,7 +121,7 @@ function buildMatchReport(input: LongitudinalMatchInput): ProCoachReport | null 
 export function buildLongitudinalCoachReport(
   matches: readonly LongitudinalMatchInput[],
 ): LongitudinalCoachReport {
-  const imported = matches.filter(match => Boolean(match.gameId && match.simulation));
+  const imported = matches.filter(match => Boolean(match.gameId));
   const verified = imported
     .map(input => ({ input, report: buildMatchReport(input) }))
     .filter((entry): entry is NormalizedMatch => entry.report !== null);

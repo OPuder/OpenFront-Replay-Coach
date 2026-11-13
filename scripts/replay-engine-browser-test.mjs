@@ -8,27 +8,6 @@ const EXPECTED_HASHES = 1006;
 const VITE_PORT = 5178;
 let server;
 
-function readBalancedObject(source, start) {
-  const open = source.indexOf("{", start);
-  if (open < 0) return null;
-  let depth = 0;
-  let inString = false;
-  let escaped = false;
-  for (let i = open; i < source.length; i++) {
-    const ch = source[i];
-    if (inString) {
-      if (escaped) escaped = false;
-      else if (ch === "\\") escaped = true;
-      else if (ch === '"') inString = false;
-      continue;
-    }
-    if (ch === '"') inString = true;
-    else if (ch === "{") depth++;
-    else if (ch === "}" && --depth === 0) return source.slice(open, i + 1);
-  }
-  return null;
-}
-
 async function loadReplay() {
   const response = await fetch(`https://api.openfront.io/public/game/${encodeURIComponent(GAME_ID)}`, {
     headers: { Accept: "application/json", "User-Agent": "OpenFront-Replay-Coach-CI/1.0" },
@@ -41,52 +20,6 @@ async function loadReplay() {
   assert.equal(record.info?.config?.gameMap, "Europe");
   assert.equal(record.turns?.filter((turn) => turn?.hash !== null && turn?.hash !== undefined).length, EXPECTED_HASHES);
   return record;
-}
-
-function parseAssetManifest(html) {
-  const marker = html.indexOf("assetManifest:");
-  if (marker < 0) return null;
-  const objectText = readBalancedObject(html, marker + "assetManifest:".length);
-  if (!objectText) return null;
-  const manifest = JSON.parse(objectText);
-  const cdnMatch = html.match(/cdnBase:\s*("(?:\\\\.|[^"\\\\])*")/);
-  const cdnBase = cdnMatch ? JSON.parse(cdnMatch[1]) : "";
-  if (!Object.keys(manifest).length) return null;
-  return { manifest, cdnBase };
-}
-
-async function loadAssets() {
-  // Prefer the upstream versioned shell for the game ID: it serves the
-  // manifest/CDN mapping belonging to the replay's own engine revision.
-  const shellWindow = new BrowserWindow({
-    show: false,
-    width: 900,
-    height: 700,
-    webPreferences: { contextIsolation: true, nodeIntegration: false, sandbox: true },
-  });
-  try {
-    for (const url of [`https://replay.openfront.io/${GAME_ID}`, "https://openfront.io/"]) {
-      try {
-        await shellWindow.loadURL(url);
-        for (let attempt = 0; attempt < 60; attempt++) {
-          const snapshot = await shellWindow.webContents.executeJavaScript(
-            "({ html: document.documentElement?.outerHTML ?? '', url: location.href })",
-          );
-          const assets = parseAssetManifest(snapshot.html);
-          if (assets) {
-            console.log("Loaded versioned asset manifest from", snapshot.url);
-            return assets;
-          }
-          await new Promise((resolve) => setTimeout(resolve, 500));
-        }
-      } catch (error) {
-        console.warn("Browser manifest source failed:", url, String(error));
-      }
-    }
-    throw new Error("Neither the versioned replay shell nor the live OpenFront shell exposed an asset manifest");
-  } finally {
-    shellWindow.destroy();
-  }
 }
 
 async function waitForServer(url) {
@@ -106,7 +39,6 @@ async function main() {
   await app.whenReady();
 
   const record = await loadReplay();
-  const assets = await loadAssets();
 
   server = spawn("node", ["node_modules/vite/bin/vite.js", "--host", "127.0.0.1", "--port", String(VITE_PORT), "--strictPort"], {
     stdio: ["ignore", "pipe", "pipe"],
@@ -137,9 +69,9 @@ async function main() {
     await new Promise((resolve) => setTimeout(resolve, 250));
   }
 
-  const input = JSON.stringify({ record, assets }).replaceAll("<", "\\u003c");
+  const input = JSON.stringify(record).replaceAll("<", "\\u003c");
   const result = await window.webContents.executeJavaScript(
-    `const payload = ${input}; window.__runReplayTest(payload.record, payload.assets)`,
+    `window.__runReplayTest(${input})`,
     true,
   );
   assert.equal(result.status, "verified", "Original engine must reproduce the real Europe replay");

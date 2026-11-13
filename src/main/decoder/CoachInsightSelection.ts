@@ -23,7 +23,7 @@ export function selectPrimaryCoachInsights(
   const primary = ordered
     .filter(
       (item) =>
-        item.kind === "review" &&
+        (item.kind === "review" || item.kind === "strength") &&
         (item.priority === "high" || item.priority === "medium"),
     )
     .slice(0, 3);

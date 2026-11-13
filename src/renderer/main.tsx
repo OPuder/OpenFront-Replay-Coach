@@ -37,6 +37,7 @@ function App() {
   const [simulationProgress, setSimulationProgress] = useState<{percent:number;phase:string}|null>(null);
   const [simulationResult, setSimulationResult] = useState<ReplaySimulationResult|null>(null);
   const engineReviewRunId = React.useRef(0);
+  const batchRunId = React.useRef(0);
   const isDesktopShell = /Electron/i.test(navigator.userAgent);
   const isMobileDevice = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
   const [error, setError] = useState('');
@@ -63,14 +64,17 @@ function App() {
   async function loadSelectedGames(gameIds=selectedGameIds) {
     if (!playerPage || batchBusy || gameIds.length===0) return;
     const games=gameIds.map(id=>playerPage.games.find(game=>game.gameId===id)).filter((game):game is PlayerGame=>Boolean(game));
+    const runId=++batchRunId.current;
     setBatchBusy(true); setError(''); setBatchProgress({done:0,total:games.length,gameId:''});
     let done=0;
     for (const game of games) {
+      if(runId!==batchRunId.current) break;
       setBatchProgress({done,total:games.length,gameId:game.gameId});
       if (batchMatches.some(item=>item.game.gameId===game.gameId && item.result)) { done++; continue; }
       setBatchMatches(current=>[...current.filter(item=>item.game.gameId!==game.gameId),{game,status:'running'}]);
       try {
         const imported=await window.replayAPI.importReplayUrl(`https://openfront.io/w5/game/${game.gameId}`);
+        if(runId!==batchRunId.current) break;
         if ('canceled' in imported) throw new Error('Import wurde abgebrochen.');
         const normalizeMap=(value:unknown)=>String(value??'').trim().toLowerCase().replace(/[\\s.()_-]+/g,'');
         const selectedMap=game.map||imported.mapName;
@@ -83,15 +87,16 @@ function App() {
         setBatchMatches(current=>[...current.filter(item=>item.game.gameId!==game.gameId),entry]);
         try { await saveImportedMatch(playerPage.playerId,entry); } catch(storageError) { console.warn('[ReplayCoach] Replay wurde geladen, konnte aber nicht lokal gesichert werden:',storageError); setError(`Partie ${game.gameId} geladen, aber lokale Speicherung fehlgeschlagen: ${storageError instanceof Error?storageError.message:String(storageError)}`); }
       } catch (e) {
+        if(runId!==batchRunId.current) break;
         const entry={game,status:'failed' as const,error:e instanceof Error?e.message:String(e)};
         setBatchMatches(current=>[...current.filter(item=>item.game.gameId!==game.gameId),entry]);
         try { await saveImportedMatch(playerPage.playerId,entry); } catch(storageError) { console.warn('[ReplayCoach] Importfehler konnte nicht lokal gespeichert werden:',storageError); }
       }
       done++;
     }
-    setBatchProgress({done,total:games.length,gameId:''});
-    setBatchBusy(false);
+    if(runId===batchRunId.current) { setBatchProgress({done,total:games.length,gameId:''}); setBatchBusy(false); }
   }
+  function cancelBatchImport() { batchRunId.current++; setBatchBusy(false); setBatchProgress(current=>current?{...current,gameId:''}:null); }
   function openBatchMatch(gameId:string) {
     const item=batchMatches.find(entry=>entry.game.gameId===gameId);
     if (!item?.result) return;
@@ -272,7 +277,7 @@ function App() {
       </>}
       {activePage==='games' && <>
         <section className="library-toolbar studio-card"><div><span className="studio-eyebrow">MATCH LIBRARY</span><h2>Spielbibliothek</h2><p>{filteredGames.length} von {loadedGames.length} geladenen Partien · {batchMatches.filter(item=>item.result).length} Replays importiert</p></div><div className="library-filters"><label><SlidersHorizontal size={15}/><select value={gameFilter} onChange={e=>setGameFilter(e.target.value)}><option value="all">Alle Ergebnisse</option><option value="victory">Siege</option><option value="defeat">Niederlagen</option><option value="incomplete">Unvollständig</option></select></label><select value={modeFilter} onChange={e=>setModeFilter(e.target.value)}><option value="all">Alle Modi</option>{Array.from(new Set(loadedGames.map(g=>g.mode).filter(Boolean))).sort().map(m=><option key={m} value={m}>{m}</option>)}</select><select value={typeFilter} onChange={e=>setTypeFilter(e.target.value)}><option value="all">Alle Spieltypen</option>{Array.from(new Set(loadedGames.map(g=>g.type).filter(Boolean))).sort().map(t=><option key={t} value={t}>{t}</option>)}</select><div className="search-box"><Search size={15}/><input value={gameSearch} onChange={e=>setGameSearch(e.target.value)} placeholder="Karte oder Match-ID suchen"/></div></div></section>
-        <section className="batch-toolbar studio-card"><div><b>{selectedGameIds.length} Partien ausgewählt</b><small>Mehrfachauswahl für den Replay-Import. Jede Partie erhält einen eigenen Import- und Engine-Status.</small></div><div><button className="studio-button subtle" onClick={selectFilteredGames} disabled={!filteredGames.length || batchBusy}>{filteredGames.every(game=>selectedGameIds.includes(game.gameId))?'Auswahl aufheben':'Gefilterte auswählen'}</button><button className="studio-button primary" onClick={()=>void loadSelectedGames()} disabled={!selectedGameIds.length || batchBusy}><FileUp size={15}/>{batchBusy?'Importiere …':` ${selectedGameIds.length} Partien laden`}</button></div></section>
+        <section className="batch-toolbar studio-card"><div><b>{selectedGameIds.length} Partien ausgewählt</b><small>Mehrfachauswahl für den Replay-Import. Jede Partie erhält einen eigenen Import- und Engine-Status.</small></div><div><button className="studio-button subtle" onClick={selectFilteredGames} disabled={!filteredGames.length || batchBusy}>{filteredGames.every(game=>selectedGameIds.includes(game.gameId))?'Auswahl aufheben':'Gefilterte auswählen'}</button><button className="studio-button primary" onClick={()=>void loadSelectedGames()} disabled={!selectedGameIds.length || batchBusy}><FileUp size={15}/>{batchBusy?'Importiere …':` ${selectedGameIds.length} Partien laden`}</button>{batchBusy && <button className="studio-button subtle" onClick={cancelBatchImport}>Import abbrechen</button>}</div></section>
         {batchProgress && <section className="batch-progress studio-card" aria-live="polite"><b>{batchBusy?`Importiere ${batchProgress.gameId||'Partien'} …`:`Import abgeschlossen: ${batchProgress.done} / ${batchProgress.total}`}</b><span>{batchProgress.done} von {batchProgress.total} Partien verarbeitet</span><div className="batch-progress-track"><i style={{width:`${batchProgress.total?batchProgress.done/batchProgress.total*100:0}%`}}/></div></section>}
         {batchMatches.length>0 && <section className="batch-results studio-card"><div className="card-heading"><div><span className="studio-eyebrow">REPLAY SESSION</span><h3>Importierte Partien</h3></div><span>{batchMatches.filter(item=>item.result).length} / {batchMatches.length} erfolgreich</span></div>{batchMatches.map(item=><div className="batch-result-row" key={item.game.gameId}><div><b>{item.game.map??item.result?.mapName??'Unbekannte Karte'}</b><small>{item.game.gameId} · {item.game.start?new Date(item.game.start).toLocaleDateString('de-DE'):'Datum unbekannt'}</small></div><span className={`batch-status ${item.status}`}>{item.status==='queued'?'WARTESCHLANGE':item.status==='running'?'WIRD GELADEN …':item.status==='loaded'?'GELADEN · ENGINE NOCH NICHT SIMULIERT':item.status==='engine-mismatch'?'GELADEN · ENGINE ABWEICHUNG':'IMPORT FEHLGESCHLAGEN'}</span>{item.result && <button className="text-action" onClick={()=>openBatchMatch(item.game.gameId)}>Partie öffnen <ArrowRight size={14}/></button>}{item.error && <><small className="batch-error">{item.error}</small><button className="text-action" onClick={()=>void loadSelectedGames([item.game.gameId])} disabled={batchBusy}>Erneut versuchen <ArrowRight size={14}/></button></>}</div>)}</section>}
         {filteredGames.length ? <div className="game-library-grid">{gameCards(filteredGames)}</div> : <section className="empty-account studio-card"><Map size={28}/><b>Keine Partien gefunden</b><p>Lade dein Konto oder passe die Filter an.</p></section>}

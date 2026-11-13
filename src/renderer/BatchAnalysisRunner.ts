@@ -50,8 +50,18 @@ export async function runSequentialBatchAnalysis<
   items: readonly TItem[],
   options: SequentialBatchAnalysisOptions<TItem, TResult>,
 ): Promise<BatchAnalysisSummary> {
+  const { signal, getId, isCompatible, analyze, onStatus, onProgress } = options;
+  const uniqueItems: TItem[] = [];
+  const seenIds = new Set<string>();
+  for (const item of items) {
+    const id = getId(item).trim();
+    if (!id || !seenIds.has(id)) {
+      uniqueItems.push(item);
+      if (id) seenIds.add(id);
+    }
+  }
   const summary: BatchAnalysisSummary = {
-    total: items.length,
+    total: uniqueItems.length,
     completed: 0,
     verified: 0,
     unverified: 0,
@@ -59,9 +69,8 @@ export async function runSequentialBatchAnalysis<
     failed: 0,
     cancelled: false,
   };
-  const { signal, getId, isCompatible, analyze, onStatus, onProgress } = options;
 
-  for (const item of items) {
+  for (const item of uniqueItems) {
     if (signal.aborted) {
       summary.cancelled = true;
       break;
@@ -69,7 +78,7 @@ export async function runSequentialBatchAnalysis<
     await onStatus(item, "queued");
   }
 
-  for (const item of items) {
+  for (const item of uniqueItems) {
     if (signal.aborted) {
       summary.cancelled = true;
       break;

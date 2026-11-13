@@ -14,7 +14,7 @@
     "build:web": "npm run build:engine && tsc --noEmit && vite build",
     "preview:web": "vite preview",
     "test:phase-survival": "node --test scripts/phase-survival.test.mjs",
-    "test:coach": "node --import ./vendor/OpenFrontIO/node_modules/tsx/dist/loader.mjs --test scripts/phase-survival.test.mjs scripts/pro-coach-algorithm.test.mjs scripts/game-record-shape.test.mjs scripts/replay-compatibility.test.mjs scripts/public-replay-compatibility.test.mjs scripts/longitudinal-coach.test.mjs",
+    "test:coach": "node --import ./vendor/OpenFrontIO/node_modules/tsx/dist/loader.mjs --test scripts/phase-survival.test.mjs scripts/pro-coach-algorithm.test.mjs scripts/game-record-shape.test.mjs scripts/replay-compatibility.test.mjs scripts/public-replay-compatibility.test.mjs scripts/longitudinal-coach.test.mjs scripts/batch-analysis-runner.test.mjs",
     "validate:engine-pin": "node scripts/validate-engine-pin.mjs"
   },
   "dependencies": {

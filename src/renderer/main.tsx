@@ -82,6 +82,7 @@ function App() {
         const preview=(selectedMap ? playerPage.mapPreviews?.[String(selectedMap).trim().toLowerCase()] : undefined) || previews.find(([key])=>normalizeMap(key)===normalizeMap(selectedMap))?.[1] || previews.find(([key])=>normalizeMap(key)===normalizeMap(imported.mapName))?.[1] || game.previewUrl;
         if (preview) imported.previewUrl=preview;
         else if (selectedMap) { try { imported.previewUrl=(await window.replayAPI.resolveMapPreview(selectedMap)).imageUrl; } catch { imported.previewUrl=null; } }
+        if(runId!==batchRunId.current) break;
         const status=imported.engineCompatibility?.engineVersionCompatible===false ? 'engine-mismatch' : 'loaded';
         const entry={game,result:imported,status};
         setBatchMatches(current=>[...current.filter(item=>item.game.gameId!==game.gameId),entry]);

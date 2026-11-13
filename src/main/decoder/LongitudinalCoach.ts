@@ -203,7 +203,7 @@ export function buildLongitudinalCoachReport(
   const trainingFocus = recurringFindings[0]?.trainingRule
     ?? (weakest ? `In ${weakest.label} gezielt die Entscheidungen und beobachteten Zustandswechsel vergleichen.` : "Weitere Partien desselben Modus und Spieltyps verifizieren, bevor wiederkehrende Muster bewertet werden.");
   const message = status === "ready"
-    ? `${comparable.length} vollständig verifizierte Partien aus ${groupLabel} bilden die Vergleichsgrundlage. Nicht verifizierte oder andersartige Partien fließen nicht in diese Muster ein.`
+    ? `${comparable.length} vollständig verifizierte Partien aus ${groupLabel} bilden die Vergleichsgrundlage. Nicht verifizierte oder andersartige Partien fließen nicht ein; Karten- und Spielerzahlen können variieren, deshalb sind Raten und wiederkehrende Muster keine direkte Siegprognose.`
     : `Für belastbare Langzeitmuster werden mindestens zwei vollständig hash-verifizierte Partien desselben Modus und Spieltyps benötigt. Aktuell vergleichbar: ${comparable.length}.`;
 
   return {

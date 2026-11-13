@@ -14,7 +14,7 @@
     "build:web": "npm run build:engine && tsc --noEmit && vite build",
     "preview:web": "vite preview",
     "test:phase-survival": "node --test scripts/phase-survival.test.mjs",
-    "test:coach": "node --test scripts/phase-survival.test.mjs scripts/pro-coach-algorithm.test.mjs"
+    "test:coach": "node --test scripts/phase-survival.test.mjs scripts/pro-coach-algorithm.test.mjs scripts/game-record-shape.test.mjs"
   },
   "dependencies": {
     "lucide-react": "^0.468.0",

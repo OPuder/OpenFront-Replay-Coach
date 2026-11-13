@@ -3,8 +3,8 @@ import { spawn } from "node:child_process";
 import { app, BrowserWindow } from "electron";
 
 const GAME_ID = process.env.OPENFRONT_REPLAY_ID ?? "c2R2JHZgUi";
-const EXPECTED_COMMIT = "8b5d071eed95f07c701b32e4c64e95b03f8577c1";
-const EXPECTED_HASHES = 1006;
+const EXPECTED_COMMIT = process.env.OPENFRONT_REPLAY_EXPECTED_COMMIT ?? "8b5d071eed95f07c701b32e4c64e95b03f8577c1";
+const EXPECTED_MAP = process.env.OPENFRONT_REPLAY_EXPECTED_MAP ?? "Europe";
 const VITE_PORT = 5178;
 let server;
 
@@ -16,10 +16,11 @@ async function loadReplay() {
   assert.equal(response.status, 200, "Public OpenFront replay API must be reachable");
   const payload = await response.json();
   const record = payload?.game ?? payload?.data?.game ?? payload?.data ?? payload;
-  assert.equal(record.gitCommit, EXPECTED_COMMIT, "Fixture must remain the Europe replay engine revision");
-  assert.equal(record.info?.config?.gameMap, "Europe");
-  assert.equal(record.turns?.filter((turn) => turn?.hash !== null && turn?.hash !== undefined).length, EXPECTED_HASHES);
-  return record;
+  assert.equal(record.gitCommit, EXPECTED_COMMIT, "Fixture must remain pinned to its exact replay engine revision");
+  assert.equal(record.info?.config?.gameMap, EXPECTED_MAP);
+  const recordedHashes = record.turns?.filter((turn) => turn?.hash !== null && turn?.hash !== undefined).length ?? 0;
+  assert.ok(recordedHashes > 0, "Fixture must contain recorded hash checkpoints");
+  return { record, recordedHashes };
 }
 
 async function waitForServer(url) {
@@ -38,7 +39,7 @@ async function main() {
   app.commandLine.appendSwitch("disable-gpu");
   await app.whenReady();
 
-  const record = await loadReplay();
+  const { record, recordedHashes } = await loadReplay();
 
   server = spawn("node", ["node_modules/vite/bin/vite.js", "--host", "127.0.0.1", "--port", String(VITE_PORT), "--strictPort"], {
     stdio: ["ignore", "pipe", "pipe"],
@@ -75,13 +76,15 @@ async function main() {
     true,
   );
   assert.equal(result.status, "verified", "Original engine must reproduce the real Europe replay");
-  assert.equal(result.verifiedHashes, EXPECTED_HASHES, "Every recorded Europe hash must be verified");
+  assert.equal(result.verifiedHashes, recordedHashes, "Every recorded replay hash must be verified");
   assert.ok(result.totalTicks > 0, "Replay must produce reconstructed frames");
   assert.ok(result.playerReview, "Selected player's state review must be reconstructed");
   console.log(JSON.stringify({
     gameId: GAME_ID,
     engineCommit: EXPECTED_COMMIT,
+    map: EXPECTED_MAP,
     status: result.status,
+    recordedHashes,
     verifiedHashes: result.verifiedHashes,
     totalTicks: result.totalTicks,
     playerReview: result.playerReview,

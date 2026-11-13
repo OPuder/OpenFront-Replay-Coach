@@ -7,6 +7,7 @@ import { analyzeActions } from '../main/decoder/ActionAnalysis';
 import { analyzeDetailedActions } from '../main/decoder/DetailedAnalysis';
 import { buildCoachInsights } from '../main/decoder/CoachInsights';
 import { buildEngineCoachInsights } from '../main/decoder/EngineCoachInsights';
+import { buildProCoachReport } from '../main/decoder/ProCoachAlgorithm';
 import type { ReplaySimulationResult } from './ReplaySimulation';
 import { selectPlayerSurvivalWindow } from './phaseSurvival';
 import { installBrowserReplayAPI } from './platform/BrowserReplayAPI';
@@ -403,6 +404,10 @@ function CoachPanel({apiResult,preferredPlayerPublicId,decodedActions,simulation
   const engineInsights = selectedPlayerReview && simulationResult?.status === 'verified'
     ? buildEngineCoachInsights(selectedPlayerReview, selectedActionReviews, simulationResult.samples)
     : [];
+  const proCoachReport = simulationResult?.status === 'verified' && selectedClientId
+    ? buildProCoachReport(simulationResult.samples, selectedActionReviews, selectedClientId, apiResult.durationSeconds ?? 0)
+    : null;
+
   const orderedEngineInsights = [...engineInsights].sort((a,b)=>({high:0,medium:1,low:2}[a.priority ?? 'low']-({high:0,medium:1,low:2}[b.priority ?? 'low'])));
   const primaryEngineReviews = orderedEngineInsights.filter(item=>item.kind==='review' && (item.priority==='high' || item.priority==='medium')).slice(0,3);
   const supportingEngineInsights = orderedEngineInsights.filter(item=>!primaryEngineReviews.some(primary=>primary.id===item.id));
@@ -577,6 +582,28 @@ function CoachPanel({apiResult,preferredPlayerPublicId,decodedActions,simulation
           {leadEngineReview?.limitation && <div><b>Grenze der Aussage</b><p>{leadEngineReview.limitation}</p></div>}
         </details>
       </section>
+      {proCoachReport && <section className="pro-coach-report" aria-label="Professionelle Match-Auswertung">
+        <div className="pro-coach-report-head">
+          <div><span className="coach-report-label">PERFORMANCE INTELLIGENCE</span><h3>Dein Match-Bericht</h3><p>Messbare Entwicklung, strategische Belastung und konkrete Trainingsaufgaben – nur aus verifizierten Engine-Daten.</p></div>
+          <div className="pro-coach-confidence"><span>{proCoachReport.confidenceLabel}</span><b>{proCoachReport.dataCoverage.samples} Zustände · {proCoachReport.dataCoverage.actions} Befehle</b></div>
+        </div>
+        <div className="pro-coach-score-row">
+          <div className="pro-coach-score"><span>ENTWICKLUNGSINDEX</span><strong>{proCoachReport.matchScore===null?'–':proCoachReport.matchScore}</strong><small>{proCoachReport.scoreLabel}</small></div>
+          <p>{proCoachReport.scoreExplanation}</p>
+        </div>
+        <div className="pro-coach-metric-grid">{proCoachReport.metrics.map(metric=><article className="pro-coach-metric" key={metric.label}><span>{metric.label}</span><b>{metric.value}</b><small>{metric.note}</small></article>)}</div>
+        <div className="pro-coach-phase-panel"><div className="pro-coach-subhead"><b>Phasenleistung</b><span>Vergleich innerhalb dieser Partie</span></div>
+          <div className="pro-coach-phase-bars">{proCoachReport.phases.map(phase=><div className="pro-coach-phase-row" key={phase.id}><div className="pro-coach-phase-label"><b>{phase.label}</b><span>{phase.momentumIndex===null?'Nicht genug Daten':`Impuls ${phase.momentumIndex}/100`}</span></div><div className="pro-coach-bar"><i style={{width:`${phase.momentumIndex??0}%`}}/></div><small>Gebiet {phase.territoryPerMinute===null?'–':`${phase.territoryPerMinute.toFixed(1).replace('.',',')} / Min.`} · Gold {phase.incomePerMinute===null?'–':`${Math.round(phase.incomePerMinute).toLocaleString('de-DE')} / Min.`} · Truppen {phase.troopChangePerMinute===null?'–':`${phase.troopChangePerMinute>0?'+':''}${Math.round(phase.troopChangePerMinute).toLocaleString('de-DE')} / Min.`} · {phase.attacks} Angriffe</small></div>)}</div>
+        </div>
+        <div className="pro-coach-findings"><div className="pro-coach-subhead"><b>Deine drei wichtigsten Entscheidungen</b><span>Priorisiert nach Risiko und Datenlage</span></div>
+          {proCoachReport.findings.length ? proCoachReport.findings.map((finding,index)=><article className="pro-coach-finding" key={finding.id}>
+            <div className="pro-coach-finding-top"><span>{index+1}. LERNMOMENT</span><span className={`pro-coach-priority priority-${finding.priority}`}>{finding.priority==='high'?'HOHE PRIORITÄT':finding.priority==='medium'?'MITTLERE PRIORITÄT':'BEOBACHTUNG'}</span>{finding.seconds!==null&&<time>{clock(finding.seconds)}</time>}</div>
+            <h4>{finding.title}</h4><div className="pro-coach-decision-grid"><div><b>Deine Entscheidung</b><p>{finding.decision}</p></div><div><b>Beobachtete Folge</b><p>{finding.consequence}</p></div><div><b>Bessere Prüfoption</b><p>{finding.alternative}</p></div><div className="training-rule"><b>Regel fürs nächste Spiel</b><p>{finding.trainingRule}</p></div></div>
+            <details><summary>Messwerte und Grenzen</summary><p>{finding.evidence}</p><small>{finding.caveat} Datenvertrauen: {finding.confidence==='high'?'hoch':finding.confidence==='medium'?'mittel':'niedrig'}.</small></details>
+          </article>) : <div className="pro-coach-no-finding"><b>Kein belastbarer taktischer Fehler erkannt</b><p>Die verfügbaren Daten liefern keinen ausreichend starken Hinweis für eine negative Bewertung. Das ist kein Beweis für optimale Entscheidungen.</p></div>}
+        </div>
+        <div className="pro-coach-training-rule"><span>NÄCHSTE PARTIE · DEIN TRAININGSFOKUS</span><b>{proCoachReport.trainingRule}</b></div>
+      </section>}
       <section className="coach-training-loop" aria-labelledby="training-loop-title">
         <div className="coach-training-loop-heading"><span className="coach-report-label">VOM REPLAY INS TRAINING</span><b id="training-loop-title">Dein Trainingsziel</b><p>Eine Sache bewusst in der nächsten Partie ausprobieren – statt zehn Statistiken gleichzeitig zu verfolgen.</p></div>
         {trainingGoal ? <div className={`coach-training-goal ${trainingGoal.completed?'is-complete':''}`}>
@@ -587,9 +614,9 @@ function CoachPanel({apiResult,preferredPlayerPublicId,decodedActions,simulation
             <button type="button" className="text-action" onClick={()=>setTrainingGoal(null)}>Trainingsziel entfernen</button>
           </div>
           <small className="coach-training-goal-note">Das Ziel bleibt lokal auf diesem Gerät gespeichert. Ob du es umgesetzt hast, markierst du selbst – der Coach behauptet nicht, dein Verhalten ohne neue Replay-Daten gemessen zu haben.</small>
-        </div> : leadEngineReview && simulationResult?.status==='verified' ? <div className="coach-training-goal-empty">
-          <div><b>{leadEngineReview.title}</b><p>{leadEngineReview.nextStep}</p></div>
-          <button type="button" className="studio-button primary" onClick={()=>setTrainingGoal({title:leadEngineReview.title,instruction:leadEngineReview.nextStep,gameId:apiResult.gameId,mapName:apiResult.mapName,createdAt:new Date().toISOString(),completed:false})}>Als Trainingsziel übernehmen <ArrowRight size={15}/></button>
+        </div> : (proCoachReport?.findings[0] || leadEngineReview) && simulationResult?.status==='verified' ? <div className="coach-training-goal-empty">
+          <div><b>{proCoachReport?.findings[0]?.title ?? leadEngineReview?.title ?? 'Dein nächster Trainingsfokus'}</b><p>{proCoachReport?.trainingRule ?? leadEngineReview?.nextStep ?? coachTrainingFocus}</p></div>
+          <button type="button" className="studio-button primary" onClick={()=>setTrainingGoal({title:proCoachReport?.findings[0]?.title ?? leadEngineReview?.title ?? 'Trainingsfokus',instruction:proCoachReport?.trainingRule ?? leadEngineReview?.nextStep ?? coachTrainingFocus,gameId:apiResult.gameId,mapName:apiResult.mapName,createdAt:new Date().toISOString(),completed:false})}>Als Trainingsziel übernehmen <ArrowRight size={15}/></button>
         </div> : <div className="coach-training-goal-empty">
           <div><b>Noch kein belegtes Trainingsziel</b><p>Sobald die Original-Engine eine konkrete Situation ausreichend belegt, kannst du daraus ein Ziel für die nächste Partie übernehmen. Wir erfinden vorher keine Taktikempfehlung.</p></div>
         </div>}

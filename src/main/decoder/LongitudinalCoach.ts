@@ -1,0 +1,224 @@
+import { buildProCoachReport, type ProCoachAction, type ProCoachConfidence, type ProCoachFinding, type ProCoachPhase, type ProCoachReport, type ProCoachPlayerSample } from "./ProCoachAlgorithm";
+
+export interface LongitudinalMatchInput {
+  gameId: string;
+  mapName: string;
+  mode: string;
+  type: string;
+  playedAt?: string | null;
+  durationSeconds?: number | null;
+  analysisStatus?: string;
+  simulation?: {
+    status: "verified" | "unverified";
+    totalTicks: number;
+    verifiedHashes: number;
+    samples: unknown[];
+    playerReview: { clientID: string | null } | null;
+    actionReviews: unknown[];
+  } | null;
+}
+
+export interface LongitudinalPhaseSummary {
+  id: "early" | "mid" | "late";
+  label: string;
+  matchesWithData: number;
+  medianTerritoryPerMinute: number | null;
+  medianIncomePerMinute: number | null;
+  weakestCount: number;
+  strongestCount: number;
+}
+
+export interface LongitudinalFinding {
+  id: string;
+  title: string;
+  priority: "high" | "medium" | "low";
+  occurrences: number;
+  comparableMatches: number;
+  frequency: number;
+  trainingRule: string;
+  examples: Array<{ gameId: string; mapName: string; evidence: string }>;
+}
+
+export interface LongitudinalCoachReport {
+  status: "ready" | "insufficient-data";
+  importedMatches: number;
+  verifiedMatches: number;
+  excludedMatches: number;
+  comparableMatches: number;
+  comparableGroup: string;
+  confidence: ProCoachConfidence;
+  phaseSummaries: LongitudinalPhaseSummary[];
+  recurringFindings: LongitudinalFinding[];
+  weakestPhase: { id: "early" | "mid" | "late"; label: string; occurrences: number } | null;
+  strongestPhase: { id: "early" | "mid" | "late"; label: string; occurrences: number } | null;
+  trainingFocus: string;
+  message: string;
+}
+
+type NormalizedMatch = {
+  input: LongitudinalMatchInput;
+  report: ProCoachReport;
+};
+
+const priorityRank = (value: ProCoachFinding["priority"]) =>
+  value === "high" ? 0 : value === "medium" ? 1 : 2;
+
+const median = (values: number[]): number | null => {
+  if (!values.length) return null;
+  const ordered = [...values].sort((a, b) => a - b);
+  const middle = Math.floor(ordered.length / 2);
+  return ordered.length % 2
+    ? ordered[middle]
+    : (ordered[middle - 1] + ordered[middle]) / 2;
+};
+
+const normalize = (value: string | null | undefined) =>
+  String(value ?? "").trim().toLowerCase().replace(/[^a-z0-9]+/g, " ") || "unbekannt";
+
+function comparableKey(match: LongitudinalMatchInput): string {
+  return `${normalize(match.mode)}|${normalize(match.type)}`;
+}
+
+function comparableLabel(match: LongitudinalMatchInput): string {
+  return [match.mode || "Modus unbekannt", match.type || "Spieltyp unbekannt"].join(" · ");
+}
+
+function buildMatchReport(input: LongitudinalMatchInput): ProCoachReport | null {
+  const simulation = input.simulation;
+  const clientId = simulation?.playerReview?.clientID;
+  if (
+    input.analysisStatus !== "verified" ||
+    simulation?.status !== "verified" ||
+    !clientId ||
+    !Array.isArray(simulation.samples) ||
+    !Array.isArray(simulation.actionReviews)
+  ) return null;
+
+  const actions = simulation.actionReviews.map((raw: any): ProCoachAction => ({
+    seconds: Number(raw.seconds ?? 0),
+    type: String(raw.type ?? ""),
+    label: String(raw.label ?? ""),
+    targetName: raw.targetName == null ? null : String(raw.targetName),
+    delta10s: raw.delta10s ?? null,
+    delta30s: raw.delta30s ?? null,
+    targetDelta30s: raw.targetDelta30s ?? null,
+    ownFrontContextBefore: raw.ownFrontContextBefore ?? null,
+    targetPressureBefore: raw.targetPressureBefore ?? null,
+  }));
+  const duration = Number(input.durationSeconds);
+  return buildProCoachReport(
+    simulation.samples as ProCoachPlayerSample[],
+    actions,
+    clientId,
+    Number.isFinite(duration) && duration > 0 ? duration : simulation.totalTicks / 10,
+  );
+}
+
+/**
+ * Longitudinal coaching uses only fully hash-verified engine simulations.
+ * Comparisons are restricted to the largest shared mode + game-type cohort.
+ */
+export function buildLongitudinalCoachReport(
+  matches: readonly LongitudinalMatchInput[],
+): LongitudinalCoachReport {
+  const imported = matches.filter(match => Boolean(match.gameId));
+  const verified = imported
+    .map(input => ({ input, report: buildMatchReport(input) }))
+    .filter((entry): entry is NormalizedMatch => entry.report !== null);
+
+  const groups = new Map<string, NormalizedMatch[]>();
+  for (const entry of verified) {
+    const key = comparableKey(entry.input);
+    groups.set(key, [...(groups.get(key) ?? []), entry]);
+  }
+  const selectedGroup = [...groups.entries()]
+    .sort((a, b) => b[1].length - a[1].length || a[0].localeCompare(b[0]))[0];
+  const comparable = selectedGroup?.[1] ?? [];
+  const groupLabel = comparable[0] ? comparableLabel(comparable[0].input) : "Noch keine vergleichbare Gruppe";
+  const phaseIds = [
+    { id: "early" as const, label: "Early Game" },
+    { id: "mid" as const, label: "Mid Game" },
+    { id: "late" as const, label: "Late Game" },
+  ];
+
+  const phaseSummaries: LongitudinalPhaseSummary[] = phaseIds.map(phase => {
+    const values = comparable.map(entry => entry.report.phases.find(item => item.id === phase.id))
+      .filter((item): item is ProCoachPhase => Boolean(item && item.momentumIndex !== null && item.activeSamples >= 3));
+    const weakestCount = comparable.filter(entry => {
+      const usable = entry.report.phases.filter(item => item.momentumIndex !== null && item.activeSamples >= 3);
+      return usable.length >= 2 && usable.sort((a, b) => (a.momentumIndex ?? 0) - (b.momentumIndex ?? 0))[0]?.id === phase.id;
+    }).length;
+    const strongestCount = comparable.filter(entry => {
+      const usable = entry.report.phases.filter(item => item.momentumIndex !== null && item.activeSamples >= 3);
+      return usable.length >= 2 && usable.sort((a, b) => (b.momentumIndex ?? 0) - (a.momentumIndex ?? 0))[0]?.id === phase.id;
+    }).length;
+    return {
+      ...phase,
+      matchesWithData: values.length,
+      medianTerritoryPerMinute: median(values.map(item => item.territoryPerMinute).filter((value): value is number => value !== null)),
+      medianIncomePerMinute: median(values.map(item => item.incomePerMinute).filter((value): value is number => value !== null)),
+      weakestCount,
+      strongestCount,
+    };
+  });
+
+  const findingGroups = new Map<string, Array<{ input: LongitudinalMatchInput; finding: ProCoachFinding }>>();
+  for (const entry of comparable) {
+    for (const finding of entry.report.findings) {
+      const values = findingGroups.get(finding.id) ?? [];
+      if (!values.some(value => value.input.gameId === entry.input.gameId)) {
+        values.push({ input: entry.input, finding });
+        findingGroups.set(finding.id, values);
+      }
+    }
+  }
+  const recurringFindings: LongitudinalFinding[] = [...findingGroups.entries()]
+    .filter(([, values]) => values.length >= 2)
+    .map(([id, values]) => {
+      const best = [...values].sort((a, b) => priorityRank(a.finding.priority) - priorityRank(b.finding.priority))[0].finding;
+      return {
+        id,
+        title: best.title,
+        priority: best.priority,
+        occurrences: values.length,
+        comparableMatches: comparable.length,
+        frequency: values.length / Math.max(1, comparable.length),
+        trainingRule: best.trainingRule,
+        examples: values.slice(0, 3).map(({ input, finding }) => ({
+          gameId: input.gameId,
+          mapName: input.mapName,
+          evidence: finding.evidence,
+        })),
+      };
+    })
+    .sort((a, b) => b.occurrences - a.occurrences || priorityRank(a.priority) - priorityRank(b.priority))
+    .slice(0, 3);
+
+  const weakest = phaseSummaries.filter(item => item.weakestCount >= 2)
+    .sort((a, b) => b.weakestCount - a.weakestCount)[0];
+  const strongest = phaseSummaries.filter(item => item.strongestCount >= 2)
+    .sort((a, b) => b.strongestCount - a.strongestCount)[0];
+  const confidence: ProCoachConfidence = comparable.length >= 5 ? "high" : comparable.length >= 3 ? "medium" : "low";
+  const status = comparable.length >= 2 ? "ready" : "insufficient-data";
+  const trainingFocus = recurringFindings[0]?.trainingRule
+    ?? (weakest ? `In ${weakest.label} gezielt die Entscheidungen und beobachteten Zustandswechsel vergleichen.` : "Weitere Partien desselben Modus und Spieltyps verifizieren, bevor wiederkehrende Muster bewertet werden.");
+  const message = status === "ready"
+    ? `${comparable.length} vollständig verifizierte Partien aus ${groupLabel} bilden die Vergleichsgrundlage. Nicht verifizierte oder andersartige Partien fließen nicht ein; Karten- und Spielerzahlen können variieren, deshalb sind Raten und wiederkehrende Muster keine direkte Siegprognose.`
+    : `Für belastbare Langzeitmuster werden mindestens zwei vollständig hash-verifizierte Partien desselben Modus und Spieltyps benötigt. Aktuell vergleichbar: ${comparable.length}.`;
+
+  return {
+    status,
+    importedMatches: imported.length,
+    verifiedMatches: verified.length,
+    excludedMatches: imported.length - comparable.length,
+    comparableMatches: comparable.length,
+    comparableGroup: groupLabel,
+    confidence,
+    phaseSummaries,
+    recurringFindings,
+    weakestPhase: weakest ? { id: weakest.id, label: weakest.label, occurrences: weakest.weakestCount } : null,
+    strongestPhase: strongest ? { id: strongest.id, label: strongest.label, occurrences: strongest.strongestCount } : null,
+    trainingFocus,
+    message,
+  };
+}

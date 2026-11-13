@@ -99,3 +99,13 @@ friend's machine must not need Node.js, npm, Git, or a source checkout.
    against the original replay and resulting unit/tile state.
 9. Windows installer and portable ZIP both contain all workers/assets and
    launch on a clean Windows machine without Node/npm installed.
+
+
+## Multi-match verification and longitudinal coaching
+
+- Batch simulations are sequential (one original engine worker at a time), cancellable, retryable and isolated per match.
+- Each result is persisted independently in IndexedDB with its engine compatibility, simulation status, samples and player-specific review. Existing records are re-evaluated against the current engine catalog when the player library is reopened.
+- Longitudinal coaching accepts only fully hash-verified simulations with a resolved profile player identity.
+- Comparisons are grouped by game mode and game type; matches outside the largest comparable group, unsupported engines, failed simulations and unverified replays are disclosed and excluded.
+- A finding is labelled recurring only when the same evidence-backed finding appears in at least two comparable matches. Phase rates are medians and are accompanied by coverage; map and player-count variation is disclosed.
+- Regression coverage: `longitudinal-coach.test.mjs`, `batch-analysis-runner.test.mjs`, plus the Electron/Chromium replay tests for cancellation and IndexedDB persistence across a page refresh.

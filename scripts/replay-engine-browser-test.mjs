@@ -43,31 +43,50 @@ async function loadReplay() {
   return record;
 }
 
-async function loadAssets() {
-  const response = await net.fetch("https://openfront.io/", {
-    headers: {
-      Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
-      "Accept-Language": "en-US,en;q=0.9",
-      "User-Agent": app.userAgentFallback,
-      Referer: "https://openfront.io/",
-      "Sec-Fetch-Dest": "document",
-      "Sec-Fetch-Mode": "navigate",
-      "Sec-Fetch-Site": "none",
-      "Upgrade-Insecure-Requests": "1",
-    },
-    signal: AbortSignal.timeout(30000),
-  });
-  assert.ok(response.ok, `OpenFront asset manifest returned HTTP ${response.status}`);
-  const html = await response.text();
+function parseAssetManifest(html) {
   const marker = html.indexOf("assetManifest:");
-  assert.ok(marker >= 0, "OpenFront asset manifest marker must exist");
+  if (marker < 0) return null;
   const objectText = readBalancedObject(html, marker + "assetManifest:".length);
-  assert.ok(objectText, "OpenFront asset manifest must be complete");
+  if (!objectText) return null;
   const manifest = JSON.parse(objectText);
-  const cdnMatch = html.match(/cdnBase:\s*("(?:\\.|[^"\\])*")/);
+  const cdnMatch = html.match(/cdnBase:\s*("(?:\\\\.|[^"\\\\])*")/);
   const cdnBase = cdnMatch ? JSON.parse(cdnMatch[1]) : "";
-  assert.ok(Object.keys(manifest).length > 0, "Asset manifest must not be empty");
+  if (!Object.keys(manifest).length) return null;
   return { manifest, cdnBase };
+}
+
+async function loadAssets() {
+  // Prefer the upstream versioned shell for the game ID: it serves the
+  // manifest/CDN mapping belonging to the replay's own engine revision.
+  const shellWindow = new BrowserWindow({
+    show: false,
+    width: 900,
+    height: 700,
+    webPreferences: { contextIsolation: true, nodeIntegration: false, sandbox: true },
+  });
+  try {
+    for (const url of [`https://replay.openfront.io/${GAME_ID}`, "https://openfront.io/"]) {
+      try {
+        await shellWindow.loadURL(url);
+        for (let attempt = 0; attempt < 60; attempt++) {
+          const snapshot = await shellWindow.webContents.executeJavaScript(
+            "({ html: document.documentElement?.outerHTML ?? '', url: location.href })",
+          );
+          const assets = parseAssetManifest(snapshot.html);
+          if (assets) {
+            console.log("Loaded versioned asset manifest from", snapshot.url);
+            return assets;
+          }
+          await new Promise((resolve) => setTimeout(resolve, 500));
+        }
+      } catch (error) {
+        console.warn("Browser manifest source failed:", url, String(error));
+      }
+    }
+    throw new Error("Neither the versioned replay shell nor the live OpenFront shell exposed an asset manifest");
+  } finally {
+    shellWindow.destroy();
+  }
 }
 
 async function waitForServer(url) {

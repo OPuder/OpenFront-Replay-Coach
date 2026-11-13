@@ -1,4 +1,4 @@
-import engineVersions from "../../engine-build/engines.json";
+import { REPLAY_ENGINE_CATALOG } from "../main/decoder/ReplayEngineCatalog";
 
 type ReplayEngineModule = typeof import("./engine/replay-engine-bc3e3334c573.js");
 
@@ -10,7 +10,7 @@ const loaders: Record<string, () => Promise<ReplayEngineModule>> = {
 };
 
 export async function loadReplayEngineModule(commit: string): Promise<ReplayEngineModule> {
-  const definition = engineVersions.find((engine) => engine.commit === commit);
+  const definition = REPLAY_ENGINE_CATALOG.find((engine) => engine.commit === commit);
   const load = loaders[commit];
   if (!definition || !load) {
     throw new Error(

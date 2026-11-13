@@ -39,5 +39,7 @@ jobs:
       - name: Verify source pin and engine checkout cannot drift
         run: npm run validate:engine-pin
 
-      - name: Run replay compatibility, record-shape and coaching regressions
+      - name: Verify the actual Europe replay from the public OpenFront API
+        env:
+          OPENFRONT_REPLAY_ID: c2R2JHZgUi
         run: npm run test:coach

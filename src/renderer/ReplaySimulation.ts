@@ -119,7 +119,44 @@ interface ProcessorResponse {
   desync?: boolean;
   message?: string;
 }
-interface EngineAssets { manifest: Record<string,string>; cdnBase: string }
+export interface EngineAssets { manifest: Record<string,string>; cdnBase: string }
+
+function replayMapAssetId(value: unknown): string {
+  const aliases: Record<string, string> = {
+    "tourney 2 teams": "tourney1",
+    "tourney 3 teams": "tourney2",
+    "tourney 4 teams": "tourney3",
+    "tourney 8 teams": "tourney4",
+    "amazon river": "amazonriver",
+    "bab el-mandeb strait": "babelmandebstrait",
+    "world inverted": "worldinverted",
+    "southeast asia": "southeastasia",
+  };
+  const key = String(value ?? "").trim().toLowerCase();
+  return aliases[key] ?? key.replace(/[\\s.()]+/g, "").replace(/[^a-z0-9_-]/g, "");
+}
+
+/**
+ * Resolve map assets from the exact public source commit that produced this
+ * replay. This avoids depending on the live game's mutable bootstrap manifest.
+ */
+export function buildReplayEngineAssets(input: unknown): EngineAssets {
+  const record = unwrapGameRecord(input);
+  const commit = typeof record.gitCommit === "string" ? record.gitCommit.toLowerCase() : "";
+  if (!/^[0-9a-f]{40}$/.test(commit)) {
+    throw new Error("Das Replay enthält keine vollständige OpenFront-Engine-Commit-ID.");
+  }
+  const mapId = replayMapAssetId(record.info?.config?.gameMap ?? record.config?.gameMap);
+  if (!/^[a-z0-9_-]{2,80}$/.test(mapId)) {
+    throw new Error("Die Karten-ID im Replay kann nicht sicher aufgelöst werden.");
+  }
+  const base = `https://raw.githubusercontent.com/openfrontio/OpenFrontIO/${commit}/resources/maps/${mapId}/`;
+  const manifest: Record<string, string> = {};
+  for (const file of ["map.bin", "map4x.bin", "map16x.bin", "manifest.json", "thumbnail.webp"]) {
+    manifest[`maps/${mapId}/${file}`] = base + file;
+  }
+  return { manifest, cdnBase: "" };
+}
 
 export async function simulateReplay(
   record: any,

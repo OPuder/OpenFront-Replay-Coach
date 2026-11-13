@@ -10,6 +10,7 @@ import { buildEngineCoachInsights } from '../main/decoder/EngineCoachInsights';
 import { buildProCoachReport } from '../main/decoder/ProCoachAlgorithm';
 import { buildLongitudinalCoachReport } from '../main/decoder/LongitudinalCoach';
 import { selectPrimaryCoachInsights } from '../main/decoder/CoachInsightSelection';
+import { buildReplayTimeline } from '../main/decoder/CoachTimeline';
 import { runSequentialBatchAnalysis } from './BatchAnalysisRunner';
 import { assessReplayCompatibility } from '../main/decoder/ReplayCompatibility';
 import type { ReplaySimulationResult } from './ReplaySimulation';
@@ -605,6 +606,7 @@ function fmtChartValue(value:number){return Math.round(value).toLocaleString('de
 function selectedPlayerName(players:Array<{name:string;clientID:string|null}>,id:string){return players.find(p=>p.clientID===id)?.name ?? '';}
 function CoachPanel({apiResult,preferredPlayerPublicId,decodedActions,simulationResult,simulationProgress,onPlayerSelect,onExport,onSaveReplayJson,onOpenReplay,fmt}:{preferredPlayerPublicId:string|null;apiResult:ApiImportSummary;decodedActions:DecodedAction[];simulationResult:ReplaySimulationResult|null;simulationProgress:{percent:number;phase:string}|null;onPlayerSelect:(clientId:string)=>void;onExport:()=>void;onSaveReplayJson:()=>void;onOpenReplay:()=>void;fmt:(n:number)=>string}) {
   const [workspaceTab,setWorkspaceTab]=useState<'coach'|'replay'|'analysis'>('coach');
+  const [selectedTimelineId,setSelectedTimelineId]=useState<string|null>(null);
   type TrainingGoal = { title:string; instruction:string; gameId:string; mapName:string; createdAt:string; completed:boolean };
   const [trainingGoal,setTrainingGoal]=useState<TrainingGoal|null>(()=>{try{return JSON.parse(localStorage.getItem('openfront-coach-training-goal')||'null') as TrainingGoal|null;}catch{return null;}});
   React.useEffect(()=>{try{if(trainingGoal)localStorage.setItem('openfront-coach-training-goal',JSON.stringify(trainingGoal));else localStorage.removeItem('openfront-coach-training-goal');}catch{/* Local storage may be unavailable in private browser contexts. */}},[trainingGoal]);
@@ -650,6 +652,9 @@ function CoachPanel({apiResult,preferredPlayerPublicId,decodedActions,simulation
     : null;
 
   const { ordered: orderedEngineInsights, primary: primaryEngineInsights, supporting: supportingEngineInsights } = selectPrimaryCoachInsights(engineInsights);
+  const replayTimeline = buildReplayTimeline(timeline, primaryEngineInsights);
+  const selectedTimelineEntry = replayTimeline.find(event => event.id === selectedTimelineId) ?? replayTimeline[0] ?? null;
+  React.useEffect(()=>{setSelectedTimelineId(null);},[apiResult.gameId]);
   const leadEngineInsight = primaryEngineInsights[0] ?? null;
   const coachLeadTitle = simulationResult?.status === 'verified'
     ? leadEngineInsight?.title ?? 'Keine einzelne Fehlentscheidung belastbar belegt'
@@ -935,10 +940,16 @@ function CoachPanel({apiResult,preferredPlayerPublicId,decodedActions,simulation
     {playerScoped && workspaceTab==='replay' && <section className="replay-workspace">
       <div className="replay-stage">
         <div className="replay-stage-map"><MapPreview map={apiResult.mapName} src={apiResult.previewUrl}/><div className="replay-stage-overlay"><span className="eyebrow">DEINE PARTIE</span><h3>{apiResult.mapName}</h3><p>{apiResult.gameMode} · {apiResult.gameType} · {clock(apiResult.durationSeconds??0)}</p><button className="studio-button primary" onClick={onOpenReplay}><Gamepad2 size={16}/>Original-Replay öffnen</button></div></div>
-        <div className="replay-stage-side"><span className="eyebrow">MATCH-ÜBERSICHT</span><div><b>{fmt(apiResult.playerCount??0)}</b><small>Spieler</small></div><div><b>{fmt(playerActions.length)}</b><small>Deine Aktionen</small></div><div><b>{fmt(timeline.length)}</b><small>Markierte Zeitpunkte</small></div><p>Wähle unten einen Zeitpunkt, um die entsprechende Situation im Original-Replay zu prüfen.</p></div>
+        <div className="replay-stage-side"><span className="eyebrow">MATCH-ÜBERSICHT</span><div><b>{fmt(apiResult.playerCount??0)}</b><small>Spieler</small></div><div><b>{fmt(playerActions.length)}</b><small>Deine Aktionen</small></div><div><b>{fmt(replayTimeline.length)}</b><small>Markierte Zeitpunkte</small></div><p>Wähle einen Moment. Die Coach-Marker zeigen deine wichtigsten Lernpunkte.</p></div>
       </div>
-      <div className="replay-timeline-panel"><div className="overview-heading"><div><span className="eyebrow">MATCH-TIMELINE</span><h3>Wichtige Momente deiner Partie</h3></div></div>
-        {timeline.length ? <div className="event-timeline">{timeline.map((event,i)=><button type="button" className="event-item replay-event-button" key={`${event.kind}-${i}`} onClick={onOpenReplay}><span className="event-marker"><span>{String(i+1).padStart(2,'0')}</span></span><span className="event-copy"><span><b>{event.title}</b><span className="event-type">{event.kind}</span></span><span>{event.detail}</span></span><time>{clock(event.time)}</time></button>)}</div> : <p className="empty-note">Für diese Partie wurden keine markierbaren Ereignisse gefunden.</p>}
+      <div className="replay-timeline-panel"><div className="overview-heading"><div><span className="eyebrow">MATCH-TIMELINE</span><h3>Wichtige Momente deiner Partie</h3></div><span className="source-label">{primaryEngineInsights.length} priorisierte Coach-Marker</span></div>
+        {replayTimeline.length ? <div className="event-timeline">{replayTimeline.map((event,i)=><button type="button" aria-pressed={selectedTimelineEntry?.id===event.id} className={`event-item replay-event-button ${selectedTimelineEntry?.id===event.id?'is-selected':''} ${event.insight?'is-coach-event':''}`} key={event.id} onClick={()=>setSelectedTimelineId(event.id)}><span className="event-marker"><span>{String(i+1).padStart(2,'0')}</span></span><span className="event-copy"><span><b>{event.title}</b><span className="event-type">{event.kind}</span></span><span>{event.detail}</span></span><time>{clock(event.time)}</time></button>)}</div> : <p className="empty-note">Für diese Partie wurden keine markierbaren Ereignisse gefunden.</p>}
+        {selectedTimelineEntry && <article className="replay-event-detail">
+          <div className="replay-event-detail-main"><span className="eyebrow">{selectedTimelineEntry.kind} · AUSGEWÄHLTER ZEITPUNKT</span><h4>{selectedTimelineEntry.title}</h4><p>{selectedTimelineEntry.detail}</p>
+            {selectedTimelineEntry.insight && <><div className="replay-event-evidence"><b>Replay-Beleg</b><span>{selectedTimelineEntry.insight.evidence}</span></div><div className="replay-event-action"><b>Nächster Schritt</b><span>{selectedTimelineEntry.insight.nextStep}</span></div><small>{selectedTimelineEntry.insight.limitation}</small></>}
+          </div>
+          <div className="replay-event-detail-side"><strong>{clock(selectedTimelineEntry.time)}</strong><button type="button" className="studio-button primary" onClick={onOpenReplay}><Gamepad2 size={15}/>Original-Replay öffnen</button><small>Der Original-Viewer startet am Anfang. Springe dort mit seiner Zeitleiste zu diesem Zeitpunkt.</small></div>
+        </article>}
       </div>
     </section>}
     {playerScoped && workspaceTab==='analysis' && analysisTab==='overview' && <section id="match-overview" className="overview-block">

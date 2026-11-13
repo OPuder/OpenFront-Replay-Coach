@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { buildProCoachReport } from '../src/main/decoder/ProCoachAlgorithm.ts';
 import { selectPrimaryCoachInsights } from '../src/main/decoder/CoachInsightSelection.ts';
+import { buildReplayTimeline } from '../src/main/decoder/CoachTimeline.ts';
 
 const player=(overrides={})=>({clientID:'p1',alive:true,tiles:100,gold:500,goldEarned:1000,troops:300,outgoingAttackDetails:[],incomingAttackDetails:[],allies:0,betrayals:0,unitCounts:{City:2},...overrides});
 const sample=(tick,p)=>({tick,frame:tick,players:[player(p)]});
@@ -87,4 +88,36 @@ test('match coach can promote a verified strength without promoting generic obse
   const result = selectPrimaryCoachInsights(insights);
   assert.deepEqual(result.primary.map(item => item.id), ['strength']);
   assert.deepEqual(result.supporting.map(item => item.id), ['observation']);
+});
+
+
+test('replay timeline merges recorded events and prioritized coach moments in game-time order', () => {
+  const events = [
+    { time: 90, title: 'Build', detail: 'First build', kind: 'Bau', turn: 900 },
+    { time: 10, title: 'Attack', detail: 'First attack', kind: 'Angriff', turn: 100 },
+  ];
+  const insights = [
+    { id: 'review-1', kind: 'review', title: 'Front overload', summary: 'Too many fronts', evidence: '3 attacks', nextStep: 'Keep reserve', seconds: 30, limitation: 'Other events may contribute.' },
+    { id: 'strength-1', kind: 'strength', title: 'Strong defense', summary: 'Held the line', evidence: 'No territory loss', nextStep: 'Repeat the setup', seconds: 20, limitation: 'Only observed during this window.' },
+    { id: 'no-time', kind: 'observation', title: 'Overall result', summary: 'Net growth', evidence: 'Start/end', nextStep: 'Review phases', seconds: null, limitation: 'No exact moment.' },
+  ];
+  const timeline = buildReplayTimeline(events, insights);
+  assert.deepEqual(timeline.map(item => item.id), [
+    'event-1',
+    'coach-strength-1',
+    'coach-review-1',
+    'event-0',
+  ]);
+  assert.equal(timeline[1].kind, 'Stärke');
+  assert.equal(timeline[1].insight?.nextStep, 'Repeat the setup');
+  assert.equal(timeline[2].kind, 'Coach');
+  assert.equal(timeline[2].time, 30);
+});
+
+test('replay timeline keeps recorded moments before coach markers at the same timestamp', () => {
+  const timeline = buildReplayTimeline(
+    [{ time: 30, title: 'Recorded', detail: 'Recorded event', kind: 'Bau', turn: 300 }],
+    [{ id: 'coach', kind: 'review', title: 'Coach', summary: 'Coach event', evidence: 'Evidence', nextStep: 'Action', seconds: 30, limitation: 'Limit' }],
+  );
+  assert.deepEqual(timeline.map(item => item.id), ['event-0', 'coach-coach']);
 });

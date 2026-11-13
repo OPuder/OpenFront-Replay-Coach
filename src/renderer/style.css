@@ -1244,3 +1244,25 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{ou
 .studio-button.primary:hover{filter:brightness(1.06);box-shadow:0 10px 28px #3ba5ee44}
 .studio-button.subtle{background:#172b46;border-color:#385a7e;color:#dcecff}
 .studio-button.subtle:hover{background:#203b5e;border-color:#5d8fbe}
+
+.replay-event-button{border-radius:11px;transition:background .16s ease,border-color .16s ease}
+.replay-event-button.is-selected{background:linear-gradient(100deg,#173c5b,#122a43);box-shadow:inset 3px 0 #75d9ff}
+.replay-event-button.is-selected .event-marker{border-color:#74d5ff;color:#e8f9ff;background:#174b6c}
+.replay-event-button.is-coach-event .event-type{color:#8de0ff}
+.replay-event-detail{display:grid;grid-template-columns:minmax(0,1fr) minmax(190px,240px);gap:18px;margin-top:16px;padding:18px;border:1px solid #376184;border-radius:14px;background:linear-gradient(145deg,#15334f,#0d1d31)}
+.replay-event-detail-main h4{margin:7px 0 8px;color:#f0f7ff;font-size:17px}
+.replay-event-detail-main>p{margin:0;color:#c5d7e8;font-size:12px;line-height:1.6}
+.replay-event-evidence,.replay-event-action{display:grid;gap:5px;margin-top:11px;padding:10px 12px;border:1px solid #2c4d6b;border-radius:9px;background:#0a1a2b}
+.replay-event-evidence b,.replay-event-action b{color:#8dcdf3;font-size:10px;text-transform:uppercase;letter-spacing:.08em}
+.replay-event-evidence span,.replay-event-action span{color:#d1e1ef;font-size:11px;line-height:1.55}
+.replay-event-action{border-color:#39719a;background:#102a40}
+.replay-event-action b{color:#8de0ff}
+.replay-event-detail-main>small{display:block;margin-top:10px;color:#8ea7bf;font-size:10px;line-height:1.55}
+.replay-event-detail-side{display:flex;flex-direction:column;align-items:flex-start;gap:10px;padding-left:16px;border-left:1px solid #2b4a68}
+.replay-event-detail-side>strong{color:#8edbff;font:800 24px 'Cascadia Code',monospace}
+.replay-event-detail-side>small{color:#92abc3;font-size:10px;line-height:1.55}
+@media(max-width:760px){
+  .replay-event-detail{grid-template-columns:1fr;padding:14px}
+  .replay-event-detail-side{padding:12px 0 0;border-left:0;border-top:1px solid #2b4a68}
+  .replay-event-detail-side .studio-button{width:100%;justify-content:center}
+}

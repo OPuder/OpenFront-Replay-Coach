@@ -1,0 +1,43 @@
+name: Replay compatibility regression gates
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: replay-compatibility-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  replay-compatibility:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+        with:
+          submodules: false
+
+      - name: Check out the exact public OpenFront engine
+        run: git submodule update --init --depth 1 vendor/OpenFrontIO
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24.15.0"
+          cache: npm
+
+      - name: Install Coach dependencies
+        run: npm ci
+
+      - name: Verify source pin and engine checkout cannot drift
+        run: npm run validate:engine-pin
+
+      - name: Run replay compatibility, record-shape and coaching regressions
+        run: npm run test:coach

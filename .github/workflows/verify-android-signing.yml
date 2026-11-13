@@ -85,8 +85,6 @@ jobs:
           npx cap sync android
           npx capacitor-assets generate --android --iconBackgroundColor "#0b1320" --splashBackgroundColor "#0b1320"
       - name: Set Android version
-        env:
-          RELEASE_VERSION: ${{ fromJSON('"' + github.event.repository.default_branch + '"') }}
         run: node scripts/set-android-version.mjs "$(node -p "require('./package.json').version")"
       - name: Configure permanent signing and build release APK
         env:

@@ -12,6 +12,7 @@ declare global {
       samples: number;
       totalTicks: number;
       playerReview: unknown;
+      simulation: unknown;
     }>;
   }
 }
@@ -34,6 +35,7 @@ window.__runReplayTest = async (record) => {
     samples: result.samples.length,
     totalTicks: result.totalTicks,
     playerReview: result.playerReview,
+    simulation: result,
   };
 };
 document.getElementById("status")!.textContent = "Replay engine test harness ready";

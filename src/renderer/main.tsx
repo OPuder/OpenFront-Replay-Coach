@@ -558,7 +558,7 @@ function CoachPanel({apiResult,preferredPlayerPublicId,decodedActions,simulation
       </nav>
     </div>}
     {playerScoped && workspaceTab==='coach' && <section id="match-coach-insights" className="coach-insights-section">
-      <div className="overview-heading"><div><span className="eyebrow">DEIN COACH</span><h3>Dein Coaching</h3></div></div>
+      <div className="coach-page-heading"><div><span className="eyebrow">MATCH COACH</span><h3>Dein Spiel. Dein nächster Schritt.</h3></div><span className="coach-live-pill">{simulationResult?.status === 'verified' ? 'ANALYSE VERIFIZIERT' : 'ANALYSE IN VORBEREITUNG'}</span></div>
 
       <section className="coach-lead-card coach-compact-card coach-hero-redesign">
         <div className="coach-lead-top"><span>{leadEngineReview ? 'DEIN FOKUS FÜR DIE NÄCHSTE PARTIE' : 'COACH-STATUS'}</span>{leadEngineReview?.seconds !== null && leadEngineReview?.seconds !== undefined && <time>{clock(leadEngineReview.seconds)}</time>}</div>
@@ -597,16 +597,18 @@ function CoachPanel({apiResult,preferredPlayerPublicId,decodedActions,simulation
         </section>
       </details>}
       {simulationResult?.status === 'verified' && <section className="coach-phase-profile coach-phase-details coach-phase-redesign"><div className="coach-phase-inner">
-        <div className="coach-engine-findings-heading"><span className="coach-report-label">PHASENVERGLEICH</span><b>Wie hat sich dein Spielverlauf verändert?</b><p>Die Raten machen unterschiedlich lange Phasen vergleichbar. Die Einordnung ist nur ein Vergleich deiner drei Phasen in dieser Partie, keine allgemeine Spielstärke.</p></div>
+        <div className="coach-engine-findings-heading"><span className="coach-report-label">DEINE PERFORMANCE</span><b>In welcher Phase lief es am besten?</b><p>Early, Mid und Late Game im direkten Vergleich.</p></div>
         {!alivePlayerSamples.length && <p className="coach-no-decision">Für diesen Spieler wurde kein aktiver Spielzustand erkannt. Deshalb zeigen wir weder eine Ausscheidungszeit noch Leistungsraten an. Prüfe die Spielerauswahl oder lade das Replay erneut.</p>}
-        <div className="coach-phase-grid">{ratedPhases.map(phase=><article className="coach-phase-card" key={phase.id}>
-          <span>{phase.label}</span><b>{phase.rating}</b><small>{phase.description}</small>
-          <div><strong>{phase.territoryRate === null ? 'Nicht messbar' : `${phase.territoryRate.toFixed(1).replace('.',',')}`}</strong><small>Gebiete pro Minute</small></div>
-          <div><strong>{phase.incomeRate === null ? 'Nicht messbar' : `${Math.round(phase.incomeRate).toLocaleString('de-DE')}`}</strong><small>Brutto-Gold pro Minute</small></div>
-          <div><strong>{phase.attackCount}</strong><small>Angriffsbefehle</small></div>
-          {phase.strengthLabels.length > 0 && <p><strong>Das lief gut:</strong> {phase.strengthLabels.join(' · ')}</p>}
-          <p>{phase.targetPressureWins > 0 ? `${phase.targetPressureWins} Ziele verloren innerhalb von 30 Sekunden nach einem deiner Befehle Gebiet. Das ist ein zeitlicher Zusammenhang, kein alleiniger Erfolgsnachweis.` : 'Kein entsprechender Ziel-Gebietsverlust im erfassten 30-Sekunden-Fenster.'}</p>
-          {phase.id === 'late' && playerEliminatedAtSeconds !== null && <p className="coach-phase-elimination">Der ausgewählte Spieler ist bei {clock(playerEliminatedAtSeconds)} ausgeschieden. Zustände danach werden nicht als seine Leistung gewertet.</p>}
+        <div className="coach-phase-grid">{ratedPhases.map(phase=><article className={`coach-phase-card coach-phase-card-v3 phase-${phase.id}`} key={phase.id}>
+          <div className="coach-phase-card-top"><span>{phase.label}</span><b>{phase.assessment === 'Schwächste Phase' ? 'FOKUS' : phase.assessment === 'Stärkste Phase' ? 'STÄRKE' : phase.assessment === 'Nicht sicher bewertbar' ? 'ZU WENIG DATEN' : 'AUSGEWOGEN'}</b></div>
+          <div className="coach-phase-metrics-v3">
+            <div><strong>{phase.territoryRate === null ? '–' : phase.territoryRate.toFixed(1).replace('.',',')}</strong><small>Gebiete / Min.</small></div>
+            <div><strong>{phase.incomeRate === null ? '–' : Math.round(phase.incomeRate).toLocaleString('de-DE')}</strong><small>Gold / Min.</small></div>
+            <div><strong>{phase.attackCount}</strong><small>Angriffe</small></div>
+          </div>
+          <p className="coach-phase-one-line">{phase.hint}</p>
+          {phase.id === 'late' && playerEliminatedAtSeconds !== null && <small className="coach-phase-elimination">Ausgeschieden bei {clock(playerEliminatedAtSeconds)}</small>}
+          <details><summary>Was steckt dahinter?</summary><p>{phase.description}</p>{phase.strengthLabels.length > 0 && <p><strong>Stärken:</strong> {phase.strengthLabels.join(' · ')}</p>}<p>{phase.targetPressureWins > 0 ? `${phase.targetPressureWins} Ziele verloren innerhalb von 30 Sekunden nach einem deiner Befehle Gebiet. Zeitlicher Zusammenhang, kein alleiniger Erfolgsnachweis.` : 'Kein entsprechender Ziel-Gebietsverlust im erfassten 30-Sekunden-Fenster.'}</p></details>
         </article>)}</div>
         <small className="coach-phase-note">Die Phasenwerte zeigen beobachtete Raten, keine Ursache oder optimale Strategie. Ein Gebietszuwachs nach einem Angriff beweist nicht, dass dieser Befehl ihn verursacht hat. Bei zu wenigen Stichproben wird keine Einstufung vorgenommen.</small>
       </div></section>}

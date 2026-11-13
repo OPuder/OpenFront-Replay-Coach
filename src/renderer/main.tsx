@@ -174,6 +174,8 @@ function App() {
     const runId=++batchAnalysisRunId.current;
     const controller=new AbortController();
     batchAnalysisAbort.current=controller;
+    const candidateIds=new Set(candidates.map(item=>item.game.gameId));
+    setBatchMatches(current=>current.map(item=>candidateIds.has(item.game.gameId)&&item.analysisStatus!=='verified'?{...item,analysisStatus:'queued'}:item));
     setBatchAnalysisBusy(true); setError('');
     setBatchAnalysisProgress({done:0,total:candidates.length,gameId:'',percent:0,phase:'Analyse wird vorbereitet'});
     let done=0;

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
-import { app, BrowserWindow, net } from "electron";
+import { app, BrowserWindow } from "electron";
 
 const GAME_ID = process.env.OPENFRONT_REPLAY_ID ?? "c2R2JHZgUi";
 const EXPECTED_COMMIT = "8b5d071eed95f07c701b32e4c64e95b03f8577c1";

@@ -367,6 +367,19 @@ function App() {
   const winRate = completedGames ? wins / completedGames * 100 : 0;
   const avgDuration = loadedGames.filter(g => Number.isFinite(g.durationSeconds) && (g.durationSeconds ?? 0) > 0).reduce((sum,g)=>sum+(g.durationSeconds ?? 0),0) / Math.max(1, loadedGames.filter(g => (g.durationSeconds ?? 0) > 0).length);
   const modeStats = Object.entries(loadedGames.reduce((acc:Record<string,number>,g)=>{const key=g.mode ?? 'Unbekannt';acc[key]=(acc[key]??0)+1;return acc;},{})).sort((a,b)=>b[1]-a[1]).slice(0,5);
+  const importedBatchMatches=batchMatches.filter(item=>Boolean(item.result));
+  const longitudinalReport=React.useMemo(()=>buildLongitudinalCoachReport(importedBatchMatches.map(item=>({
+    gameId:item.game.gameId,
+    mapName:String(item.game.map??item.result?.mapName??'Unbekannt'),
+    mode:String(item.game.mode??'Unbekannt'),
+    type:String(item.game.type??'Unbekannt'),
+    playedAt:item.game.start??null,
+    durationSeconds:item.game.durationSeconds??null,
+    analysisStatus:item.analysisStatus??(item.status==='engine-mismatch'?'unsupported':'pending'),
+    simulation:item.simulation??null,
+  }))),[batchMatches]);
+  const selectedImportedMatches=batchMatches.filter(item=>selectedGameIds.includes(item.game.gameId)&&Boolean(item.result));
+  const selectedPendingAnalysisCount=selectedImportedMatches.filter(item=>item.analysisStatus!=='verified'||item.simulation?.status!=='verified').length;
   const recentGames = [...loadedGames].filter(g=>g.start).sort((a,b)=>new Date(b.start!).getTime()-new Date(a.start!).getTime()).slice(0,10);
   const resultLabel = (result?:string) => result === 'victory' ? 'Sieg' : result === 'defeat' ? 'Niederlage' : 'Unvollständig';
   const size = (n: number) => n >= 1024 ** 3 ? `${(n / 1024 ** 3).toFixed(2)} GB` : `${(n / 1024 ** 2).toFixed(1)} MB`;

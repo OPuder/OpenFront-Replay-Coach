@@ -164,9 +164,15 @@ export async function simulateReplay(
   onProgress: (percent: number, phase: string) => void,
   sampleEvery = 50,
   preferredClientId: string | null = null,
+  signal?: AbortSignal,
 ): Promise<ReplaySimulationResult> {
   record = unwrapGameRecord(record);
   const engineModule = await loadReplayEngineModule(String(record.gitCommit ?? ""));
+  if (signal?.aborted) {
+    const error = new Error("Replay-Analyse abgebrochen.");
+    error.name = "AbortError";
+    throw error;
+  }
   const { createReplayWorkers, ReplayReader, gunzipInBrowser } = engineModule;
   const workers = createReplayWorkers();
   const channel = new MessageChannel();
@@ -287,7 +293,9 @@ export async function simulateReplay(
 
   const completion = new Promise<ReplaySimulationResult>((resolve, reject) => {
     let settled = false;
+    let abortHandler: (() => void) | null = null;
     const cleanup = () => {
+      if (abortHandler) signal?.removeEventListener("abort", abortHandler);
       workers.engine.terminate();
       workers.processor.terminate();
       channel.port2.close();
@@ -296,6 +304,16 @@ export async function simulateReplay(
       if (settled) return;
       settled = true; cleanup(); reject(error);
     };
+    abortHandler = () => {
+      const error = new Error("Replay-Analyse abgebrochen.");
+      error.name = "AbortError";
+      fail(error);
+    };
+    signal?.addEventListener("abort", abortHandler, { once: true });
+    if (signal?.aborted) {
+      abortHandler();
+      return;
+    }
     workers.processor.addEventListener("error", (e: ErrorEvent) => fail(new Error(e.message || "Replay-Prozessor fehlgeschlagen")));
     workers.engine.addEventListener("error", (e: ErrorEvent) => fail(new Error(e.message || "OpenFront-Engine fehlgeschlagen")));
     workers.processor.addEventListener("message", async (event: MessageEvent<ProcessorResponse>) => {
@@ -538,6 +556,7 @@ export async function simulateReplay(
     });
   });
 
+  if (signal?.aborted) return completion;
   workers.processor.postMessage({
     record,
     cdnBase: assets.cdnBase,

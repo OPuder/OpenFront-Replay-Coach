@@ -415,6 +415,224 @@ export function buildEngineCoachInsights(
   }
 
 
+  // Positive evidence: an own-territory increase and target-territory decrease
+  // in the same short window, with no other attacker recorded before the order.
+  // This is an observed outcome pattern, not a causal success claim.
+  const cleanAttackGrowth = targetedAttacks.filter(action =>
+    action.delta30s !== null &&
+    action.targetDelta30s !== null &&
+    action.delta30s.tiles > 0 &&
+    action.targetDelta30s.tiles < 0 &&
+    action.targetPressureBefore !== null &&
+    action.targetPressureBefore.otherAttackerCount === 0
+  );
+  if (cleanAttackGrowth.length > 0) {
+    findings.push({
+      id: "attack-territory-conversion",
+      kind: "strength",
+      priority: "medium",
+      title: "Gebietszuwachs bei eigenen Angriffen beobachtet",
+      summary: `Bei ${cleanAttackGrowth.length} Angriffsfenstern stieg dein eigener Gebietsbestand, während das jeweilige Ziel innerhalb von 30 Sekunden Gebiet verlor. Vor diesen Befehlen war kein anderer Angreifer auf das Ziel erfasst.`,
+      evidence: cleanAttackGrowth.slice(0, 4).map(action =>
+        `${clock(action.seconds)} → ${action.targetName ?? action.targetId}: eigenes Gebiet +${action.delta30s!.tiles.toLocaleString("de-DE")} · Zielgebiet ${action.targetDelta30s!.tiles.toLocaleString("de-DE")} · eigener Truppenbestand ${action.delta30s!.troops > 0 ? "+" : ""}${action.delta30s!.troops.toLocaleString("de-DE")}`
+      ).join(" · "),
+      decision: cleanAttackGrowth[0].label + (cleanAttackGrowth[0].targetName ? ` auf ${cleanAttackGrowth[0].targetName}` : ""),
+      alternative: "Vergleiche diese Ziele mit Angriffen ohne Gebietszuwachs: Welche Unterschiede bei Zielstärke, Timing und eigener Reserve waren sichtbar?",
+      nextStep: "Markiere diese Situationen als positives Muster. Prüfe im Replay, welche Zielwahl und Truppenreserve dabei zusammenkamen, und teste dieselbe Vorbereitung in einer weiteren Partie.",
+      seconds: cleanAttackGrowth[0].seconds,
+      confidence: "medium",
+      limitation: "Die Veränderungen liegen im selben 30-Sekunden-Fenster; andere zeitgleiche Ereignisse können mitwirken. Kein anderer Angreifer war vor dem Befehl erfasst, spätere Unterstützung oder passive Gebietsänderungen sind damit aber nicht ausgeschlossen.",
+    });
+  }
+
+  // Positive defensive evidence: incoming attacks were recorded, and the
+  // player's territory was stable or higher in a later 10–30 second sample.
+  // This describes resilience in the observed state, not proven interception.
+  if (review.clientID && samples.length > 1) {
+    const ordered = [...samples].sort((a, b) => a.frame - b.frame);
+    const defensiveWindows: Array<{
+      seconds: number;
+      durationSeconds: number;
+      incomingAttacks: number;
+      incomingTroops: number;
+      territoryDelta: number;
+      troopDelta: number;
+    }> = [];
+    let nextAllowedFrame = -1;
+
+    for (let i = 0; i < ordered.length; i++) {
+      const beforeSample = ordered[i];
+      if (beforeSample.frame < nextAllowedFrame) continue;
+      const ownBefore = beforeSample.players.find(player => player.clientID === review.clientID);
+      if (!ownBefore?.alive || ownBefore.incomingAttacks <= 0) continue;
+
+      let afterSample: EngineStateSample | null = null;
+      for (let j = i + 1; j < ordered.length; j++) {
+        const elapsedFrames = ordered[j].frame - beforeSample.frame;
+        if (elapsedFrames > 300) break;
+        if (elapsedFrames >= 100) {
+          afterSample = ordered[j];
+          break;
+        }
+      }
+      if (!afterSample) continue;
+      const ownAfter = afterSample.players.find(player => player.clientID === review.clientID);
+      if (!ownAfter?.alive || ownAfter.tiles < ownBefore.tiles) continue;
+      const incomingTroops = ownBefore.incomingAttackDetails.reduce((sum, attack) => sum + Math.max(0, attack.troops), 0);
+      if (incomingTroops <= 0) continue;
+
+      const durationFrames = afterSample.frame - beforeSample.frame;
+      defensiveWindows.push({
+        seconds: beforeSample.frame / 10,
+        durationSeconds: Math.round(durationFrames / 10),
+        incomingAttacks: ownBefore.incomingAttacks,
+        incomingTroops,
+        territoryDelta: ownAfter.tiles - ownBefore.tiles,
+        troopDelta: ownAfter.troops - ownBefore.troops,
+      });
+      nextAllowedFrame = afterSample.frame;
+    }
+
+    if (defensiveWindows.length > 0) {
+      findings.push({
+        id: "defensive-resilience",
+        kind: "strength",
+        priority: "medium",
+        title: "Gebiet trotz eingehendem Angriffsdruck gehalten",
+        summary: `In ${defensiveWindows.length} überprüften Zeitfenstern waren eingehende Angriffe erfasst; dein Gebietsbestand blieb über mindestens 10 Sekunden stabil oder stieg.`,
+        evidence: defensiveWindows.slice(0, 4).map(window =>
+          `${clock(window.seconds)} · ${window.incomingAttacks} eingehende Angriffe / ${window.incomingTroops.toLocaleString("de-DE")} Truppen · Gebiet ${window.territoryDelta > 0 ? "+" : ""}${window.territoryDelta.toLocaleString("de-DE")} · Truppen ${window.troopDelta > 0 ? "+" : ""}${window.troopDelta.toLocaleString("de-DE")}`
+        ).join(" · "),
+        decision: "Dein Gebietsbestand blieb in diesen Fenstern trotz registrierter eingehender Angriffe stabil oder wuchs.",
+        alternative: "Vergleiche diese Situationen mit späteren Gebietsverlusten: Waren deine Reserven, Frontverteilung oder Verbündeten-Unterstützung anders?",
+        nextStep: "Prüfe diese Zeitpunkte auf der Karte und notiere, welche Positionierung oder Reserve du beibehalten solltest, wenn du erneut unter Druck gerätst.",
+        seconds: defensiveWindows[0].seconds,
+        confidence: "medium",
+        limitation: "Eingehende Angriffsobjekte können noch unterwegs sein. Stabiler Gebietsbestand beweist nicht, dass du Angriffe selbst abgewehrt hast; Reisezeit, Gelände, Verbündete und andere Ereignisse wirken mit.",
+      });
+    }
+  }
+
+  const attackCommands = actionReviews.filter(action => action.type === "attack" && action.ownFrontContextBefore);
+  if (attackCommands.length > 0) {
+    const attacksAgainstPressuredTargets = attackCommands.filter(action => (action.targetPressureBefore?.otherAttackerCount ?? 0) > 0);
+    const attacksWithExistingTargets = attackCommands.filter(action => (action.ownFrontContextBefore?.activeTargetCount ?? 0) > 0);
+    const attacksUnderIncomingPressure = attackCommands.filter(action => (action.ownFrontContextBefore?.incomingAttackCount ?? 0) > 0);
+    const heavilyLoadedCommands = attackCommands.filter(action =>
+      (action.ownFrontContextBefore?.activeTargetCount ?? 0) >= 2 ||
+      (action.ownFrontContextBefore?.incomingAttackCount ?? 0) >= 2
+    );
+    const pressureEvidence = attacksAgainstPressuredTargets.slice(0, 4).map(action => {
+      const pressure = action.targetPressureBefore!;
+      return `${clock(action.seconds)} → ${action.targetName ?? action.targetId}: ${pressure.otherAttackerCount} andere Angreifer / ${pressure.otherAttackCount} Angriffe mit ${pressure.otherAttackTroops.toLocaleString("de-DE")} Truppen anderer Spieler bereits unterwegs`;
+    });
+    const frontEvidence = attacksWithExistingTargets.slice(0, 4).map(action => {
+      const context = action.ownFrontContextBefore!;
+      return `${clock(action.seconds)}: bereits ${context.activeTargetCount} andere Angriffsziel(e), ${context.outgoingAttackCount} Angriffe mit ${context.outgoingAttackTroops.toLocaleString("de-DE")} Truppen gebunden${context.incomingAttackCount ? ` · selbst unter ${context.incomingAttackCount} eingehenden Angriffen` : ""}`;
+    });
+    findings.push({
+      id: "front-pressure-context",
+      kind: heavilyLoadedCommands.length > 0 ? "review" : "observation",
+      title: "Angriffe im Kontext deiner aktiven Fronten",
+      summary: `Vor ${attacksAgainstPressuredTargets.length} von ${attackCommands.length} Angriffsbefehlen wurde das Ziel bereits von anderen Spielern angegriffen. Bei ${attacksWithExistingTargets.length} Befehlen hattest du schon andere Angriffziele aktiv; bei ${attacksUnderIncomingPressure.length} Befehlen kamen gleichzeitig Angriffe auf dich herein.`,
+      evidence: [...pressureEvidence, ...frontEvidence].join(" · ") || "Für die erfassten Angriffsbefehle war kein zusätzlicher Frontdruck vor dem Befehl dokumentiert.",
+      nextStep: "Prüfe diese Zeitpunkte zusammen mit dem Truppenbestand und den Zielveränderungen. Ein bereits bedrängter Gegner kann eine Gelegenheit sein; mehrere eigene Ziele oder eingehende Angriffe können zugleich deine verfügbaren Reserven binden.",
+      seconds: heavilyLoadedCommands[0]?.seconds ?? attacksAgainstPressuredTargets[0]?.seconds ?? attacksWithExistingTargets[0]?.seconds ?? attacksUnderIncomingPressure[0]?.seconds ?? null,
+      limitation: "Die Werte beschreiben aktive Angriffsobjekte unmittelbar vor deinem Befehl. Sie belegen weder räumlich getrennte Fronten noch Reichweite, Siegchance oder ob ein anderer Angreifer tatsächlich Gebiet erobert hat.",
+    });
+  }
+
+  const builds = actionReviews.filter((action) => action.type === "build_unit" && action.delta30s);
+  if (builds.length > 0) {
+    const goldRecovered = builds.filter((action) => action.delta30s!.gold >= 0).length;
+    const tileGrowth = builds.filter((action) => action.delta30s!.tiles > 0).length;
+    findings.push({
+      id: "build-recovery-windows",
+      kind: "observation",
+      title: "Gold- und Gebietsverlauf nach Bauentscheidungen",
+      summary: `Bei ${goldRecovered} von ${builds.length} Bauentscheidungen lag dein Goldbestand 30 Sekunden später wieder mindestens auf dem Stand vor dem Bau; bei ${tileGrowth} Bau-Fenstern stieg zugleich dein Gebietsbestand.`,
+      evidence: builds.slice(0, 5).map((action) =>
+        `${clock(action.seconds)} · Gold ${action.delta30s!.gold > 0 ? "+" : ""}${action.delta30s!.gold.toLocaleString("de-DE")} · Gebiet ${action.delta30s!.tiles > 0 ? "+" : ""}${action.delta30s!.tiles.toLocaleString("de-DE")}`
+      ).join(" · "),
+      nextStep: "Vergleiche Städte, Fabriken, Häfen und Verteidigungsbauten getrennt. Achte darauf, ob du nach dem Bau noch genug Gold und Truppen für die nächste Expansion hattest.",
+      seconds: builds[0]?.seconds ?? null,
+      limitation: "Die 30-Sekunden-Änderung ist kein ROI und keine isolierte Baukostenmessung. Produktion, passive Einnahmen, Kämpfe und andere Aktionen beeinflussen den Goldbestand.",
+    });
+  }
+
+  // Detect review windows where the selected player held a troop advantage
+  // over the strongest living opponent, but had no active outgoing/incoming
+  // engagement and no territory growth. This is a review cue, not proof that
+  // an enemy or neutral target was reachable.
+  if (review.clientID && samples.length > 2) {
+    const ordered = [...samples].sort((a, b) => a.frame - b.frame);
+    let windowStart: EngineStateSample | null = null;
+    let lastQualifying: EngineStateSample | null = null;
+    let lastFrame = -1;
+    let ratioAtStart = 0;
+    const reserveWindows: Array<{ from: number; to: number; seconds: number; ratio: number }> = [];
+    const finishWindow = () => {
+      if (!windowStart || !lastQualifying) return;
+      const durationTicks = lastQualifying.frame - windowStart.frame;
+      if (durationTicks >= 300) {
+        reserveWindows.push({
+          from: windowStart.frame / 10,
+          to: lastQualifying.frame / 10,
+          seconds: durationTicks / 10,
+          ratio: ratioAtStart,
+        });
+      }
+    };
+    for (const sample of ordered) {
+      const own = sample.players.find((player) => player.clientID === review.clientID);
+      if (!own?.alive) {
+        finishWindow();
+        windowStart = null;
+        lastQualifying = null;
+        lastFrame = -1;
+        continue;
+      }
+      const rivals = sample.players.filter((player) => player.clientID !== review.clientID && player.alive);
+      const strongestRival = rivals.reduce((max, player) => Math.max(max, player.troops), 0);
+      const troopAdvantage = strongestRival > 0 && own.troops >= strongestRival * 1.3;
+      const noEngagement = own.outgoingAttacks === 0 && own.incomingAttacks === 0;
+      const previousOwn = lastQualifying?.players.find((player) => player.clientID === review.clientID);
+      const territoryStable = !previousOwn || own.tiles <= previousOwn.tiles;
+      const qualifies = troopAdvantage && noEngagement && territoryStable;
+      if (qualifies) {
+        if (!windowStart || sample.frame - lastFrame > 100) {
+          finishWindow();
+          windowStart = sample;
+          ratioAtStart = strongestRival > 0 ? own.troops / strongestRival : 0;
+        }
+        lastQualifying = sample;
+        lastFrame = sample.frame;
+      } else {
+        finishWindow();
+        windowStart = null;
+        lastQualifying = null;
+        lastFrame = -1;
+      }
+    }
+    finishWindow();
+    const topWindows = reserveWindows.sort((a, b) => b.seconds - a.seconds).slice(0, 3);
+    if (topWindows.length) {
+      findings.push({
+        id: "troop-advantage-windows",
+        kind: "review",
+        title: "Truppenüberlegenheit ohne laufendes Gefecht",
+        summary: `Die Engine zeigt ${topWindows.length} längere Beobachtungsfenster mit mindestens 30 % mehr Truppen als der stärkste lebende Gegner, ohne laufende eigene oder eingehende Angriffe und ohne beobachteten Gebietszuwachs.`,
+        evidence: topWindows.map((window) =>
+          `${clock(window.from)}–${clock(window.to)} · ca. ${Math.round(window.ratio * 100)} % der gegnerischen Truppenstärke`
+        ).join(" · "),
+        nextStep: "Prüfe auf der Karte, ob in diesen Phasen erreichbare neutrale Gebiete, schwächere Nachbarn oder offene Küstenziele vorhanden waren – oder ob die Reserve für Verteidigung nötig war.",
+        seconds: topWindows[0].from,
+        limitation: "Truppenstärke allein beweist keine erreichbare Angriffsgelegenheit. Entfernung, Barrieren, Diplomatie und gegnerische Verstärkungen sind in diesem Hinweis nicht vollständig bewertet.",
+      });
+    }
+  }
+
+
   // Decision-level coaching based on exact pre-command context and the new command size.
   // The detector only calls an attack a new front when that target was not already active.
   // A prompt is a review opportunity, never proof that the decision was wrong.

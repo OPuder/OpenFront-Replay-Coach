@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { assessReplayCompatibility } from '../src/main/decoder/ReplayCompatibility.ts';
+import { unwrapGameRecord } from '../src/main/decoder/GameRecordShape.ts';
+import { assessReplayCompatibilityCore } from '../src/main/decoder/ReplayCompatibilityCore.mjs';
+import { PINNED_OPENFRONT_COMMIT, SUPPORTED_OPENFRONT_COMMITS } from '../src/main/decoder/ReplayEngineCatalog.ts';
 
 const gameId = process.env.OPENFRONT_REPLAY_ID;
 test('the public Europe replay resolves to its exact bundled engine revision', { skip: !gameId }, async () => {
@@ -11,7 +13,7 @@ test('the public Europe replay resolves to its exact bundled engine revision', {
   assert.equal(response.status, 200, 'OpenFront public replay API must return the regression replay');
   const payload = await response.json();
   const record = payload?.game ?? payload?.data?.game ?? payload?.data ?? payload;
-  const compatibility = assessReplayCompatibility(record);
+  const compatibility = assessReplayCompatibilityCore(unwrapGameRecord(record), undefined, SUPPORTED_OPENFRONT_COMMITS, PINNED_OPENFRONT_COMMIT);
   assert.equal(record?.info?.config?.gameMap, 'Europe');
   assert.equal(record?.info?.players?.length, 2);
   assert.equal(compatibility.replayCommit, '8b5d071eed95f07c701b32e4c64e95b03f8577c1');

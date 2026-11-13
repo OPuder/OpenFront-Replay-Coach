@@ -3,7 +3,7 @@
  * Some endpoints return the record directly while others wrap it in game/data/record.
  * Only unwrap known object envelopes; never guess at arbitrary nested properties.
  */
-type JsonObject = Record<string, unknown>;
+type JsonObject = Record<string, any>;
 
 function isObject(value: unknown): value is JsonObject {
   return value !== null && typeof value === "object" && !Array.isArray(value);

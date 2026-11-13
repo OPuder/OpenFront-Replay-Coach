@@ -657,3 +657,14 @@ body{background:radial-gradient(ellipse at 76% -10%,#17314b 0,transparent 42%),#
 .phase-quick-stats strong{display:block;font-size:15px;line-height:1.2;overflow-wrap:anywhere}
 .phase-quick-stats small{display:block;margin-top:4px;font-size:9px;line-height:1.2;color:#9eb2c4}
 @media(max-width:760px){.phase-quick-grid{grid-template-columns:1fr}.phase-quick-card{padding:13px}.phase-quick-card>b{font-size:14px}}
+
+
+/* Mobile safe-area: keep the fixed bottom navigation clear of report content. */
+@media(max-width:760px){
+  .studio-shell{padding-bottom:calc(104px + env(safe-area-inset-bottom))}
+  .studio-main{padding-bottom:calc(118px + env(safe-area-inset-bottom))}
+  .studio-mobile-nav{bottom:calc(10px + env(safe-area-inset-bottom));padding-bottom:8px}
+  .coach-insights-section,.coach-history-profile,.domain-workspace,.replay-workspace{scroll-margin-bottom:calc(104px + env(safe-area-inset-bottom))}
+  .coach-phase-card>div>strong{overflow-wrap:anywhere}
+  .coach-phase-card>div>small{max-width:48%;text-align:right}
+}

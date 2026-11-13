@@ -428,17 +428,27 @@ function CoachPanel({apiResult,preferredPlayerPublicId,decodedActions,simulation
   const phasePerformance = simulationResult?.status === 'verified' && replayDurationTicks > 0
     ? phaseDefinitions.map(phase => {
         const fromTick = replayDurationTicks * phase.from;
-        const toTick = replayDurationTicks * phase.to;
-        const phaseSamples = alivePlayerSamples.filter(sample => sample.tick >= fromTick && sample.tick <= toTick);
+        const toTick = Math.min(replayDurationTicks * phase.to, lastAliveTick);
+        const phaseSamples = alivePlayerSamples
+          .filter(sample => sample.tick >= fromTick && sample.tick <= toTick)
+          .sort((a,b) => a.tick - b.tick);
         const first = phaseSamples[0]?.player;
         const last = phaseSamples[phaseSamples.length - 1]?.player;
-        const minutes = Math.max(0.1, (phaseSamples[phaseSamples.length - 1]?.tick ?? 0) - (phaseSamples[0]?.tick ?? 0)) / 600;
+        const elapsedTicks = phaseSamples.length >= 2
+          ? phaseSamples[phaseSamples.length - 1].tick - phaseSamples[0].tick
+          : 0;
+        // Never manufacture a rate from a tiny/negative time interval. A
+        // minimum 30-second observation window keeps sparse samples honest.
+        const enoughRateWindow = phaseSamples.length >= 2 && elapsedTicks >= 300;
+        const minutes = enoughRateWindow ? elapsedTicks / 600 : 0;
         const phaseActions = selectedActionReviews.filter(action => action.seconds * 10 >= fromTick && action.seconds * 10 <= toTick && action.seconds * 10 <= lastAliveTick);
         const attackActions = phaseActions.filter(action => action.type === 'attack');
         const targetPressureWins = attackActions.filter(action => action.targetDelta30s && action.targetDelta30s.tiles < 0).length;
         const territory = first && last ? last.tiles - first.tiles : null;
         const income = first && last ? last.goldEarned - first.goldEarned : null;
-        return { ...phase, sampleCount: phaseSamples.length, minutes, territory, income, attackCount: attackActions.length, targetPressureWins, territoryRate: territory === null ? null : territory / minutes, incomeRate: income === null ? null : income / minutes };
+        const territoryRate = enoughRateWindow && territory !== null ? territory / minutes : null;
+        const incomeRate = enoughRateWindow && income !== null ? income / minutes : null;
+        return { ...phase, sampleCount: phaseSamples.length, minutes, territory, income, attackCount: attackActions.length, targetPressureWins, territoryRate, incomeRate, elapsedTicks };
       })
     : [];
   const phaseMedian = (values:number[]) => {
@@ -588,10 +598,11 @@ function CoachPanel({apiResult,preferredPlayerPublicId,decodedActions,simulation
       </details>}
       {simulationResult?.status === 'verified' && <details className="coach-phase-profile coach-phase-details"><summary>Early-, Mid- und Late-Game-Vergleich öffnen</summary><div className="coach-phase-inner">
         <div className="coach-engine-findings-heading"><span className="coach-report-label">PHASENVERGLEICH</span><b>Wie hat sich dein Spielverlauf verändert?</b><p>Die Raten machen unterschiedlich lange Phasen vergleichbar. Die Einordnung ist nur ein Vergleich deiner drei Phasen in dieser Partie, keine allgemeine Spielstärke.</p></div>
+        {!alivePlayerSamples.length && <p className="coach-no-decision">Für diesen Spieler wurde kein aktiver Spielzustand erkannt. Deshalb zeigen wir weder eine Ausscheidungszeit noch Leistungsraten an. Prüfe die Spielerauswahl oder lade das Replay erneut.</p>}
         <div className="coach-phase-grid">{ratedPhases.map(phase=><article className="coach-phase-card" key={phase.id}>
           <span>{phase.label}</span><b>{phase.rating}</b><small>{phase.description}</small>
-          <div><strong>{phase.territoryRate === null ? '–' : `${phase.territoryRate.toFixed(1).replace('.',',')}`}</strong><small>Gebiete pro Minute</small></div>
-          <div><strong>{phase.incomeRate === null ? '–' : `${Math.round(phase.incomeRate).toLocaleString('de-DE')}`}</strong><small>Brutto-Gold pro Minute</small></div>
+          <div><strong>{phase.territoryRate === null ? 'Nicht messbar' : `${phase.territoryRate.toFixed(1).replace('.',',')}`}</strong><small>Gebiete pro Minute</small></div>
+          <div><strong>{phase.incomeRate === null ? 'Nicht messbar' : `${Math.round(phase.incomeRate).toLocaleString('de-DE')}`}</strong><small>Brutto-Gold pro Minute</small></div>
           <div><strong>{phase.attackCount}</strong><small>Angriffsbefehle</small></div>
           {phase.strengthLabels.length > 0 && <p><strong>Das lief gut:</strong> {phase.strengthLabels.join(' · ')}</p>}
           <p>{phase.targetPressureWins > 0 ? `${phase.targetPressureWins} Ziele verloren innerhalb von 30 Sekunden nach einem deiner Befehle Gebiet. Das ist ein zeitlicher Zusammenhang, kein alleiniger Erfolgsnachweis.` : 'Kein entsprechender Ziel-Gebietsverlust im erfassten 30-Sekunden-Fenster.'}</p>

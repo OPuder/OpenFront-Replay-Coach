@@ -83,3 +83,27 @@ test('empty batch returns a clean zero-count summary', async () => {
   assert.equal(summary.completed, 0);
   assert.equal(summary.cancelled, false);
 });
+
+test('duplicate replay IDs are analyzed only once', async () => {
+  const controller = new AbortController();
+  const started = [];
+  const summary = await runSequentialBatchAnalysis([
+    { id: 'same' },
+    { id: 'same' },
+    { id: 'other' },
+  ], {
+    signal: controller.signal,
+    getId: item => item.id,
+    isCompatible: () => true,
+    analyze: async item => {
+      started.push(item.id);
+      return { status: 'verified' };
+    },
+    onStatus: () => undefined,
+    onProgress: () => undefined,
+  });
+  assert.deepEqual(started, ['same', 'other']);
+  assert.equal(summary.total, 2);
+  assert.equal(summary.completed, 2);
+  assert.equal(summary.verified, 2);
+});

@@ -9,6 +9,7 @@ import { buildCoachInsights } from '../main/decoder/CoachInsights';
 import { buildEngineCoachInsights } from '../main/decoder/EngineCoachInsights';
 import { buildProCoachReport } from '../main/decoder/ProCoachAlgorithm';
 import { buildLongitudinalCoachReport } from '../main/decoder/LongitudinalCoach';
+import { assessReplayCompatibility } from '../main/decoder/ReplayCompatibility';
 import type { ReplaySimulationResult } from './ReplaySimulation';
 import { selectPlayerSurvivalWindow } from './phaseSurvival';
 import { installBrowserReplayAPI } from './platform/BrowserReplayAPI';
@@ -57,6 +58,25 @@ function App() {
   const batchAnalysisRunId = React.useRef(0);
   const batchAnalysisAbort = React.useRef<AbortController|null>(null);
   const [batchBusy, setBatchBusy] = useState(false);
+  function refreshStoredMatch(item: StoredMatchEntry): BatchMatchItem {
+    if(!item.result?.record) return item;
+    const compatibility=assessReplayCompatibility(item.result.record);
+    const wasUnsupported=item.analysisStatus==='unsupported'||item.status==='engine-mismatch';
+    const analysisStatus:StoredAnalysisStatus=compatibility.engineVersionCompatible
+      ? item.simulation?.status==='verified'?'verified':wasUnsupported?'pending':item.analysisStatus??'pending'
+      : 'unsupported';
+    return {
+      ...item,
+      result:{...item.result,engineCompatibility:compatibility},
+      status:compatibility.engineVersionCompatible?'loaded':'engine-mismatch',
+      analysisStatus,
+    };
+  }
+  async function refreshStoredMatches(id:string,matches:StoredMatchEntry[]):Promise<BatchMatchItem[]> {
+    const refreshed=matches.map(refreshStoredMatch);
+    await Promise.all(refreshed.map(item=>saveImportedMatch(id,item)).map(promise=>promise.catch(storageError=>console.warn('[ReplayCoach] Aktualisierte Engine-Kompatibilität konnte nicht gespeichert werden:',storageError))));
+    return refreshed;
+  }
   const [batchProgress, setBatchProgress] = useState<{done:number;total:number;gameId:string}|null>(null);
   const [decodedActions, setDecodedActions] = useState<DecodedAction[]>([]);
   const [playerId, setPlayerId] = useState('');
@@ -67,8 +87,8 @@ function App() {
   const [modeFilter, setModeFilter] = useState('all');
   const [typeFilter, setTypeFilter] = useState('all');
   const [gameSearch, setGameSearch] = useState('');
-  React.useEffect(() => { let active=true; const restore=async()=>{ try { const savedId=window.localStorage.getItem('ofrc:last-player-id'); if(!savedId) return; const [page,matches]=await Promise.all([loadPlayerLibrary(savedId),loadImportedMatches(savedId)]); if(!active || !page) return; setPlayerId(savedId); setPlayerPage(page); setBatchMatches(matches); } catch(e) { console.warn('[ReplayCoach] Gespeicherte Spielbibliothek konnte nicht geladen werden:',e); } }; void restore(); return ()=>{active=false;}; }, []);
-  async function loadPlayer() { cancelBatchAnalysis(); cancelBatchImport(); setPlayerBusy(true); setError(''); setPlayerProgress({loaded:0,pages:0,status:'Profil wird geladen …'}); try { const page = await window.replayAPI.loadPlayer(playerId, progress => setPlayerProgress(progress)); setPlayerPage(page); setSelectedGameIds([]); const matches=await loadImportedMatches(page.playerId); setBatchMatches(matches); await savePlayerLibrary(page); window.localStorage.setItem('ofrc:last-player-id',page.playerId); } catch(e) { setError(e instanceof Error ? e.message : String(e)); } finally { setPlayerBusy(false); } }
+  React.useEffect(() => { let active=true; const restore=async()=>{ try { const savedId=window.localStorage.getItem('ofrc:last-player-id'); if(!savedId) return; const [page,matches]=await Promise.all([loadPlayerLibrary(savedId),loadImportedMatches(savedId)]); if(!active || !page) return; const refreshed=await refreshStoredMatches(savedId,matches); if(!active) return; setPlayerId(savedId); setPlayerPage(page); setBatchMatches(refreshed); } catch(e) { console.warn('[ReplayCoach] Gespeicherte Spielbibliothek konnte nicht geladen werden:',e); } }; void restore(); return ()=>{active=false;}; }, []);
+  async function loadPlayer() { cancelBatchAnalysis(); cancelBatchImport(); setPlayerBusy(true); setError(''); setPlayerProgress({loaded:0,pages:0,status:'Profil wird geladen …'}); try { const page = await window.replayAPI.loadPlayer(playerId, progress => setPlayerProgress(progress)); setPlayerPage(page); setSelectedGameIds([]); const matches=await loadImportedMatches(page.playerId); const refreshed=await refreshStoredMatches(page.playerId,matches); setBatchMatches(refreshed); await savePlayerLibrary(page); window.localStorage.setItem('ofrc:last-player-id',page.playerId); } catch(e) { setError(e instanceof Error ? e.message : String(e)); } finally { setPlayerBusy(false); } }
   function toggleGameSelection(gameId:string) { setSelectedGameIds(current => current.includes(gameId) ? current.filter(id=>id!==gameId) : [...current,gameId]); }
   function selectFilteredGames() { const ids=filteredGames.map(game=>game.gameId); setSelectedGameIds(current=>ids.every(id=>current.includes(id)) ? current.filter(id=>!ids.includes(id)) : [...new Set([...current,...ids])]); }
   async function loadSelectedGames(gameIds=selectedGameIds) {

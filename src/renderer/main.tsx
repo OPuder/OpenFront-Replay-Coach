@@ -649,16 +649,16 @@ function CoachPanel({apiResult,preferredPlayerPublicId,decodedActions,simulation
     ? buildProCoachReport(simulationResult.samples, selectedActionReviews, selectedClientId, apiResult.durationSeconds ?? 0)
     : null;
 
-  const { ordered: orderedEngineInsights, primary: primaryEngineReviews, supporting: supportingEngineInsights } = selectPrimaryCoachInsights(engineInsights);
-  const leadEngineReview = primaryEngineReviews[0] ?? null;
+  const { ordered: orderedEngineInsights, primary: primaryEngineInsights, supporting: supportingEngineInsights } = selectPrimaryCoachInsights(engineInsights);
+  const leadEngineInsight = primaryEngineInsights[0] ?? null;
   const coachLeadTitle = simulationResult?.status === 'verified'
-    ? leadEngineReview?.title ?? 'Keine einzelne Fehlentscheidung belastbar belegt'
+    ? leadEngineInsight?.title ?? 'Keine einzelne Fehlentscheidung belastbar belegt'
     : 'Noch keine belastbare Coaching-Aussage';
   const coachLeadSummary = simulationResult?.status === 'verified'
-    ? leadEngineReview?.summary ?? 'Die Original-Engine-Rekonstruktion zeigt hier keinen einzelnen Entscheidungsfehler mit ausreichender Grundlage. Das bedeutet nicht, dass jede Entscheidung optimal war.'
+    ? leadEngineInsight?.summary ?? 'Die Original-Engine-Rekonstruktion zeigt hier keinen einzelnen Entscheidungsfehler mit ausreichender Grundlage. Das bedeutet nicht, dass jede Entscheidung optimal war.'
     : 'Das Aktionsprotokoll belegt Befehle, aber noch keine belastbare taktische Bewertung. Dafür müssen Spielzustände mit der passenden Original-Engine und gespeicherten Hashes verifiziert sein.';
   const coachTrainingFocus = simulationResult?.status === 'verified'
-    ? leadEngineReview?.nextStep ?? 'Prüfe die Zeitachse auf Phasen mit eingehendem Druck, Gebietsverlust und gebundenen Truppen. Wähle daraus genau ein Verhalten, das du in der nächsten Partie bewusst trainierst.'
+    ? leadEngineInsight?.nextStep ?? 'Prüfe die Zeitachse auf Phasen mit eingehendem Druck, Gebietsverlust und gebundenen Truppen. Wähle daraus genau ein Verhalten, das du in der nächsten Partie bewusst trainierst.'
     : 'Zuerst das Replay mit der passenden Original-Engine reproduzieren und die gespeicherten Hashes abgleichen. Erst danach eine taktische Lektion ableiten.';
   const replayDurationTicks = simulationResult?.totalTicks ?? 0;
   const {
@@ -809,16 +809,16 @@ function CoachPanel({apiResult,preferredPlayerPublicId,decodedActions,simulation
       <div className="coach-page-heading"><div><span className="eyebrow">MATCH COACH</span><h3>Dein Spiel. Dein nächster Schritt.</h3></div><span className="coach-live-pill">{simulationResult?.status === 'verified' ? 'ANALYSE VERIFIZIERT' : 'ANALYSE IN VORBEREITUNG'}</span></div>
 
       <section className="coach-lead-card coach-compact-card coach-hero-redesign">
-        <div className="coach-lead-top"><span>{leadEngineReview ? 'DEIN FOKUS FÜR DIE NÄCHSTE PARTIE' : 'COACH-STATUS'}</span>{leadEngineReview?.seconds !== null && leadEngineReview?.seconds !== undefined && <time>{clock(leadEngineReview.seconds)}</time>}</div>
+        <div className="coach-lead-top"><span>{leadEngineInsight ? 'DEIN FOKUS FÜR DIE NÄCHSTE PARTIE' : 'COACH-STATUS'}</span>{leadEngineInsight?.seconds !== null && leadEngineInsight?.seconds !== undefined && <time>{clock(leadEngineInsight.seconds)}</time>}</div>
         <h3>{coachLeadTitle}</h3>
         <p className="coach-lead-summary">{coachLeadSummary}</p>
-        {leadEngineReview?.decision && <div className="coach-lead-decision"><span>WAS DU GEMACHT HAST</span><b>{leadEngineReview.decision}</b></div>}
-        <div className="coach-lead-training"><span>NÄCHSTER SCHRITT</span><p>{leadEngineReview?.nextStep ?? coachTrainingFocus}</p></div>
+        {leadEngineInsight?.decision && <div className="coach-lead-decision"><span>WAS DU GEMACHT HAST</span><b>{leadEngineInsight.decision}</b></div>}
+        <div className="coach-lead-training"><span>NÄCHSTER SCHRITT</span><p>{leadEngineInsight?.nextStep ?? coachTrainingFocus}</p></div>
         <details className="coach-proof-details">
           <summary>Belege und Details anzeigen</summary>
-          <div><b>Beobachtung</b><p>{leadEngineReview?.evidence ?? 'Für diese Partie liegt noch kein belastbarer Engine-Beleg vor.'}</p></div>
-          {leadEngineReview?.alternative && <div><b>Alternative</b><p>{leadEngineReview.alternative}</p></div>}
-          {leadEngineReview?.limitation && <div><b>Grenze der Aussage</b><p>{leadEngineReview.limitation}</p></div>}
+          <div><b>Beobachtung</b><p>{leadEngineInsight?.evidence ?? 'Für diese Partie liegt noch kein belastbarer Engine-Beleg vor.'}</p></div>
+          {leadEngineInsight?.alternative && <div><b>Alternative</b><p>{leadEngineInsight.alternative}</p></div>}
+          {leadEngineInsight?.limitation && <div><b>Grenze der Aussage</b><p>{leadEngineInsight.limitation}</p></div>}
         </details>
       </section>
       {proCoachReport && <section className="pro-coach-report" aria-label="Professionelle Match-Auswertung">
@@ -845,9 +845,9 @@ function CoachPanel({apiResult,preferredPlayerPublicId,decodedActions,simulation
             <button type="button" className="text-action" onClick={()=>setTrainingGoal(null)}>Trainingsziel entfernen</button>
           </div>
           <small className="coach-training-goal-note">Das Ziel bleibt lokal auf diesem Gerät gespeichert. Ob du es umgesetzt hast, markierst du selbst – der Coach behauptet nicht, dein Verhalten ohne neue Replay-Daten gemessen zu haben.</small>
-        </div> : (proCoachReport?.findings[0] || leadEngineReview) && simulationResult?.status==='verified' ? <div className="coach-training-goal-empty">
-          <div><b>{leadEngineReview?.title ?? proCoachReport?.findings[0]?.title ?? 'Dein nächster Trainingsfokus'}</b><p>{leadEngineReview?.nextStep ?? proCoachReport?.trainingRule ?? coachTrainingFocus}</p></div>
-          <button type="button" className="studio-button primary" onClick={()=>setTrainingGoal({title:leadEngineReview?.title ?? proCoachReport?.findings[0]?.title ?? 'Trainingsfokus',instruction:leadEngineReview?.nextStep ?? proCoachReport?.trainingRule ?? coachTrainingFocus,gameId:apiResult.gameId,mapName:apiResult.mapName,createdAt:new Date().toISOString(),completed:false})}>Als Trainingsziel übernehmen <ArrowRight size={15}/></button>
+        </div> : (proCoachReport?.findings[0] || leadEngineInsight) && simulationResult?.status==='verified' ? <div className="coach-training-goal-empty">
+          <div><b>{leadEngineInsight?.title ?? proCoachReport?.findings[0]?.title ?? 'Dein nächster Trainingsfokus'}</b><p>{leadEngineInsight?.nextStep ?? proCoachReport?.trainingRule ?? coachTrainingFocus}</p></div>
+          <button type="button" className="studio-button primary" onClick={()=>setTrainingGoal({title:leadEngineInsight?.title ?? proCoachReport?.findings[0]?.title ?? 'Trainingsfokus',instruction:leadEngineInsight?.nextStep ?? proCoachReport?.trainingRule ?? coachTrainingFocus,gameId:apiResult.gameId,mapName:apiResult.mapName,createdAt:new Date().toISOString(),completed:false})}>Als Trainingsziel übernehmen <ArrowRight size={15}/></button>
         </div> : <div className="coach-training-goal-empty">
           <div><b>Noch kein belegtes Trainingsziel</b><p>Sobald die Original-Engine eine konkrete Situation ausreichend belegt, kannst du daraus ein Ziel für die nächste Partie übernehmen. Wir erfinden vorher keine Taktikempfehlung.</p></div>
         </div>}
@@ -902,8 +902,8 @@ function CoachPanel({apiResult,preferredPlayerPublicId,decodedActions,simulation
       </section></details>}
       {orderedEngineInsights.length > 0 && <section className="coach-engine-findings">
         <div className="coach-engine-findings-heading"><span className="coach-report-label">ENTSCHEIDUNGEN STATT STATISTIK</span><b>Weitere Lernpunkte</b><p>Nur wenn es noch etwas Wichtiges gibt.</p></div>
-        {primaryEngineReviews.length === 0 ? <p className="coach-no-decision">In diesem Replay wurde kein ausreichend belegter konkreter Entscheidungsmoment erkannt. Das ist kein Beweis für perfektes Spiel – wir zeigen lieber keinen erfundenen Fehler.</p> : <div className="coach-engine-findings-list">{primaryEngineReviews.slice(1).map((item,index)=><details className={`coach-engine-finding-details finding-${item.kind}`} key={item.id}>
-          <summary><span>{item.priority === 'high' ? 'HOHE PRIORITÄT' : item.priority === 'medium' ? 'PRÜFPUNKT' : item.kind === 'strength' ? 'STÄRKE' : item.kind === 'review' ? 'PRÜFEN' : 'BEOBACHTUNG'}</span><b>{item.title}</b>{item.seconds !== null && <time>{clock(item.seconds)}</time>}<small>{item.summary}</small></summary>
+        {primaryEngineInsights.length === 0 ? <p className="coach-no-decision">In diesem Replay wurde kein ausreichend belegter konkreter Entscheidungsmoment erkannt. Das ist kein Beweis für perfektes Spiel – wir zeigen lieber keinen erfundenen Fehler.</p> : <div className="coach-engine-findings-list">{primaryEngineInsights.slice(1).map((item,index)=><details className={`coach-engine-finding-details finding-${item.kind}`} key={item.id}>
+          <summary><span>{item.kind === 'strength' ? 'STÄRKE' : item.priority === 'high' ? 'HOHE PRIORITÄT' : item.priority === 'medium' ? 'PRÜFPUNKT' : item.kind === 'review' ? 'PRÜFEN' : 'BEOBACHTUNG'}</span><b>{item.title}</b>{item.seconds !== null && <time>{clock(item.seconds)}</time>}<small>{item.summary}</small></summary>
           <div className="coach-engine-finding-content">
           {item.decision && <p><strong>Deine Entscheidung:</strong> {item.decision}</p>}
           <small><strong>Beleg:</strong> {item.evidence}</small>

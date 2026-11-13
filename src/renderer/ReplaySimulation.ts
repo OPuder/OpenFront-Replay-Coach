@@ -1,3 +1,4 @@
+import { unwrapGameRecord } from "../main/decoder/GameRecordShape";
 import { createReplayWorkers, ReplayReader, gunzipInBrowser } from "./engine/replay-engine.js";
 
 export interface ReplayStateDelta {
@@ -133,6 +134,7 @@ export async function simulateReplay(
   const readerRef: { current: InstanceType<typeof ReplayReader> | null } = { current: null };
   const samples: ReplayStateSample[] = [];
   let lastSampledFrame = -1;
+  record = unwrapGameRecord(record);
   const turns: any[] = Array.isArray(record.turns) ? record.turns : [];
   const recordedHashCount = turns.filter((turn: any) => turn.hash !== null && turn.hash !== undefined).length;
   // Keep the regular overview cadence, but also capture the frames immediately

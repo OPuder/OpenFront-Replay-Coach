@@ -83,7 +83,7 @@ function App() {
         if (preview) imported.previewUrl=preview;
         else if (selectedMap) { try { imported.previewUrl=(await window.replayAPI.resolveMapPreview(selectedMap)).imageUrl; } catch { imported.previewUrl=null; } }
         if(runId!==batchRunId.current) break;
-        const status=imported.engineCompatibility?.engineVersionCompatible===false ? 'engine-mismatch' : 'loaded';
+        const status: 'engine-mismatch' | 'loaded'=imported.engineCompatibility?.engineVersionCompatible===false ? 'engine-mismatch' : 'loaded';
         const entry={game,result:imported,status};
         setBatchMatches(current=>[...current.filter(item=>item.game.gameId!==game.gameId),entry]);
         try { await saveImportedMatch(playerPage.playerId,entry); } catch(storageError) { console.warn('[ReplayCoach] Replay wurde geladen, konnte aber nicht lokal gesichert werden:',storageError); setError(`Partie ${game.gameId} geladen, aber lokale Speicherung fehlgeschlagen: ${storageError instanceof Error?storageError.message:String(storageError)}`); }

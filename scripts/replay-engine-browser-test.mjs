@@ -80,6 +80,12 @@ async function main() {
   assert.ok(result.totalTicks > 0, "Replay must produce reconstructed frames");
   assert.ok(result.samples > 0, "Replay must produce player state samples");
   assert.ok(result.playerReview, "Selected player's state review must be reconstructed");
+  const abortResult = await window.webContents.executeJavaScript(
+    `window.__testAbort(${JSON.stringify(record)})`,
+    true,
+  );
+  assert.equal(abortResult.aborted, true, "An in-flight replay simulation must terminate on cancellation");
+  console.log("In-flight simulation cancellation: passed");
   await window.webContents.executeJavaScript(
     `window.__saveStoreTest(${JSON.stringify(GAME_ID)}, ${JSON.stringify(result)})`,
     true,

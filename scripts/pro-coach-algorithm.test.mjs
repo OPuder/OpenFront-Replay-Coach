@@ -44,7 +44,7 @@ test('front overload is distinguished from proof of a bad attack',()=>{
 test('uses the observed sample interval for phase rates instead of the nominal phase length',()=>{
  const samples=[sample(0,{tiles:100,goldEarned:100}),sample(100,{tiles:120,goldEarned:160}),sample(200,{tiles:140,goldEarned:220}),sample(300,{tiles:160,goldEarned:280}),sample(400,{tiles:180,goldEarned:340}),sample(500,{tiles:200,goldEarned:400})];
  const report=buildProCoachReport(samples,[],'p1',1000);
- assert.equal(report.phases[0].territoryPerMinute,400);
+ assert.equal(report.phases[0].territoryPerMinute,120);
 });
 
 test('does not treat a missing target observation as a failed attack window',()=>{

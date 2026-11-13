@@ -363,6 +363,10 @@ function fmtChartValue(value:number){return Math.round(value).toLocaleString('de
 function selectedPlayerName(players:Array<{name:string;clientID:string|null}>,id:string){return players.find(p=>p.clientID===id)?.name ?? '';}
 function CoachPanel({apiResult,preferredPlayerPublicId,decodedActions,simulationResult,simulationProgress,onPlayerSelect,onExport,onSaveReplayJson,onOpenReplay,fmt}:{preferredPlayerPublicId:string|null;apiResult:ApiImportSummary;decodedActions:DecodedAction[];simulationResult:ReplaySimulationResult|null;simulationProgress:{percent:number;phase:string}|null;onPlayerSelect:(clientId:string)=>void;onExport:()=>void;onSaveReplayJson:()=>void;onOpenReplay:()=>void;fmt:(n:number)=>string}) {
   const [workspaceTab,setWorkspaceTab]=useState<'coach'|'replay'|'analysis'>('coach');
+  type TrainingGoal = { title:string; instruction:string; gameId:string; mapName:string; createdAt:string; completed:boolean };
+  const [trainingGoal,setTrainingGoal]=useState<TrainingGoal|null>(()=>{try{return JSON.parse(localStorage.getItem('openfront-coach-training-goal')||'null') as TrainingGoal|null;}catch{return null;}});
+  React.useEffect(()=>{try{if(trainingGoal)localStorage.setItem('openfront-coach-training-goal',JSON.stringify(trainingGoal));else localStorage.removeItem('openfront-coach-training-goal');}catch{/* Local storage may be unavailable in private browser contexts. */}},[trainingGoal]);
+
   const [analysisTab,setAnalysisTab]=useState<'overview'|'economy'|'military'|'timeline'|'phases'|'technical'>('overview');
   const players=apiResult.playerStats ?? [];
   const preferredPlayer=players.find(p=>preferredPlayerPublicId && p.publicID===preferredPlayerPublicId);
@@ -573,6 +577,23 @@ function CoachPanel({apiResult,preferredPlayerPublicId,decodedActions,simulation
           {leadEngineReview?.limitation && <div><b>Grenze der Aussage</b><p>{leadEngineReview.limitation}</p></div>}
         </details>
       </section>
+      <section className="coach-training-loop" aria-labelledby="training-loop-title">
+        <div className="coach-training-loop-heading"><span className="coach-report-label">VOM REPLAY INS TRAINING</span><b id="training-loop-title">Dein Trainingsziel</b><p>Eine Sache bewusst in der nächsten Partie ausprobieren – statt zehn Statistiken gleichzeitig zu verfolgen.</p></div>
+        {trainingGoal ? <div className={`coach-training-goal ${trainingGoal.completed?'is-complete':''}`}>
+          <div className="coach-training-goal-status"><span>{trainingGoal.completed?'PARTIE ABGEHAKT':'AKTUELLES TRAININGSZIEL'}</span><small>{trainingGoal.mapName || 'OpenFront'} · {new Date(trainingGoal.createdAt).toLocaleDateString('de-DE')}</small></div>
+          <h4>{trainingGoal.title}</h4><p>{trainingGoal.instruction}</p>
+          <div className="coach-training-goal-actions">
+            <button type="button" className="studio-button subtle" onClick={()=>setTrainingGoal({...trainingGoal,completed:!trainingGoal.completed})}>{trainingGoal.completed?'Wieder öffnen':'In nächster Partie getestet'}</button>
+            <button type="button" className="text-action" onClick={()=>setTrainingGoal(null)}>Trainingsziel entfernen</button>
+          </div>
+          <small className="coach-training-goal-note">Das Ziel bleibt lokal auf diesem Gerät gespeichert. Ob du es umgesetzt hast, markierst du selbst – der Coach behauptet nicht, dein Verhalten ohne neue Replay-Daten gemessen zu haben.</small>
+        </div> : leadEngineReview && simulationResult?.status==='verified' ? <div className="coach-training-goal-empty">
+          <div><b>{leadEngineReview.title}</b><p>{leadEngineReview.nextStep}</p></div>
+          <button type="button" className="studio-button primary" onClick={()=>setTrainingGoal({title:leadEngineReview.title,instruction:leadEngineReview.nextStep,gameId:apiResult.gameId,mapName:apiResult.mapName,createdAt:new Date().toISOString(),completed:false})}>Als Trainingsziel übernehmen <ArrowRight size={15}/></button>
+        </div> : <div className="coach-training-goal-empty">
+          <div><b>Noch kein belegtes Trainingsziel</b><p>Sobald die Original-Engine eine konkrete Situation ausreichend belegt, kannst du daraus ein Ziel für die nächste Partie übernehmen. Wir erfinden vorher keine Taktikempfehlung.</p></div>
+        </div>}
+      </section>
       {selectedPlayerReview && <details className="coach-mobile-details">
         <summary>Spielstand und Folgen der Befehle anzeigen</summary>
         <section className="coach-state-evidence">
@@ -596,7 +617,7 @@ function CoachPanel({apiResult,preferredPlayerPublicId,decodedActions,simulation
         </div>}
         </section>
       </details>}
-      {simulationResult?.status === 'verified' && <section className="coach-phase-profile coach-phase-details coach-phase-redesign"><div className="coach-phase-inner">
+      {simulationResult?.status === 'verified' && <details className="coach-deep-dive"><summary>Phasenvergleich öffnen <span>Early · Mid · Late Game</span></summary><section className="coach-phase-profile coach-phase-details coach-phase-redesign"><div className="coach-phase-inner">
         <div className="coach-engine-findings-heading"><span className="coach-report-label">DEINE PERFORMANCE</span><b>In welcher Phase lief es am besten?</b><p>Early, Mid und Late Game im direkten Vergleich.</p></div>
         {!alivePlayerSamples.length && <p className="coach-no-decision">Für diesen Spieler wurde kein aktiver Spielzustand erkannt. Deshalb zeigen wir weder eine Ausscheidungszeit noch Leistungsraten an. Prüfe die Spielerauswahl oder lade das Replay erneut.</p>}
         <div className="coach-phase-grid">{ratedPhases.map(phase=><article className={`coach-phase-card coach-phase-card-v3 phase-${phase.id}`} key={phase.id}>
@@ -611,8 +632,8 @@ function CoachPanel({apiResult,preferredPlayerPublicId,decodedActions,simulation
           <details><summary>Was steckt dahinter?</summary><p>{phase.description}</p>{phase.strengthLabels.length > 0 && <p><strong>Stärken:</strong> {phase.strengthLabels.join(' · ')}</p>}<p>{phase.targetPressureWins > 0 ? `${phase.targetPressureWins} Ziele verloren innerhalb von 30 Sekunden nach einem deiner Befehle Gebiet. Zeitlicher Zusammenhang, kein alleiniger Erfolgsnachweis.` : 'Kein entsprechender Ziel-Gebietsverlust im erfassten 30-Sekunden-Fenster.'}</p></details>
         </article>)}</div>
         <small className="coach-phase-note">Die Phasenwerte zeigen beobachtete Raten, keine Ursache oder optimale Strategie. Ein Gebietszuwachs nach einem Angriff beweist nicht, dass dieser Befehl ihn verursacht hat. Bei zu wenigen Stichproben wird keine Einstufung vorgenommen.</small>
-      </div></section>}
-      {simulationResult?.status === 'verified' && <section className="coach-history-profile">
+      </div></section></details>}
+      {simulationResult?.status === 'verified' && <details className="coach-deep-dive"><summary>Langfristiges Spielerprofil öffnen <span>Entwicklung über mehrere Partien</span></summary><section className="coach-history-profile">
         <div className="coach-engine-findings-heading"><span className="coach-report-label">DEINE ENTWICKLUNG ÜBER MEHRERE PARTIEN</span><b>Langfristiges Spielerprofil</b><p>Jede hash-verifizierte Partie wird lokal auf diesem Gerät gespeichert. Die Übersicht zeigt deine letzten Partien für diesen Spielernamen.</p></div>
         {recentPhaseHistory.length < 2 ? <p className="coach-history-empty">{recentPhaseHistory.length === 1 ? 'Eine Partie gespeichert. Nach der nächsten verifizierten Partie werden erste Vergleiche sichtbar.' : 'Noch keine gespeicherten Partien. Analysiere weitere Replays mit erfolgreicher Hash-Prüfung.'}</p> : <>
           <div className="coach-history-count"><b>{recentPhaseHistory.length}</b><span>gespeicherte Partien · letzte 12</span></div>
@@ -620,7 +641,7 @@ function CoachPanel({apiResult,preferredPlayerPublicId,decodedActions,simulation
           <div className="coach-history-recent"><b>Zuletzt analysiert</b>{recentPhaseHistory.slice(0,5).map(game=><div key={game.key}><span>{game.playerName} · {game.mapName}</span><small>{new Date(game.playedAt).toLocaleDateString('de-DE')} · {game.phases.map(p=>p.rating).join(' / ')}</small></div>)}</div>
         </>}
         <small className="coach-phase-note">Es werden nur zusammengefasste Phasenwerte gespeichert, keine Replay-Dateien. Der Verlauf bleibt auf diesem Gerät und wird nicht automatisch zwischen Android, Windows und anderen Browsern synchronisiert.</small>
-      </section>}
+      </section></details>}
       {orderedEngineInsights.length > 0 && <section className="coach-engine-findings">
         <div className="coach-engine-findings-heading"><span className="coach-report-label">ENTSCHEIDUNGEN STATT STATISTIK</span><b>Weitere Lernpunkte</b><p>Nur wenn es noch etwas Wichtiges gibt.</p></div>
         {primaryEngineReviews.length === 0 ? <p className="coach-no-decision">In diesem Replay wurde kein ausreichend belegter konkreter Entscheidungsmoment erkannt. Das ist kein Beweis für perfektes Spiel – wir zeigen lieber keinen erfundenen Fehler.</p> : <div className="coach-engine-findings-list">{primaryEngineReviews.slice(1).map((item,index)=><details className={`coach-engine-finding-details finding-${item.kind}`} key={item.id}>

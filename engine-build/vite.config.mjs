@@ -3,7 +3,11 @@ import { fileURLToPath } from "node:url";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(here, "..");
-const upstream = path.join(root, "vendor", "OpenFrontIO");
+const sourceDir = process.env.OPENFRONT_ENGINE_SOURCE;
+if (!sourceDir) throw new Error("OPENFRONT_ENGINE_SOURCE is required");
+const engineId = process.env.OPENFRONT_ENGINE_ID;
+if (!engineId || !/^[0-9a-f]{12}$/.test(engineId)) throw new Error("OPENFRONT_ENGINE_ID must be a 12-character commit prefix");
+const upstream = path.resolve(root, sourceDir);
 
 const aliases = Object.fromEntries(
   ["engine-api", "engine-lib", "engine", "shared", "zbin"].map((name) => [
@@ -16,7 +20,7 @@ export default {
   root,
   configFile: false,
   resolve: {
-    alias: aliases,
+    alias: [{ find: "@openfront-source", replacement: upstream }, ...Object.entries(aliases).map(([find, replacement]) => ({ find, replacement }))],
     dedupe: [],
   },
   define: {
@@ -34,7 +38,7 @@ export default {
     lib: {
       entry: path.join(here, "replay-worker-entry.ts"),
       formats: ["es"],
-      fileName: () => "replay-engine.js",
+      fileName: () => `replay-engine-${engineId}.js`,
     },
     rollupOptions: {
       output: {

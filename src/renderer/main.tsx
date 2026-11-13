@@ -28,7 +28,7 @@ if (!Capacitor.isNativePlatform() && typeof window !== 'undefined' && window.isS
 }
 
 
-type BatchMatchItem = Omit<StoredMatchEntry, 'status'> & {
+type BatchMatchItem = Omit<StoredMatchEntry, 'status' | 'analysisStatus'> & {
   status: StoredMatchEntry['status'] | 'queued' | 'running';
   analysisStatus?: StoredAnalysisStatus | 'queued' | 'running';
 };

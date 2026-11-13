@@ -1,0 +1,41 @@
+name: Temporary Europe replay engine probe
+
+on:
+  push:
+    branches: [test/replay-engine-compatibility-gates]
+
+permissions:
+  contents: read
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Read the supplied public replay metadata
+        env:
+          GAME_ID: c2R2JHZgUi
+        run: |
+          node --input-type=module <<'NODE'
+          const url = `https://api.openfront.io/public/game/${process.env.GAME_ID}`;
+          const response = await fetch(url, {
+            headers: {
+              Accept: 'application/json',
+              'User-Agent': 'OpenFront-Replay-Coach-CI/1.0'
+            },
+            signal: AbortSignal.timeout(25000)
+          });
+          console.log('HTTP status:', response.status);
+          console.log('Content-Type:', response.headers.get('content-type'));
+          if (!response.ok) {
+            console.log((await response.text()).slice(0, 1200));
+            process.exit(0);
+          }
+          const payload = await response.json();
+          const record = payload?.game ?? payload?.data?.game ?? payload?.data ?? payload;
+          console.log('Game ID:', process.env.GAME_ID);
+          console.log('Replay gitCommit:', record?.gitCommit ?? 'MISSING');
+          console.log('Turn count:', Array.isArray(record?.turns) ? record.turns.length : 'MISSING');
+          console.log('Hash checkpoints:', Array.isArray(record?.turns) ? record.turns.filter(t => t?.hash !== null && t?.hash !== undefined).length : 0);
+          console.log('Map:', record?.info?.config?.gameMap ?? 'unknown');
+          console.log('Players:', record?.info?.players?.length ?? 'unknown');
+          NODE

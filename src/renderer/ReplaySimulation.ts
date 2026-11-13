@@ -342,7 +342,7 @@ export async function simulateReplay(
             if (!player) return null;
             const activeTargets = new Set(player.outgoingAttackDetails.map(attack => attack.targetID));
             const incomingAttackerIDs = new Set(player.incomingAttackDetails.map(attack => attack.attackerID));
-            const nameBySmallID = new Map(replayPlayerMetadata.map((meta: any) => [Number(meta.smallID), String(meta.displayName ?? meta.name ?? `Spieler ${meta.smallID}`)]));
+            const nameBySmallID = new Map<number, string>(replayPlayerMetadata.map((meta: any): [number, string] => [Number(meta.smallID), String(meta.displayName ?? meta.name ?? `Spieler ${meta.smallID}`)]));
             return {
               activeTargetCount: activeTargets.size,
               outgoingTargetIds: [...activeTargets],

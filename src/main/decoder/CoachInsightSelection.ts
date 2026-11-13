@@ -11,8 +11,8 @@ export interface CoachInsightSelection {
 
 /**
  * Keep the visible decision coach focused on at most three concrete,
- * medium/high-priority engine reviews. Strengths and observations remain
- * available as supporting context instead of competing for the lead.
+ * medium/high-priority reviews or strengths. Generic observations and
+ * lower-priority items remain available as supporting context.
  */
 export function selectPrimaryCoachInsights(
   insights: readonly EngineCoachInsight[],

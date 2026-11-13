@@ -1,7 +1,7 @@
 import type { ReplaySimulationResult } from "./ReplaySimulation";
 
 export type StoredMatchStatus = "loaded" | "engine-mismatch" | "failed";
-export type StoredAnalysisStatus = "verified" | "unverified" | "unsupported" | "failed";
+export type StoredAnalysisStatus = "pending" | "verified" | "unverified" | "unsupported" | "failed";
 export type StoredMatchEntry = {
   game: PlayerGame;
   result?: ApiImportSummary;

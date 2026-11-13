@@ -1,6 +1,5 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { readFile } from 'node:fs/promises';
 import { assessReplayCompatibility } from '../src/main/decoder/ReplayCompatibility.ts';
 
 const gameId = process.env.OPENFRONT_REPLAY_ID;

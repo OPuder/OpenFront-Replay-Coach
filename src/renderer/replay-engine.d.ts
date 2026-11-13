@@ -1,4 +1,4 @@
-declare module "*replay-engine.js" {
+declare module "*replay-engine-*.js" {
   export function createReplayWorkers(): { engine: Worker; processor: Worker };
   export class ReplayReader {
     constructor(base: any, inflate: (data: Uint8Array) => Uint8Array | Promise<Uint8Array>);

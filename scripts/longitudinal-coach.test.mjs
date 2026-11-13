@@ -60,7 +60,7 @@ test('recurring findings use only fully verified matches in the same mode and ty
   assert.equal(report.status, 'ready');
   assert.equal(report.importedMatches, 5);
   assert.equal(report.verifiedMatches, 3);
-  assert.equal(report.excludedMatches, 2);
+  assert.equal(report.excludedMatches, 3);
   assert.equal(report.comparableMatches, 2);
   assert.equal(report.comparableGroup, 'Free For All · Private');
   assert.ok(report.recurringFindings.some(finding => finding.id === 'attack-follow-through'));

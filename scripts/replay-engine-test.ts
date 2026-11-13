@@ -5,6 +5,7 @@ declare global {
     __runReplayTest?: (record: unknown) => Promise<{
       status: string;
       verifiedHashes: number;
+      samples: number;
       totalTicks: number;
       playerReview: unknown;
     }>;
@@ -26,6 +27,7 @@ window.__runReplayTest = async (record) => {
   return {
     status: result.status,
     verifiedHashes: result.verifiedHashes,
+    samples: result.samples.length,
     totalTicks: result.totalTicks,
     playerReview: result.playerReview,
   };

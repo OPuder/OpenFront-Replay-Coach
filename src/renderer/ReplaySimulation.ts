@@ -133,7 +133,7 @@ function replayMapAssetId(value: unknown): string {
     "southeast asia": "southeastasia",
   };
   const key = String(value ?? "").trim().toLowerCase();
-  return aliases[key] ?? key.replace(/[\\s.()]+/g, "").replace(/[^a-z0-9_-]/g, "");
+  return aliases[key] ?? key.replace(/[\s.()]+/g, "").replace(/[^a-z0-9_-]/g, "");
 }
 
 /**

@@ -9,6 +9,7 @@ import { buildCoachInsights } from '../main/decoder/CoachInsights';
 import { buildEngineCoachInsights } from '../main/decoder/EngineCoachInsights';
 import { buildProCoachReport } from '../main/decoder/ProCoachAlgorithm';
 import { buildLongitudinalCoachReport } from '../main/decoder/LongitudinalCoach';
+import { selectPrimaryCoachInsights } from '../main/decoder/CoachInsightSelection';
 import { runSequentialBatchAnalysis } from './BatchAnalysisRunner';
 import { assessReplayCompatibility } from '../main/decoder/ReplayCompatibility';
 import type { ReplaySimulationResult } from './ReplaySimulation';
@@ -648,9 +649,7 @@ function CoachPanel({apiResult,preferredPlayerPublicId,decodedActions,simulation
     ? buildProCoachReport(simulationResult.samples, selectedActionReviews, selectedClientId, apiResult.durationSeconds ?? 0)
     : null;
 
-  const orderedEngineInsights = [...engineInsights].sort((a,b)=>({high:0,medium:1,low:2}[a.priority ?? 'low']-({high:0,medium:1,low:2}[b.priority ?? 'low'])));
-  const primaryEngineReviews = orderedEngineInsights.filter(item=>item.kind==='review' && (item.priority==='high' || item.priority==='medium')).slice(0,3);
-  const supportingEngineInsights = orderedEngineInsights.filter(item=>!primaryEngineReviews.some(primary=>primary.id===item.id));
+  const { ordered: orderedEngineInsights, primary: primaryEngineReviews, supporting: supportingEngineInsights } = selectPrimaryCoachInsights(engineInsights);
   const leadEngineReview = primaryEngineReviews[0] ?? null;
   const coachLeadTitle = simulationResult?.status === 'verified'
     ? leadEngineReview?.title ?? 'Keine einzelne Fehlentscheidung belastbar belegt'

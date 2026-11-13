@@ -65,8 +65,8 @@ test('cancellation stops the active simulation and never starts later matches', 
 
   assert.equal(summary.cancelled, true);
   assert.deepEqual(started, ['first']);
-  assert.equal(events.some(([id]) => id === 'second' && status === 'running'), false);
-  assert.equal(events.some(([id]) => id === 'third' && status === 'running'), false);
+  assert.equal(events.some(([id, status]) => id === 'second' && status === 'running'), false);
+  assert.equal(events.some(([id, status]) => id === 'third' && status === 'running'), false);
 });
 
 test('empty batch returns a clean zero-count summary', async () => {

@@ -44,8 +44,26 @@ build_tools="$(find "$ANDROID_HOME/build-tools" -mindepth 1 -maxdepth 1 -type d 
 apksigner="$build_tools/apksigner"
 "$apksigner" verify --verbose "$previous_apk"
 "$apksigner" verify --verbose "$current_apk"
-previous_cert="$("$apksigner" verify --print-certs "$previous_apk" | awk -F': ' '/Signer #1 certificate SHA-256 digest:/ {print tolower($2); exit}')"
-current_cert="$("$apksigner" verify --print-certs "$current_apk" | awk -F': ' '/Signer #1 certificate SHA-256 digest:/ {print tolower($2); exit}')"
+previous_cert_output="$("$apksigner" verify --print-certs "$previous_apk" 2>&1)" || { printf '%s\n' "$previous_cert_output"; echo "::error::Could not read the published APK signing certificate."; exit 1; }
+current_cert_output="$("$apksigner" verify --print-certs "$current_apk" 2>&1)" || { printf '%s\n' "$current_cert_output"; echo "::error::Could not read the configured APK signing certificate."; exit 1; }
+extract_certificate_sha256() {
+  grep -i 'Signer #1 certificate SHA-256 digest:' <<< "$1" |
+    sed -E 's/.*digest:[[:space:]]*//I' |
+    tr -d '[:space:]:' |
+    tr '[:upper:]' '[:lower:]' |
+    grep -E '^[0-9a-f]{64}
+
+if [[ -z "$previous_cert" || -z "$current_cert" || "$current_cert" != "$previous_cert" ]]; then
+  echo "::error::Android signing certificate does not match $previous_tag. Published APK certificate: $previous_cert; configured release certificate: $current_cert. Existing installations cannot update in place with this key; recover the original keystore or plan a one-time reinstall."
+  exit 1
+fi
+
+echo "Android signing readiness passed: permanent key matches published APK from $previous_tag."
+ |
+    head -n 1 || true
+}
+previous_cert="$(extract_certificate_sha256 "$previous_cert_output")"
+current_cert="$(extract_certificate_sha256 "$current_cert_output")"
 
 if [[ -z "$previous_cert" || -z "$current_cert" || "$current_cert" != "$previous_cert" ]]; then
   echo "::error::Android signing certificate does not match $previous_tag. Published APK certificate: $previous_cert; configured release certificate: $current_cert. Existing installations cannot update in place with this key; recover the original keystore or plan a one-time reinstall."

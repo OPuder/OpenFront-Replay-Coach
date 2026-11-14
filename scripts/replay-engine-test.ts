@@ -2,6 +2,7 @@ import { buildReplayEngineAssets, simulateReplay } from "../src/renderer/ReplayS
 import { loadImportedMatches, saveImportedMatch } from "../src/renderer/matchStore";
 import { runSequentialBatchAnalysis } from "../src/renderer/BatchAnalysisRunner";
 import { assessReplayCompatibility } from "../src/main/decoder/ReplayCompatibility";
+import { resolveReplayJsonExport } from "../src/main/decoder/ReplayJsonExport";
 
 const batchTestRecords = new Map<string, any>();
 
@@ -113,6 +114,7 @@ window.__runBatchReplayTest = async (gameIds) => {
             mode: item.record?.info?.config?.gameMode ?? "Free For All",
             type: item.record?.info?.config?.gameType ?? "Private",
           } as any,
+          result: { record: item.record } as any,
           status: status === "unsupported" ? "engine-mismatch" : "loaded",
           analysisStatus: status,
           simulation: result as any,
@@ -133,6 +135,13 @@ window.__verifyBatchStoreTest = async () => {
     analysisStatus: item.analysisStatus,
     simulationStatus: item.simulation?.status,
     sampleCount: item.simulation?.samples?.length ?? 0,
+    jsonExportRestored: (() => {
+      try {
+        const raw = resolveReplayJsonExport(item.game.gameId, undefined, item.result?.record, 750 * 1024 * 1024);
+        const restored = JSON.parse(raw);
+        return String(restored?.info?.gameID ?? restored?.game?.info?.gameID ?? "") === item.game.gameId;
+      } catch { return false; }
+    })(),
   }));
 };
 

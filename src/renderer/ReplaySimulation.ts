@@ -8,6 +8,22 @@ import {
   type SpawnPositionMetric,
 } from "./SpawnPositionAnalysis";
 
+/** Compute the replay frame count without spreading unbounded turn arrays into Math.max. */
+export function getTotalRecordedFrames(record: unknown): number {
+  const source = record && typeof record === "object"
+    ? record as { info?: { num_turns?: unknown }; turns?: unknown }
+    : {};
+  const declared = Number(source.info?.num_turns ?? 0);
+  let total = Number.isFinite(declared) ? Math.max(0, Math.floor(declared)) : 0;
+  if (!Array.isArray(source.turns)) return total;
+  for (const turn of source.turns) {
+    if (!turn || typeof turn !== "object") continue;
+    const frame = Number((turn as { turnNumber?: unknown }).turnNumber);
+    if (Number.isInteger(frame) && frame >= 0) total = Math.max(total, frame + 1);
+  }
+  return total;
+}
+
 export interface ReplayStateDelta {
   tiles: number;
   gold: number;
@@ -254,11 +270,7 @@ export async function simulateReplay(
   // OpenFront decompresses sparse records by inserting empty turns for every
   // omitted game tick. ReplayProcessor then emits one frame per decompressed
   // turn, so frame index equals the original turnNumber (not array position).
-  const totalRecordedFrames = Math.max(
-    Number(record?.info?.num_turns ?? 0),
-    ...turns.map((turn: any) => Number(turn?.turnNumber ?? -1) + 1),
-    0,
-  );
+  const totalRecordedFrames = getTotalRecordedFrames(record);
   for (let frame = 0; frame < totalRecordedFrames; frame += cadence) sampleFrames.add(frame);
   if (selectedClientId) {
     turns.forEach((turn: any) => {

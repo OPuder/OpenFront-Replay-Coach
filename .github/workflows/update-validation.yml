@@ -163,6 +163,16 @@ jobs:
           grep -F "versionName='"$(node -p "require('./package.json').version")"'" /tmp/apk-badging.txt
           sha256sum "$APK"
 
+      - name: Verify permanent Android release signing key and continuity
+        if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          GH_TOKEN: ${{ github.token }}
+        run: bash scripts/verify-android-release-signing.sh
+
       - name: Test in-place Android update and preserve app data
         timeout-minutes: 20
         uses: reactivecircus/android-emulator-runner@v2

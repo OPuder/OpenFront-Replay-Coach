@@ -101,16 +101,16 @@ assert.ok(
   "The debug emulator update test must run before the signing gate modifies generated Gradle configuration."
 );
 
-assert.ok(releaseWorkflow.includes("names.some(name => /(?:\\.Setup\\.| Setup )[0-9.]+\\.exe$/i.test(name))"), "Release verification must match both legacy dotted and actual spaced NSIS installer filenames.");
+assert.ok(releaseWorkflow.includes("names.some(name => /(?:\.Setup\.| Setup )[0-9.]+\.exe$/i.test(name))"), "Release verification must match both legacy dotted and actual spaced NSIS installer filenames.");
 assert.ok(updater.includes(String.raw`/(?:\.Setup\.| Setup )[\d.]+\.exe$/i`), "The main-process updater must recognize the current and legacy installer names.");
 assert.ok(renderer.includes(String.raw`/(?:\.Setup\.| Setup )[\d.]+\.exe$/i`), "The Update Center must recognize the current and legacy installer names.");
 const installerAssetMatcher = /(?:\.Setup\.| Setup )[\d.]+\.exe$/i;
 assert.match("OpenFront Replay Coach Setup 2.2.45.exe", installerAssetMatcher, "The current electron-builder NSIS filename must be detected.");
 assert.match("OpenFront.Replay.Coach.Setup.2.2.44.exe", installerAssetMatcher, "Legacy published installer filenames must remain supported.");
-assert.ok(releaseWorkflow.includes("names.some(name => /-win\\.zip$/i.test(name))"), "Release verification must match the actual Windows portable ZIP filename.");
-assert.ok(releaseWorkflow.includes("names.some(name => /-Android\\.apk$/i.test(name))"), "Release verification must match the actual Android APK filename.");
+assert.ok(releaseWorkflow.includes("names.some(name => /-win\.zip$/i.test(name))"), "Release verification must match the actual Windows portable ZIP filename.");
+assert.ok(releaseWorkflow.includes("names.some(name => /-Android\.apk$/i.test(name))"), "Release verification must match the actual Android APK filename.");
 
 
-assert.match(updateValidationWorkflow, /android-apk-validation:[\\s\\S]*?runs-on: ubuntu-22\\.04/);
-assert.match(updateValidationWorkflow, /api-level: 28[\\s\\S]*?cores: 2/);
+assert.match(updateValidationWorkflow, /android-apk-validation:[\s\\S]*?runs-on: ubuntu-22\.04/);
+assert.match(updateValidationWorkflow, /api-level: 28[\s\\S]*?cores: 2/);
 assert.match(updateValidationWorkflow, /-memory 2048 -partition-size 4096/);

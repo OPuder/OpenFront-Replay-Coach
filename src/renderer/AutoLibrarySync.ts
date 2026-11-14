@@ -6,7 +6,8 @@ export function selectGamesToImport<TGame extends AutoSyncGame, TEntry extends A
   const byId = new Map(entries.map(entry => [entry.game.gameId, entry]));
   return games.filter(game => {
     const entry = byId.get(game.gameId);
-    return !entry || (entry.status === "failed" && !attemptedIds.has(game.gameId));
+    if (attemptedIds.has(game.gameId)) return false;
+    return !entry || entry.status === "failed";
   });
 }
 

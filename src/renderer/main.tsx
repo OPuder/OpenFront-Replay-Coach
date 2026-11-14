@@ -74,13 +74,19 @@ function App() {
   }
   async function refreshStoredMatches(id:string,matches:StoredMatchEntry[]):Promise<BatchMatchItem[]> {
     const refreshed=matches.map(refreshStoredMatch);
-    const writes=refreshed.map(item=>{
+    // Do not reopen IndexedDB and rewrite every replay on every app start.
+    // Persist only entries whose compatibility or analysis state actually changed.
+    const writes=refreshed.flatMap((item,index)=>{
+      const previous=matches[index];
       const stored:StoredMatchEntry={
         ...item,
         status:item.status==='queued'||item.status==='running'?'loaded':item.status,
         analysisStatus:item.analysisStatus==='queued'||item.analysisStatus==='running'?'pending':item.analysisStatus,
       };
-      return saveImportedMatch(id,stored).catch(storageError=>console.warn('[ReplayCoach] Aktualisierte Engine-Kompatibilität konnte nicht gespeichert werden:',storageError));
+      const compatibilityChanged=JSON.stringify(previous.result?.engineCompatibility??null)!==JSON.stringify(item.result?.engineCompatibility??null);
+      const stateChanged=previous.status!==stored.status||previous.analysisStatus!==stored.analysisStatus;
+      if(!compatibilityChanged&&!stateChanged) return [];
+      return [saveImportedMatch(id,stored).catch(storageError=>console.warn('[ReplayCoach] Aktualisierte Engine-Kompatibilität konnte nicht gespeichert werden:',storageError))];
     });
     await Promise.all(writes);
     return refreshed;
@@ -97,7 +103,36 @@ function App() {
   const [gameSearch, setGameSearch] = useState('');
   const [libraryPage, setLibraryPage] = useState(0);
   React.useEffect(()=>{setLibraryPage(0);},[gameFilter,modeFilter,typeFilter,gameSearch]);
-  React.useEffect(() => { let active=true; const restore=async()=>{ try { const savedId=window.localStorage.getItem('ofrc:last-player-id'); if(!savedId) return; const [cachedPage,cachedMatches]=await Promise.all([loadPlayerLibrary(savedId),loadImportedMatches(savedId)]); if(!active) return; let page=cachedPage; try { page=await window.replayAPI.loadPlayer(savedId,progress=>{if(active)setPlayerProgress(progress);}); await savePlayerLibrary(page); } catch(syncError) { console.warn('[ReplayCoach] Online-Abgleich beim Start fehlgeschlagen; nutze lokalen Stand:',syncError); } if(!active || !page) return; const refreshed=await refreshStoredMatches(page.playerId,cachedMatches); if(!active) return; setPlayerId(savedId); setPlayerPage(page); setBatchMatches(refreshed); } catch(e) { console.warn('[ReplayCoach] Gespeicherte Spielbibliothek konnte nicht geladen werden:',e); } }; void restore(); return ()=>{active=false;}; }, []);
+  React.useEffect(() => {
+    let active=true;
+    const restore=async()=>{
+      try {
+        const savedId=window.localStorage.getItem('ofrc:last-player-id');
+        if(!savedId) return;
+        const [cachedPage,cachedMatches]=await Promise.all([loadPlayerLibrary(savedId),loadImportedMatches(savedId)]);
+        if(!active) return;
+        // Render the complete local library immediately; network refresh must not
+        // hold the desktop UI hostage while OpenFront paginates old match history.
+        const cachedMatchesRefreshed=cachedMatches.map(refreshStoredMatch);
+        setPlayerId(savedId);
+        setPlayerPage(cachedPage);
+        setBatchMatches(cachedMatchesRefreshed);
+        void refreshStoredMatches(savedId,cachedMatches).catch(storageError=>console.warn('[ReplayCoach] Lokale Kompatibilitätsdaten konnten nicht aktualisiert werden:',storageError));
+        try {
+          const freshPage=await window.replayAPI.loadPlayer(savedId,progress=>{if(active)setPlayerProgress(progress);});
+          if(!active) return;
+          setPlayerPage(freshPage);
+          await savePlayerLibrary(freshPage);
+        } catch(syncError) {
+          console.warn('[ReplayCoach] Online-Abgleich beim Start fehlgeschlagen; nutze lokalen Stand:',syncError);
+        }
+      } catch(e) {
+        console.warn('[ReplayCoach] Gespeicherte Spielbibliothek konnte nicht geladen werden:',e);
+      }
+    };
+    void restore();
+    return ()=>{active=false;};
+  }, []);
   async function loadPlayer() { autoImportAttempted.current.clear(); autoAnalysisAttempted.current.clear(); cancelBatchAnalysis(); cancelBatchImport(); setPlayerBusy(true); setError(''); setPlayerProgress({loaded:0,pages:0,status:'Profil wird geladen …'}); try { const page = await window.replayAPI.loadPlayer(playerId, progress => setPlayerProgress(progress)); setPlayerPage(page); setSelectedGameIds([]); setLibraryPage(0); const matches=await loadImportedMatches(page.playerId); const refreshed=await refreshStoredMatches(page.playerId,matches); setBatchMatches(refreshed); await savePlayerLibrary(page); window.localStorage.setItem('ofrc:last-player-id',page.playerId); } catch(e) { setError(e instanceof Error ? e.message : String(e)); } finally { setPlayerBusy(false); } }
   function toggleGameSelection(gameId:string) { setSelectedGameIds(current => current.includes(gameId) ? current.filter(id=>id!==gameId) : [...current,gameId]); }
   function selectFilteredGames() { const ids=filteredGames.map(game=>game.gameId); setSelectedGameIds(current=>ids.every(id=>current.includes(id)) ? current.filter(id=>!ids.includes(id)) : [...new Set([...current,...ids])]); }

@@ -241,3 +241,26 @@ test('automatic import ignores empty or whitespace-only game identifiers',()=>{
  const games=[{gameId:''},{gameId:'   '},{gameId:'valid'}];
  assert.deepEqual(selectGamesToImport(games,[]).map(x=>x.gameId),['valid']);
 });
+
+
+test('batch analysis skips entries without a stable replay identity', async () => {
+  const controller = new AbortController();
+  const started = [];
+  const summary = await runSequentialBatchAnalysis(
+    [{ id: '' }, { id: '   ' }, { id: 'valid' }],
+    {
+      signal: controller.signal,
+      getId: item => item.id,
+      isCompatible: () => true,
+      analyze: async item => {
+        started.push(item.id);
+        return { status: 'verified' };
+      },
+      onStatus: () => undefined,
+      onProgress: () => undefined,
+    },
+  );
+  assert.deepEqual(started, ['valid']);
+  assert.equal(summary.total, 1);
+  assert.equal(summary.completed, 1);
+});

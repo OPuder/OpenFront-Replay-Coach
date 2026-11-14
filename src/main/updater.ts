@@ -68,10 +68,9 @@ async function isPortableInstall(executable: string): Promise<boolean> {
     await fs.access(path.join(path.dirname(executable), 'Uninstall OpenFront Replay Coach.exe'));
     return false;
   } catch { /* ZIP-extracted edition has no NSIS uninstaller. */ }
-  const roots = [process.env.ProgramFiles, process.env['ProgramFiles(x86)'], path.join(os.homedir(), 'AppData', 'Local', 'Programs')]
-    .filter((value): value is string => Boolean(value)).map(value => path.resolve(value).toLowerCase());
-  const current = path.resolve(executable).toLowerCase();
-  return !roots.some(root => current.startsWith(root + path.sep));
+  // The ZIP edition has no NSIS uninstaller, regardless of where the user
+  // extracted it (including Program Files). Never infer edition from location.
+  return true;
 }
 async function scheduleWindowsInstall(downloadPath: string, portable: boolean): Promise<void> {
   const executable = app.getPath('exe');
@@ -107,6 +106,10 @@ async function scheduleWindowsInstall(downloadPath: string, portable: boolean): 
     '    throw',
     '  }',
     '  Start-Process -FilePath $Executable',
+    '} catch {',
+    '  $_ | Out-String | Add-Content -LiteralPath $Log',
+    '  if (Test-Path -LiteralPath $Executable) { Start-Process -FilePath $Executable }',
+    '  exit 1',
     '} finally {',
     '  Remove-Item -LiteralPath $Stage -Recurse -Force -ErrorAction SilentlyContinue',
     '  Remove-Item -LiteralPath $Backup -Recurse -Force -ErrorAction SilentlyContinue',
@@ -121,15 +124,28 @@ async function scheduleWindowsInstall(downloadPath: string, portable: boolean): 
     'Start-Sleep -Seconds 2',
     "if (-not (Test-Path -LiteralPath $Executable)) { throw 'Die aktualisierte Anwendung wurde am bisherigen Installationsort nicht gefunden.' }",
     'Start-Process -FilePath $Executable',
-    'Remove-Item -LiteralPath $Installer -Force -ErrorAction SilentlyContinue'
+    '} catch {',
+    '  $_ | Out-String | Add-Content -LiteralPath $Log',
+    '  if (Test-Path -LiteralPath $Executable) { Start-Process -FilePath $Executable }',
+    '  exit 1',
+    '} finally {',
+    '  Remove-Item -LiteralPath $Installer -Force -ErrorAction SilentlyContinue',
+    '}'
   ].join('\n');
   await fs.writeFile(scriptPath, portable ? portableScript : installerScript, { encoding: 'utf8', flag: 'wx' });
   const child = spawn('powershell.exe', ['-NoLogo', '-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-File', scriptPath], {
     detached: true, stdio: 'ignore', windowsHide: true,
   });
-  child.once('error', error => console.error('[ReplayCoach] Update-Helfer konnte nicht gestartet werden:', error));
+  // Do not quit the running Coach until Windows confirms that the detached
+  // installer helper process actually exists. Otherwise a spawn error leaves
+  // the user with a closed app and no update.
+  await new Promise<void>((resolve, reject) => {
+    child.once('spawn', resolve);
+    child.once('error', reject);
+  });
   child.unref();
-  setTimeout(() => app.quit(), 250);
+  await new Promise(resolve => setTimeout(resolve, 800));
+  app.quit();
 }
 async function installLatestWindowsUpdate(): Promise<{ scheduled: boolean; version: string }> {
   if (process.platform !== 'win32' || !app.isPackaged) throw new Error('Automatische Installation ist nur in der installierten oder portablen Windows-App verfügbar.');

@@ -1,11 +1,18 @@
 import React, { useState } from "react";
 import type { EngineCoachInsight } from "../main/decoder/EngineCoachInsights";
+import { projectSpawnMapMarker } from "./SpawnMapModel";
 type Tab = "start"|"eco"|"military"|"nuclear";
 const tabs: {id:Tab;label:string}[]=[{id:"start",label:"Startposition"},{id:"eco",label:"Eco & Gebäude"},{id:"military",label:"Truppen & Front"},{id:"nuclear",label:"Atomwaffen"}];
 function Rule({title,when,doThis,avoid}:{title:string;when:string;doThis:string;avoid:string}){return <article className="strategy-rule-card"><b>{title}</b><span>{when}</span><p>{doThis}</p><small><strong>Vermeiden:</strong> {avoid}</small></article>}
 export interface StrategyMatchContext {
   verified: boolean;
   playerName: string;
+  mapName: string;
+  mapPreviewUrl: string | null;
+  mapWidth: number | null;
+  mapHeight: number | null;
+  spawnMode: "manual" | "random" | "unknown";
+  otherSpawns: Array<{ x: number | null; y: number | null; name: string; isHuman: boolean }>;
   spawn: {
     x: number | null;
     y: number | null;
@@ -25,6 +32,28 @@ export interface StrategyMatchContext {
   attackCommands: number;
   buildCommands: number;
 }
+function SpawnMap({context}:{context:StrategyMatchContext}) {
+  const width=context.mapWidth,height=context.mapHeight;
+  if(!width||!height) return null;
+  const actual=context.spawn?projectSpawnMapMarker(context.spawn.x,context.spawn.y,width,height):null;
+  const others=context.otherSpawns.map(player=>({...player,position:projectSpawnMapMarker(player.x,player.y,width,height)})).filter(player=>player.position);
+  const alternatives=context.alternatives.map((spot,index)=>({...spot,index,position:projectSpawnMapMarker(spot.x,spot.y,width,height)})).filter(spot=>spot.position);
+  if(!actual&&!others.length&&!alternatives.length) return null;
+  return <section className="strategy-spawn-map-panel" aria-label={`Startpositionen auf ${context.mapName}`}>
+    <div className="strategy-spawn-map-heading"><div><small>STARTPOSITIONEN AUF DER KARTE</small><b>{context.mapName}</b></div><span>{context.spawnMode==="random"?"Zufallsspawn · Vergleichspositionen":context.spawnMode==="manual"?"Manueller Spawn · freie Alternativen":"Spawnmodus unbekannt"}</span></div>
+    <div className="strategy-spawn-map" style={{aspectRatio:`${width} / ${height}`}}>
+      {context.mapPreviewUrl
+        ? <img src={context.mapPreviewUrl} alt={`Originale Kartenvorschau ${context.mapName}`} loading="lazy" decoding="async"/>
+        : <div className="strategy-spawn-map-grid" aria-hidden="true"><span>{context.mapName}</span><small>Kartenbild nicht verfügbar · Koordinaten maßstabsgetreu</small></div>}
+      {others.map((player,index)=><span key={player.name+"-"+index} className={`strategy-spawn-marker ${player.isHuman?"rival-human":"rival-bot"}`} style={{left:`${player.position!.leftPercent}%`,top:`${player.position!.topPercent}%`}} title={player.name} aria-label={`Startposition von ${player.name}`}/>)}
+      {alternatives.map(spot=><span key={spot.x+"-"+spot.y} className="strategy-spawn-marker alternative" style={{left:`${spot.position!.leftPercent}%`,top:`${spot.position!.topPercent}%`}} title={`Freie Alternative ${spot.index+1}: X ${spot.x}, Y ${spot.y}`} aria-label={`Freie Startalternative ${spot.index+1}`}>{spot.index+1}</span>)}
+      {actual&&<span className="strategy-spawn-marker actual" style={{left:`${actual.leftPercent}%`,top:`${actual.topPercent}%`}} title={`Tatsächlicher Spawn X ${context.spawn!.x}, Y ${context.spawn!.y}`} aria-label="Dein tatsächlicher Spawn">DU</span>}
+    </div>
+    <div className="strategy-spawn-map-legend"><span><i className="actual"/>Dein tatsächlicher Start</span><span><i className="alternative"/>Freie manuelle Alternative</span><span><i className="rival-human"/>Menschlicher Gegner</span><span><i className="rival-bot"/>Bot / anderer Spieler</span></div>
+    <small className="strategy-honesty">Die Punkte liegen auf den tatsächlichen Spawn-Koordinaten der rekonstruierten Partie. Alternativen sind freie, passierbare Landmittelpunkte derselben Karte – keine behauptete Siegchance. Bei Zufallsspawn sind sie nur ein Vergleich.</small>
+  </section>;
+}
+
 export function StrategyPlaybook({matchContext,coachingInsights=[]}:{matchContext?:StrategyMatchContext|null;coachingInsights?:EngineCoachInsight[]}){const [tab,setTab]=useState<Tab>("start");return <section className="strategy-playbook">
 <header className="strategy-playbook-hero"><span className="eyebrow">STRATEGIE-COACH · SPIELWISSEN</span><h3>Was du wann, wo und warum einsetzen solltest</h3><p>Situative Entscheidungen statt starrer Build-Order. Karte, Lobby-Regeln, Nachbarn, Fronten und dein aktueller Engpass bestimmen die richtige Strategie.</p></header>
 {matchContext?.verified && <section className="strategy-match-context" aria-label="Dein Match-Kontext">
@@ -40,6 +69,7 @@ export function StrategyPlaybook({matchContext,coachingInsights=[]}:{matchContex
     <div><small>Umfeld der Startposition</small><strong>{matchContext.spawn.neutralLand===null?"Geländedaten fehlen":matchContext.spawn.neutralLand.toLocaleString("de-DE")+" neutrale Landfelder"}</strong><span>{matchContext.spawn.coastalLand===null?"Küstenwerte nicht verfügbar":matchContext.spawn.coastalLand.toLocaleString("de-DE")+" neutrale Küstenfelder"} · {matchContext.spawn.spawnPhaseComplete?"Spawnphasen-Snapshot":"Spawnphasen-Ende nicht belegt"}</span></div>
   </div>}
   {matchContext.spawn && !matchContext.spawn.spawnPhaseComplete && <p className="strategy-honesty">Die Startkoordinate ist aus dem Replay bekannt. Da das Ende der Spawnphase fehlt, werden spätere Grenz- und Geländewerte nicht als sichere Startbedingungen interpretiert.</p>}
+  <SpawnMap context={matchContext}/>
   {matchContext.alternatives.length>0 && <div className="strategy-alternatives"><b>Vergleichbare freie Spawn-Mittelpunkte auf derselben Karte</b><div>{matchContext.alternatives.map((spot,index)=><span key={spot.x+"-"+spot.y}>#{index+1} · X {spot.x}, Y {spot.y} · {spot.neutralLand} neutrale Landfelder · {spot.coastalLand} Küstenfelder · {spot.adjacentPlayers} direkte Nachbarn</span>)}</div><small>Beschreibender Kartenvergleich, keine Siegchance und kein garantiert optimales Feld. Bei Zufallsspawn nur Vergleichspositionen.</small></div>}
 </section>}
 {coachingInsights.length>0 && <section className="strategy-decision-coaching" aria-label="Deine wichtigsten Coaching-Erkenntnisse">

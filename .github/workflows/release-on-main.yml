@@ -349,11 +349,10 @@ jobs:
           current_cert_output="$("$build_tools/apksigner" verify --print-certs "$apk" 2>&1)" || { printf '%s\n' "$current_cert_output"; echo "::error::Could not read the configured APK signing certificate."; exit 1; }
           previous_cert_output="$("$build_tools/apksigner" verify --print-certs "$previous_apk" 2>&1)" || { printf '%s\n' "$previous_cert_output"; echo "::error::Could not read the published APK signing certificate."; exit 1; }
           extract_certificate_sha256() {
-            grep -i 'Signer #1 certificate SHA-256 digest:' <<< "$1" |
-              sed -E 's/.*digest:[[:space:]]*//I' |
-              tr -d '[:space:]:' |
-              tr '[:upper:]' '[:lower:]' |
-              grep -E '^[0-9a-f]{64}
+            grep -Eo '[[:xdigit:]]{64}' <<< "$1" | tail -n 1 || true
+          }
+          current_cert="$(extract_certificate_sha256 "$current_cert_output")"
+          previous_cert="$(extract_certificate_sha256 "$previous_cert_output")"
           if [[ -z "$current_cert" || -z "$previous_cert" || "$current_cert" != "$previous_cert" ]]; then
             echo "::error::Android signing certificate changed. Existing installations could not update; release blocked. Published: $previous_cert; configured: $current_cert."
             exit 1

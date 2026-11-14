@@ -373,8 +373,11 @@ export function analyzeAlternativeSpawnPositions(
     .map((player) => player.spawnTile as number)
     .filter((tile) => tile >= 0 && tile < tileState.length);
   const step = width * height > 2_000_000 ? 4 : width * height > 500_000 ? 2 : 1;
-  const pool: SpawnAlternativeMetric[] = [];
-  const poolLimit = 48;
+  const regionColumns = 4;
+  const regionRows = 4;
+  const regionWidth = Math.ceil(width / regionColumns);
+  const regionHeight = Math.ceil(height / regionRows);
+  const regionalPools = new Map<number, SpawnAlternativeMetric[]>();
 
   const isBetter = (a: SpawnAlternativeMetric, b: SpawnAlternativeMetric) => {
     if (a.nearbyNeutralLandTiles !== b.nearbyNeutralLandTiles) {
@@ -440,15 +443,23 @@ export function analyzeAlternativeSpawnPositions(
         mapEdgeDistance: Math.min(x, y, width - 1 - x, height - 1 - y),
       };
 
-      let insertAt = pool.findIndex((existing) => isBetter(candidate, existing));
+      const regionId = Math.min(regionRows - 1, Math.floor(y / regionHeight)) * regionColumns +
+        Math.min(regionColumns - 1, Math.floor(x / regionWidth));
+      const regionPool = regionalPools.get(regionId) ?? [];
+      const insertAt = regionPool.findIndex((existing) => isBetter(candidate, existing));
       if (insertAt < 0) {
-        if (pool.length < poolLimit) pool.push(candidate);
+        if (regionPool.length < 3) regionPool.push(candidate);
       } else {
-        pool.splice(insertAt, 0, candidate);
-        if (pool.length > poolLimit) pool.pop();
+        regionPool.splice(insertAt, 0, candidate);
+        if (regionPool.length > 3) regionPool.pop();
       }
+      regionalPools.set(regionId, regionPool);
     }
   }
+
+  // Retaining a few candidates per map region prevents all recommendations
+  // from clustering around one unusually large open plain.
+  const pool = [...regionalPools.values()].flat();
 
   // Coastline is only a tie-breaker. Count it for the small retained pool
   // instead of allocating a second full-map prefix buffer (important on mobile).

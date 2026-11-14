@@ -39,6 +39,8 @@ export interface LongitudinalFinding {
   examples: Array<{ gameId: string; mapName: string; evidence: string }>;
 }
 
+export interface LongitudinalMatchProgress { gameId:string; mapName:string; playedAt:string|null; territoryPerMinute:number|null; incomePerMinute:number|null; phaseMomentum:{early:number|null;mid:number|null;late:number|null}; reviewedFindings:number; }
+export interface LongitudinalMetricTrend { id:"territory"|"income"; label:string; previous:number|null; latest:number|null; delta:number|null; direction:"improved"|"declined"|"stable"|"insufficient-data"; unit:string; }
 export interface LongitudinalCoachReport {
   status: "ready" | "insufficient-data";
   importedMatches: number;
@@ -49,6 +51,8 @@ export interface LongitudinalCoachReport {
   confidence: ProCoachConfidence;
   phaseSummaries: LongitudinalPhaseSummary[];
   recurringFindings: LongitudinalFinding[];
+  matchProgress: LongitudinalMatchProgress[];
+  metricTrends: LongitudinalMetricTrend[];
   weakestPhase: { id: "early" | "mid" | "late"; label: string; occurrences: number } | null;
   strongestPhase: { id: "early" | "mid" | "late"; label: string; occurrences: number } | null;
   trainingFocus: string;
@@ -141,6 +145,32 @@ export function buildLongitudinalCoachReport(
     { id: "late" as const, label: "Late Game" },
   ];
 
+  const chronological = [...comparable].sort((a,b) => {
+    const left=a.input.playedAt?Date.parse(a.input.playedAt):Number.NaN, right=b.input.playedAt?Date.parse(b.input.playedAt):Number.NaN;
+    if(Number.isFinite(left)&&Number.isFinite(right)&&left!==right)return left-right;
+    if(Number.isFinite(left)!==Number.isFinite(right))return Number.isFinite(left)?-1:1;
+    return a.input.gameId.localeCompare(b.input.gameId);
+  });
+  const matchProgress:LongitudinalMatchProgress[]=chronological.map(entry=>{
+    const phase=(id:"early"|"mid"|"late")=>entry.report.phases.find(item=>item.id===id);
+    const territory=entry.report.phases.filter(item=>item.territoryPerMinute!==null&&item.activeSamples>=3);
+    const income=entry.report.phases.filter(item=>item.incomePerMinute!==null&&item.activeSamples>=3);
+    const avg=(values:number[])=>values.length?values.reduce((sum,value)=>sum+value,0)/values.length:null;
+    return {gameId:entry.input.gameId,mapName:entry.input.mapName,playedAt:entry.input.playedAt??null,
+      territoryPerMinute:avg(territory.map(item=>item.territoryPerMinute!).filter(Number.isFinite)),
+      incomePerMinute:avg(income.map(item=>item.incomePerMinute!).filter(Number.isFinite)),
+      phaseMomentum:{early:phase("early")?.momentumIndex??null,mid:phase("mid")?.momentumIndex??null,late:phase("late")?.momentumIndex??null},
+      reviewedFindings:entry.report.findings.length};
+  });
+  const trend=(id:"territory"|"income",label:string,unit:string):LongitudinalMetricTrend=>{
+    const values=matchProgress.map(item=>id==="territory"?item.territoryPerMinute:item.incomePerMinute).filter((value):value is number=>value!==null&&Number.isFinite(value));
+    const previous=values.length>=2?values[values.length-2]:null,latest=values.length>=2?values[values.length-1]:null;
+    const delta=previous!==null&&latest!==null?latest-previous:null,threshold=previous===null?0:Math.max(0.05,Math.abs(previous)*0.03);
+    const direction=delta===null?"insufficient-data":delta>threshold?"improved":delta< -threshold?"declined":"stable";
+    return {id,label,previous,latest,delta,direction,unit};
+  };
+  const metricTrends=[trend("territory","Gebietszuwachs","Gebiete/min"),trend("income","Einkommenszuwachs","Gold/min")];
+
   const phaseSummaries: LongitudinalPhaseSummary[] = phaseIds.map(phase => {
     const values = comparable.map(entry => entry.report.phases.find(item => item.id === phase.id))
       .filter((item): item is ProCoachPhase => Boolean(item && item.momentumIndex !== null && item.activeSamples >= 3));
@@ -216,6 +246,8 @@ export function buildLongitudinalCoachReport(
     confidence,
     phaseSummaries,
     recurringFindings,
+    matchProgress,
+    metricTrends,
     weakestPhase: weakest ? { id: weakest.id, label: weakest.label, occurrences: weakest.weakestCount } : null,
     strongestPhase: strongest ? { id: strongest.id, label: strongest.label, occurrences: strongest.strongestCount } : null,
     trainingFocus,

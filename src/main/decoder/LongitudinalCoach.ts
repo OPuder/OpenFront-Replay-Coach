@@ -133,10 +133,15 @@ function buildMatchReport(input: LongitudinalMatchInput): NormalizedMatch | null
     playerReview.endTroops, playerReview.outgoingAttackSamples,
     playerReview.longestNoExpansionSeconds,
   ].every(value => Number.isFinite(value));
+  const validEngineActions = simulation.actionReviews.filter((raw: any) =>
+    raw && typeof raw === "object"
+    && typeof raw.seconds === "number" && Number.isFinite(raw.seconds) && raw.seconds >= 0
+    && typeof raw.type === "string" && raw.type.trim().length > 0
+  );
   const strengths = hasCompleteReview
     ? buildEngineCoachInsights(
         playerReview,
-        simulation.actionReviews as Parameters<typeof buildEngineCoachInsights>[1],
+        validEngineActions as Parameters<typeof buildEngineCoachInsights>[1],
         simulation.samples as Parameters<typeof buildEngineCoachInsights>[2],
       ).filter(insight => insight.kind === "strength")
     : [];

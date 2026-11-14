@@ -162,7 +162,7 @@ test('match coach creates a spawn-position lesson from first-frame spatial evide
  const report=buildProCoachReport(samples,[],'p1',300);
  assert.equal(report.opening.spawnPosition.classification,'contested');
  assert.ok(report.findings.some(x=>x.id==='spawn-position-review'));
- assert.match(report.opening.limitation,/Owner-Grid/);
+ assert.match(report.opening.limitation,/Gebiets-Schwerpunkten/);
 });
 
 

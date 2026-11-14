@@ -365,7 +365,7 @@ jobs:
             - **Android APK:** Updates werden automatisch heruntergeladen und mit Androids Installationsdialog angeboten. Eine Bestätigung bleibt aus Sicherheitsgründen erforderlich. Keine Cloudflare-Anmeldung und kein Play-Store-Konto erforderlich.
             Die Windows- und Android-Ausgaben enthalten die gemeinsame, getestete Coaching-Oberfläche. Android lädt öffentliche OpenFront-Daten über seine native HTTP-Schnittstelle.
 
-                        **Android-Signierung:** ${{ needs.build-android.outputs.signing_mode }}. Für zuverlässige Updates muss der dauerhafte Schlüssel einmalig als vier GitHub-Actions-Secrets eingerichtet werden; siehe `docs/ANDROID_SIGNING.md`. Den privaten Schlüssel niemals ins Repository committen.
+            **Android-Signierung:** ${{ needs.build-android.outputs.signing_mode }}. Für zuverlässige Updates muss der dauerhafte Schlüssel einmalig als vier GitHub-Actions-Secrets eingerichtet werden; siehe `docs/ANDROID_SIGNING.md`. Den privaten Schlüssel niemals ins Repository committen.
 
             **Start:** siehe START_HERE.txt.
           files: |

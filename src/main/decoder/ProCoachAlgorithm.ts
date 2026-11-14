@@ -1,6 +1,8 @@
+export interface ProCoachSpawnPosition { clientID:string|null; name:string; startTiles:number; centerX:number; centerY:number; adjacentRivals:number[]; rivalBorderContacts:number; nearestRivalDistance:number|null; classification:'isolated'|'contested'|'mixed'|'unknown' }
 export interface ProCoachPlayerSample {
   tick: number;
   frame: number;
+  spawnPositions?: ProCoachSpawnPosition[];
   players: Array<{
     clientID: string | null;
     alive: boolean;
@@ -55,6 +57,7 @@ export interface ProCoachFinding {
 }
 export interface ProCoachOpening {
   confidence: ProCoachConfidence;
+  spawnPosition: ProCoachSpawnPosition | null;
   firstExpansionSeconds: number | null;
   territoryGainFirstThreeMinutes: number | null;
   incomeGainFirstThreeMinutes: number | null;
@@ -125,15 +128,18 @@ export function buildProCoachReport(
   const openingFirst=openingSamples[0], openingLast=openingSamples.at(-1);
   const openingSpan=openingFirst&&openingLast?(openingLast.sample.tick-openingFirst.sample.tick)/10:0;
   const firstExpansion=openingFirst?openingSamples.find(x=>x.player.tiles>openingFirst.player.tiles):undefined;
+  const spawnPosition=openingFirst?.sample.spawnPositions?.find(position=>position.clientID===clientId)??null;
   const opening:ProCoachOpening={
     confidence:openingSamples.length>=4&&openingSpan>=120?'high':openingSamples.length>=2&&openingSpan>=60?'medium':'low',
+    spawnPosition,
     firstExpansionSeconds:firstExpansion&&openingFirst?(firstExpansion.sample.tick-openingFirst.sample.tick)/10:null,
     territoryGainFirstThreeMinutes:openingFirst&&openingLast&&openingSpan>=120?openingLast.player.tiles-openingFirst.player.tiles:null,
     incomeGainFirstThreeMinutes:openingFirst&&openingLast&&openingSpan>=120?openingLast.player.goldEarned-openingFirst.player.goldEarned:null,
     troopChangeFirstThreeMinutes:openingFirst&&openingLast&&openingSpan>=120?openingLast.player.troops-openingFirst.player.troops:null,
     assessment:openingSamples.length<2||openingSpan<60?'Zu wenig frühe Replay-Daten für eine belastbare Eröffnungsbewertung.':firstExpansion?'Frühe Expansion ist beobachtet. Prüfe, ob Einkommen und Truppenreserve parallel tragfähig blieben.':'Im beobachteten Eröffnungsfenster ist kein Gebietszuwachs nachweisbar. Prüfe Startdruck und erreichbare neutrale Gebiete.',
-    limitation:'Keine verlässliche Karten-Geometrie, Neutralgebiet-Verteilung, Nachbarentfernungen oder Engpässe in diesen Samples. Dies bewertet die Eröffnung, nicht den geografisch besten Spawn-Ort.'
+    limitation:spawnPosition?'Die Startposition nutzt die tatsächliche Besitzkarte des ersten Frames. Wasser, unbesetztes Land und unpassierbares Gelände sind im Owner-Grid nicht unterscheidbar; Distanz ist eine Näherung zwischen Gebiets-Schwerpunkten. Es werden nur tatsächlich gespielte Spawn-Positionen verglichen, keine freien Alternativfelder.':'Keine Startkarten-Geometrie im Replay-Sample verfügbar; eine räumliche Spawn-Bewertung ist nicht möglich.'
   };
+  if(spawnPosition&&spawnPosition.classification!=='unknown') findings.push({id:'spawn-position-review',priority:spawnPosition.classification==='contested'?'medium':'low',confidence:'medium',title:spawnPosition.classification==='contested'?'Startposition: früher Grenzdruck':'Startposition: relative Lage im Lobbyvergleich',decision:`Dein Startgebiet lag im Kartenraster bei (${fmt(spawnPosition.centerX)}, ${fmt(spawnPosition.centerY)}) und umfasste ${fmt(spawnPosition.startTiles)} Felder.`,consequence:spawnPosition.classification==='contested'?`Es gab ${spawnPosition.rivalBorderContacts} direkte Grenzkontakte zu ${spawnPosition.adjacentRivals.length} anderen Spielern; der nächste gegnerische Gebietsschwerpunkt lag etwa ${fmt(spawnPosition.nearestRivalDistance??0)} Rasterfelder entfernt.`:`Der nächste gegnerische Gebietsschwerpunkt lag etwa ${fmt(spawnPosition.nearestRivalDistance??0)} Rasterfelder entfernt; direkte gegnerische Grenzkontakte: ${spawnPosition.rivalBorderContacts}.`,alternative:spawnPosition.classification==='contested'?'Plane die erste Expansion weg von der direkten Kontaktgrenze, sichere einen Rückzugsraum und eröffne nicht gleichzeitig eine zweite Front.':'Nutze den räumlichen Abstand für kontrollierte Expansion und sichere früh die erreichbaren Anschlussflächen, bevor ein Gegner den Zugang schließt.',trainingRule:'Vergleiche vor dem ersten Angriff die Startlage, direkte Nachbargrenzen und die erste sichere Expansionsrichtung.',evidence:`Startfelder: ${fmt(spawnPosition.startTiles)} · direkte Rivalen-Grenzkontakte: ${fmt(spawnPosition.rivalBorderContacts)} · Nachbarn: ${spawnPosition.adjacentRivals.length} · Schwerpunktdistanz: ${spawnPosition.nearestRivalDistance===null?'unbekannt':fmt(spawnPosition.nearestRivalDistance)}.`,seconds:0,caveat:opening.limitation});
   if(opening.confidence!=='low') findings.push({id:'opening-review',priority:opening.firstExpansionSeconds===null?'medium':'low',confidence:opening.confidence,title:'Eröffnung: erste Expansion und Reserve prüfen',decision:'Bewerte die ersten drei Minuten anhand der ersten beobachteten Expansion.',consequence:opening.territoryGainFirstThreeMinutes===null?'Für drei Minuten fehlen ausreichend Zustandsdaten.':'Gebietsänderung: '+fmt(opening.territoryGainFirstThreeMinutes)+', Einkommensänderung: '+fmt(opening.incomeGainFirstThreeMinutes??0)+', Truppenänderung: '+fmt(opening.troopChangeFirstThreeMinutes??0)+'.',alternative:'Sichere erreichbare neutrale Gebiete, wenn die Karte es zulässt, und behalte eine Reserve für frühe Bedrohungen. Vergleiche Expansion immer mit Einkommen und Truppenbestand.',trainingRule:'Prüfe in der nächsten Partie bei 1:00, 2:00 und 3:00 Gebiet, Goldentwicklung und Truppenreserve gemeinsam.',evidence:'Erste Expansion: '+(opening.firstExpansionSeconds===null?'nicht beobachtet':clock(opening.firstExpansionSeconds))+' · Beobachtungsfenster: '+fmt(openingSpan)+' s.',seconds:opening.firstExpansionSeconds,caveat:opening.limitation});
   const attackActions=actions.filter(a=>a.type==='attack'&&a.delta30s);
   // Missing target observations are unknown, not a zero territorial response.

@@ -121,3 +121,15 @@ test('replay timeline keeps recorded moments before coach markers at the same ti
   );
   assert.deepEqual(timeline.map(item => item.id), ['event-0', 'coach-coach']);
 });
+
+import { buildEngineCoachInsights } from '../src/main/decoder/EngineCoachInsights.ts';
+
+test('piracy coach reports cumulative piracy and trade income without claiming net profit',()=>{
+ const base={id:1,name:'Player',clientID:'p1',alive:true,gold:100,goldEarned:100,tradeGold:20,trainGold:0,piracyGold:5,troops:100,tiles:50,units:0,unitCounts:{},unitTroops:{},unitsUnderConstruction:0,outgoingAttacks:0,incomingAttacks:0,outgoingAttackDetails:[],incomingAttackDetails:[],attackTroops:0,allies:1,alliances:1,targets:0,betrayals:0,isTraitor:false,isDecaying:false,inDoomsdayClock:false};
+ const review={playerName:'Player',clientID:'p1',startTiles:50,endTiles:60,tilesGained:10,startGold:100,endGold:200,startTroops:100,endTroops:120,outgoingAttackSamples:0,longestNoExpansionSeconds:0};
+ const insights=buildEngineCoachInsights(review,[],[{tick:0,frame:0,players:[base]},{tick:1000,frame:1000,players:[{...base,piracyGold:85,tradeGold:45}]}]);
+ const piracy=insights.find(x=>x.id==='piracy-and-trade-income');
+ assert.ok(piracy);
+ assert.match(piracy.evidence,/Piraterie: \+80 Gold/);
+ assert.match(piracy.limitation,/keine Nettorendite/);
+});

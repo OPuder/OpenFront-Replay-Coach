@@ -77,3 +77,8 @@ assert.match(androidSigningGate, /ANDROID_KEYSTORE_PATH/);
 assert.match(androidSigningGate, /Android signing certificate does not match/);
 assert.match(androidSigningGate, /apksigner.*verify/);
 
+
+const releaseWorkflow = read(".github/workflows/release-on-main.yml");
+assert.match(releaseWorkflow, /Verify published release contains exactly three usable artifacts/);
+assert.match(releaseWorkflow, /names\.length === 3/);
+assert.match(releaseWorkflow, /-Android\\.apk/);

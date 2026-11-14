@@ -407,6 +407,15 @@ jobs:
           mkdir -p release
           cp "$apk" "release/OpenFront-Replay-Coach-${{ needs.prepare-release.outputs.version }}-Android.apk"
 
+      - name: Verify signed Android APK is a usable release package
+        run: |
+          set -Eeuo pipefail
+          apk="release/OpenFront-Replay-Coach-${{ needs.prepare-release.outputs.version }}-Android.apk"
+          test -s "$apk"
+          test "$(stat -c%s "$apk")" -gt 1000000
+          "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --verbose "$apk"
+          "$ANDROID_HOME/build-tools/36.0.0/aapt" dump badging "$apk" | grep -F "package: name='de.openfront.replaycoach'"
+
       - name: Upload Android APK
         uses: actions/upload-artifact@v4
         with:
@@ -458,3 +467,32 @@ jobs:
             release/*.exe
             release/*.zip
             release/*-Android.apk
+
+      - name: Verify published release contains exactly three usable artifacts
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ needs.prepare-release.outputs.tag }}
+        run: |
+          set -Eeuo pipefail
+          gh release view "$RELEASE_TAG" --json assets | node -e '
+            let input = "";
+            process.stdin.setEncoding("utf8");
+            process.stdin.on("data", chunk => input += chunk);
+            process.stdin.on("end", () => {
+              const assets = JSON.parse(input).assets;
+              const names = assets.map(asset => asset.name);
+              const checks = [
+                names.length === 3,
+                names.some(name => /\.Setup\.[0-9.]+\.exe$/i.test(name)),
+                names.some(name => /-win\.zip$/i.test(name)),
+                names.some(name => /-Android\.apk$/i.test(name)),
+                assets.every(asset => asset.size > 1000000),
+                !names.some(name => /pwa|service.?worker|web.?zip/i.test(name))
+              ];
+              if (checks.some(ok => !ok)) {
+                console.error("Published release asset verification failed:", JSON.stringify(assets));
+                process.exit(1);
+              }
+              console.log("Verified exactly three release artifacts:", names.join(", "));
+            });
+          '

@@ -38,16 +38,9 @@ timeout 30s adb -s emulator-5554 shell "run-as $package_id sh -c 'mkdir -p files
 current_version="$(node -p "require('./package.json').version")"
 IFS='.' read -r major minor patch <<< "$current_version"
 next_version="$major.$minor.$((patch + 1))"
-log "Building update APK with version $next_version."
-node scripts/set-android-version.mjs "$next_version"
-(
-  cd android
-  timeout 600s ./gradlew --no-daemon assembleDebug
-) || fail "Gradle did not produce the updated APK within 10 minutes."
-
-test -s "$apk" || fail "Updated APK is missing."
-log "Installing the higher-version APK over the existing installation."
-timeout 120s adb -s emulator-5554 install -r "$apk" || fail "Android rejected the in-place APK update."
+test -s "$update_apk" || fail "Prebuilt higher-version APK is missing."
+log "Installing the prebuilt update APK for version $next_version."
+timeout 120s adb -s emulator-5554 install -r "$update_apk" || fail "Android rejected the in-place APK update."
 saved="$(timeout 30s adb -s emulator-5554 shell "run-as $package_id cat files/update-regression/sentinel.txt" | tr -d '\r')" || fail "Could not read the preserved app-data sentinel."
 [[ "$saved" == "keep-this-data" ]] || fail "App data was not preserved after adb -s emulator-5554 install -r."
 

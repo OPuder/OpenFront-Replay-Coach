@@ -1,0 +1,52 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+
+package_id="de.openfront.replaycoach"
+apk="android/app/build/outputs/apk/debug/app-debug.apk"
+before_apk="$RUNNER_TEMP/openfront-coach-before-update.apk"
+
+log() { echo "::notice::[Android update regression] $*"; }
+fail() { echo "::error::[Android update regression] $*"; exit 1; }
+
+test -s "$apk" || fail "Initial APK is missing."
+cp "$apk" "$before_apk"
+restore_apk() {
+  if [[ -s "$before_apk" ]]; then cp "$before_apk" "$apk"; fi
+}
+trap restore_apk EXIT
+
+log "Waiting for emulator connection."
+timeout 45s adb wait-for-device || fail "Android emulator did not connect to ADB within 45 seconds."
+booted=false
+for attempt in $(seq 1 60); do
+  state="$(timeout 10s adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r' || true)"
+  if [[ "$state" == "1" ]]; then booted=true; break; fi
+  sleep 3
+done
+[[ "$booted" == true ]] || fail "Android emulator did not finish booting within 3 minutes."
+log "Emulator booted; installing baseline APK."
+timeout 120s adb install "$before_apk" || fail "Could not install baseline APK."
+timeout 30s adb shell run-as "$package_id" sh -c "mkdir -p files/update-regression && printf 'keep-this-data' > files/update-regression/sentinel.txt" || fail "Could not create app-data sentinel."
+
+current_version="$(node -p "require('./package.json').version")"
+IFS='.' read -r major minor patch <<< "$current_version"
+next_version="$major.$minor.$((patch + 1))"
+log "Building update APK with version $next_version."
+node scripts/set-android-version.mjs "$next_version"
+(
+  cd android
+  timeout 600s ./gradlew --no-daemon assembleDebug
+) || fail "Gradle did not produce the updated APK within 10 minutes."
+
+test -s "$apk" || fail "Updated APK is missing."
+log "Installing the higher-version APK over the existing installation."
+timeout 120s adb install -r "$apk" || fail "Android rejected the in-place APK update."
+saved="$(timeout 30s adb shell run-as "$package_id" cat files/update-regression/sentinel.txt | tr -d '\r')" || fail "Could not read the preserved app-data sentinel."
+[[ "$saved" == "keep-this-data" ]] || fail "App data was not preserved after adb install -r."
+
+expected_version_code="$((major * 1000000 + minor * 1000 + patch + 1))"
+installed_package="$(timeout 30s adb shell dumpsys package "$package_id")" || fail "Could not inspect installed package metadata."
+grep -F "versionCode=$expected_version_code" <<< "$installed_package" >/dev/null || fail "Installed package does not have expected versionCode $expected_version_code."
+log "Launching upgraded application."
+timeout 30s adb shell monkey -p "$package_id" 1 >/dev/null || fail "Upgraded application could not be launched."
+log "PASS: $current_version -> $next_version; package identity, signature, versionCode and app data preserved."

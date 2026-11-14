@@ -25,6 +25,8 @@ export interface ReplayStateSample {
     id: number;
     name: string;
     clientID: string | null;
+    /** Exact OpenFront PlayerState.spawnTile selected during the spawn phase. */
+    spawnTile: number | null;
     alive: boolean;
     gold: number;
     goldEarned: number;
@@ -110,6 +112,10 @@ export interface ReplaySimulationResult {
   samples: ReplayStateSample[];
   playerReview: null | { playerName: string; clientID: string | null; startTiles: number; endTiles: number; tilesGained: number; startGold: number; endGold: number; startTroops: number; endTroops: number; outgoingAttackSamples: number; longestNoExpansionSeconds: number };
   actionReviews: ReplayActionReview[];
+  /** Spawn analysis captured at/after the recorded end of the spawn phase. */
+  spawnPositions?: SpawnPositionMetric[] | null;
+  spawnPhaseEndTick?: number | null;
+  spawnSnapshotTick?: number | null;
   message: string;
 }
 
@@ -122,6 +128,46 @@ interface ProcessorResponse {
   message?: string;
 }
 export interface EngineAssets { manifest: Record<string,string>; cdnBase: string }
+
+/**
+ * Loads the terrain binary matching the replay's exact map dimensions from the
+ * pinned engine commit. The manifest is used to distinguish normal, compact
+ * and mini-map binaries; no current/live map data is consulted.
+ */
+async function loadReplayTerrainData(
+  assets: EngineAssets,
+  width: number,
+  height: number,
+): Promise<Uint8Array | null> {
+  if (typeof fetch !== "function") return null;
+  const manifestKey = Object.keys(assets.manifest).find((key) => key.endsWith("/manifest.json"));
+  if (!manifestKey) return null;
+  const manifestUrl = assets.manifest[manifestKey];
+  const folder = manifestKey.slice(0, manifestKey.lastIndexOf("/") + 1);
+  try {
+    const manifestResponse = await fetch(manifestUrl);
+    if (!manifestResponse.ok) return null;
+    const manifest = await manifestResponse.json() as Record<string, any>;
+    const variants = [
+      { key: "map", file: "map.bin" },
+      { key: "map4x", file: "map4x.bin" },
+      { key: "map16x", file: "map16x.bin" },
+    ];
+    const match = variants.find(({ key }) =>
+      Number(manifest[key]?.width) === width && Number(manifest[key]?.height) === height
+    );
+    if (!match) return null;
+    const terrainUrl = assets.manifest[`${folder}${match.file}`];
+    if (!terrainUrl) return null;
+    const terrainResponse = await fetch(terrainUrl);
+    if (!terrainResponse.ok) return null;
+    const terrain = new Uint8Array(await terrainResponse.arrayBuffer());
+    return terrain.length === width * height ? terrain : null;
+  } catch {
+    // Terrain enriches spawn coaching but must never block a verified replay.
+    return null;
+  }
+}
 
 function replayMapAssetId(value: unknown): string {
   const aliases: Record<string, string> = {
@@ -181,6 +227,9 @@ export async function simulateReplay(
   workers.engine.postMessage({ type: "connect", port: channel.port1 }, [channel.port1]);
   const readerRef: { current: InstanceType<typeof ReplayReader> | null } = { current: null };
   const samples: ReplayStateSample[] = [];
+  let spawnPositions: SpawnPositionMetric[] | null = null;
+  let spawnPhaseEndTick: number | null = null;
+  let spawnSnapshotTick: number | null = null;
   let lastSampledFrame = -1;
   const turns: any[] = Array.isArray(record.turns) ? record.turns : [];
   const recordedHashCount = turns.filter((turn: any) => turn.hash !== null && turn.hash !== undefined).length;
@@ -254,6 +303,7 @@ export async function simulateReplay(
         id,
         name: String(meta.displayName ?? meta.name ?? meta.username ?? `Spieler ${id}`),
         clientID: meta.clientID == null ? null : String(meta.clientID),
+        spawnTile: Number.isInteger(p.spawnTile) ? Number(p.spawnTile) : null,
         alive: Boolean(p.isAlive),
         gold: Number(p.gold ?? 0),
         goldEarned: Number(p.goldEarned ?? 0),
@@ -290,12 +340,48 @@ export async function simulateReplay(
         inDoomsdayClock: Boolean(p.inDoomsdayClock),
       };
     });
-    const spatialState = state as unknown as { tileState?: Uint16Array };
-    const spatialHeader = reader.header as unknown as { mapWidth?: number; mapHeight?: number };
-    const spawnPositions = frame === 0 && spatialState.tileState && spatialHeader.mapWidth && spatialHeader.mapHeight
-      ? analyzeSpawnPositions(spatialState.tileState, spatialHeader.mapWidth, spatialHeader.mapHeight, players)
-      : undefined;
-    return { tick: state.tick, frame, players, totalUnits: state.units.size, falloutTiles: state.falloutTiles, ...(spawnPositions ? { spawnPositions } : {}) };
+    const spatialState = state as unknown as { tileState?: Uint16Array; terrain?: ReadonlyMap<number, number> };
+    const spatialHeader = reader.header as unknown as {
+      mapWidth?: number;
+      mapHeight?: number;
+      spawnPhaseEnd?: { tick: number; startTick: number } | null;
+    };
+    const recordedSpawnEnd = spatialHeader.spawnPhaseEnd?.tick ?? null;
+    const hasRecordedSpawn = players.some((player) => player.spawnTile !== null);
+    const isSpawnSnapshot = !spawnPositions &&
+      Boolean(spatialState.tileState && spatialHeader.mapWidth && spatialHeader.mapHeight) &&
+      hasRecordedSpawn &&
+      (recordedSpawnEnd !== null
+        ? Number(state.tick) >= recordedSpawnEnd
+        : frame === orderedSampleFrames[orderedSampleFrames.length - 1]);
+    let spawnPositionsAtSample: SpawnPositionMetric[] | undefined;
+    if (isSpawnSnapshot && spatialState.tileState && spatialHeader.mapWidth && spatialHeader.mapHeight) {
+      let terrain = await loadReplayTerrainData(assets, spatialHeader.mapWidth, spatialHeader.mapHeight);
+      if (terrain && spatialState.terrain) {
+        terrain = terrain.slice();
+        for (const [ref, byte] of spatialState.terrain) {
+          if (Number.isInteger(ref) && ref >= 0 && ref < terrain.length) terrain[ref] = byte;
+        }
+      }
+      spawnPositionsAtSample = analyzeSpawnPositions(
+        spatialState.tileState,
+        spatialHeader.mapWidth,
+        spatialHeader.mapHeight,
+        players,
+        terrain ?? undefined,
+      );
+      spawnPositions = spawnPositionsAtSample;
+      spawnPhaseEndTick = recordedSpawnEnd;
+      spawnSnapshotTick = Number(state.tick);
+    }
+    return {
+      tick: state.tick,
+      frame,
+      players,
+      totalUnits: state.units.size,
+      falloutTiles: state.falloutTiles,
+      ...(spawnPositionsAtSample ? { spawnPositions: spawnPositionsAtSample } : {}),
+    };
   };
 
   const completion = new Promise<ReplaySimulationResult>((resolve, reject) => {
@@ -549,6 +635,9 @@ export async function simulateReplay(
             samples,
             playerReview,
             actionReviews,
+            spawnPositions,
+            spawnPhaseEndTick,
+            spawnSnapshotTick,
             message: recordedHashCount > 0
               ? `Simulation abgeschlossen: Alle ${recordedHashCount.toLocaleString("de-DE")} gespeicherten Hash-Prüfpunkte wurden von der Original-Engine erfolgreich abgeglichen.`
               : "Simulation abgeschlossen, aber das Replay enthält keine Hash-Prüfpunkte. Die Spielzustände wurden rekonstruiert, sind jedoch nicht anhand gespeicherter Hashes verifiziert."

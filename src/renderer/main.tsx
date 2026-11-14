@@ -104,36 +104,47 @@ function App() {
     if (!playerPage || batchBusy || batchAnalysisBusy || gameIds.length===0) return;
     const games=gameIds.map(id=>playerPage.games.find(game=>game.gameId===id)).filter((game):game is PlayerGame=>Boolean(game));
     const runId=++batchRunId.current;
+    const existingIds=new Set(batchMatches.filter(item=>Boolean(item.result)).map(item=>item.game.gameId));
     setBatchBusy(true); setError(''); setBatchProgress({done:0,total:games.length,gameId:''});
     let done=0;
-    for (const game of games) {
-      if(runId!==batchRunId.current) break;
-      setBatchProgress({done,total:games.length,gameId:game.gameId});
-      if (batchMatches.some(item=>item.game.gameId===game.gameId && item.result)) { done++; continue; }
-      setBatchMatches(current=>[...current.filter(item=>item.game.gameId!==game.gameId),{game,status:'running'}]);
-      try {
-        const imported=await window.replayAPI.importReplayUrl(`https://openfront.io/w5/game/${game.gameId}`);
-        if(runId!==batchRunId.current) break;
-        if ('canceled' in imported) throw new Error('Import wurde abgebrochen.');
-        const normalizeMap=(value:unknown)=>String(value??'').trim().toLowerCase().replace(/[\\s.()_-]+/g,'');
-        const selectedMap=game.map||imported.mapName;
-        const previews=Object.entries(playerPage.mapPreviews??{});
-        const preview=(selectedMap ? playerPage.mapPreviews?.[String(selectedMap).trim().toLowerCase()] : undefined) || previews.find(([key])=>normalizeMap(key)===normalizeMap(selectedMap))?.[1] || previews.find(([key])=>normalizeMap(key)===normalizeMap(imported.mapName))?.[1] || game.previewUrl;
-        if (preview) imported.previewUrl=preview;
-        else if (selectedMap) { try { imported.previewUrl=(await window.replayAPI.resolveMapPreview(selectedMap)).imageUrl; } catch { imported.previewUrl=null; } }
-        if(runId!==batchRunId.current) break;
-        const status: 'engine-mismatch' | 'loaded'=imported.engineCompatibility?.engineVersionCompatible===false ? 'engine-mismatch' : 'loaded';
-        const entry:BatchMatchItem={game,result:imported,status,analysisStatus:status==='engine-mismatch'?'unsupported':'pending'};
-        setBatchMatches(current=>[...current.filter(item=>item.game.gameId!==game.gameId),entry]);
-        try { await persistBatchItem(entry); } catch(storageError) { console.warn('[ReplayCoach] Replay wurde geladen, konnte aber nicht lokal gesichert werden:',storageError); setError(`Partie ${game.gameId} geladen, aber lokale Speicherung fehlgeschlagen: ${storageError instanceof Error?storageError.message:String(storageError)}`); }
-      } catch (e) {
-        if(runId!==batchRunId.current) break;
-        const entry:BatchMatchItem={game,status:'failed',analysisStatus:'failed',error:e instanceof Error?e.message:String(e)};
-        setBatchMatches(current=>[...current.filter(item=>item.game.gameId!==game.gameId),entry]);
-        try { await persistBatchItem(entry); } catch(storageError) { console.warn('[ReplayCoach] Importfehler konnte nicht lokal gespeichert werden:',storageError); }
+    let nextIndex=0;
+    const publishImportProgress=(gameId='')=>setBatchProgress({done,total:games.length,gameId});
+    const worker=async()=>{
+      while(runId===batchRunId.current){
+        const index=nextIndex++;
+        if(index>=games.length) return;
+        const game=games[index];
+        if(existingIds.has(game.gameId)){ done++; publishImportProgress(game.gameId); continue; }
+        setBatchMatches(current=>[...current.filter(item=>item.game.gameId!==game.gameId),{game,status:'running'}]);
+        try {
+          const imported=await window.replayAPI.importReplayUrl(`https://openfront.io/w5/game/${game.gameId}`);
+          if(runId!==batchRunId.current) return;
+          if ('canceled' in imported) throw new Error('Import wurde abgebrochen.');
+          const normalizeMap=(value:unknown)=>String(value??'').trim().toLowerCase().replace(/[\\s.()_-]+/g,'');
+          const selectedMap=game.map||imported.mapName;
+          const previews=Object.entries(playerPage.mapPreviews??{});
+          const preview=(selectedMap ? playerPage.mapPreviews?.[String(selectedMap).trim().toLowerCase()] : undefined) || previews.find(([key])=>normalizeMap(key)===normalizeMap(selectedMap))?.[1] || previews.find(([key])=>normalizeMap(key)===normalizeMap(imported.mapName))?.[1] || game.previewUrl;
+          if (preview) imported.previewUrl=preview;
+          else if (selectedMap) { try { imported.previewUrl=(await window.replayAPI.resolveMapPreview(selectedMap)).imageUrl; } catch { imported.previewUrl=null; } }
+          if(runId!==batchRunId.current) return;
+          const status: 'engine-mismatch' | 'loaded'=imported.engineCompatibility?.engineVersionCompatible===false ? 'engine-mismatch' : 'loaded';
+          const entry:BatchMatchItem={game,result:imported,status,analysisStatus:status==='engine-mismatch'?'unsupported':'pending'};
+          existingIds.add(game.gameId);
+          setBatchMatches(current=>[...current.filter(item=>item.game.gameId!==game.gameId),entry]);
+          try { await persistBatchItem(entry); } catch(storageError) { console.warn('[ReplayCoach] Replay wurde geladen, konnte aber nicht lokal gesichert werden:',storageError); setError(`Partie ${game.gameId} geladen, aber lokale Speicherung fehlgeschlagen: ${storageError instanceof Error?storageError.message:String(storageError)}`); }
+        } catch (e) {
+          if(runId!==batchRunId.current) return;
+          const entry:BatchMatchItem={game,status:'failed',analysisStatus:'failed',error:e instanceof Error?e.message:String(e)};
+          setBatchMatches(current=>[...current.filter(item=>item.game.gameId!==game.gameId),entry]);
+          try { await persistBatchItem(entry); } catch(storageError) { console.warn('[ReplayCoach] Importfehler konnte nicht lokal gespeichert werden:',storageError); }
+        }
+        done++;
+        publishImportProgress(game.gameId);
       }
-      done++;
-    }
+    };
+    // A small network pool cuts library import time without overwhelming the
+    // OpenFront public API or causing dozens of simultaneous large downloads.
+    await Promise.all(Array.from({length:Math.min(3,games.length||1)},()=>worker()));
     if(runId===batchRunId.current) { setBatchProgress({done,total:games.length,gameId:''}); setBatchBusy(false); }
   }
   function cancelBatchImport() { batchRunId.current++; setBatchBusy(false); setBatchProgress(current=>current?{...current,gameId:''}:null); }

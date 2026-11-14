@@ -19,6 +19,7 @@ import { installBrowserReplayAPI } from './platform/BrowserReplayAPI';
 import { loadImportedMatches, loadPlayerLibrary, saveImportedMatch, savePlayerLibrary, type StoredAnalysisStatus, type StoredMatchEntry } from './matchStore';
 import { UpdateCenter } from './UpdateCenter';
 import { StrategyPlaybook } from './StrategyPlaybook';
+import { selectGamesToAnalyze, selectGamesToImport } from './AutoLibrarySync';
 
 // Electron provides its API through the isolated preload; normal browsers use
 // the browser adapter so the same React interface powers Windows and Android.
@@ -231,9 +232,9 @@ function App() {
     if(!playerPage || playerBusy || batchBusy || batchAnalysisBusy) return;
     // First install: import every match in the profile. Later launches: only new games
     // are missing from the local library. Existing failures are left visible for retry.
-    const missing=playerPage.games.filter(game=>!batchMatches.some(item=>item.game.gameId===game.gameId));
+    const missing=selectGamesToImport(playerPage.games,batchMatches);
     if(missing.length){ void loadSelectedGames(missing.map(game=>game.gameId)); return; }
-    const pending=batchMatches.filter(item=>item.result && (item.analysisStatus===undefined || item.analysisStatus==='pending'));
+    const pending=selectGamesToAnalyze(batchMatches);
     if(pending.length) void analyzeSelectedGames(pending.map(item=>item.game.gameId));
   },[playerPage,batchMatches,playerBusy,batchBusy,batchAnalysisBusy]);
 

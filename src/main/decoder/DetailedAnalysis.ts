@@ -76,13 +76,18 @@ export function analyzeDetailedActions(actions: DecodedAction[], durationSeconds
     clientMap.set(action.clientId, stats);
   }
 
-  const summarize = (values: number[]) => ({
-    count: values.length,
-    total: values.reduce((sum, n) => sum + n, 0),
-    average: values.length ? values.reduce((sum, n) => sum + n, 0) / values.length : 0,
-    min: values.length ? Math.min(...values) : null,
-    max: values.length ? Math.max(...values) : null,
-  });
+  const summarize = (values: number[]) => {
+    if (!values.length) return { count: 0, total: 0, average: 0, min: null, max: null };
+    let total = 0;
+    let min = Number.POSITIVE_INFINITY;
+    let max = Number.NEGATIVE_INFINITY;
+    for (const value of values) {
+      total += value;
+      if (value < min) min = value;
+      if (value > max) max = value;
+    }
+    return { count: values.length, total, average: total / values.length, min, max };
+  };
 
   return {
     timeBuckets,

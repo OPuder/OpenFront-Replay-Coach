@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { runConcurrentBatchAnalysis, runSequentialBatchAnalysis } from '../src/renderer/BatchAnalysisRunner.ts';
+import { chooseBatchAnalysisConcurrency, runConcurrentBatchAnalysis, runSequentialBatchAnalysis } from '../src/renderer/BatchAnalysisRunner.ts';
 
 const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
@@ -203,4 +203,13 @@ test('parallel analysis cancellation does not start queued matches after abort',
   assert.ok(started.length <= 2);
   assert.equal(started.includes('c'), false);
   assert.equal(started.includes('d'), false);
+});
+
+
+test('desktop analysis concurrency scales conservatively with CPU and memory', () => {
+  assert.equal(chooseBatchAnalysisConcurrency(true, 16, 32), 1, 'mobile remains sequential');
+  assert.equal(chooseBatchAnalysisConcurrency(false, 4, 16), 2, 'small CPU keeps two workers');
+  assert.equal(chooseBatchAnalysisConcurrency(false, 8, 8), 3, 'mid/high tier desktop uses three workers');
+  assert.equal(chooseBatchAnalysisConcurrency(false, 16, 32), 4, 'high-memory desktop uses four workers');
+  assert.equal(chooseBatchAnalysisConcurrency(false, undefined, undefined), 2, 'unknown hardware uses safe default');
 });

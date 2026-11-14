@@ -275,20 +275,10 @@ export async function autoUpdateOnStartup(): Promise<boolean> {
       console.error('[ReplayCoach] Automatisches Update ' + version + ' wurde bereits versucht, aber die installierte Version ist unverändert. Wiederholter Neustart wird verhindert; bitte Update manuell erneut starten.', previousAttempt.attemptedAt);
       return false;
     }
-    console.info('[ReplayCoach] Neues Update ' + version + ' erkannt; Installation wird vorbereitet.');
-    const portable = await isPortableInstall(app.getPath('exe'));
-    const asset = chooseWindowsAsset(release, portable);
-    const downloadPath = await downloadVerifiedAsset(asset);
-    // Persist before handing off to the detached installer. If it fails to
-    // replace the running executable, the next launch must not enter a restart loop.
-    await writeAutoUpdateAttempt(version);
-    try {
-      await scheduleWindowsInstall(downloadPath, portable);
-    } catch (error) {
-      await clearAutoUpdateAttempt();
-      throw error;
-    }
-    return true;
+    // Startup checks must never close the app unexpectedly. Installation is
+    // initiated only from the Update Center after an explicit user action.
+    console.info('[ReplayCoach] Update ' + version + ' ist verfügbar; Installation wartet auf Bestätigung im Update Center.');
+    return false;
   } catch (error) {
     console.warn('[ReplayCoach] Automatisches Update übersprungen; Programm startet mit der installierten Version:', error);
     return false;

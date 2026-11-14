@@ -41,5 +41,8 @@ jobs:
       - name: Type-check all exact replay engine revisions
         run: npm run typecheck:engines
 
+      - name: Install Coach build dependencies
+        run: npm ci
+
       - name: Bundle all exact replay engine workers for Electron
         run: npm run build:engine

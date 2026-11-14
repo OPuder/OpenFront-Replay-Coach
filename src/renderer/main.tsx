@@ -42,6 +42,7 @@ function App() {
   const [simulationProgress, setSimulationProgress] = useState<{percent:number;phase:string}|null>(null);
   const [simulationResult, setSimulationResult] = useState<ReplaySimulationResult|null>(null);
   const engineReviewRunId = React.useRef(0);
+  const engineReviewAbort = React.useRef<AbortController|null>(null);
   const batchRunId = React.useRef(0);
   const isDesktopShell = /Electron/i.test(navigator.userAgent);
   const isMobileDevice = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
@@ -315,7 +316,7 @@ function App() {
     const hydrated=playerPage?await loadImportedMatch(playerPage.playerId,gameId):null;
     const result=hydrated?.result??item.result;
     if(!result.record){setError('Die Replay-Daten dieser Partie fehlen im lokalen Speicher. Bitte importiere sie erneut.');return;}
-    engineReviewRunId.current++;
+    engineReviewAbort.current?.abort(); engineReviewAbort.current=null; engineReviewRunId.current++;
     setSimulationProgress(null); setSimulationResult(item.simulation??null);
     setApiResult(result); setDecodedActions(result.decodedActions??[]); setReplay(null);
     setUrl(`https://openfront.io/w5/game/${gameId}`); setMapRefreshKey(key=>key+1); setActivePage('analysis');
@@ -371,6 +372,9 @@ function App() {
     }
   }
   async function runEngineReview(result: ApiImportSummary, selectedClientId?: string | null, libraryGame?: PlayerGame) {
+    engineReviewAbort.current?.abort();
+    const controller = new AbortController();
+    engineReviewAbort.current = controller;
     const requestId = ++engineReviewRunId.current;
     setSimulationResult(null);
     const persist = async (patch: Partial<BatchMatchItem>) => {
@@ -413,6 +417,7 @@ function App() {
         },
         50,
         preferredClientId,
+        controller.signal,
       );
       if (requestId === engineReviewRunId.current) {
         setSimulationResult(simulated);
@@ -430,6 +435,7 @@ function App() {
       }
     } finally {
       if (requestId === engineReviewRunId.current) setSimulationProgress(null);
+      if (engineReviewAbort.current === controller) engineReviewAbort.current = null;
     }
   }
   async function importUrl() { cancelBatchAnalysis(); engineReviewRunId.current++; setSimulationProgress(null); setBusy(true); setError(''); setApiResult(null); setSimulationResult(null); try { const result = await window.replayAPI.importReplayUrl(url); if ('canceled' in result) { setError('Speichern abgebrochen. Die API-Antwort wurde nicht lokal abgelegt.'); } else { setApiResult(result); setDecodedActions(result.decodedActions ?? []); setReplay(null); setActivePage('analysis'); await runEngineReview(result); } } catch (e) { setError(e instanceof Error ? e.message : String(e)); } finally { setBusy(false); } }

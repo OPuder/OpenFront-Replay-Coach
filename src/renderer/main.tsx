@@ -238,23 +238,21 @@ function App() {
     setBatchAnalysisBusy(true); setError('');
     setBatchAnalysisProgress({done:0,total:candidates.length,gameId:'',percent:0,phase:'Analyse wird vorbereitet',active:0,elapsedMs:0,estimatedRemainingMs:null});
     try {
-      // Hydrate one replay at a time from IndexedDB; the dashboard keeps only
-      // compact metadata/simulation results in memory, not every raw GameRecord.
-      const candidates=(await Promise.all(selected.map(async item=>
-        await loadImportedMatch(playerPage.playerId,item.game.gameId) ?? item
-      ))).filter((item):item is BatchMatchItem=>Boolean(item.result?.record));
-      if(runId!==batchAnalysisRunId.current||controller.signal.aborted) return;
-      if(!candidates.length) throw new Error('Für die ausgewählten Partien fehlen lokal gespeicherte Replay-Daten. Bitte importiere die Partien erneut.');
+      // Keep the entire queue lightweight. Each worker hydrates only its
+      // current raw GameRecord, then releases it when that replay is finished.
+      const candidates=selected;
       const {simulateReplay,buildReplayEngineAssets}=await import('./ReplaySimulation');
       if(runId!==batchAnalysisRunId.current||controller.signal.aborted) return;
       await runConcurrentBatchAnalysis<BatchMatchItem,ReplaySimulationResult>(candidates,{
-        // Scale only when both CPU and memory headroom are known; mobile stays sequential.
+        // Mobile stays sequential to cap peak WebView memory use.
         concurrency:chooseBatchAnalysisConcurrency(isMobileDevice,navigator.hardwareConcurrency,(navigator as Navigator & {deviceMemory?:number}).deviceMemory),
         signal:controller.signal,
         getId:item=>item.game.gameId,
-        isCompatible:item=>Boolean(item.result?.record&&item.result.engineCompatibility?.engineVersionCompatible===true),
+        isCompatible:item=>Boolean(item.result&&item.result.engineCompatibility?.engineVersionCompatible===true),
         analyze:async(item,onProgress,signal)=>{
-          const result=item.result!;
+          const hydrated=await loadImportedMatch(playerPage.playerId,item.game.gameId);
+          const result=hydrated?.result;
+          if(!result?.record) throw new Error('Die gespeicherten Replay-Daten fehlen. Bitte importiere diese Partie erneut.');
           const preferredClientId=resolveProfileClientId(result);
           if(!preferredClientId) throw new Error('Das OpenFront-Profil konnte keinem Spieler dieser Partie eindeutig zugeordnet werden.');
           const assets=buildReplayEngineAssets(result.record);

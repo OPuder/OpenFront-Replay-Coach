@@ -24,4 +24,15 @@ const renderer = readFileSync(rendererPath, "utf8");
 const updatedRenderer = renderer.replace(/OpenFront Replay Coach · \d+\.\d+\.\d+/g, "OpenFront Replay Coach · " + version);
 if (updatedRenderer !== renderer) writeFileSync(rendererPath, updatedRenderer);
 
+const serviceWorkerPath = "public/sw.js";
+const serviceWorker = readFileSync(serviceWorkerPath, "utf8");
+const updatedServiceWorker = serviceWorker.replace(
+  /^const CACHE_NAME = "openfront-replay-coach-shell-[^"]+";/m,
+  'const CACHE_NAME = "openfront-replay-coach-shell-v' + version + '";',
+);
+if (updatedServiceWorker === serviceWorker) {
+  throw new Error("The PWA service-worker cache version could not be updated.");
+}
+writeFileSync(serviceWorkerPath, updatedServiceWorker);
+
 console.log("Release version set to " + version + ".");

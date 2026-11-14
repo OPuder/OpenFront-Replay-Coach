@@ -22,8 +22,8 @@ public class ApkUpdaterPlugin extends Plugin {
     public void downloadAndInstall(PluginCall call) {
         final String url = call.getString("url");
         final String expectedDigest = call.getString("digest");
-        final Long sizeValue = call.getLong("size");
-        final long expectedSize = sizeValue == null ? -1L : sizeValue;
+        final Double sizeValue = call.getDouble("size");
+        final long expectedSize = sizeValue == null ? -1L : sizeValue.longValue();
         if (url == null || !url.startsWith("https://github.com/OPuder/OpenFront-Replay-Coach/releases/download/")) {
             call.reject("Ungültige Update-Quelle."); return;
         }
@@ -33,7 +33,7 @@ public class ApkUpdaterPlugin extends Plugin {
         if (expectedSize < 1 || expectedSize > 100L * 1024L * 1024L) {
             call.reject("Die APK-Größe ist ungültig oder überschreitet 100 MB."); return;
         }
-        getBridge().executeOnThreadPool(() -> {
+        new Thread(() -> {
             HttpURLConnection connection = null;
             File apk = new File(getContext().getCacheDir(), "replay-coach-update.apk");
             try {
@@ -75,7 +75,7 @@ public class ApkUpdaterPlugin extends Plugin {
             } finally {
                 if (connection != null) connection.disconnect();
             }
-        });
+        }, "ReplayCoachApkUpdater").start();
     }
 
     private void openInstaller(PluginCall call, File apk) {

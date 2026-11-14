@@ -358,7 +358,7 @@ jobs:
           generate_release_notes: true
           fail_on_unmatched_files: true
           body: |
-            ## Vier Ausgaben – eine Version
+            ## Drei Ausgaben – eine Version
 
             - **Windows Installer:** normal installieren, Desktop-Verknüpfung inklusive.
             - **Windows Portable:** ZIP entpacken und direkt starten, keine Installation.

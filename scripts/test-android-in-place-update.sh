@@ -32,4 +32,5 @@ fi
 expected_version_code="$((major * 1000000 + minor * 1000 + patch + 1))"
 installed_package="$(adb shell dumpsys package "$package_id")"
 grep -F "versionCode=$expected_version_code" <<< "$installed_package"
+cp "$before_apk" "$apk"
 echo "Android in-place update passed: $current_version -> $next_version; package identity, signature and app data preserved."

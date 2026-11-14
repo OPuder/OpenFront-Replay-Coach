@@ -9,6 +9,19 @@ const RELEASE_API = 'https://api.github.com/repos/OPuder/OpenFront-Replay-Coach/
 const MAX_UPDATE_BYTES = 400 * 1024 * 1024;
 type ReleaseAsset = { name: string; browser_download_url: string; size: number; digest?: string | null };
 type Release = { tag_name: string; html_url: string; assets: ReleaseAsset[] };
+type AutoUpdateAttempt = { targetVersion: string; installedVersion: string; attemptedAt: string };
+const autoUpdateAttemptPath = () => path.join(app.getPath('userData'), 'auto-update-attempt.json');
+async function readAutoUpdateAttempt(): Promise<AutoUpdateAttempt | null> {
+  try { return JSON.parse(await fs.readFile(autoUpdateAttemptPath(), 'utf8')) as AutoUpdateAttempt; }
+  catch { return null; }
+}
+async function writeAutoUpdateAttempt(targetVersion: string): Promise<void> {
+  await fs.mkdir(app.getPath('userData'), { recursive: true });
+  await fs.writeFile(autoUpdateAttemptPath(), JSON.stringify({ targetVersion, installedVersion: app.getVersion(), attemptedAt: new Date().toISOString() } satisfies AutoUpdateAttempt), 'utf8');
+}
+async function clearAutoUpdateAttempt(): Promise<void> {
+  await fs.rm(autoUpdateAttemptPath(), { force: true }).catch(() => undefined);
+}
 
 function compareVersions(left: string, right: string): number {
   const parse = (value: string) => value.replace(/^v/i, '').split('.').slice(0, 3).map(part => Number.parseInt(part, 10) || 0);
@@ -155,6 +168,8 @@ async function installLatestWindowsUpdate(): Promise<{ scheduled: boolean; versi
     const portable = await isPortableInstall(app.getPath('exe'));
     const asset = chooseWindowsAsset(release, portable);
     const downloadPath = await downloadVerifiedAsset(asset);
+    // A user-triggered retry is explicit; clear the automatic-loop guard first.
+    await clearAutoUpdateAttempt();
     await scheduleWindowsInstall(downloadPath, portable);
     return { scheduled: true, version };
   })();
@@ -169,11 +184,22 @@ export async function autoUpdateOnStartup(): Promise<boolean> {
   try {
     const release = await getLatestRelease();
     const version = release.tag_name.replace(/^v/i, '');
-    if (compareVersions(version, app.getVersion()) <= 0) return false;
+    if (compareVersions(version, app.getVersion()) <= 0) {
+      await clearAutoUpdateAttempt();
+      return false;
+    }
+    const previousAttempt = await readAutoUpdateAttempt();
+    if (previousAttempt?.targetVersion === version && previousAttempt.installedVersion === app.getVersion()) {
+      console.error('[ReplayCoach] Automatisches Update ' + version + ' wurde bereits versucht, aber die installierte Version ist unverändert. Wiederholter Neustart wird verhindert; bitte Update manuell erneut starten.', previousAttempt.attemptedAt);
+      return false;
+    }
     console.info('[ReplayCoach] Neues Update ' + version + ' erkannt; Installation wird vorbereitet.');
     const portable = await isPortableInstall(app.getPath('exe'));
     const asset = chooseWindowsAsset(release, portable);
     const downloadPath = await downloadVerifiedAsset(asset);
+    // Persist before handing off to the detached installer. If it fails to
+    // replace the running executable, the next launch must not enter a restart loop.
+    await writeAutoUpdateAttempt(version);
     await scheduleWindowsInstall(downloadPath, portable);
     return true;
   } catch (error) {

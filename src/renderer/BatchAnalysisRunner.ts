@@ -14,6 +14,8 @@ export interface BatchAnalysisProgress {
   percent: number;
   phase: string;
   active: number;
+  elapsedMs: number;
+  estimatedRemainingMs: number | null;
 }
 
 export interface BatchAnalysisSummary {
@@ -79,6 +81,7 @@ export async function runConcurrentBatchAnalysis<
     cancelled: false,
   };
   const activeProgress = new Map<string, { percent: number; phase: string }>();
+  const startedAt = Date.now();
   let nextIndex = 0;
   const concurrency = Math.max(1, Math.min(uniqueItems.length || 1, Math.floor(options.concurrency ?? 1)));
 
@@ -93,6 +96,10 @@ export async function runConcurrentBatchAnalysis<
         ? active.map(([id, value]) => `${id}: ${value.phase}`).join(" · ")
         : summary.cancelled ? "Analyse abgebrochen" : "Partie abgeschlossen",
       active: active.length,
+      elapsedMs: Date.now() - startedAt,
+      estimatedRemainingMs: summary.completed > 0
+        ? Math.max(0, (Date.now() - startedAt) / summary.completed * (summary.total - summary.completed))
+        : null,
     });
   };
 
@@ -177,4 +184,14 @@ export function runSequentialBatchAnalysis<
   options: Omit<ConcurrentBatchAnalysisOptions<TItem, TResult>, "concurrency">,
 ): Promise<BatchAnalysisSummary> {
   return runConcurrentBatchAnalysis(items, { ...options, concurrency: 1 });
+}
+
+/** Select a safe worker count from available hardware without assuming that more is always faster. */
+export function chooseBatchAnalysisConcurrency(isMobile: boolean, hardwareConcurrency?: number, deviceMemoryGb?: number): number {
+  if (isMobile) return 1;
+  const cores = Number.isFinite(hardwareConcurrency) ? Math.max(1, Math.floor(hardwareConcurrency!)) : 2;
+  const memory = Number.isFinite(deviceMemoryGb) ? deviceMemoryGb! : 0;
+  if (cores >= 16 && memory >= 8) return 4;
+  if (cores >= 8 && memory >= 4) return 3;
+  return 2;
 }

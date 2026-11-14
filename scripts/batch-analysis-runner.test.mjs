@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { runConcurrentBatchAnalysis, runSequentialBatchAnalysis } from '../src/renderer/BatchAnalysisRunner.ts';
+import { chooseBatchAnalysisConcurrency, runConcurrentBatchAnalysis, runSequentialBatchAnalysis } from '../src/renderer/BatchAnalysisRunner.ts';
 
 const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
@@ -41,6 +41,8 @@ test('batch analysis is sequential, isolates failures and records each independe
   assert.ok(events.some(event => event.id === 'c' && event.status === 'failed' && event.error === 'synthetic engine failure'));
   assert.ok(events.some(event => event.id === 'd' && event.status === 'unverified'));
   assert.ok(progress.length >= 4);
+  assert.ok(progress.every(value => value.elapsedMs >= 0));
+  assert.ok(progress.some(value => value.estimatedRemainingMs !== null));
 });
 
 test('cancellation stops the active simulation and never starts later matches', async () => {
@@ -203,4 +205,13 @@ test('parallel analysis cancellation does not start queued matches after abort',
   assert.ok(started.length <= 2);
   assert.equal(started.includes('c'), false);
   assert.equal(started.includes('d'), false);
+});
+
+
+test('desktop analysis concurrency scales conservatively with CPU and memory', () => {
+  assert.equal(chooseBatchAnalysisConcurrency(true, 16, 32), 1, 'mobile remains sequential');
+  assert.equal(chooseBatchAnalysisConcurrency(false, 4, 16), 2, 'small CPU keeps two workers');
+  assert.equal(chooseBatchAnalysisConcurrency(false, 8, 4), 3, 'mid/high tier desktop uses three workers');
+  assert.equal(chooseBatchAnalysisConcurrency(false, 16, 8), 4, 'high-core desktop with ample reported memory uses four workers');
+  assert.equal(chooseBatchAnalysisConcurrency(false, undefined, undefined), 2, 'unknown hardware uses safe default');
 });

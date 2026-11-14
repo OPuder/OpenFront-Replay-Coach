@@ -99,3 +99,19 @@ test('mixed modes are not combined into a misleading longitudinal cohort', () =>
   assert.equal(report.comparableMatches, 2);
   assert.equal(report.comparableGroup, 'Teams · Private');
 });
+
+test('progression is chronological and only includes verified matches', () => {
+  const report=buildLongitudinalCoachReport([
+    match('later',{playedAt:'2026-02-02T00:00:00Z'}),
+    match('earlier',{playedAt:'2026-02-01T00:00:00Z',simulation:makeSimulation({samples:makeSimulation().samples.map(sample=>({...sample,players:sample.players.map(player=>({...player,tiles:player.tiles*2,goldEarned:player.goldEarned*2}))}))})}),
+    match('ignored',{playedAt:'2026-02-03T00:00:00Z',analysisStatus:'unverified',simulation:makeSimulation({status:'unverified'})}),
+  ]);
+  assert.deepEqual(report.matchProgress.map(item=>item.gameId),['earlier','later']);
+  assert.equal(report.matchProgress.length,2);
+  assert.equal(report.metricTrends.length,2);
+  assert.equal(report.metricTrends.find(item=>item.id==='territory')?.direction,'declined');
+});
+test('progression does not claim a trend from one match',()=>{
+  const report=buildLongitudinalCoachReport([match('only')]);
+  assert.equal(report.metricTrends.find(item=>item.id==='territory')?.direction,'insufficient-data');
+});

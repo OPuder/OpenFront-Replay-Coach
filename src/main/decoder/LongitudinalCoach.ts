@@ -39,8 +39,8 @@ export interface LongitudinalFinding {
   examples: Array<{ gameId: string; mapName: string; evidence: string }>;
 }
 
-export interface LongitudinalMatchProgress { gameId:string; mapName:string; playedAt:string|null; territoryPerMinute:number|null; incomePerMinute:number|null; attackFollowThroughPercent:number|null; phaseMomentum:{early:number|null;mid:number|null;late:number|null}; reviewedFindings:number; }
-export interface LongitudinalMetricTrend { id:"territory"|"income"|"attack-follow-through"; label:string; previous:number|null; latest:number|null; delta:number|null; direction:"improved"|"declined"|"stable"|"insufficient-data"; unit:string; }
+export interface LongitudinalMatchProgress { gameId:string; mapName:string; playedAt:string|null; territoryPerMinute:number|null; incomePerMinute:number|null; attackFollowThroughPercent:number|null; attackFollowThroughSamples:number; phaseMomentum:{early:number|null;mid:number|null;late:number|null}; reviewedFindings:number; }
+export interface LongitudinalMetricTrend { id:"territory"|"income"|"attack-follow-through"; label:string; previous:number|null; latest:number|null; delta:number|null; observations:number; direction:"improved"|"declined"|"stable"|"insufficient-data"; unit:string; }
 export interface LongitudinalCoachReport {
   status: "ready" | "insufficient-data";
   importedMatches: number;
@@ -160,7 +160,8 @@ export function buildLongitudinalCoachReport(
       territoryPerMinute:avg(territory.map(item=>item.territoryPerMinute!).filter(Number.isFinite)),
       incomePerMinute:avg(income.map(item=>item.incomePerMinute!).filter(Number.isFinite)),
       phaseMomentum:{early:phase("early")?.momentumIndex??null,mid:phase("mid")?.momentumIndex??null,late:phase("late")?.momentumIndex??null},
-      attackFollowThroughPercent:(()=>{const evaluated=(entry.input.simulation?.actionReviews??[]).filter((raw:any)=>raw?.type==="attack"&&Number.isFinite(raw.delta30s?.tiles)&&Number.isFinite(raw.targetDelta30s?.tiles));if(!evaluated.length)return null;const productive=evaluated.filter((raw:any)=>Number(raw.delta30s.tiles)>0||Number(raw.targetDelta30s.tiles)<0).length;return productive/evaluated.length*100;})(),
+      attackFollowThroughPercent:(()=>{const evaluated=(entry.input.simulation?.actionReviews??[]).filter((raw:any)=>raw?.type==="attack"&&Number.isFinite(raw.delta30s?.tiles)&&(Number(raw.delta30s.tiles)>0||Number.isFinite(raw.targetDelta30s?.tiles)));if(!evaluated.length)return null;const productive=evaluated.filter((raw:any)=>Number(raw.delta30s.tiles)>0||(Number.isFinite(raw.targetDelta30s?.tiles)&&Number(raw.targetDelta30s.tiles)<0)).length;return productive/evaluated.length*100;})(),
+      attackFollowThroughSamples:(entry.input.simulation?.actionReviews??[]).filter((raw:any)=>raw?.type==="attack"&&Number.isFinite(raw.delta30s?.tiles)&&(Number(raw.delta30s.tiles)>0||Number.isFinite(raw.targetDelta30s?.tiles))).length,
       reviewedFindings:entry.report.findings.length};
   });
   const trend=(id:"territory"|"income"|"attack-follow-through",label:string,unit:string):LongitudinalMetricTrend=>{
@@ -168,7 +169,7 @@ export function buildLongitudinalCoachReport(
     const previous=values.length>=2?values[values.length-2]:null,latest=values.length>=2?values[values.length-1]:null;
     const delta=previous!==null&&latest!==null?latest-previous:null,threshold=previous===null?0:Math.max(0.05,Math.abs(previous)*0.03);
     const direction=delta===null?"insufficient-data":delta>threshold?"improved":delta< -threshold?"declined":"stable";
-    return {id,label,previous,latest,delta,direction,unit};
+    return {id,label,previous,latest,delta,observations:values.length,direction,unit};
   };
   const metricTrends=[trend("territory","Gebietszuwachs","Gebiete/min"),trend("income","Einkommenszuwachs","Gold/min"),trend("attack-follow-through","Angriffs-Folge","%")];
 

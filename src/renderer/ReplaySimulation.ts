@@ -54,7 +54,6 @@ export interface ReplayStateSample {
   }>;
   totalUnits: number;
   falloutTiles: number;
-  spawnPositions?: SpawnPositionMetric[];
 }
 
 export interface ReplayFrontContext {
@@ -228,9 +227,6 @@ export async function simulateReplay(
   workers.engine.postMessage({ type: "connect", port: channel.port1 }, [channel.port1]);
   const readerRef: { current: InstanceType<typeof ReplayReader> | null } = { current: null };
   const samples: ReplayStateSample[] = [];
-  let spawnPositions: SpawnPositionMetric[] | null = null;
-  let spawnPhaseEndTick: number | null = null;
-  let spawnSnapshotTick: number | null = null;
   let lastSampledFrame = -1;
   const turns: any[] = Array.isArray(record.turns) ? record.turns : [];
   const recordedHashCount = turns.filter((turn: any) => turn.hash !== null && turn.hash !== undefined).length;
@@ -341,47 +337,12 @@ export async function simulateReplay(
         inDoomsdayClock: Boolean(p.inDoomsdayClock),
       };
     });
-    const spatialState = state as unknown as { tileState?: Uint16Array; terrain?: ReadonlyMap<number, number> };
-    const spatialHeader = reader.header as unknown as {
-      mapWidth?: number;
-      mapHeight?: number;
-      spawnPhaseEnd?: { tick: number; startTick: number } | null;
-    };
-    const recordedSpawnEnd = spatialHeader.spawnPhaseEnd?.tick ?? null;
-    const hasRecordedSpawn = players.some((player) => player.spawnTile !== null);
-    const isSpawnSnapshot = !spawnPositions &&
-      Boolean(spatialState.tileState && spatialHeader.mapWidth && spatialHeader.mapHeight) &&
-      hasRecordedSpawn &&
-      (recordedSpawnEnd !== null
-        ? Number(state.tick) >= recordedSpawnEnd
-        : frame === orderedSampleFrames[orderedSampleFrames.length - 1]);
-    let spawnPositionsAtSample: SpawnPositionMetric[] | undefined;
-    if (isSpawnSnapshot && spatialState.tileState && spatialHeader.mapWidth && spatialHeader.mapHeight) {
-      let terrain = await loadReplayTerrainData(assets, spatialHeader.mapWidth, spatialHeader.mapHeight, signal);
-      if (terrain && spatialState.terrain) {
-        terrain = terrain.slice();
-        for (const [ref, byte] of spatialState.terrain) {
-          if (Number.isInteger(ref) && ref >= 0 && ref < terrain.length) terrain[ref] = byte;
-        }
-      }
-      spawnPositionsAtSample = analyzeSpawnPositions(
-        spatialState.tileState,
-        spatialHeader.mapWidth,
-        spatialHeader.mapHeight,
-        players,
-        terrain ?? undefined,
-      );
-      spawnPositions = spawnPositionsAtSample;
-      spawnPhaseEndTick = recordedSpawnEnd;
-      spawnSnapshotTick = Number(state.tick);
-    }
     return {
       tick: state.tick,
       frame,
       players,
       totalUnits: state.units.size,
       falloutTiles: state.falloutTiles,
-      ...(spawnPositionsAtSample ? { spawnPositions: spawnPositionsAtSample } : {}),
     };
   };
 
@@ -436,7 +397,6 @@ export async function simulateReplay(
         } else if (msg.type === "done") {
           await appendQueue;
           if (settled) return;
-          settled = true;
           const totalTicks = readerRef.current?.header.totalFrames ?? 0;
           const finalFrame = totalTicks - 1;
           if (readerRef.current && finalFrame >= 0 && lastSampledFrame !== finalFrame) {
@@ -444,8 +404,47 @@ export async function simulateReplay(
             samples.push(await captureSample(reader, finalFrame));
             lastSampledFrame = finalFrame;
           }
-          cleanup();
-          const staticPlayers = readerRef.current?.header.players ?? [];
+          const reader = readerRef.current;
+          let spawnPositions: SpawnPositionMetric[] | null = null;
+          let spawnPhaseEndTick: number | null = null;
+          let spawnSnapshotTick: number | null = null;
+          if (reader && finalFrame >= 0) {
+            const recordedSpawnEnd = reader.header.spawnPhaseEnd?.tick ?? null;
+            const hasRecordedEndFrame = recordedSpawnEnd !== null && recordedSpawnEnd <= finalFrame;
+            const spawnFrame = hasRecordedEndFrame
+              ? Math.max(0, Math.floor(recordedSpawnEnd as number))
+              : finalFrame;
+            await reader.load(reader.chunkOf(spawnFrame));
+            const spawnState = reader.seek(spawnFrame);
+            const staticSpawnPlayers = new Map(reader.header.players.map((meta: any) => [meta.smallID, meta]));
+            const spawnPlayers = [...spawnState.players.entries()].map(([id, player]: [number, any]) => {
+              const meta: any = staticSpawnPlayers.get(id) ?? {};
+              return {
+                id,
+                clientID: meta.clientID == null ? null : String(meta.clientID),
+                name: String(meta.displayName ?? meta.name ?? meta.username ?? `Spieler ${id}`),
+                spawnTile: Number.isInteger(player.spawnTile) ? Number(player.spawnTile) : null,
+              };
+            });
+            let terrain = await loadReplayTerrainData(assets, reader.header.mapWidth, reader.header.mapHeight, signal);
+            if (terrain && spawnState.terrain) {
+              terrain = terrain.slice();
+              for (const [ref, byte] of spawnState.terrain) {
+                if (Number.isInteger(ref) && ref >= 0 && ref < terrain.length) terrain[ref] = byte;
+              }
+            }
+            spawnPositions = analyzeSpawnPositions(
+              spawnState.tileState,
+              reader.header.mapWidth,
+              reader.header.mapHeight,
+              spawnPlayers,
+              terrain ?? undefined,
+            );
+            spawnPhaseEndTick = hasRecordedEndFrame ? recordedSpawnEnd : null;
+            spawnSnapshotTick = Number(spawnState.tick);
+          }
+          if (settled) return;
+          const staticPlayers = reader?.header.players ?? [];
           const target = selectedClientId
             ? staticPlayers.find((p: any) => String(p.clientID ?? "") === selectedClientId)
             : staticPlayers.find((p: any) => /oligenole/i.test(String(p.displayName ?? p.name ?? p.username ?? "")));
@@ -627,6 +626,9 @@ export async function simulateReplay(
                 };
               });
           }) : [];
+          if (settled) return;
+          settled = true;
+          cleanup();
           resolve({
             // processGameRecord resolves only after every recorded hash has been
             // compared. Its first mismatch rejects with ReplayDesyncError.

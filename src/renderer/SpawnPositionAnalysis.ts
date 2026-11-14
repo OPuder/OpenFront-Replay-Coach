@@ -232,6 +232,9 @@ export function analyzeSpawnPositions(
       center,
       nearest: centroidDistances.length ? Math.min(...centroidDistances) : null,
       nearestSpawn: spawnDistances.length ? Math.min(...spawnDistances) : null,
+      classificationDistance: spawnDistances.length
+        ? Math.min(...spawnDistances)
+        : centroidDistances.length ? Math.min(...centroidDistances) : null,
       spawnTile,
       spawnX,
       spawnY,
@@ -248,11 +251,14 @@ export function analyzeSpawnPositions(
   });
 
   const humanNearest = raw
-    .filter((entry) => entry.player.clientID !== null && entry.nearest !== null)
-    .map((entry) => entry.nearest as number)
+    .filter((entry) => entry.player.clientID !== null && entry.classificationDistance !== null)
+    .map((entry) => entry.classificationDistance as number)
     .sort((a, b) => a - b);
+  const middle = Math.floor(humanNearest.length / 2);
   const median = humanNearest.length
-    ? humanNearest[Math.floor(humanNearest.length / 2)]
+    ? humanNearest.length % 2 === 0
+      ? (humanNearest[middle - 1] + humanNearest[middle]) / 2
+      : humanNearest[middle]
     : null;
 
   return raw.map((entry) => ({
@@ -278,11 +284,11 @@ export function analyzeSpawnPositions(
     nearbyHighlandTiles: entry.nearbyHighlandTiles,
     nearbyMountainTiles: entry.nearbyMountainTiles,
     mapEdgeDistance: entry.mapEdgeDistance,
-    classification: !entry.center || entry.nearest === null
+    classification: !entry.center || entry.classificationDistance === null
       ? "unknown"
-      : entry.stat.adjacent.size > 0 && median !== null && entry.nearest <= median
+      : entry.stat.adjacent.size > 0 && median !== null && entry.classificationDistance <= median
         ? "contested"
-        : entry.stat.adjacent.size === 0 && median !== null && entry.nearest > median
+        : entry.stat.adjacent.size === 0 && median !== null && entry.classificationDistance > median
           ? "isolated"
           : "mixed",
   }));

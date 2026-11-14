@@ -107,7 +107,7 @@ jobs:
     needs: prepare-release
     if: needs.prepare-release.outputs.skip != 'true'
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 60
     steps:
       - name: Check out the release source
         uses: actions/checkout@v4
@@ -138,7 +138,7 @@ jobs:
     needs: prepare-release
     if: needs.prepare-release.outputs.skip != 'true'
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
     steps:
       - name: Check out the exact release source
         uses: actions/checkout@v4

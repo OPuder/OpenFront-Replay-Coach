@@ -134,10 +134,11 @@ export interface EngineAssets { manifest: Record<string,string>; cdnBase: string
  * pinned engine commit. The manifest is used to distinguish normal, compact
  * and mini-map binaries; no current/live map data is consulted.
  */
-async function loadReplayTerrainData(
+export async function loadReplayTerrainData(
   assets: EngineAssets,
   width: number,
   height: number,
+  signal?: AbortSignal,
 ): Promise<Uint8Array | null> {
   if (typeof fetch !== "function") return null;
   const manifestKey = Object.keys(assets.manifest).find((key) => key.endsWith("/manifest.json"));
@@ -145,7 +146,7 @@ async function loadReplayTerrainData(
   const manifestUrl = assets.manifest[manifestKey];
   const folder = manifestKey.slice(0, manifestKey.lastIndexOf("/") + 1);
   try {
-    const manifestResponse = await fetch(manifestUrl);
+    const manifestResponse = await fetch(manifestUrl, signal ? { signal } : undefined);
     if (!manifestResponse.ok) return null;
     const manifest = await manifestResponse.json() as Record<string, any>;
     const variants = [
@@ -159,7 +160,7 @@ async function loadReplayTerrainData(
     if (!match) return null;
     const terrainUrl = assets.manifest[`${folder}${match.file}`];
     if (!terrainUrl) return null;
-    const terrainResponse = await fetch(terrainUrl);
+    const terrainResponse = await fetch(terrainUrl, signal ? { signal } : undefined);
     if (!terrainResponse.ok) return null;
     const terrain = new Uint8Array(await terrainResponse.arrayBuffer());
     return terrain.length === width * height ? terrain : null;
@@ -356,7 +357,7 @@ export async function simulateReplay(
         : frame === orderedSampleFrames[orderedSampleFrames.length - 1]);
     let spawnPositionsAtSample: SpawnPositionMetric[] | undefined;
     if (isSpawnSnapshot && spatialState.tileState && spatialHeader.mapWidth && spatialHeader.mapHeight) {
-      let terrain = await loadReplayTerrainData(assets, spatialHeader.mapWidth, spatialHeader.mapHeight);
+      let terrain = await loadReplayTerrainData(assets, spatialHeader.mapWidth, spatialHeader.mapHeight, signal);
       if (terrain && spatialState.terrain) {
         terrain = terrain.slice();
         for (const [ref, byte] of spatialState.terrain) {

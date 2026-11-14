@@ -79,7 +79,26 @@ try {
     socket.send(JSON.stringify({ id, method, params }));
   });
 
-  await Promise.all([command("Runtime.enable"), command("Page.enable"), command("Log.enable").catch(() => null)]);
+  // Electron can expose its DevTools socket before the renderer is responsive.
+  // On loaded Windows runners the first CDP enable command can take >15s; retry
+  // transient timeouts rather than treating a slow startup as a broken app.
+  const enableDomain = async (method, attempts = 3) => {
+    let lastError;
+    for (let attempt = 1; attempt <= attempts; attempt++) {
+      try {
+        await command(method, {}, 45000);
+        return;
+      } catch (error) {
+        lastError = error;
+        if (attempt < attempts) await delay(1500 * attempt);
+      }
+    }
+    throw new Error(method + " failed after " + attempts + " attempts: " + String(lastError));
+  };
+
+  await enableDomain("Runtime.enable");
+  await enableDomain("Page.enable");
+  await enableDomain("Log.enable").catch(() => null);
 
   let state = null;
   let lastEvaluationError = null;

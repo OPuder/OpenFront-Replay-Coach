@@ -346,8 +346,119 @@ jobs:
             echo "::error::The latest release $previous_tag has no Android APK; refusing an unverified signing transition."
             exit 1
           fi
-          current_cert="$("$build_tools/apksigner" verify --print-certs "$apk" | awk -F': ' '/Signer #1 certificate SHA-256 digest:/ {print tolower($2); exit}')"
-          previous_cert="$("$build_tools/apksigner" verify --print-certs "$previous_apk" | awk -F': ' '/Signer #1 certificate SHA-256 digest:/ {print tolower($2); exit}')"
+          current_cert_output="$("$build_tools/apksigner" verify --print-certs "$apk" 2>&1)" || { printf '%s\n' "$current_cert_output"; echo "::error::Could not read the configured APK signing certificate."; exit 1; }
+          previous_cert_output="$("$build_tools/apksigner" verify --print-certs "$previous_apk" 2>&1)" || { printf '%s\n' "$previous_cert_output"; echo "::error::Could not read the published APK signing certificate."; exit 1; }
+          extract_certificate_sha256() {
+            grep -i 'Signer #1 certificate SHA-256 digest:' <<< "$1" |
+              sed -E 's/.*digest:[[:space:]]*//I' |
+              tr -d '[:space:]:' |
+              tr '[:upper:]' '[:lower:]' |
+              grep -E '^[0-9a-f]{64}
+          if [[ -z "$current_cert" || -z "$previous_cert" || "$current_cert" != "$previous_cert" ]]; then
+            echo "::error::Android signing certificate changed. Existing installations could not update; release blocked. Published: $previous_cert; configured: $current_cert."
+            exit 1
+          fi
+          echo "Android signing certificate matches $previous_tag; in-place update identity preserved."
+          "$build_tools/aapt" dump badging "$apk" | tee /tmp/apk-badging.txt
+          grep -F "package: name='de.openfront.replaycoach'" /tmp/apk-badging.txt
+          grep -F "versionName='${{ needs.prepare-release.outputs.version }}'" /tmp/apk-badging.txt
+          mkdir -p release
+          cp "$apk" "release/OpenFront-Replay-Coach-${{ needs.prepare-release.outputs.version }}-Android.apk"
+
+      - name: Verify signed Android APK is a usable release package
+        run: |
+          set -Eeuo pipefail
+          apk="release/OpenFront-Replay-Coach-${{ needs.prepare-release.outputs.version }}-Android.apk"
+          test -s "$apk"
+          test "$(stat -c%s "$apk")" -gt 1000000
+          "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --verbose "$apk"
+          "$ANDROID_HOME/build-tools/36.0.0/aapt" dump badging "$apk" | grep -F "package: name='de.openfront.replaycoach'"
+
+      - name: Upload Android APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-android
+          path: release/*-Android.apk
+          if-no-files-found: error
+          retention-days: 14
+
+  publish-release:
+    name: Publish Windows and Android editions as one GitHub Release
+    needs: [prepare-release, validate-engine, validate-replay, build-windows, build-android]
+    if: needs.prepare-release.outputs.skip != 'true' && needs.build-android.outputs.signing_mode == 'permanent release key'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download Windows installer and portable ZIP
+        uses: actions/download-artifact@v4
+        with:
+          name: release-windows
+          path: release
+
+      - name: Download Android APK
+        uses: actions/download-artifact@v4
+        with:
+          name: release-android
+          path: release
+
+      - name: Create one release with all three downloads
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ needs.prepare-release.outputs.tag }}
+          target_commitish: ${{ needs.prepare-release.outputs.release_sha }}
+          name: OpenFront Replay Coach ${{ needs.prepare-release.outputs.version }}
+          generate_release_notes: true
+          fail_on_unmatched_files: true
+          body: |
+            ## Drei Ausgaben – eine Version
+
+            - **Windows Installer:** normal installieren, Desktop-Verknüpfung inklusive.
+            - **Windows Portable:** ZIP entpacken und direkt starten, keine Installation.
+            - **Android APK:** Die App prüft beim Start auf Updates. Der Download wird nach Tippen auf Aktualisieren gestartet, vorgeprüft und anschließend Androids Installationsdialog geöffnet. Eine Bestätigung bleibt aus Sicherheitsgründen erforderlich. Keine Cloudflare-Anmeldung und kein Play-Store-Konto erforderlich.
+            Die Windows- und Android-Ausgaben enthalten die gemeinsame, getestete Coaching-Oberfläche. Android lädt öffentliche OpenFront-Daten über seine native HTTP-Schnittstelle.
+
+            **Android-Signierung:** ${{ needs.build-android.outputs.signing_mode }}. Für zuverlässige Updates muss der dauerhafte Schlüssel einmalig als vier GitHub-Actions-Secrets eingerichtet werden; siehe `docs/ANDROID_SIGNING.md`. Den privaten Schlüssel niemals ins Repository committen.
+
+            **Start:** siehe START_HERE.txt.
+          files: |
+            release/*.exe
+            release/*.zip
+            release/*-Android.apk
+
+      - name: Verify published release contains exactly three usable artifacts
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ needs.prepare-release.outputs.tag }}
+        run: |
+          set -Eeuo pipefail
+          gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --json assets | node -e '
+            let input = "";
+            process.stdin.setEncoding("utf8");
+            process.stdin.on("data", chunk => input += chunk);
+            process.stdin.on("end", () => {
+              const assets = JSON.parse(input).assets;
+              const names = assets.map(asset => asset.name);
+              const checks = [
+                names.length === 3,
+                names.some(name => /\\.Setup\\.[0-9.]+\\.exe$/i.test(name)),
+                names.some(name => /-win\\.zip$/i.test(name)),
+                names.some(name => /-Android\\.apk$/i.test(name)),
+                assets.every(asset => asset.size > 1000000),
+                !names.some(name => /pwa|service.?worker|web.?zip/i.test(name))
+              ];
+              if (checks.some(ok => !ok)) {
+                console.error("Published release asset verification failed:", JSON.stringify(assets));
+                process.exit(1);
+              }
+              console.log("Verified exactly three release artifacts:", names.join(", "));
+            });
+          '
+ |
+              head -n 1 || true
+          }
+          current_cert="$(extract_certificate_sha256 "$current_cert_output")"
+          previous_cert="$(extract_certificate_sha256 "$previous_cert_output")"
           if [[ -z "$current_cert" || -z "$previous_cert" || "$current_cert" != "$previous_cert" ]]; then
             echo "::error::Android signing certificate changed. Existing installations could not update; release blocked. Published: $previous_cert; configured: $current_cert."
             exit 1

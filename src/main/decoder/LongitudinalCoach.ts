@@ -72,6 +72,14 @@ type NormalizedMatch = {
   actions: ProCoachAction[];
 };
 
+type CachedMatchAnalysis = Omit<NormalizedMatch, "input">;
+
+// A profile refresh often changes only progress/status fields while the already
+// verified simulation payloads remain identical. Reuse expensive coaching
+// reports for those immutable payload objects instead of rebuilding them on
+// every dashboard render or on each other match's completion.
+const matchAnalysisCache = new WeakMap<object, Map<string, CachedMatchAnalysis>>();
+
 const priorityRank = (value: ProCoachFinding["priority"]) =>
   value === "high" ? 0 : value === "medium" ? 1 : 2;
 
@@ -106,6 +114,12 @@ function buildMatchReport(input: LongitudinalMatchInput): NormalizedMatch | null
     !Array.isArray(simulation.actionReviews)
   ) return null;
 
+  const duration = Number(input.durationSeconds);
+  const resolvedDuration = Number.isFinite(duration) && duration > 0 ? duration : simulation.totalTicks / 10;
+  const cacheKey = `${clientId}|${resolvedDuration}`;
+  const cached = matchAnalysisCache.get(simulation as object)?.get(cacheKey);
+  if (cached) return { input, ...cached };
+
   // Malformed or incomplete action records must not be silently assigned time 0.
   // That would fabricate an opening action and could distort longitudinal attack rates.
   const actions = simulation.actionReviews
@@ -123,12 +137,11 @@ function buildMatchReport(input: LongitudinalMatchInput): NormalizedMatch | null
       ownFrontContextBefore: raw.ownFrontContextBefore ?? null,
       targetPressureBefore: raw.targetPressureBefore ?? null,
     }));
-  const duration = Number(input.durationSeconds);
   const report = buildProCoachReport(
     simulation.samples as ProCoachPlayerSample[],
     actions,
     clientId,
-    Number.isFinite(duration) && duration > 0 ? duration : simulation.totalTicks / 10,
+    resolvedDuration,
   );
   const playerReview = simulation.playerReview as Parameters<typeof buildEngineCoachInsights>[0];
   const hasCompleteReview = [
@@ -149,7 +162,14 @@ function buildMatchReport(input: LongitudinalMatchInput): NormalizedMatch | null
         simulation.samples as Parameters<typeof buildEngineCoachInsights>[2],
       ).filter(insight => insight.kind === "strength")
     : [];
-  return { input, report, strengths, actions };
+  const cachedAnalysis: CachedMatchAnalysis = { report, strengths, actions };
+  let perDuration = matchAnalysisCache.get(simulation as object);
+  if (!perDuration) {
+    perDuration = new Map<string, CachedMatchAnalysis>();
+    matchAnalysisCache.set(simulation as object, perDuration);
+  }
+  perDuration.set(cacheKey, cachedAnalysis);
+  return { input, ...cachedAnalysis };
 }
 
 /**
@@ -168,7 +188,9 @@ export function buildLongitudinalCoachReport(
   const groups = new Map<string, NormalizedMatch[]>();
   for (const entry of verified) {
     const key = comparableKey(entry.input);
-    groups.set(key, [...(groups.get(key) ?? []), entry]);
+    const group = groups.get(key);
+    if (group) group.push(entry);
+    else groups.set(key, [entry]);
   }
   const orderedGroups = [...groups.entries()]
     .sort((a, b) => b[1].length - a[1].length || a[0].localeCompare(b[0]));

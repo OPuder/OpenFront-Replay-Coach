@@ -1,4 +1,5 @@
 import { buildProCoachReport, type ProCoachAction, type ProCoachConfidence, type ProCoachFinding, type ProCoachPhase, type ProCoachReport, type ProCoachPlayerSample } from "./ProCoachAlgorithm";
+import { buildEngineCoachInsights, type EngineCoachInsight } from "./EngineCoachInsights";
 
 export interface LongitudinalMatchInput {
   gameId: string;
@@ -13,7 +14,7 @@ export interface LongitudinalMatchInput {
     totalTicks: number;
     verifiedHashes: number;
     samples: unknown[];
-    playerReview: { clientID: string | null } | null;
+    playerReview: { clientID: string | null; playerName?: string; startTiles?: number; endTiles?: number; tilesGained?: number; startGold?: number; endGold?: number; startTroops?: number; endTroops?: number; outgoingAttackSamples?: number; longestNoExpansionSeconds?: number } | null;
     actionReviews: unknown[];
   } | null;
 }
@@ -51,6 +52,7 @@ export interface LongitudinalCoachReport {
   confidence: ProCoachConfidence;
   phaseSummaries: LongitudinalPhaseSummary[];
   recurringFindings: LongitudinalFinding[];
+  recurringStrengths: LongitudinalFinding[];
   matchProgress: LongitudinalMatchProgress[];
   metricTrends: LongitudinalMetricTrend[];
   weakestPhase: { id: "early" | "mid" | "late"; label: string; occurrences: number } | null;
@@ -62,6 +64,7 @@ export interface LongitudinalCoachReport {
 type NormalizedMatch = {
   input: LongitudinalMatchInput;
   report: ProCoachReport;
+  strengths: EngineCoachInsight[];
 };
 
 const priorityRank = (value: ProCoachFinding["priority"]) =>
@@ -87,7 +90,7 @@ function comparableLabel(match: LongitudinalMatchInput): string {
   return [match.mode || "Modus unbekannt", match.type || "Spieltyp unbekannt"].join(" · ");
 }
 
-function buildMatchReport(input: LongitudinalMatchInput): ProCoachReport | null {
+function buildMatchReport(input: LongitudinalMatchInput): NormalizedMatch | null {
   const simulation = input.simulation;
   const clientId = simulation?.playerReview?.clientID;
   if (
@@ -110,12 +113,27 @@ function buildMatchReport(input: LongitudinalMatchInput): ProCoachReport | null 
     targetPressureBefore: raw.targetPressureBefore ?? null,
   }));
   const duration = Number(input.durationSeconds);
-  return buildProCoachReport(
+  const report = buildProCoachReport(
     simulation.samples as ProCoachPlayerSample[],
     actions,
     clientId,
     Number.isFinite(duration) && duration > 0 ? duration : simulation.totalTicks / 10,
   );
+  const playerReview = simulation.playerReview as Parameters<typeof buildEngineCoachInsights>[0];
+  const hasCompleteReview = [
+    playerReview.startTiles, playerReview.endTiles, playerReview.tilesGained,
+    playerReview.startGold, playerReview.endGold, playerReview.startTroops,
+    playerReview.endTroops, playerReview.outgoingAttackSamples,
+    playerReview.longestNoExpansionSeconds,
+  ].every(value => Number.isFinite(value));
+  const strengths = hasCompleteReview
+    ? buildEngineCoachInsights(
+        playerReview,
+        simulation.actionReviews as Parameters<typeof buildEngineCoachInsights>[1],
+        simulation.samples as Parameters<typeof buildEngineCoachInsights>[2],
+      ).filter(insight => insight.kind === "strength")
+    : [];
+  return { input, report, strengths };
 }
 
 /**
@@ -127,8 +145,8 @@ export function buildLongitudinalCoachReport(
 ): LongitudinalCoachReport {
   const imported = matches.filter(match => Boolean(match.gameId));
   const verified = imported
-    .map(input => ({ input, report: buildMatchReport(input) }))
-    .filter((entry): entry is NormalizedMatch => entry.report !== null);
+    .map(input => buildMatchReport(input))
+    .filter((entry): entry is NormalizedMatch => entry !== null);
 
   const groups = new Map<string, NormalizedMatch[]>();
   for (const entry of verified) {
@@ -226,6 +244,38 @@ export function buildLongitudinalCoachReport(
     .sort((a, b) => b.occurrences - a.occurrences || priorityRank(a.priority) - priorityRank(b.priority))
     .slice(0, 3);
 
+  const strengthGroups = new Map<string, Array<{ input: LongitudinalMatchInput; finding: EngineCoachInsight }>>();
+  for (const entry of comparable) {
+    for (const finding of entry.strengths) {
+      const values = strengthGroups.get(finding.id) ?? [];
+      if (!values.some(value => value.input.gameId === entry.input.gameId)) {
+        values.push({ input: entry.input, finding });
+        strengthGroups.set(finding.id, values);
+      }
+    }
+  }
+  const recurringStrengths: LongitudinalFinding[] = [...strengthGroups.entries()]
+    .filter(([, values]) => values.length >= 2)
+    .map(([id, values]) => {
+      const best = values[0].finding;
+      return {
+        id,
+        title: best.title,
+        priority: best.priority ?? "medium",
+        occurrences: values.length,
+        comparableMatches: comparable.length,
+        frequency: values.length / Math.max(1, comparable.length),
+        trainingRule: best.nextStep,
+        examples: values.slice(0, 3).map(({ input, finding }) => ({
+          gameId: input.gameId,
+          mapName: input.mapName,
+          evidence: finding.evidence,
+        })),
+      };
+    })
+    .sort((a, b) => b.occurrences - a.occurrences || priorityRank(a.priority) - priorityRank(b.priority))
+    .slice(0, 3);
+
   const weakest = phaseSummaries.filter(item => item.weakestCount >= 2)
     .sort((a, b) => b.weakestCount - a.weakestCount)[0];
   const strongest = phaseSummaries.filter(item => item.strongestCount >= 2)
@@ -248,6 +298,7 @@ export function buildLongitudinalCoachReport(
     confidence,
     phaseSummaries,
     recurringFindings,
+    recurringStrengths,
     matchProgress,
     metricTrends,
     weakestPhase: weakest ? { id: weakest.id, label: weakest.label, occurrences: weakest.weakestCount } : null,

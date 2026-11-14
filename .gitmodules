@@ -5,3 +5,31 @@
 [submodule "vendor/OpenFrontIO-8b5d071eed95"]
 	path = vendor/OpenFrontIO-8b5d071eed95
 	url = https://github.com/openfrontio/OpenFrontIO.git
+
+[submodule "vendor/OpenFrontIO-9f4a28f16fae"]
+	path = vendor/OpenFrontIO-9f4a28f16fae
+	url = https://github.com/openfrontio/OpenFrontIO.git
+
+[submodule "vendor/OpenFrontIO-0211f17b71ef"]
+	path = vendor/OpenFrontIO-0211f17b71ef
+	url = https://github.com/openfrontio/OpenFrontIO.git
+
+[submodule "vendor/OpenFrontIO-7ee96860c717"]
+	path = vendor/OpenFrontIO-7ee96860c717
+	url = https://github.com/openfrontio/OpenFrontIO.git
+
+[submodule "vendor/OpenFrontIO-1eec6bbceeec"]
+	path = vendor/OpenFrontIO-1eec6bbceeec
+	url = https://github.com/openfrontio/OpenFrontIO.git
+
+[submodule "vendor/OpenFrontIO-09aa423bceb9"]
+	path = vendor/OpenFrontIO-09aa423bceb9
+	url = https://github.com/openfrontio/OpenFrontIO.git
+
+[submodule "vendor/OpenFrontIO-c144d134d150"]
+	path = vendor/OpenFrontIO-c144d134d150
+	url = https://github.com/openfrontio/OpenFrontIO.git
+
+[submodule "vendor/OpenFrontIO-80bff198b68f"]
+	path = vendor/OpenFrontIO-80bff198b68f
+	url = https://github.com/openfrontio/OpenFrontIO.git

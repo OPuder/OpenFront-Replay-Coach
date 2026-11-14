@@ -96,6 +96,7 @@ function App() {
   const [playerId, setPlayerId] = useState('');
   const [playerPage, setPlayerPage] = useState<PlayerPage | null>(null);
   const [playerBusy, setPlayerBusy] = useState(false);
+  const [autoSyncEnabled, setAutoSyncEnabled] = useState(false);
   const [playerProgress, setPlayerProgress] = useState<{loaded:number;pages:number;status:string}|null>(null);
   const [gameFilter, setGameFilter] = useState('all');
   const [modeFilter, setModeFilter] = useState('all');
@@ -118,6 +119,10 @@ function App() {
         setPlayerPage(cachedPage);
         setBatchMatches(cachedMatchesRefreshed);
         void refreshStoredMatches(savedId,cachedMatches).catch(storageError=>console.warn('[ReplayCoach] Lokale Kompatibilitätsdaten konnten nicht aktualisiert werden:',storageError));
+        // Let Electron paint the restored workspace before network sync and automatic replay work begin.
+        await new Promise(resolve=>window.setTimeout(resolve,1500));
+        if(!active) return;
+        setAutoSyncEnabled(true);
         try {
           const freshPage=await window.replayAPI.loadPlayer(savedId,progress=>{if(active)setPlayerProgress(progress);});
           if(!active) return;
@@ -133,7 +138,7 @@ function App() {
     void restore();
     return ()=>{active=false;};
   }, []);
-  async function loadPlayer() { autoImportAttempted.current.clear(); autoAnalysisAttempted.current.clear(); cancelBatchAnalysis(); cancelBatchImport(); setPlayerBusy(true); setError(''); setPlayerProgress({loaded:0,pages:0,status:'Profil wird geladen …'}); try { const page = await window.replayAPI.loadPlayer(playerId, progress => setPlayerProgress(progress)); setPlayerPage(page); setSelectedGameIds([]); setLibraryPage(0); const matches=await loadImportedMatches(page.playerId); const refreshed=await refreshStoredMatches(page.playerId,matches); setBatchMatches(refreshed); await savePlayerLibrary(page); window.localStorage.setItem('ofrc:last-player-id',page.playerId); } catch(e) { setError(e instanceof Error ? e.message : String(e)); } finally { setPlayerBusy(false); } }
+  async function loadPlayer() { setAutoSyncEnabled(true); autoImportAttempted.current.clear(); autoAnalysisAttempted.current.clear(); cancelBatchAnalysis(); cancelBatchImport(); setPlayerBusy(true); setError(''); setPlayerProgress({loaded:0,pages:0,status:'Profil wird geladen …'}); try { const page = await window.replayAPI.loadPlayer(playerId, progress => setPlayerProgress(progress)); setPlayerPage(page); setSelectedGameIds([]); setLibraryPage(0); const matches=await loadImportedMatches(page.playerId); const refreshed=await refreshStoredMatches(page.playerId,matches); setBatchMatches(refreshed); await savePlayerLibrary(page); window.localStorage.setItem('ofrc:last-player-id',page.playerId); } catch(e) { setError(e instanceof Error ? e.message : String(e)); } finally { setPlayerBusy(false); } }
   function toggleGameSelection(gameId:string) { setSelectedGameIds(current => current.includes(gameId) ? current.filter(id=>id!==gameId) : [...current,gameId]); }
   function selectFilteredGames() { const ids=filteredGames.map(game=>game.gameId); setSelectedGameIds(current=>ids.every(id=>current.includes(id)) ? current.filter(id=>!ids.includes(id)) : [...new Set([...current,...ids])]); }
   async function loadSelectedGames(gameIds=selectedGameIds) {
@@ -284,10 +289,11 @@ function App() {
     }
   }
   React.useEffect(() => {
-    if(!playerPage || playerBusy || batchBusy || batchAnalysisBusy) return;
-    const missing=selectGamesToImport(playerPage.games,batchMatches,autoImportAttempted.current);
+    if(!autoSyncEnabled || !playerPage || playerBusy || batchBusy || batchAnalysisBusy) return;
+    // Keep automatic catch-up work incremental so the desktop remains responsive.
+    const missing=selectGamesToImport(playerPage.games,batchMatches,autoImportAttempted.current).slice(0,2);
     if(missing.length){ missing.forEach(game=>autoImportAttempted.current.add(game.gameId)); void loadSelectedGames(missing.map(game=>game.gameId)); return; }
-    const pending=selectGamesToAnalyze(batchMatches,autoAnalysisAttempted.current);
+    const pending=selectGamesToAnalyze(batchMatches,autoAnalysisAttempted.current).slice(0,1);
     if(pending.length){ pending.forEach(item=>autoAnalysisAttempted.current.add(item.game.gameId)); void analyzeSelectedGames(pending.map(item=>item.game.gameId)); }
   },[playerPage,batchMatches,playerBusy,batchBusy,batchAnalysisBusy]);
 

@@ -308,7 +308,7 @@ jobs:
           RELEASE_VERSION: ${{ needs.prepare-release.outputs.version }}
         run: node scripts/set-android-version.mjs "$RELEASE_VERSION"
 
-      - name: Build permanently signed release APK (or temporary debug APK before setup)
+      - name: Build permanently signed release APK
         id: apk
         env:
           ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
@@ -317,21 +317,18 @@ jobs:
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
           set -Eeuo pipefail
-          if [[ -n "$ANDROID_KEYSTORE_BASE64" && -n "$ANDROID_KEYSTORE_PASSWORD" && -n "$ANDROID_KEY_ALIAS" && -n "$ANDROID_KEY_PASSWORD" ]]; then
-            keystore="$RUNNER_TEMP/openfront-replay-coach-release.jks"
-            printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$keystore"
-            test -s "$keystore"
-            export ANDROID_KEYSTORE_PATH="$keystore"
-            node scripts/configure-android-signing.mjs
-            (cd android && ./gradlew --no-daemon assembleRelease)
-            apk="android/app/build/outputs/apk/release/app-release.apk"
-            echo "signing_mode=permanent release key" >> "$GITHUB_OUTPUT"
-          else
-            echo "::warning::Android signing secrets are incomplete; building a temporary debug-signed APK. In-place updates will not be reliable until all four secrets are configured."
-            (cd android && ./gradlew --no-daemon assembleDebug)
-            apk="android/app/build/outputs/apk/debug/app-debug.apk"
-            echo "signing_mode=temporary debug key (uninstall may be required for updates)" >> "$GITHUB_OUTPUT"
+          if [[ -z "$ANDROID_KEYSTORE_BASE64" || -z "$ANDROID_KEYSTORE_PASSWORD" || -z "$ANDROID_KEY_ALIAS" || -z "$ANDROID_KEY_PASSWORD" ]]; then
+            echo "::error::Permanent Android signing is not configured. Refusing to publish a debug-signed APK that cannot reliably update an installed release."
+            exit 1
           fi
+          keystore="$RUNNER_TEMP/openfront-replay-coach-release.jks"
+          printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$keystore"
+          test -s "$keystore"
+          export ANDROID_KEYSTORE_PATH="$keystore"
+          node scripts/configure-android-signing.mjs
+          (cd android && ./gradlew --no-daemon assembleRelease)
+          apk="android/app/build/outputs/apk/release/app-release.apk"
+          echo "signing_mode=permanent release key" >> "$GITHUB_OUTPUT"
           test -s "$apk"
           build_tools="$(find "$ANDROID_HOME/build-tools" -mindepth 1 -maxdepth 1 -type d | sort -V | tail -n 1)"
           "$build_tools/apksigner" verify --verbose "$apk"

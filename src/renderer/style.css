@@ -2078,3 +2078,13 @@ body{
 @media(prefers-reduced-motion:reduce){
   .dashboard-metrics .stat-card{transition:none}
 }
+
+
+/* KPI strip markup uses a stat-top wrapper; expose its children to the strip grid. */
+.dashboard-metrics .stat-card{grid-template-rows:auto auto auto}
+.dashboard-metrics .stat-card .stat-top{display:contents}
+.dashboard-metrics .stat-card .stat-top>span{grid-column:2;grid-row:1;align-self:end;color:#91a8ba;font-size:9px;letter-spacing:.09em}
+.dashboard-metrics .stat-card .stat-top>i{grid-column:1;grid-row:1/4;align-self:center;display:grid;place-items:center;font-style:normal}
+.dashboard-metrics .stat-card .stat-top>i svg{width:21px;height:21px;color:#8bc9e9}
+.dashboard-metrics .stat-card>b{grid-column:2;grid-row:2}
+.dashboard-metrics .stat-card>small{grid-column:2;grid-row:3}

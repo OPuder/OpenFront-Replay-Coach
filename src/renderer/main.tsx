@@ -15,7 +15,7 @@ import { assessReplayCompatibility, isReplayCompatibilityCurrent } from '../main
 import type { ReplaySimulationResult } from './ReplaySimulation';
 import { selectPlayerSurvivalWindow } from './phaseSurvival';
 import { installBrowserReplayAPI } from './platform/BrowserReplayAPI';
-import { loadImportedMatches, loadPlayerLibrary, saveImportedMatch, savePlayerLibrary, type StoredAnalysisStatus, type StoredMatchEntry } from './matchStore';
+import { loadImportedMatch, loadImportedMatches, loadPlayerLibrary, saveImportedMatch, savePlayerLibrary, type StoredAnalysisStatus, type StoredMatchEntry } from './matchStore';
 import { UpdateCenter } from './UpdateCenter';
 import { StrategyPlaybook } from './StrategyPlaybook';
 import { selectGamesToAnalyze, selectGamesToImport } from './AutoLibrarySync';
@@ -58,6 +58,11 @@ function App() {
   const autoImportAttempted = React.useRef(new Set<string>());
   const autoAnalysisAttempted = React.useRef(new Set<string>());
   const [batchBusy, setBatchBusy] = useState(false);
+  function withoutReplayRecord(item: BatchMatchItem): BatchMatchItem {
+    if (!item.result?.record) return item;
+    const { record: _record, ...result } = item.result;
+    return { ...item, result };
+  }
   function refreshStoredMatch(item: StoredMatchEntry): BatchMatchItem {
     if(!item.result?.record) return item;
     if(isReplayCompatibilityCurrent(item.result.record,item.result.engineCompatibility)) return item;
@@ -172,7 +177,7 @@ function App() {
           const status: 'engine-mismatch' | 'loaded'=imported.engineCompatibility?.engineVersionCompatible===false ? 'engine-mismatch' : 'loaded';
           const entry:BatchMatchItem={game,result:imported,status,analysisStatus:status==='engine-mismatch'?'unsupported':'pending'};
           existingIds.add(game.gameId);
-          setBatchMatches(current=>[...current.filter(item=>item.game.gameId!==game.gameId),entry]);
+          setBatchMatches(current=>[...current.filter(item=>item.game.gameId!==game.gameId),withoutReplayRecord(entry)]);
           try { await persistBatchItem(entry); } catch(storageError) { console.warn('[ReplayCoach] Replay wurde geladen, konnte aber nicht lokal gesichert werden:',storageError); setError(`Partie ${game.gameId} geladen, aber lokale Speicherung fehlgeschlagen: ${storageError instanceof Error?storageError.message:String(storageError)}`); }
         } catch (e) {
           if(runId!==batchRunId.current) return;
@@ -225,14 +230,21 @@ function App() {
   const lastBatchProgressUpdate=React.useRef({at:0,done:-1,active:-1});
   async function analyzeSelectedGames(gameIds=selectedGameIds) {
     if(!playerPage||batchBusy||batchAnalysisBusy||batchAnalysisAbort.current||gameIds.length===0) return;
-    const candidates=gameIds.map(id=>batchMatches.find(item=>item.game.gameId===id)).filter((item):item is BatchMatchItem=>Boolean(item?.result));
-    if(!candidates.length) return;
+    const selected=gameIds.map(id=>batchMatches.find(item=>item.game.gameId===id)).filter((item):item is BatchMatchItem=>Boolean(item?.result));
+    if(!selected.length) return;
     const runId=++batchAnalysisRunId.current;
     const controller=new AbortController();
     batchAnalysisAbort.current=controller;
     setBatchAnalysisBusy(true); setError('');
     setBatchAnalysisProgress({done:0,total:candidates.length,gameId:'',percent:0,phase:'Analyse wird vorbereitet',active:0,elapsedMs:0,estimatedRemainingMs:null});
     try {
+      // Hydrate one replay at a time from IndexedDB; the dashboard keeps only
+      // compact metadata/simulation results in memory, not every raw GameRecord.
+      const candidates=(await Promise.all(selected.map(async item=>
+        await loadImportedMatch(playerPage.playerId,item.game.gameId) ?? item
+      ))).filter((item):item is BatchMatchItem=>Boolean(item.result?.record));
+      if(runId!==batchAnalysisRunId.current||controller.signal.aborted) return;
+      if(!candidates.length) throw new Error('Für die ausgewählten Partien fehlen lokal gespeicherte Replay-Daten. Bitte importiere die Partien erneut.');
       const {simulateReplay,buildReplayEngineAssets}=await import('./ReplaySimulation');
       if(runId!==batchAnalysisRunId.current||controller.signal.aborted) return;
       await runConcurrentBatchAnalysis<BatchMatchItem,ReplaySimulationResult>(candidates,{
@@ -260,7 +272,7 @@ function App() {
             simulation:status==='verified'||status==='unverified'?simulation:status==='unsupported'?undefined:item.simulation,
             analysisError,
           };
-          setBatchMatches(current=>current.map(entry=>entry.game.gameId===item.game.gameId?updated:entry));
+          setBatchMatches(current=>current.map(entry=>entry.game.gameId===item.game.gameId?withoutReplayRecord(updated):entry));
           if(status==='verified'||status==='unverified'||status==='unsupported'||status==='failed') {
             try { await persistBatchItem(updated); }
             catch(storageError) { console.warn('[ReplayCoach] Analyseergebnis konnte nicht lokal gesichert werden:',storageError); }
@@ -298,15 +310,18 @@ function App() {
     if(pending.length){ pending.forEach(item=>autoAnalysisAttempted.current.add(item.game.gameId)); void analyzeSelectedGames(pending.map(item=>item.game.gameId)); }
   },[autoSyncEnabled,playerPage,batchMatches,playerBusy,batchBusy,batchAnalysisBusy]);
 
-  function openBatchMatch(gameId:string) {
+  async function openBatchMatch(gameId:string) {
     cancelBatchAnalysis();
     const item=batchMatches.find(entry=>entry.game.gameId===gameId);
     if (!item?.result) return;
+    const hydrated=playerPage?await loadImportedMatch(playerPage.playerId,gameId):null;
+    const result=hydrated?.result??item.result;
+    if(!result.record){setError('Die Replay-Daten dieser Partie fehlen im lokalen Speicher. Bitte importiere sie erneut.');return;}
     engineReviewRunId.current++;
     setSimulationProgress(null); setSimulationResult(item.simulation??null);
-    setApiResult(item.result); setDecodedActions(item.result.decodedActions??[]); setReplay(null);
+    setApiResult(result); setDecodedActions(result.decodedActions??[]); setReplay(null);
     setUrl(`https://openfront.io/w5/game/${gameId}`); setMapRefreshKey(key=>key+1); setActivePage('analysis');
-    if(!item.simulation) void runEngineReview(item.result,undefined,item.game);
+    if(!item.simulation) void runEngineReview(result,undefined,item.game);
   }
   async function choosePlayerGame(gameId: string) {
     cancelBatchAnalysis();
@@ -317,8 +332,9 @@ function App() {
     try {
       const selectedGame = playerPage?.games.find(game => game.gameId === gameId);
       const cachedItem = batchMatches.find(item=>item.game.gameId===gameId && item.result);
-      const cached = cachedItem?.result;
-      const imported = cached ?? await window.replayAPI.importReplayUrl(`https://openfront.io/w5/game/${gameId}`);
+      const hydratedCached=cachedItem&&playerPage?await loadImportedMatch(playerPage.playerId,gameId):null;
+      const cached = hydratedCached?.result??cachedItem?.result;
+      const imported = cached?.record ? cached : await window.replayAPI.importReplayUrl(`https://openfront.io/w5/game/${gameId}`);
       if (!('canceled' in imported)) {
         const result = imported;
         const normalizeMap = (value: unknown) => String(value ?? '').trim().toLowerCase().replace(/[\\s.()_-]+/g, '');
@@ -341,7 +357,7 @@ function App() {
           }
         }
         const entry:BatchMatchItem={...(cachedItem??{}),game:selectedGame??{gameId},result,status:result.engineCompatibility?.engineVersionCompatible===false?'engine-mismatch':'loaded',analysisStatus:cachedItem?.analysisStatus??(result.engineCompatibility?.engineVersionCompatible===false?'unsupported':'pending')};
-        setBatchMatches(current=>[...current.filter(item=>item.game.gameId!==gameId),entry]);
+        setBatchMatches(current=>[...current.filter(item=>item.game.gameId!==gameId),withoutReplayRecord(entry)]);
         if(playerPage) void persistBatchItem(entry).catch(storageError=>console.warn('[ReplayCoach] Replay konnte nicht lokal gespeichert werden:',storageError));
         setApiResult(result);
         setDecodedActions(result.decodedActions ?? []);
@@ -368,7 +384,7 @@ function App() {
         result,
         ...patch,
       };
-      setBatchMatches(current=>[...current.filter(entry=>entry.game.gameId!==result.gameId),item]);
+      setBatchMatches(current=>[...current.filter(entry=>entry.game.gameId!==result.gameId),withoutReplayRecord(item)]);
       try { await persistBatchItem(item); }
       catch(storageError) { console.warn('[ReplayCoach] Engine-Ergebnis konnte nicht lokal gesichert werden:',storageError); }
     };
@@ -460,7 +476,7 @@ function App() {
   const avgDuration = loadedGames.filter(g => Number.isFinite(g.durationSeconds) && (g.durationSeconds ?? 0) > 0).reduce((sum,g)=>sum+(g.durationSeconds ?? 0),0) / Math.max(1, loadedGames.filter(g => (g.durationSeconds ?? 0) > 0).length);
   const modeStats = Object.entries(loadedGames.reduce((acc:Record<string,number>,g)=>{const key=g.mode ?? 'Unbekannt';acc[key]=(acc[key]??0)+1;return acc;},{})).sort((a,b)=>b[1]-a[1]).slice(0,5);
   const importedBatchMatches=batchMatches.filter(item=>Boolean(item.result));
-  const engineCoverage=buildReplayEngineCoverageReport(importedBatchMatches.map(item=>({gameId:item.game.gameId,gitCommit:item.result?.record?.gitCommit})));
+  const engineCoverage=buildReplayEngineCoverageReport(importedBatchMatches.map(item=>({gameId:item.game.gameId,gitCommit:item.result?.engineCompatibility?.replayCommit})));
   const engineUnavailableCount=importedBatchMatches.filter(item=>item.status==='engine-mismatch'||item.analysisStatus==='unsupported').length;
   const verifiedReplayCount=importedBatchMatches.filter(item=>item.analysisStatus==='verified'&&item.simulation?.status==='verified').length;
   const pendingReplayCount=importedBatchMatches.filter(item=>item.status==='loaded'&&(!item.analysisStatus||item.analysisStatus==='pending')).length;

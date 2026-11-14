@@ -1850,3 +1850,9 @@ body{
 @media(prefers-reduced-motion:reduce){
  .game-card,.game-card:hover,.studio-button,.studio-nav{transition:none;transform:none}
 }
+
+.game-replay-state{display:flex;flex-direction:column;gap:3px;width:max-content;max-width:100%;margin-top:10px;padding:6px 9px;border:1px solid #365d46;border-radius:8px;background:#14291e;color:#b9e7b4;font-size:8px;font-weight:800;line-height:1.4}
+.game-replay-state small{font-size:8px;font-weight:500;color:#c5b184}
+.game-replay-state.engine-missing{border-color:#6c5732;background:#2b2518;color:#e8c77f}
+.game-replay-state.saved{border-color:#3d594e;background:#16251e;color:#b5cbb9}
+.game-replay-state.verified{border-color:#32664c;background:#152b20;color:#aee5b8}

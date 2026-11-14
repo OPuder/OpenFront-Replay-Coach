@@ -684,7 +684,9 @@ function CoachPanel({apiResult,preferredPlayerPublicId,decodedActions,simulation
       : selectedSpawnPosition.nearbyNeutralLandTiles < medianSpawnLand
         ? 'Weniger neutrales Land als der Lobby-Median'
         : 'Neutrales Land auf Lobby-Median';
-  const spawnAdvice = selectedSpawnPosition ? [
+  const spawnAdvice = selectedSpawnPosition ? (simulationResult?.spawnPhaseEndTick == null
+    ? 'Der Replay enthält kein verlässliches Ende der Spawnphase. Die Spawn-Koordinate ist exakt; Grenzkontakte und Gebiet stammen aber aus dem letzten verfügbaren Zustand. Daraus wird keine Startstrategie abgeleitet.'
+    : [
     selectedSpawnPosition.classification === 'contested'
       ? 'Dein Start lag vergleichsweise nah an anderen Spielern und hatte direkte Grenzkontakte. Sichere zuerst eine Expansionsflanke und vermeide, früh mehrere Fronten gleichzeitig zu öffnen.'
       : selectedSpawnPosition.classification === 'isolated'
@@ -702,7 +704,7 @@ function CoachPanel({apiResult,preferredPlayerPublicId,decodedActions,simulation
       : selectedSpawnPosition.nearbyCoastalLandTiles === 0
         ? 'Im untersuchten Nahbereich gab es keine neutrale Küstenfläche. Erzwinge deshalb keinen frühen Hafen nur wegen einer allgemeinen Build-Order.'
         : '',
-  ].filter(Boolean).join(' ') : '';
+  ].filter(Boolean).join(' ')) : '';
   const playerActions=playerScoped ? decodedActions.filter(a=>a.clientId===selectedClientId) : [];
   const scopedAnalysis=analyzeActions(playerActions,apiResult.durationSeconds ?? 0);
   const details=analyzeDetailedActions(playerActions,apiResult.durationSeconds ?? 0);
@@ -937,14 +939,14 @@ function CoachPanel({apiResult,preferredPlayerPublicId,decodedActions,simulation
         <div className="spawn-coach-metrics">
           <article><small>EXAKTE SPAWN-KOORDINATE</small><b>X {selectedSpawnPosition.spawnX} · Y {selectedSpawnPosition.spawnY}</b><span>Aus PlayerState.spawnTile, kein geschätzter Schwerpunkt</span></article>
           <article><small>NÄCHSTER SPIELERSTART</small><b>{selectedSpawnPosition.nearestSpawnDistance === null ? '–' : `${selectedSpawnPosition.nearestSpawnDistance} Felder`}</b><span>Manhattan-Abstand wie in der Spawnlogik</span></article>
-          <article><small>DIREKTE GRENZKONTAKTE</small><b>{selectedSpawnPosition.adjacentRivals.length}</b><span>{selectedSpawnPosition.rivalBorderContacts} angrenzende Grenzfelder</span></article>
+          <article><small>{simulationResult?.spawnPhaseEndTick != null ? 'DIREKTE GRENZKONTAKTE' : 'GRENZKONTAKTE IM LETZTEN ZUSTAND'}</small><b>{selectedSpawnPosition.adjacentRivals.length}</b><span>{selectedSpawnPosition.rivalBorderContacts} angrenzende Grenzfelder</span></article>
           <article><small>FREIER LANDRAUM</small><b>{selectedSpawnPosition.nearbyNeutralLandTiles === null ? 'Nicht verfügbar' : fmt(selectedSpawnPosition.nearbyNeutralLandTiles)}</b><span>{spawnLandComparison ?? 'Neutrale Landfelder im 12-Felder-Luftlinienradius'}</span></article>
-          <article><small>STARTGEBIET</small><b>{fmt(selectedSpawnPosition.startTiles)} Felder</b><span>Besitzstand beim Spawn-Snapshot</span></article>
+          <article><small>STARTGEBIET</small><b>{fmt(selectedSpawnPosition.startTiles)} Felder</b><span>{simulationResult?.spawnPhaseEndTick != null ? 'Besitzstand beim Spawn-Snapshot' : 'Besitzstand im letzten Replay-Zustand'}</span></article>
           <article><small>GÜLTIGE STARTFELDER</small><b>{selectedSpawnPosition.spawnZoneLandTiles === null ? 'Nicht verfügbar' : `${selectedSpawnPosition.spawnZoneLandTiles} / ${selectedSpawnPosition.spawnZoneTotalTiles}`}</b><span>Land und nicht blockiert im Engine-Spawnradius</span></article>
           <article><small>KÜSTENOPTIONEN</small><b>{selectedSpawnPosition.nearbyCoastalLandTiles === null ? 'Nicht verfügbar' : fmt(selectedSpawnPosition.nearbyCoastalLandTiles)}</b><span>Neutrale Küstenfelder im Nahbereich</span></article>
         </div>
         <div className="spawn-coach-advice">
-          <div><span className={`spawn-classification ${selectedSpawnPosition.classification}`}>{selectedSpawnPosition.classification === 'contested' ? 'UNTER DRUCK' : selectedSpawnPosition.classification === 'isolated' ? 'RELATIV ISOLIERT' : selectedSpawnPosition.classification === 'mixed' ? 'GEMISCHTE LAGE' : 'NICHT EINORDNEN'}</span><b>Was das für deine Eröffnung bedeutet</b></div>
+          <div><span className={`spawn-classification ${simulationResult?.spawnPhaseEndTick == null ? 'unknown' : selectedSpawnPosition.classification}`}>{simulationResult?.spawnPhaseEndTick == null ? 'STARTSNAPSHOT UNVOLLSTÄNDIG' : selectedSpawnPosition.classification === 'contested' ? 'UNTER DRUCK' : selectedSpawnPosition.classification === 'isolated' ? 'RELATIV ISOLIERT' : selectedSpawnPosition.classification === 'mixed' ? 'GEMISCHTE LAGE' : 'NICHT EINORDNEN'}</span><b>Was das für deine Eröffnung bedeutet</b></div>
           <p>{spawnAdvice}</p>
         </div>
         <details className="spawn-coach-terrain">

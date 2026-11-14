@@ -71,3 +71,9 @@ assert.match(updater, /konnte nicht abgeschlossen werden/);
 assert.match(read("src/main/preload.ts"), /getUpdateStatus/);
 assert.match(read("src/renderer/env.d.ts"), /getUpdateStatus/);
 assert.match(read("src/renderer/UpdateCenter.tsx"), /getUpdateStatus\(\)/);
+const androidSigningGate = read("scripts/verify-android-release-signing.sh");
+assert.match(androidSigningGate, /assembleRelease/);
+assert.match(androidSigningGate, /ANDROID_KEYSTORE_PATH/);
+assert.match(androidSigningGate, /Android signing certificate does not match/);
+assert.match(androidSigningGate, /apksigner.*verify/);
+

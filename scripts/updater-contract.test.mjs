@@ -37,7 +37,7 @@ assert.doesNotMatch(renderer, /Web\/PWA|serviceWorker|isBrowserPwa/);
 assert.doesNotMatch(releaseWorkflow, /assembleDebug/);
 assert.match(releaseWorkflow, /push:\s*branches: \[main\]/);
 assert.match(releaseWorkflow, /permanent Android release signing key is required/);
-assert.match(releaseWorkflow, /Signer #1 certificate SHA-256 digest/);
+assert.match(releaseWorkflow, /extract_certificate_sha256[\\s\\S]*?Android signing certificate changed/);
 assert.match(releaseWorkflow, /Android signing certificate changed/);
 assert.match(releaseWorkflow, /needs\.build-android\.outputs\.signing_mode == 'permanent release key'/);
 assert.match(updater, /child\.once\('spawn', resolve\)/);

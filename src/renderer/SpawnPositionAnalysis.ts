@@ -17,7 +17,7 @@ export function analyzeSpawnPositions(tileState:Uint16Array,width:number,height:
  for(const [id,s] of stats)if(s.count)centers.set(id,{x:s.x/s.count,y:s.y/s.count});
  const raw=players.map(player=>{
   const s=stats.get(player.id)!;const center=centers.get(player.id);if(!center||!s.count)return {player,s,center:null as null|{x:number;y:number},nearest:null as number|null};
-  const distances=players.filter(other=>other.id!==player.id&&other.clientID!==null&&centers.has(other.id)).map(other=>{const c=centers.get(other.id)!;return Math.hypot(center.x-c.x,center.y-c.y);});
+  const distances=players.filter(other=>other.id!==player.id&&centers.has(other.id)).map(other=>{const c=centers.get(other.id)!;return Math.hypot(center.x-c.x,center.y-c.y);});
   return {player,s,center,nearest:distances.length?Math.min(...distances):null};
  });
  const humanNearest=raw.filter(x=>x.player.clientID!==null&&x.nearest!==null).map(x=>x.nearest as number).sort((a,b)=>a-b);

@@ -132,3 +132,5 @@ assert.doesNotMatch(replaySimulation, /\.\.\.turns\.map/);
 assert.match(appRenderer, /engineReviewAbort\.current\?\.abort\(\)/);
 assert.match(appRenderer, /controller\.signal/);
 assert.match(appRenderer, /page !== 'analysis'[\s\S]*?setApiResult\(null\)[\s\S]*?setSimulationResult\(null\)/);
+
+assert.match(appRenderer, /function navigateTo\([\s\S]*?engineReviewRunId\.current\+\+[\s\S]*?setSimulationProgress\(null\)/, "Navigation must clear stale progress after aborting an engine review.");

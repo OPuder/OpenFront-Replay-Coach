@@ -90,6 +90,9 @@ assert.match(releaseWorkflow, /names\.length === 3/);
 assert.match(releaseWorkflow, /-Android\.apk/);
 
 const updateValidationWorkflow = read(".github/workflows/update-validation.yml");
+assert.match(updateValidationWorkflow, /Build higher-version APK before emulator startup[\s\S]*?assembleDebug[\s\S]*?Test in-place Android update and preserve app data/);
+assert.match(androidUpdateRegression, /OPENFRONT_UPDATE_APK/);
+assert.doesNotMatch(androidUpdateRegression, /gradlew|assembleDebug/);
 assert.match(updateValidationWorkflow, /Test in-place Android update and preserve app data[\s\S]*?if: always\(\) && steps\.parse_apk\.outcome == 'success'/);
 
 assert.ok(

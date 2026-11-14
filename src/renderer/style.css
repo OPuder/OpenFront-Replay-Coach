@@ -1681,3 +1681,19 @@ body{
   .spawn-coach-advice>div{flex-basis:auto}
 }
 @media(max-width:420px){.spawn-coach-metrics{grid-template-columns:1fr}}
+
+.spawn-alternatives{padding-top:13px;border-top:1px solid #2c4b40}
+.spawn-alternatives-heading{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;margin-bottom:10px}
+.spawn-alternatives-heading>div{display:flex;flex-direction:column;gap:5px}
+.spawn-alternatives-heading span{color:#93d7b2;font:800 8px 'Cascadia Code',monospace;letter-spacing:1.2px}
+.spawn-alternatives-heading b{color:#edf7ed;font-size:13px}
+.spawn-alternatives-heading>small{color:#89a698;font-size:9px}
+.spawn-alternatives-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px}
+.spawn-alternatives-grid article{padding:13px;border:1px solid #345747;border-radius:11px;background:linear-gradient(145deg,rgba(15,37,29,.9),rgba(8,23,19,.9))}
+.spawn-alternatives-grid article>span{color:#a7d98e;font:800 8px 'Cascadia Code',monospace;letter-spacing:1px}
+.spawn-alternatives-grid article>b{display:block;margin:6px 0 11px;color:#f2ffe8;font-size:16px}
+.spawn-alternatives-grid article>div{display:flex;justify-content:space-between;gap:8px;padding-top:6px;margin-top:6px;border-top:1px solid rgba(92,133,104,.2)}
+.spawn-alternatives-grid article small{color:#92ad9d;font-size:9px}
+.spawn-alternatives-grid article strong{color:#dff1df;font-size:10px}
+.spawn-alternatives>p{margin:10px 0 0;color:#8fa99a;font-size:9px;line-height:1.6}
+@media(max-width:760px){.spawn-alternatives-grid{grid-template-columns:1fr}.spawn-alternatives-heading{align-items:flex-start;flex-direction:column;gap:4px}}

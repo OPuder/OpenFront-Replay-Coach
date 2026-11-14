@@ -4,6 +4,7 @@ import { buildReplayEngineAssets } from '../src/renderer/ReplaySimulation.ts';
 import { resolveSupportedEngineCommit } from '../src/main/decoder/ReplayEngineCatalog.ts';
 import {
   assessReplayCompatibility,
+  isReplayCompatibilityCurrent,
   PINNED_OPENFRONT_COMMIT,
   SUPPORTED_OPENFRONT_COMMITS,
 } from '../src/main/decoder/ReplayCompatibility.ts';
@@ -124,4 +125,38 @@ test('an abbreviated hash that does not identify a bundled engine remains unsupp
   const result = assessReplayCompatibility(matchingRecord({ gitCommit: 'deadbee' }));
   assert.equal(result.status, 'engine-version-mismatch');
   assert.equal(result.engineVersionCompatible, false);
+});
+
+test('cached compatibility metadata avoids rescanning a large replay on startup', () => {
+  const turns = new Proxy([], {
+    get(target, property, receiver) {
+      if (property === 'filter') throw new Error('hash checkpoints must not be rescanned');
+      return Reflect.get(target, property, receiver);
+    },
+  });
+  const record = { gitCommit: PINNED_OPENFRONT_COMMIT, info: {}, turns };
+  const previous = {
+    status: 'version-compatible-hashes-available',
+    replayCommit: PINNED_OPENFRONT_COMMIT,
+    engineCommit: PINNED_OPENFRONT_COMMIT,
+    recordedHashCount: 1006,
+    engineVersionCompatible: true,
+    hashVerificationAvailable: true,
+    message: 'cached',
+  };
+  assert.equal(isReplayCompatibilityCurrent(record, previous), true);
+});
+
+test('cached unsupported compatibility is invalidated when an exact engine is added', () => {
+  const record = { gitCommit: '8b5d071eed95f07c701b32e4c64e95b03f8577c1', info: {}, turns: [] };
+  const previous = {
+    status: 'engine-version-mismatch',
+    replayCommit: record.gitCommit,
+    engineCommit: PINNED_OPENFRONT_COMMIT,
+    recordedHashCount: 1,
+    engineVersionCompatible: false,
+    hashVerificationAvailable: true,
+    message: 'old catalog',
+  };
+  assert.equal(isReplayCompatibilityCurrent(record, previous), false);
 });

@@ -1,4 +1,4 @@
-const CACHE_NAME = "openfront-replay-coach-shell-v2.2.34";
+const CACHE_NAME = "openfront-replay-coach-shell-v2.2.35";
 
 self.addEventListener("install", event => {
   event.waitUntil((async () => {

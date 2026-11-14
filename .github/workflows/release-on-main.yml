@@ -91,7 +91,7 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           if ! git diff --quiet; then
-            git add package.json package-lock.json START_HERE.txt src/renderer/main.tsx
+            git add package.json package-lock.json START_HERE.txt src/renderer/main.tsx public/sw.js
             git commit -m "chore(release): prepare v$next_version [skip ci]"
             git push origin HEAD:main
           fi

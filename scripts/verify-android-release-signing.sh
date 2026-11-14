@@ -47,20 +47,7 @@ apksigner="$build_tools/apksigner"
 previous_cert_output="$("$apksigner" verify --print-certs "$previous_apk" 2>&1)" || { printf '%s\n' "$previous_cert_output"; echo "::error::Could not read the published APK signing certificate."; exit 1; }
 current_cert_output="$("$apksigner" verify --print-certs "$current_apk" 2>&1)" || { printf '%s\n' "$current_cert_output"; echo "::error::Could not read the configured APK signing certificate."; exit 1; }
 extract_certificate_sha256() {
-  grep -i 'Signer #1 certificate SHA-256 digest:' <<< "$1" |
-    sed -E 's/.*digest:[[:space:]]*//I' |
-    tr -d '[:space:]:' |
-    tr '[:upper:]' '[:lower:]' |
-    grep -E '^[0-9a-f]{64}
-
-if [[ -z "$previous_cert" || -z "$current_cert" || "$current_cert" != "$previous_cert" ]]; then
-  echo "::error::Android signing certificate does not match $previous_tag. Published APK certificate: $previous_cert; configured release certificate: $current_cert. Existing installations cannot update in place with this key; recover the original keystore or plan a one-time reinstall."
-  exit 1
-fi
-
-echo "Android signing readiness passed: permanent key matches published APK from $previous_tag."
- |
-    head -n 1 || true
+  grep -Eo '[[:xdigit:]]{64}' <<< "$1" | tail -n 1 || true
 }
 previous_cert="$(extract_certificate_sha256 "$previous_cert_output")"
 current_cert="$(extract_certificate_sha256 "$current_cert_output")"

@@ -802,6 +802,15 @@ function CoachPanel({apiResult,preferredPlayerPublicId,decodedActions,simulation
   const strategyMatchContext = simulationResult?.status === 'verified' && selectedPlayerReview ? {
     verified: true,
     playerName: selectedPlayerReview.playerName,
+    mapName: apiResult.mapName ?? 'Unbekannte Karte',
+    mapPreviewUrl: apiResult.previewUrl ?? null,
+    mapWidth: simulationResult.mapWidth ?? null,
+    mapHeight: simulationResult.mapHeight ?? null,
+    spawnMode: simulationResult.spawnMode ?? 'unknown',
+    otherSpawns: selectedSpawnPosition ? spawnPositionReport
+      .filter(position => position.id !== selectedSpawnPosition.id && position.spawnX !== null && position.spawnY !== null)
+      .map(position => ({x:position.spawnX,y:position.spawnY,name:position.name,isHuman:position.clientID !== null}))
+      : [],
     spawn: selectedSpawnPosition ? {
       x: selectedSpawnPosition.spawnX,
       y: selectedSpawnPosition.spawnY,

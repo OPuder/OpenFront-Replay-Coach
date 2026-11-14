@@ -28,6 +28,7 @@ export interface SpawnPositionMetric {
   spawnZoneTotalTiles: number | null;
   nearbyNeutralLandTiles: number | null;
   nearbyCoastalLandTiles: number | null;
+  nearbyPlainsTiles: number | null;
   nearbyImpassableTiles: number | null;
   nearbyHighlandTiles: number | null;
   nearbyMountainTiles: number | null;
@@ -156,6 +157,7 @@ export function analyzeSpawnPositions(
     let spawnZoneTotalTiles: number | null = null;
     let nearbyNeutralLandTiles: number | null = null;
     let nearbyCoastalLandTiles: number | null = null;
+    let nearbyPlainsTiles: number | null = null;
     let nearbyImpassableTiles: number | null = null;
     let nearbyHighlandTiles: number | null = null;
     let nearbyMountainTiles: number | null = null;
@@ -166,6 +168,7 @@ export function analyzeSpawnPositions(
       let zoneTotal = 0;
       let neutralLand = 0;
       let coastalLand = 0;
+      let plains = 0;
       let impassable = 0;
       let highland = 0;
       let mountain = 0;
@@ -205,6 +208,7 @@ export function analyzeSpawnPositions(
           if (!isLand(tileTerrain) || (tileState[ref] & OWNER_MASK) !== 0) continue;
           neutralLand++;
           const magnitude = tileTerrain & MAGNITUDE_MASK;
+          if (magnitude < 10) plains++;
           if (magnitude >= 10 && magnitude < 20) highland++;
           if (magnitude >= 20 && magnitude < IMPASSABLE_MAGNITUDE) mountain++;
           if (hasOceanNeighbor(terrain, ref, width, height)) coastalLand++;
@@ -215,6 +219,7 @@ export function analyzeSpawnPositions(
       spawnZoneTotalTiles = zoneTotal;
       nearbyNeutralLandTiles = neutralLand;
       nearbyCoastalLandTiles = coastalLand;
+      nearbyPlainsTiles = plains;
       nearbyImpassableTiles = impassable;
       nearbyHighlandTiles = highland;
       nearbyMountainTiles = mountain;
@@ -234,6 +239,7 @@ export function analyzeSpawnPositions(
       spawnZoneTotalTiles,
       nearbyNeutralLandTiles,
       nearbyCoastalLandTiles,
+      nearbyPlainsTiles,
       nearbyImpassableTiles,
       nearbyHighlandTiles,
       nearbyMountainTiles,
@@ -267,6 +273,7 @@ export function analyzeSpawnPositions(
     spawnZoneTotalTiles: entry.spawnZoneTotalTiles,
     nearbyNeutralLandTiles: entry.nearbyNeutralLandTiles,
     nearbyCoastalLandTiles: entry.nearbyCoastalLandTiles,
+    nearbyPlainsTiles: entry.nearbyPlainsTiles,
     nearbyImpassableTiles: entry.nearbyImpassableTiles,
     nearbyHighlandTiles: entry.nearbyHighlandTiles,
     nearbyMountainTiles: entry.nearbyMountainTiles,

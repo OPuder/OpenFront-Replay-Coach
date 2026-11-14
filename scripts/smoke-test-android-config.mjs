@@ -27,7 +27,7 @@ assert.ok(adapter.includes('const API_BASE = IS_NATIVE_ANDROID ? "https://api.op
 assert.ok(adapter.includes("https://openfront.io/"), "Native Android engine manifest request is missing");
 assert.ok(adapter.includes("Filesystem.writeFile") && adapter.includes("Directory.Cache"), "Native Android replay file export is missing");
 assert.ok(adapter.includes("Share.share") && adapter.includes("Browser.open"), "Native Android share/browser integration is missing");
-assert.ok(renderer.includes("!Capacitor.isNativePlatform()") && renderer.includes("navigator.serviceWorker.register"), "PWA service worker must stay disabled inside native Android app");
+assert.ok(!renderer.includes("navigator.serviceWorker"), "Unused PWA service worker registration must stay removed");
 assert.ok(versionScript.includes("versionCode") && versionScript.includes("versionName"), "Android versionCode/versionName logic is missing");
 assert.ok(updaterPlugin.includes("MessageDigest.getInstance(\"SHA-256\")") && updaterPlugin.includes("FileProvider.getUriForFile"), "Secure Android APK updater plugin is missing");
 assert.ok(updaterInstaller.includes("registerPlugin(ApkUpdaterPlugin.class)") && updaterInstaller.includes("updater-fileprovider"), "Android updater plugin registration is missing");

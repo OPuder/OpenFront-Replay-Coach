@@ -4,6 +4,7 @@ declare global {
     replayAPI: {
       openReplay: () => Promise<ReplaySummary | null>;
       installUpdate: () => Promise<{ scheduled: boolean; version: string }>;
+      getUpdateStatus: () => Promise<{ failed: boolean; message: string } | null>;
       onUpdateProgress: (callback: (progress: { phase: string; percent: number }) => void) => () => void;
       loadPlayer: (
         playerId: string,

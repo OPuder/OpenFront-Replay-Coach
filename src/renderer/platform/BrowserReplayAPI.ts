@@ -410,6 +410,7 @@ function installBrowserReplayAPI() {
   window.replayAPI = {
     openReplay,
     installUpdate: async () => { throw new Error('Automatische Installation ist in der Browser-Version nicht verfügbar.'); },
+    getUpdateStatus: async () => null,
     onUpdateProgress: () => () => {},
     loadPlayer,
     resolveMapPreview: async (mapName: string) => ({ imageUrl: await resolveOfficialMapPreview(mapName) }),

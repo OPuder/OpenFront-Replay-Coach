@@ -133,6 +133,7 @@ jobs:
           ./gradlew --no-daemon assembleDebug
 
       - name: Parse and validate APK metadata
+        id: parse_apk
         shell: bash
         run: |
           set -Eeuo pipefail
@@ -144,6 +145,28 @@ jobs:
           grep -F "package: name='de.openfront.replaycoach'" /tmp/apk-badging.txt
           grep -F "versionName='"$(node -p "require('./package.json').version")"'" /tmp/apk-badging.txt
           sha256sum "$APK"
+
+      - name: Test in-place Android update and preserve app data
+        if: always() && steps.parse_apk.outcome == 'success'
+        timeout-minutes: 20
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          arch: x86_64
+          profile: pixel_6
+          emulator-options: -no-window -no-audio -no-boot-anim -gpu swiftshader_indirect
+          disable-animations: true
+          script: bash scripts/test-android-in-place-update.sh
+
+      - name: Verify permanent Android release signing key and continuity
+        if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          GH_TOKEN: ${{ github.token }}
+        run: bash scripts/verify-android-release-signing.sh
 
       - name: Upload validated APK
         uses: actions/upload-artifact@v4

@@ -1,13 +1,13 @@
 import React from 'react';
 import { Capacitor, registerPlugin } from '@capacitor/core';
-import { CheckCircle2, RefreshCw, Smartphone, MonitorDown, Globe, AlertCircle } from 'lucide-react';
+import { CheckCircle2, RefreshCw, Smartphone, MonitorDown, AlertCircle } from 'lucide-react';
 import './UpdateCenter.css';
 
 declare const __APP_VERSION__: string;
 
 type ReleaseAsset = { name: string; browser_download_url: string; size: number; digest?: string | null };
 type LatestRelease = { tag_name: string; html_url: string; published_at: string; assets: ReleaseAsset[] };
-type ApkUpdaterPlugin = { downloadAndInstall(options: { url: string; digest: string; size: number; name: string }): Promise<{ started: boolean }> };
+type ApkUpdaterPlugin = { downloadAndInstall(options: { url: string; digest: string; size: number; name: string; version: string }): Promise<{ started: boolean }> };
 const ApkUpdater = registerPlugin<ApkUpdaterPlugin>('ApkUpdater');
 
 function compareVersions(left: string, right: string): number {
@@ -26,15 +26,12 @@ export function UpdateCenter() {
   const [checking, setChecking] = React.useState(false);
   const [checkedAt, setCheckedAt] = React.useState<Date | null>(null);
   const [error, setError] = React.useState('');
-  const [webUpdateWaiting, setWebUpdateWaiting] = React.useState(false);
-  const [applyingWebUpdate, setApplyingWebUpdate] = React.useState(false);
   const [installing, setInstalling] = React.useState(false);
   const [installProgress, setInstallProgress] = React.useState<{ phase: string; percent: number } | null>(null);
   const [installMessage, setInstallMessage] = React.useState('');
   const currentVersion = __APP_VERSION__;
   const isAndroid = Capacitor.isNativePlatform() && Capacitor.getPlatform() === 'android';
   const isDesktop = /Electron/i.test(navigator.userAgent);
-  const isBrowserPwa = !isAndroid && !isDesktop;
 
   const checkForUpdates = React.useCallback(async () => {
     if (checking) return;
@@ -49,17 +46,10 @@ export function UpdateCenter() {
       const data = await response.json() as LatestRelease;
       if (!data.tag_name || !Array.isArray(data.assets)) throw new Error('Die Release-Antwort ist unvollständig.');
       setRelease(data); setCheckedAt(new Date());
-      if (isBrowserPwa && 'serviceWorker' in navigator) {
-        const registration = await navigator.serviceWorker.getRegistration();
-        if (registration) {
-          await registration.update();
-          setWebUpdateWaiting(Boolean(registration.waiting));
-        }
-      }
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : 'Update-Prüfung fehlgeschlagen.');
     } finally { setChecking(false); }
-  }, [checking, isBrowserPwa]);
+  }, [checking]);
 
   React.useEffect(() => {
     void checkForUpdates();
@@ -73,12 +63,11 @@ export function UpdateCenter() {
   }, [isDesktop]);
 
   React.useEffect(() => {
-    if (!isBrowserPwa || !('serviceWorker' in navigator)) return;
-    const onControllerChange = () => window.location.reload();
-    navigator.serviceWorker.addEventListener('controllerchange', onControllerChange);
-    void navigator.serviceWorker.getRegistration().then(registration => setWebUpdateWaiting(Boolean(registration?.waiting)));
-    return () => navigator.serviceWorker.removeEventListener('controllerchange', onControllerChange);
-  }, [isBrowserPwa]);
+    if (!isDesktop || !window.replayAPI?.getUpdateStatus) return;
+    void window.replayAPI.getUpdateStatus().then(status => {
+      if (status?.failed) setError(status.message);
+    }).catch(() => undefined);
+  }, [isDesktop]);
 
   const latestVersion = release?.tag_name.replace(/^v/i, '') ?? '';
   const hasNewVersion = Boolean(latestVersion && compareVersions(latestVersion, currentVersion) > 0);
@@ -86,7 +75,6 @@ export function UpdateCenter() {
   const installer = release && findAsset(release.assets, /\.Setup\.[\d.]+\.exe$/i);
   const portable = release && findAsset(release.assets, /-win\.zip$/i);
   const apk = release && findAsset(release.assets, /-Android\.apk$/i);
-  const web = release && findAsset(release.assets, /-Web-PWA\.zip$/i);
 
   async function installDesktopUpdate() {
     setInstalling(true); setError(''); setInstallMessage('Update wird vorbereitet …');
@@ -103,20 +91,13 @@ export function UpdateCenter() {
     if (!asset?.digest) { setError('Für diese APK fehlt die offizielle SHA-256-Prüfsumme.'); return; }
     setInstalling(true); setError(''); setInstallMessage('APK wird heruntergeladen und geprüft …');
     try {
-      await ApkUpdater.downloadAndInstall({ url: asset.browser_download_url, digest: asset.digest, size: asset.size, name: asset.name });
+      await ApkUpdater.downloadAndInstall({ url: asset.browser_download_url, digest: asset.digest, size: asset.size, name: asset.name, version: latestVersion });
       setInstallMessage('Android-Installationsdialog wurde geöffnet. Bestätige dort das Update.');
+      setInstalling(false);
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : 'Android-Update fehlgeschlagen.');
       setInstalling(false);
     }
-  }
-
-  function applyWebUpdate() {
-    void navigator.serviceWorker.getRegistration().then(registration => {
-      if (!registration?.waiting) { window.location.reload(); return; }
-      setApplyingWebUpdate(true);
-      registration.waiting.postMessage({ type: 'SKIP_WAITING' });
-    });
   }
 
   return <div className="update-center" aria-live="polite">
@@ -130,7 +111,7 @@ export function UpdateCenter() {
       {error && <p className="update-center-message is-error"><AlertCircle size={15}/>{error}</p>}{checking && !release ? <p className="update-center-message">Suche nach einer aktuellen Version …</p> : hasNewVersion ? <div className="update-center-release"><span className="update-center-badge">NEUE VERSION · {latestVersion}</span><p>Eine neuere stabile Version ist verfügbar. Wähle den Download für dein Gerät.</p>
         {isDesktop && <><button type="button" className="update-center-apply" onClick={() => void installDesktopUpdate()} disabled={installing || checking}><MonitorDown size={15}/>{installing ? "Update wird installiert …" : "Jetzt herunterladen und installieren"}</button>{installProgress && <div className="update-center-progress"><span>{installProgress.phase}</span><div><i style={{width: installProgress.percent + "%"}}/></div></div>}{installMessage && <p className="update-center-message">{installMessage}</p>}{portable && installer && <small className="update-center-platform">Windows Installer und Portable werden automatisch passend zur Installation ausgewählt.</small>}</>}
         {isAndroid && apk && <><button type="button" className="update-center-apply" onClick={() => void installAndroidUpdate(apk)} disabled={installing}><Smartphone size={15}/>{installing ? "APK wird vorbereitet …" : "Android-Update herunterladen und installieren"}</button>{installMessage && <p className="update-center-message">{installMessage}</p>}<small className="update-center-platform">Android zeigt zur Sicherheit seinen eigenen Installationsdialog. Eine Bestätigung ist erforderlich.</small></>}
-        {isBrowserPwa && <>{web && <a href={web.browser_download_url} target="_blank" rel="noreferrer"><Globe size={15}/>Web/PWA-Paket <small>Nur für eigene Bereitstellung</small></a>}{webUpdateWaiting && <button type="button" className="update-center-apply" onClick={applyWebUpdate} disabled={applyingWebUpdate}><RefreshCw size={15}/>Web-App jetzt aktualisieren</button>}</>}
+        {isAndroid && !apk && <p className="update-center-message is-error">Für diese Release-Version wurde keine Android-APK veröffentlicht. Bitte später erneut prüfen.</p>}
         <a className="update-center-release-link" href={release?.html_url} target="_blank" rel="noreferrer">Release-Notizen ansehen</a>
       </div> : isCurrent ? <p className="update-center-message is-current"><CheckCircle2 size={15}/>Du verwendest die aktuelle Version {currentVersion}.</p> : <p className="update-center-message">Noch keine veröffentlichte stabile Version gefunden.</p>}
       <small className="update-center-checked">{checkedAt ? `Zuletzt geprüft: ${checkedAt.toLocaleTimeString('de-DE', {hour:'2-digit',minute:'2-digit'})}` : 'Prüfung erfolgt automatisch beim Start und alle 6 Stunden.'}</small>

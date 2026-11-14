@@ -6,6 +6,7 @@ import { analyzeActions } from './decoder/ActionAnalysis';
 import { analyzeDetailedActions } from './decoder/DetailedAnalysis';
 import { buildCoachInsights } from './decoder/CoachInsights';
 import { assessReplayCompatibility } from './decoder/ReplayCompatibility';
+import { resolveReplayJsonExport } from './decoder/ReplayJsonExport';
 import { autoUpdateOnStartup, registerUpdaterIpc } from './updater';
 
 const isDev = !app.isPackaged;
@@ -373,12 +374,9 @@ ipcMain.handle('replay:import-url', async (_event, input: string) => {
   return summary;
 });
 
-ipcMain.handle('replay:save-json', async (event, gameId: string) => {
+ipcMain.handle('replay:save-json', async (event, gameId: string, fallbackRecord?: unknown) => {
   const id = String(gameId ?? '').trim();
-  const raw = importedReplayJson.get(id);
-  if (!raw) {
-    throw new Error('Für diese Partie liegt keine Original-JSON mehr im Arbeitsspeicher. Lade die Partie bitte erneut über ihren OpenFront-Link und speichere sie anschließend.');
-  }
+  const raw = resolveReplayJsonExport(id, importedReplayJson.get(id), fallbackRecord, MAX_RESPONSE_BYTES);
 
   const safeId = id.replace(/[^A-Za-z0-9_-]/g, '_');
   const defaultPath = path.join(app.getPath('downloads'), `OpenFront-${safeId}.json`);

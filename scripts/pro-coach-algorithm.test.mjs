@@ -164,3 +164,21 @@ test('match coach creates a spawn-position lesson from first-frame spatial evide
  assert.ok(report.findings.some(x=>x.id==='spawn-position-review'));
  assert.match(report.opening.limitation,/Owner-Grid/);
 });
+
+
+test('uses exact replay spawn metrics returned outside the sampled player frames',()=>{
+ const samples=[sample(0,{tiles:40,goldEarned:10,troops:100}),sample(300,{tiles:45,goldEarned:40,troops:95}),sample(900,{tiles:65,goldEarned:110,troops:90}),sample(1800,{tiles:90,goldEarned:220,troops:120})];
+ const spawnPositions=[{
+  id:1,clientID:'p1',name:'You',startTiles:12,centerX:24,centerY:31,
+  spawnTile:1824,spawnX:24,spawnY:30,nearestSpawnDistance:18,
+  spawnZoneLandTiles:42,spawnZoneTotalTiles:49,nearbyNeutralLandTiles:380,
+  nearbyCoastalLandTiles:90,nearbyPlainsTiles:120,nearbyImpassableTiles:14,
+  nearbyHighlandTiles:70,nearbyMountainTiles:180,mapEdgeDistance:24,
+  adjacentRivals:[2],rivalBorderContacts:4,nearestRivalDistance:5.2,classification:'contested'
+ }];
+ const report=buildProCoachReport(samples,[],'p1',600,spawnPositions);
+ const finding=report.findings.find(x=>x.id==='spawn-position-review');
+ assert.ok(finding,'real engine spawn metrics must create the opening spawn insight');
+ assert.match(finding.decision,/tatsächlichen Spawn-Feld \(24, 30\)/);
+ assert.match(finding.caveat,/Terrain stammen aus der zur Replay-Version passenden OpenFront-Engine/);
+});

@@ -26,7 +26,7 @@ done
 [[ "$booted" == true ]] || fail "Android emulator did not finish booting within 3 minutes."
 log "Emulator booted; installing baseline APK."
 timeout 120s adb install "$before_apk" || fail "Could not install baseline APK."
-timeout 30s adb shell run-as "$package_id" sh -c "mkdir -p files/update-regression && printf 'keep-this-data' > files/update-regression/sentinel.txt" || fail "Could not create app-data sentinel."
+timeout 30s adb shell "run-as $package_id sh -c 'mkdir -p files/update-regression && printf keep-this-data > files/update-regression/sentinel.txt'" || fail "Could not create app-data sentinel."
 
 current_version="$(node -p "require('./package.json').version")"
 IFS='.' read -r major minor patch <<< "$current_version"
@@ -41,7 +41,7 @@ node scripts/set-android-version.mjs "$next_version"
 test -s "$apk" || fail "Updated APK is missing."
 log "Installing the higher-version APK over the existing installation."
 timeout 120s adb install -r "$apk" || fail "Android rejected the in-place APK update."
-saved="$(timeout 30s adb shell run-as "$package_id" cat files/update-regression/sentinel.txt | tr -d '\r')" || fail "Could not read the preserved app-data sentinel."
+saved="$(saved="$(timeout 30s adb shell "run-as $package_id cat files/update-regression/sentinel.txt" | tr -d '\r')")" || fail "Could not read the preserved app-data sentinel."
 [[ "$saved" == "keep-this-data" ]] || fail "App data was not preserved after adb install -r."
 
 expected_version_code="$((major * 1000000 + minor * 1000 + patch + 1))"

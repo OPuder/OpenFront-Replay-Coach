@@ -4,6 +4,7 @@ set -Eeuo pipefail
 package_id="de.openfront.replaycoach"
 apk="android/app/build/outputs/apk/debug/app-debug.apk"
 before_apk="$RUNNER_TEMP/openfront-coach-before-update.apk"
+update_apk="${OPENFRONT_UPDATE_APK:-$RUNNER_TEMP/openfront-coach-update.apk}"
 
 log() { echo "::notice::[Android update regression] $*"; }
 fail() { echo "::error::[Android update regression] $*"; exit 1; }

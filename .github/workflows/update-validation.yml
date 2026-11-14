@@ -164,11 +164,14 @@ jobs:
           sha256sum "$APK"
 
       - name: Test in-place Android update and preserve app data
+        timeout-minutes: 20
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 35
           arch: x86_64
           profile: pixel_6
+          emulator-options: -no-window -no-audio -no-boot-anim -gpu swiftshader_indirect
+          disable-animations: true
           script: bash scripts/test-android-in-place-update.sh
 
       - name: Upload validated APK

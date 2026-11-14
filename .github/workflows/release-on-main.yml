@@ -278,6 +278,7 @@ jobs:
         run: |
           npx cap add android
           npx cap sync android
+          node scripts/install-android-updater-plugin.mjs
 
       - name: Generate branded Android launcher and splash assets
         run: npx capacitor-assets generate --android --iconBackgroundColor "#0b1320" --splashBackgroundColor "#0b1320"
@@ -429,7 +430,7 @@ jobs:
 
             - **Windows Installer:** normal installieren, Desktop-Verknüpfung inklusive.
             - **Windows Portable:** ZIP entpacken und direkt starten, keine Installation.
-            - **Android APK:** auf das Handy herunterladen und einmalig installieren. Keine Cloudflare-Anmeldung und kein Play-Store-Konto erforderlich.
+            - **Android APK:** Updates werden automatisch heruntergeladen und mit Androids Installationsdialog angeboten. Eine Bestätigung bleibt aus Sicherheitsgründen erforderlich. Keine Cloudflare-Anmeldung und kein Play-Store-Konto erforderlich.
             - **Web/PWA:** ZIP mit `dist/`, Cloudflare-Pages-`functions/` und `wrangler.toml`. Für funktionierende API- und Asset-Proxys auf Cloudflare Pages oder einer kompatiblen Pages-Functions-Umgebung bereitstellen. Dieser Workflow hostet die Web-App nicht automatisch; dafür ist ein eigener Hosting-Zugang nötig.
 
             Die Android-App verwendet Androids native HTTP-Schnittstelle für die öffentlichen OpenFront-Daten und Engine-Assets. Die Daten müssen dafür nicht über einen Cloudflare-Proxy geleitet werden.

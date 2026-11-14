@@ -144,16 +144,22 @@ async function scheduleWindowsInstall(downloadPath: string, portable: boolean): 
   await new Promise(resolve => setTimeout(resolve, 800));
   app.quit();
 }
+let activeWindowsUpdate: Promise<{ scheduled: boolean; version: string }> | null = null;
 async function installLatestWindowsUpdate(): Promise<{ scheduled: boolean; version: string }> {
+  if (activeWindowsUpdate) return activeWindowsUpdate;
   if (process.platform !== 'win32' || !app.isPackaged) throw new Error('Automatische Installation ist nur in der installierten oder portablen Windows-App verfügbar.');
-  const release = await getLatestRelease();
-  const version = release.tag_name.replace(/^v/i, '');
-  if (compareVersions(version, app.getVersion()) <= 0) throw new Error('Du verwendest bereits die aktuelle Version.');
-  const portable = await isPortableInstall(app.getPath('exe'));
-  const asset = chooseWindowsAsset(release, portable);
-  const downloadPath = await downloadVerifiedAsset(asset);
-  await scheduleWindowsInstall(downloadPath, portable);
-  return { scheduled: true, version };
+  activeWindowsUpdate = (async () => {
+    const release = await getLatestRelease();
+    const version = release.tag_name.replace(/^v/i, '');
+    if (compareVersions(version, app.getVersion()) <= 0) throw new Error('Du verwendest bereits die aktuelle Version.');
+    const portable = await isPortableInstall(app.getPath('exe'));
+    const asset = chooseWindowsAsset(release, portable);
+    const downloadPath = await downloadVerifiedAsset(asset);
+    await scheduleWindowsInstall(downloadPath, portable);
+    return { scheduled: true, version };
+  })();
+  try { return await activeWindowsUpdate; }
+  finally { activeWindowsUpdate = null; }
 }
 export function registerUpdaterIpc(): void {
   ipcMain.handle('updates:install', async () => installLatestWindowsUpdate());

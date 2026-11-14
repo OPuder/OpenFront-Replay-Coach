@@ -362,7 +362,7 @@ jobs:
 
             - **Windows Installer:** normal installieren, Desktop-Verknüpfung inklusive.
             - **Windows Portable:** ZIP entpacken und direkt starten, keine Installation.
-            - **Android APK:** Updates werden automatisch heruntergeladen und mit Androids Installationsdialog angeboten. Eine Bestätigung bleibt aus Sicherheitsgründen erforderlich. Keine Cloudflare-Anmeldung und kein Play-Store-Konto erforderlich.
+            - **Android APK:** Die App prüft beim Start auf Updates. Der Download wird nach Tippen auf Aktualisieren gestartet, vorgeprüft und anschließend Androids Installationsdialog geöffnet. Eine Bestätigung bleibt aus Sicherheitsgründen erforderlich. Keine Cloudflare-Anmeldung und kein Play-Store-Konto erforderlich.
             Die Windows- und Android-Ausgaben enthalten die gemeinsame, getestete Coaching-Oberfläche. Android lädt öffentliche OpenFront-Daten über seine native HTTP-Schnittstelle.
 
             **Android-Signierung:** ${{ needs.build-android.outputs.signing_mode }}. Für zuverlässige Updates muss der dauerhafte Schlüssel einmalig als vier GitHub-Actions-Secrets eingerichtet werden; siehe `docs/ANDROID_SIGNING.md`. Den privaten Schlüssel niemals ins Repository committen.

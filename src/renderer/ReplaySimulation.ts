@@ -242,8 +242,8 @@ export async function simulateReplay(
   const turns: any[] = Array.isArray(record.turns) ? record.turns : [];
   const recordedHashCount = turns.filter((turn: any) => turn.hash !== null && turn.hash !== undefined).length;
   // Keep the regular overview cadence, but also capture the frames immediately
-  // before and after every action by the selected player. A 50-frame-only
-  // sample can otherwise miss the state change that matters for coaching.
+  // before and after every action by the selected player. The action frame
+  // itself is not read by the outcome evaluator, so omit that redundant sample.
   const sampleFrames = new Set<number>();
   const replayPlayers = Array.isArray(record?.info?.players) ? record.info.players : [];
   const selectedPlayerMeta = preferredClientId
@@ -266,7 +266,6 @@ export async function simulateReplay(
       if (Number.isInteger(frame) && frame >= 0 &&
           (turn?.intents ?? []).some((intent: any) => String(intent?.clientID ?? "") === selectedClientId)) {
         sampleFrames.add(Math.max(0, frame - 1));
-        sampleFrames.add(frame);
         sampleFrames.add(Math.min(totalRecordedFrames - 1, frame + 1));
         // Capture delayed outcome windows as well as the immediate state.
         // 10 game ticks per second: +50/+100/+300 frames = +5/+10/+30 sec.

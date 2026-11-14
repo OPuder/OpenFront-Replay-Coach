@@ -27,20 +27,6 @@ jobs:
       - name: Check out coach source
         uses: actions/checkout@v4
 
-      # The upstream repository declares a private nested submodule that is
-      # unrelated to replay simulation. Initialize only the public engine.
-      - name: Check out only the pinned public OpenFront source
-        run: git submodule update --init --depth 1 vendor/OpenFrontIO vendor/OpenFrontIO-8b5d071eed95
-
-      - name: Verify exact engine revision
-        shell: bash
-        run: |
-          expected="bc3e3334c573c4959ec6a6745df6826d07233b4d"
-          actual="$(git -C vendor/OpenFrontIO rev-parse HEAD)"
-          echo "Expected: $expected"
-          echo "Actual:   $actual"
-          test "$actual" = "$expected"
-
       - name: Set up upstream Node.js
         uses: actions/setup-node@v4
         with:
@@ -49,21 +35,11 @@ jobs:
       - name: Set up upstream npm
         run: npm install --global npm@12.1.0
 
-      - name: Install pinned upstream workspaces
-        working-directory: vendor/OpenFrontIO
-        run: npm ci --ignore-scripts
+      - name: Prepare all exact historical OpenFront engines
+        run: npm run prepare:engines
 
-      - name: Install exact historical OpenFront engine dependencies
-        working-directory: vendor/OpenFrontIO-8b5d071eed95
-        run: npm ci --ignore-scripts
-
-      - name: Type-check original engine and replay pipeline
-        working-directory: vendor/OpenFrontIO
-        run: npm run typecheck
-
-      - name: Type-check historical Europe engine and replay pipeline
-        working-directory: vendor/OpenFrontIO-8b5d071eed95
-        run: npm run typecheck
+      - name: Type-check all exact replay engine revisions
+        run: npm run typecheck:engines
 
       - name: Bundle all exact replay engine workers for Electron
         run: npm run build:engine

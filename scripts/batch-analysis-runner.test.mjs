@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { runSequentialBatchAnalysis } from '../src/renderer/BatchAnalysisRunner.ts';
+import { runConcurrentBatchAnalysis, runSequentialBatchAnalysis } from '../src/renderer/BatchAnalysisRunner.ts';
 
 const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
@@ -137,4 +137,70 @@ test('automatic analysis retries failed analysis only once in the current sessio
  const entries=[{game:{gameId:'failed'},result:{},analysisStatus:'failed'}];
  assert.equal(selectGamesToAnalyze(entries).length,1);
  assert.equal(selectGamesToAnalyze(entries,new Set(['failed'])).length,0);
+});
+
+
+test('bounded parallel analysis overlaps matches without exceeding the configured worker limit', async () => {
+  const active = { count: 0, max: 0 };
+  const started = [];
+  const completed = [];
+  const controller = new AbortController();
+  const summary = await runConcurrentBatchAnalysis(
+    ['a', 'b', 'c', 'd'].map(id => ({ id })),
+    {
+      signal: controller.signal,
+      concurrency: 2,
+      getId: item => item.id,
+      isCompatible: () => true,
+      analyze: async (item, onProgress) => {
+        active.count++;
+        active.max = Math.max(active.max, active.count);
+        started.push(item.id);
+        onProgress(50, 'simulation');
+        await delay(15);
+        active.count--;
+        completed.push(item.id);
+        return { status: 'verified', gameId: item.id };
+      },
+      onStatus: () => undefined,
+      onProgress: () => undefined,
+    },
+  );
+  assert.equal(active.max, 2, 'two independent matches should run at once');
+  assert.deepEqual(started, ['a', 'b', 'c', 'd']);
+  assert.equal(completed.length, 4);
+  assert.equal(summary.completed, 4);
+  assert.equal(summary.verified, 4);
+  assert.equal(summary.cancelled, false);
+});
+
+test('parallel analysis cancellation does not start queued matches after abort', async () => {
+  const controller = new AbortController();
+  const started = [];
+  const summary = await runConcurrentBatchAnalysis(
+    ['a', 'b', 'c', 'd'].map(id => ({ id })),
+    {
+      signal: controller.signal,
+      concurrency: 2,
+      getId: item => item.id,
+      isCompatible: () => true,
+      analyze: async item => {
+        started.push(item.id);
+        if (item.id === 'a') {
+          controller.abort();
+          const error = new Error('aborted');
+          error.name = 'AbortError';
+          throw error;
+        }
+        await delay(10);
+        return { status: 'verified' };
+      },
+      onStatus: () => undefined,
+      onProgress: () => undefined,
+    },
+  );
+  assert.equal(summary.cancelled, true);
+  assert.ok(started.length <= 2);
+  assert.equal(started.includes('c'), false);
+  assert.equal(started.includes('d'), false);
 });

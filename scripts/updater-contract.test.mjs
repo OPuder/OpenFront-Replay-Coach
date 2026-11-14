@@ -91,3 +91,9 @@ assert.match(releaseWorkflow, /-Android\.apk/);
 
 const updateValidationWorkflow = read(".github/workflows/update-validation.yml");
 assert.match(updateValidationWorkflow, /Test in-place Android update and preserve app data[\s\S]*?if: always\(\) && steps\.parse_apk\.outcome == 'success'/);
+
+assert.ok(
+  updateValidationWorkflow.indexOf("Test in-place Android update and preserve app data") <
+    updateValidationWorkflow.indexOf("Verify permanent Android release signing key and continuity"),
+  "The debug emulator update test must run before the signing gate modifies generated Gradle configuration."
+);

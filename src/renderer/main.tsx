@@ -10,7 +10,7 @@ import { buildProCoachReport } from '../main/decoder/ProCoachAlgorithm';
 import { buildLongitudinalCoachReport } from '../main/decoder/LongitudinalCoach';
 import { selectPrimaryCoachInsights } from '../main/decoder/CoachInsightSelection';
 import { buildReplayTimeline } from '../main/decoder/CoachTimeline';
-import { runSequentialBatchAnalysis } from './BatchAnalysisRunner';
+import { runConcurrentBatchAnalysis } from './BatchAnalysisRunner';
 import { assessReplayCompatibility } from '../main/decoder/ReplayCompatibility';
 import type { ReplaySimulationResult } from './ReplaySimulation';
 import { selectPlayerSurvivalWindow } from './phaseSurvival';
@@ -51,7 +51,7 @@ function App() {
   const [selectedGameIds, setSelectedGameIds] = useState<string[]>([]);
   const [batchMatches, setBatchMatches] = useState<BatchMatchItem[]>([]);
   const [batchAnalysisBusy, setBatchAnalysisBusy] = useState(false);
-  const [batchAnalysisProgress, setBatchAnalysisProgress] = useState<{done:number;total:number;gameId:string;percent:number;phase:string}|null>(null);
+  const [batchAnalysisProgress, setBatchAnalysisProgress] = useState<{done:number;total:number;gameId:string;percent:number;phase:string;active:number}|null>(null);
   const batchAnalysisRunId = React.useRef(0);
   const batchAnalysisAbort = React.useRef<AbortController|null>(null);
   const autoImportAttempted = React.useRef(new Set<string>());
@@ -176,11 +176,14 @@ function App() {
     const controller=new AbortController();
     batchAnalysisAbort.current=controller;
     setBatchAnalysisBusy(true); setError('');
-    setBatchAnalysisProgress({done:0,total:candidates.length,gameId:'',percent:0,phase:'Analyse wird vorbereitet'});
+    setBatchAnalysisProgress({done:0,total:candidates.length,gameId:'',percent:0,phase:'Analyse wird vorbereitet',active:0});
     try {
       const {simulateReplay,buildReplayEngineAssets}=await import('./ReplaySimulation');
       if(runId!==batchAnalysisRunId.current||controller.signal.aborted) return;
-      await runSequentialBatchAnalysis<BatchMatchItem,ReplaySimulationResult>(candidates,{
+      await runConcurrentBatchAnalysis<BatchMatchItem,ReplaySimulationResult>(candidates,{
+        // Two independent engine workers substantially reduce total wait time on PCs.
+        // Phones remain sequential to protect memory, thermals and battery life.
+        concurrency:isMobileDevice?1:2,
         signal:controller.signal,
         getId:item=>item.game.gameId,
         isCompatible:item=>Boolean(item.result?.record&&item.result.engineCompatibility?.engineVersionCompatible===true),
@@ -437,7 +440,7 @@ function App() {
       {error && <div className="error"><AlertTriangle size={18}/>{error}</div>}{saveNotice && <div className="success"><CheckCircle2 size={18}/>{saveNotice}</div>}
       {playerBusy && playerProgress && <div className="load-progress studio-card"><div><b>{playerProgress.status}</b><span>{playerProgress.loaded.toLocaleString('de-DE')} Partien · {playerProgress.pages} Seiten</span></div><div className="load-progress-track"><div/></div></div>}
       {activePage!=='games' && batchBusy && batchProgress && <section className="batch-progress studio-card global-library-progress" aria-live="polite"><b>Spielbibliothek wird vollständig eingelesen</b><span>{batchProgress.done} von {batchProgress.total} Partien importiert · {batchProgress.gameId||'Bitte App geöffnet lassen'}</span><div className="batch-progress-track"><i style={{width:`${batchProgress.total?batchProgress.done/batchProgress.total*100:0}%`}}/></div></section>}
-      {activePage!=='games' && batchAnalysisBusy && batchAnalysisProgress && <section className="batch-progress studio-card global-library-progress" aria-live="polite"><b>Langzeitanalyse wird aufgebaut</b><span>{batchAnalysisProgress.done} von {batchAnalysisProgress.total} Partien · {batchAnalysisProgress.gameId||batchAnalysisProgress.phase}</span><div className="batch-progress-track"><i style={{width:`${Math.min(100,batchAnalysisProgress.total?(batchAnalysisProgress.done+batchAnalysisProgress.percent/100)/batchAnalysisProgress.total*100:0)}%`}}/></div></section>}
+      {activePage!=='games' && batchAnalysisBusy && batchAnalysisProgress && <section className="batch-progress studio-card global-library-progress" aria-live="polite"><b>Langzeitanalyse wird aufgebaut</b><span>{batchAnalysisProgress.done} von {batchAnalysisProgress.total} Partien · {batchAnalysisProgress.active>1?`${batchAnalysisProgress.active} gleichzeitig · `:''}{batchAnalysisProgress.gameId||batchAnalysisProgress.phase}</span><div className="batch-progress-track"><i style={{width:`${Math.min(100,batchAnalysisProgress.total?(batchAnalysisProgress.done+batchAnalysisProgress.percent/100)/batchAnalysisProgress.total*100:0)}%`}}/></div></section>}
       {activePage==='dashboard' && <>
         <section className="welcome-strip dashboard-hero"><div><span className="studio-eyebrow">PLAYER PROFILE</span><h2>Willkommen zurück, {profileName}</h2><p>Deine OpenFront-Partien auf einen Blick.</p></div><div className="profile-loader"><input value={playerId} onChange={e=>setPlayerId(e.target.value)} onKeyDown={e=>{if(e.key==='Enter') void loadPlayer();}} placeholder="OpenFront-Profillink oder Spieler-ID"/><button className="studio-button primary" onClick={()=>loadPlayer()} disabled={playerBusy || !playerId.trim()}><Users size={16}/>{playerBusy?'Lade …':'Konto laden'}</button></div></section>
         <section className="match-import-bar studio-card dashboard-import"><div><span className="studio-eyebrow">SCHNELLIMPORT</span><h3>Direkt in eine Partie springen</h3><p>Öffne einen beliebigen öffentlichen Match-Link – unabhängig von deiner Profilhistorie.</p></div><div className="match-import-controls"><input value={url} onChange={e=>setUrl(e.target.value)} onKeyDown={e=>{if(e.key==='Enter') void importUrl();}} placeholder="https://openfront.io/w5/game/…" aria-label="OpenFront-Match-Link"/><button className="studio-button primary" onClick={()=>void importUrl()} disabled={busy||!url.trim()}><FileUp size={16}/>{busy?'Partie wird geladen …':'Partie laden'}</button></div></section>

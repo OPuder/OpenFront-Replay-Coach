@@ -424,12 +424,6 @@ function App() {
         <section className="welcome-strip dashboard-hero"><div><span className="studio-eyebrow">PLAYER PROFILE</span><h2>Willkommen zurück, {profileName}</h2><p>Deine OpenFront-Partien auf einen Blick.</p></div><div className="profile-loader"><input value={playerId} onChange={e=>setPlayerId(e.target.value)} onKeyDown={e=>{if(e.key==='Enter') void loadPlayer();}} placeholder="OpenFront-Profillink oder Spieler-ID"/><button className="studio-button primary" onClick={()=>loadPlayer()} disabled={playerBusy || !playerId.trim()}><Users size={16}/>{playerBusy?'Lade …':'Konto laden'}</button></div></section>
         <section className="match-import-bar studio-card dashboard-import"><div><span className="studio-eyebrow">SCHNELLIMPORT</span><h3>Direkt in eine Partie springen</h3><p>Öffne einen beliebigen öffentlichen Match-Link – unabhängig von deiner Profilhistorie.</p></div><div className="match-import-controls"><input value={url} onChange={e=>setUrl(e.target.value)} onKeyDown={e=>{if(e.key==='Enter') void importUrl();}} placeholder="https://openfront.io/w5/game/…" aria-label="OpenFront-Match-Link"/><button className="studio-button primary" onClick={()=>void importUrl()} disabled={busy||!url.trim()}><FileUp size={16}/>{busy?'Partie wird geladen …':'Partie laden'}</button></div></section>
         {playerPage ? <>
-          <section className="stat-grid dashboard-metrics">
-            <StatCard icon={<Trophy/>} label="SIEGQUOTE" value={completedGames?`${winRate.toFixed(1).replace('.',',')} %`:'—'} note={`${wins} Siege · ${losses} Niederlagen`} accent="cyan"/>
-            <StatCard icon={<Gamepad2/>} label="GELADENE PARTIEN" value={fmt(loadedGames.length)} note="Aktuell geladene Historie" accent="blue"/>
-            <StatCard icon={<Clock3/>} label="Ø SPIELDAUER" value={avgDuration?clock(avgDuration):'—'} note="Über geladene Partien" accent="violet"/>
-            <StatCard icon={<Activity/>} label="UNVOLLSTÄNDIG" value={fmt(loadedGames.filter(g=>g.result!=='victory'&&g.result!=='defeat').length)} note="Nicht in der Siegquote" accent="amber"/>
-          </section>
           <section className="studio-card longitudinal-coach-card dashboard-progression">
             <div className="card-heading"><div><span className="studio-eyebrow">LONGITUDINAL COACH</span><h3>Deine Entwicklung über mehrere Partien</h3></div><span className={`longitudinal-confidence ${longitudinalReport.confidence}`}>{longitudinalReport.confidence.toUpperCase()} CONFIDENCE</span></div>
             <div className="longitudinal-stats">
@@ -449,6 +443,12 @@ function App() {
               {longitudinalReport.recurringFindings.length>0 ? <div className="longitudinal-findings"><span className="studio-eyebrow">WIEDERKEHRENDE MUSTER</span>{longitudinalReport.recurringFindings.map(finding=><article key={finding.id}><div><b>{finding.title}</b><small>{finding.occurrences}/{finding.comparableMatches} vergleichbare Partien · {Math.round(finding.frequency*100)} %</small></div><span className={`finding-priority ${finding.priority}`}>{finding.priority.toUpperCase()}</span><p>{finding.trainingRule}</p></article>)}</div> : <p className="longitudinal-coverage">Noch kein identisches Fehlermuster in mehreren Partien bestätigt.</p>}
               <div className="longitudinal-training"><Brain size={18}/><div><span>NÄCHSTER TRAININGSFOKUS</span><b>{longitudinalReport.trainingFocus}</b></div></div>
             </> : <div className="longitudinal-empty"><Brain size={22}/><div><b>Langzeit-Coaching wartet auf verifizierte Partien</b><small>Importiere und analysiere mindestens zwei Partien desselben Modus und Spieltyps. Nicht verifizierte Daten werden nicht zusammengerechnet.</small></div><button className="studio-button primary" onClick={()=>navigateTo('games')}>Partien analysieren <ArrowRight size={15}/></button></div>}
+          </section>
+          <section className="stat-grid dashboard-metrics">
+            <StatCard icon={<Trophy/>} label="SIEGQUOTE" value={completedGames?`${winRate.toFixed(1).replace('.',',')} %`:'—'} note={`${wins} Siege · ${losses} Niederlagen`} accent="cyan"/>
+            <StatCard icon={<Gamepad2/>} label="GELADENE PARTIEN" value={fmt(loadedGames.length)} note="Aktuell geladene Historie" accent="blue"/>
+            <StatCard icon={<Clock3/>} label="Ø SPIELDAUER" value={avgDuration?clock(avgDuration):'—'} note="Über geladene Partien" accent="violet"/>
+            <StatCard icon={<Activity/>} label="UNVOLLSTÄNDIG" value={fmt(loadedGames.filter(g=>g.result!=='victory'&&g.result!=='defeat').length)} note="Nicht in der Siegquote" accent="amber"/>
           </section>
           <section className="dashboard-grid dashboard-lower-grid">
             <article className="studio-card performance-card"><div className="card-heading"><div><span className="studio-eyebrow">MATCH HISTORY</span><h3>Deine letzten Partien</h3></div><button className="text-action" onClick={()=>navigateTo('games')}>Alle Partien <ChevronRight size={15}/></button></div><div className="recent-game-grid">{gameCards(recentGames.slice(0,4))}</div></article>

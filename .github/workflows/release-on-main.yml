@@ -1,8 +1,7 @@
 name: Release all editions from main
 
 on:
-  push:
-    branches: [main]
+  # Publishing is explicit: ordinary main merges must not create unfinished public releases.
   workflow_dispatch:
 
 permissions:

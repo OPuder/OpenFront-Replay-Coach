@@ -164,3 +164,16 @@ test('recurring strengths are surfaced across multiple verified comparable match
   assert.equal(strength.occurrences,2);
   assert.equal(strength.comparableMatches,2);
 });
+
+
+test('malformed action records are excluded instead of being fabricated at time zero',()=>{
+  const simulation=makeSimulation({actionReviews:[
+    ...makeSimulation().actionReviews,
+    {type:'attack',delta30s:{tiles:99,gold:0,troops:0},targetDelta30s:{tiles:-99}},
+    {type:'attack',seconds:NaN,delta30s:{tiles:99,gold:0,troops:0},targetDelta30s:{tiles:-99}},
+    {type:'',seconds:10,delta30s:{tiles:99,gold:0,troops:0},targetDelta30s:{tiles:-99}},
+    null,
+  ]});
+  const report=buildLongitudinalCoachReport([match('malformed-a',{simulation})]);
+  assert.equal(report.matchProgress[0].attackFollowThroughSamples,6);
+});

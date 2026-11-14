@@ -37,6 +37,9 @@ assert.match(android, /Arrays\.equals\(incomingSignatures, installedSignatures\)
 assert.match(android, /Android kann die heruntergeladene APK nicht als gültiges Installationspaket lesen/);
 assert.match(updater, /-Verb RunAs/);
 assert.match(updater, /update-install\.log/);
+assert.match(updater, /Get-FileHash -LiteralPath \\$AppArchive/);
+assert.match(updater, /Programmdateien wurden nicht ersetzt/);
+assert.match(updater, /Portable-Dateien wurden nicht aktualisiert/);
 const main = read("src/main/main.ts");
 assert.match(main, /createWindow\(\);\s*void autoUpdateOnStartup\(\);/);
 assert.doesNotMatch(main, /const updateScheduled = await autoUpdateOnStartup\(\)/);

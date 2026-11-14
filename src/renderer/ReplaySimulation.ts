@@ -1,6 +1,11 @@
 import { unwrapGameRecord } from "../main/decoder/GameRecordShape";
 import { loadReplayEngineModule } from "./engineRegistry";
-import { analyzeSpawnPositions, type SpawnPositionMetric } from "./SpawnPositionAnalysis";
+import {
+  analyzeAlternativeSpawnPositions,
+  analyzeSpawnPositions,
+  type SpawnAlternativeMetric,
+  type SpawnPositionMetric,
+} from "./SpawnPositionAnalysis";
 
 export interface ReplayStateDelta {
   tiles: number;
@@ -25,6 +30,8 @@ export interface ReplayStateSample {
     id: number;
     name: string;
     clientID: string | null;
+    /** Exact OpenFront PlayerState.spawnTile selected during the spawn phase. */
+    spawnTile: number | null;
     alive: boolean;
     gold: number;
     goldEarned: number;
@@ -52,7 +59,6 @@ export interface ReplayStateSample {
   }>;
   totalUnits: number;
   falloutTiles: number;
-  spawnPositions?: SpawnPositionMetric[];
 }
 
 export interface ReplayFrontContext {
@@ -110,6 +116,14 @@ export interface ReplaySimulationResult {
   samples: ReplayStateSample[];
   playerReview: null | { playerName: string; clientID: string | null; startTiles: number; endTiles: number; tilesGained: number; startGold: number; endGold: number; startTroops: number; endTroops: number; outgoingAttackSamples: number; longestNoExpansionSeconds: number };
   actionReviews: ReplayActionReview[];
+  /** Spawn analysis captured at/after the recorded end of the spawn phase. */
+  spawnPositions?: SpawnPositionMetric[] | null;
+  spawnPhaseEndTick?: number | null;
+  spawnSnapshotTick?: number | null;
+  /** Alternative unowned manual-spawn centers, computed for the selected player. */
+  spawnAlternatives?: SpawnAlternativeMetric[] | null;
+  spawnAlternativesPlayerId?: number | null;
+  spawnMode?: "manual" | "random" | "unknown";
   message: string;
 }
 
@@ -122,6 +136,47 @@ interface ProcessorResponse {
   message?: string;
 }
 export interface EngineAssets { manifest: Record<string,string>; cdnBase: string }
+
+/**
+ * Loads the terrain binary matching the replay's exact map dimensions from the
+ * pinned engine commit. The manifest is used to distinguish normal, compact
+ * and mini-map binaries; no current/live map data is consulted.
+ */
+export async function loadReplayTerrainData(
+  assets: EngineAssets,
+  width: number,
+  height: number,
+  signal?: AbortSignal,
+): Promise<Uint8Array | null> {
+  if (typeof fetch !== "function") return null;
+  const manifestKey = Object.keys(assets.manifest).find((key) => key.endsWith("/manifest.json"));
+  if (!manifestKey) return null;
+  const manifestUrl = assets.manifest[manifestKey];
+  const folder = manifestKey.slice(0, manifestKey.lastIndexOf("/") + 1);
+  try {
+    const manifestResponse = await fetch(manifestUrl, signal ? { signal } : undefined);
+    if (!manifestResponse.ok) return null;
+    const manifest = await manifestResponse.json() as Record<string, any>;
+    const variants = [
+      { key: "map", file: "map.bin" },
+      { key: "map4x", file: "map4x.bin" },
+      { key: "map16x", file: "map16x.bin" },
+    ];
+    const match = variants.find(({ key }) =>
+      Number(manifest[key]?.width) === width && Number(manifest[key]?.height) === height
+    );
+    if (!match) return null;
+    const terrainUrl = assets.manifest[`${folder}${match.file}`];
+    if (!terrainUrl) return null;
+    const terrainResponse = await fetch(terrainUrl, signal ? { signal } : undefined);
+    if (!terrainResponse.ok) return null;
+    const terrain = new Uint8Array(await terrainResponse.arrayBuffer());
+    return terrain.length === width * height ? terrain : null;
+  } catch {
+    // Terrain enriches spawn coaching but must never block a verified replay.
+    return null;
+  }
+}
 
 function replayMapAssetId(value: unknown): string {
   const aliases: Record<string, string> = {
@@ -254,6 +309,7 @@ export async function simulateReplay(
         id,
         name: String(meta.displayName ?? meta.name ?? meta.username ?? `Spieler ${id}`),
         clientID: meta.clientID == null ? null : String(meta.clientID),
+        spawnTile: Number.isInteger(p.spawnTile) ? Number(p.spawnTile) : null,
         alive: Boolean(p.isAlive),
         gold: Number(p.gold ?? 0),
         goldEarned: Number(p.goldEarned ?? 0),
@@ -290,12 +346,13 @@ export async function simulateReplay(
         inDoomsdayClock: Boolean(p.inDoomsdayClock),
       };
     });
-    const spatialState = state as unknown as { tileState?: Uint16Array };
-    const spatialHeader = reader.header as unknown as { mapWidth?: number; mapHeight?: number };
-    const spawnPositions = frame === 0 && spatialState.tileState && spatialHeader.mapWidth && spatialHeader.mapHeight
-      ? analyzeSpawnPositions(spatialState.tileState, spatialHeader.mapWidth, spatialHeader.mapHeight, players)
-      : undefined;
-    return { tick: state.tick, frame, players, totalUnits: state.units.size, falloutTiles: state.falloutTiles, ...(spawnPositions ? { spawnPositions } : {}) };
+    return {
+      tick: state.tick,
+      frame,
+      players,
+      totalUnits: state.units.size,
+      falloutTiles: state.falloutTiles,
+    };
   };
 
   const completion = new Promise<ReplaySimulationResult>((resolve, reject) => {
@@ -349,7 +406,6 @@ export async function simulateReplay(
         } else if (msg.type === "done") {
           await appendQueue;
           if (settled) return;
-          settled = true;
           const totalTicks = readerRef.current?.header.totalFrames ?? 0;
           const finalFrame = totalTicks - 1;
           if (readerRef.current && finalFrame >= 0 && lastSampledFrame !== finalFrame) {
@@ -357,8 +413,82 @@ export async function simulateReplay(
             samples.push(await captureSample(reader, finalFrame));
             lastSampledFrame = finalFrame;
           }
-          cleanup();
-          const staticPlayers = readerRef.current?.header.players ?? [];
+          const reader = readerRef.current;
+          let spawnPositions: SpawnPositionMetric[] | null = null;
+          let spawnPhaseEndTick: number | null = null;
+          let spawnSnapshotTick: number | null = null;
+          let spawnAlternatives: SpawnAlternativeMetric[] = [];
+          let spawnAlternativesPlayerId: number | null = null;
+          const rawGameConfig = record.info?.config ?? record.config ?? {};
+          const rawRandomSpawn = rawGameConfig.randomSpawn ?? rawGameConfig.publicGameModifiers?.isRandomSpawn;
+          const spawnMode: "manual" | "random" | "unknown" = typeof rawRandomSpawn === "boolean"
+            ? rawRandomSpawn ? "random" : "manual"
+            : "unknown";
+          if (reader && finalFrame >= 0) {
+            const spawnHeader = reader.header as unknown as {
+              mapWidth: number;
+              mapHeight: number;
+              players: any[];
+              spawnPhaseEnd?: { tick: number; startTick: number } | null;
+            };
+            const recordedSpawnEnd = spawnHeader.spawnPhaseEnd?.tick ?? null;
+            const hasRecordedEndFrame = recordedSpawnEnd !== null && recordedSpawnEnd <= finalFrame;
+            const spawnFrame = hasRecordedEndFrame
+              ? Math.max(0, Math.floor(recordedSpawnEnd as number))
+              : finalFrame;
+            await reader.load(reader.chunkOf(spawnFrame));
+            const spawnState = reader.seek(spawnFrame) as unknown as {
+              tick: number;
+              players: ReadonlyMap<number, any>;
+              tileState: Uint16Array;
+              terrain?: ReadonlyMap<number, number>;
+            };
+            const staticSpawnPlayers = new Map(spawnHeader.players.map((meta: any) => [meta.smallID, meta]));
+            const spawnPlayers = [...spawnState.players.entries()].map(([id, player]: [number, any]) => {
+              const meta: any = staticSpawnPlayers.get(id) ?? {};
+              return {
+                id,
+                clientID: meta.clientID == null ? null : String(meta.clientID),
+                name: String(meta.displayName ?? meta.name ?? meta.username ?? `Spieler ${id}`),
+                spawnTile: Number.isInteger(player.spawnTile) ? Number(player.spawnTile) : null,
+              };
+            });
+            let terrain = hasRecordedEndFrame
+              ? await loadReplayTerrainData(assets, spawnHeader.mapWidth, spawnHeader.mapHeight, signal)
+              : null;
+            if (terrain && spawnState.terrain) {
+              terrain = terrain.slice();
+              for (const [ref, byte] of spawnState.terrain) {
+                if (Number.isInteger(ref) && ref >= 0 && ref < terrain.length) terrain[ref] = byte;
+              }
+            }
+            spawnPositions = analyzeSpawnPositions(
+              spawnState.tileState,
+              spawnHeader.mapWidth,
+              spawnHeader.mapHeight,
+              spawnPlayers,
+              terrain ?? undefined,
+            );
+            const selectedSpawnPlayer = selectedClientId
+              ? spawnPlayers.find((player) => player.clientID === selectedClientId)
+              : spawnPlayers.find((player) => /oligenole/i.test(player.name));
+            if (hasRecordedEndFrame && terrain && selectedSpawnPlayer) {
+              spawnAlternatives = analyzeAlternativeSpawnPositions(
+                spawnState.tileState,
+                spawnHeader.mapWidth,
+                spawnHeader.mapHeight,
+                spawnPlayers,
+                terrain,
+                selectedSpawnPlayer.id,
+                3,
+              );
+              spawnAlternativesPlayerId = selectedSpawnPlayer.id;
+            }
+            spawnPhaseEndTick = hasRecordedEndFrame ? recordedSpawnEnd : null;
+            spawnSnapshotTick = Number(spawnState.tick);
+          }
+          if (settled) return;
+          const staticPlayers = reader?.header.players ?? [];
           const target = selectedClientId
             ? staticPlayers.find((p: any) => String(p.clientID ?? "") === selectedClientId)
             : staticPlayers.find((p: any) => /oligenole/i.test(String(p.displayName ?? p.name ?? p.username ?? "")));
@@ -540,6 +670,9 @@ export async function simulateReplay(
                 };
               });
           }) : [];
+          if (settled) return;
+          settled = true;
+          cleanup();
           resolve({
             // processGameRecord resolves only after every recorded hash has been
             // compared. Its first mismatch rejects with ReplayDesyncError.
@@ -549,6 +682,12 @@ export async function simulateReplay(
             samples,
             playerReview,
             actionReviews,
+            spawnPositions,
+            spawnPhaseEndTick,
+            spawnSnapshotTick,
+            spawnAlternatives,
+            spawnAlternativesPlayerId,
+            spawnMode,
             message: recordedHashCount > 0
               ? `Simulation abgeschlossen: Alle ${recordedHashCount.toLocaleString("de-DE")} gespeicherten Hash-Prüfpunkte wurden von der Original-Engine erfolgreich abgeglichen.`
               : "Simulation abgeschlossen, aber das Replay enthält keine Hash-Prüfpunkte. Die Spielzustände wurden rekonstruiert, sind jedoch nicht anhand gespeicherter Hashes verifiziert."

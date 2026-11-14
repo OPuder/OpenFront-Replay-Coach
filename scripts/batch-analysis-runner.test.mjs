@@ -41,6 +41,8 @@ test('batch analysis is sequential, isolates failures and records each independe
   assert.ok(events.some(event => event.id === 'c' && event.status === 'failed' && event.error === 'synthetic engine failure'));
   assert.ok(events.some(event => event.id === 'd' && event.status === 'unverified'));
   assert.ok(progress.length >= 4);
+  assert.ok(progress.every(value => value.elapsedMs >= 0));
+  assert.ok(progress.some(value => value.estimatedRemainingMs !== null));
 });
 
 test('cancellation stops the active simulation and never starts later matches', async () => {

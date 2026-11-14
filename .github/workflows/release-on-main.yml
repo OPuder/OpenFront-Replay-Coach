@@ -91,7 +91,7 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           if ! git diff --quiet; then
-            git add package.json package-lock.json START_HERE.txt src/renderer/main.tsx public/sw.js
+            git add package.json package-lock.json START_HERE.txt src/renderer/main.tsx
             git commit -m "chore(release): prepare v$next_version [skip ci]"
             git push origin HEAD:main
           fi
@@ -329,71 +329,9 @@ jobs:
           if-no-files-found: error
           retention-days: 14
 
-  build-web:
-    name: Validate the optional browser/PWA edition
-    needs: prepare-release
-    if: needs.prepare-release.outputs.skip != 'true'
-    runs-on: ubuntu-latest
-    timeout-minutes: 45
-    steps:
-      - name: Check out the versioned release source
-        uses: actions/checkout@v4
-        with:
-          ref: ${{ needs.prepare-release.outputs.release_sha }}
-
-      - name: Check out pinned OpenFront engine
-        timeout-minutes: 10
-        run: git submodule update --init --depth 1 vendor/OpenFrontIO vendor/OpenFrontIO-8b5d071eed95
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: "24.15.0"
-          cache: npm
-
-      - name: Set up pinned npm
-        run: npm install --global npm@12.1.0
-
-      - name: Install pinned OpenFront dependencies
-        working-directory: vendor/OpenFrontIO
-        run: npm ci --ignore-scripts
-
-      - name: Install exact historical OpenFront engine dependencies
-        working-directory: vendor/OpenFrontIO-8b5d071eed95
-        run: npm ci --ignore-scripts
-
-      - name: Install Coach dependencies
-        run: npm ci
-
-      - name: Build and validate the browser/PWA version
-        run: |
-          npm run build:web
-          npm run test:phase-survival
-          npm run test:coach
-          node scripts/smoke-test-web.mjs
-
-      - name: Package the browser/PWA edition
-        env:
-          RELEASE_VERSION: ${{ needs.prepare-release.outputs.version }}
-        run: |
-          set -Eeuo pipefail
-          mkdir -p release/web-pwa
-          cp -a dist/. release/web-pwa/
-          cp -a functions release/web-pwa/functions
-          cp wrangler.toml release/web-pwa/wrangler.toml
-          (cd release/web-pwa && zip -qr "../OpenFront-Replay-Coach-${RELEASE_VERSION}-Web-PWA.zip" .)
-
-      - name: Upload browser/PWA release files
-        uses: actions/upload-artifact@v4
-        with:
-          name: release-web
-          path: release/*-Web-PWA.zip
-          if-no-files-found: error
-          retention-days: 14
-
   publish-release:
-    name: Publish all four editions as one GitHub Release
-    needs: [prepare-release, validate-engine, build-windows, build-android, build-web]
+    name: Publish Windows and Android editions as one GitHub Release
+    needs: [prepare-release, validate-engine, build-windows, build-android]
     if: needs.prepare-release.outputs.skip != 'true'
     runs-on: ubuntu-latest
     permissions:
@@ -411,13 +349,7 @@ jobs:
           name: release-android
           path: release
 
-      - name: Download browser/PWA ZIP
-        uses: actions/download-artifact@v4
-        with:
-          name: release-web
-          path: release
-
-      - name: Create one release with all four downloads
+      - name: Create one release with all three downloads
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ needs.prepare-release.outputs.tag }}
@@ -431,9 +363,7 @@ jobs:
             - **Windows Installer:** normal installieren, Desktop-Verknüpfung inklusive.
             - **Windows Portable:** ZIP entpacken und direkt starten, keine Installation.
             - **Android APK:** Updates werden automatisch heruntergeladen und mit Androids Installationsdialog angeboten. Eine Bestätigung bleibt aus Sicherheitsgründen erforderlich. Keine Cloudflare-Anmeldung und kein Play-Store-Konto erforderlich.
-            - **Web/PWA:** ZIP mit `dist/`, Cloudflare-Pages-`functions/` und `wrangler.toml`. Für funktionierende API- und Asset-Proxys auf Cloudflare Pages oder einer kompatiblen Pages-Functions-Umgebung bereitstellen. Dieser Workflow hostet die Web-App nicht automatisch; dafür ist ein eigener Hosting-Zugang nötig.
-
-            Die Android-App verwendet Androids native HTTP-Schnittstelle für die öffentlichen OpenFront-Daten und Engine-Assets. Die Daten müssen dafür nicht über einen Cloudflare-Proxy geleitet werden.
+            Die Windows- und Android-Ausgaben enthalten die gemeinsame, getestete Coaching-Oberfläche. Android lädt öffentliche OpenFront-Daten über seine native HTTP-Schnittstelle.
 
             **Android-Signierung:** ${{ needs.build-android.outputs.signing_mode }}. Für zuverlässige Updates muss der dauerhafte Schlüssel einmalig als vier GitHub-Actions-Secrets eingerichtet werden; siehe `docs/ANDROID_SIGNING.md`. Den privaten Schlüssel niemals ins Repository committen.
 

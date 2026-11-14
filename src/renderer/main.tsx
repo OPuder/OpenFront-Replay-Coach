@@ -246,7 +246,7 @@ function App() {
     const controller=new AbortController();
     batchAnalysisAbort.current=controller;
     setBatchAnalysisBusy(true); setError('');
-    setBatchAnalysisProgress({done:0,total:candidates.length,gameId:'',percent:0,phase:'Analyse wird vorbereitet',active:0,elapsedMs:0,estimatedRemainingMs:null});
+    setBatchAnalysisProgress({done:0,total:selected.length,gameId:'',percent:0,phase:'Analyse wird vorbereitet',active:0,elapsedMs:0,estimatedRemainingMs:null});
     try {
       // Keep the entire queue lightweight. Each worker hydrates only its
       // current raw GameRecord, then releases it when that replay is finished.

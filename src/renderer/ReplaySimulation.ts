@@ -1,5 +1,6 @@
 import { unwrapGameRecord } from "../main/decoder/GameRecordShape";
 import { loadReplayEngineModule } from "./engineRegistry";
+import { analyzeSpawnPositions, type SpawnPositionMetric } from "./SpawnPositionAnalysis";
 
 export interface ReplayStateDelta {
   tiles: number;
@@ -51,6 +52,7 @@ export interface ReplayStateSample {
   }>;
   totalUnits: number;
   falloutTiles: number;
+  spawnPositions?: SpawnPositionMetric[];
 }
 
 export interface ReplayFrontContext {
@@ -288,7 +290,7 @@ export async function simulateReplay(
         inDoomsdayClock: Boolean(p.inDoomsdayClock),
       };
     });
-    return { tick: state.tick, frame, players, totalUnits: state.units.size, falloutTiles: state.falloutTiles };
+    return { tick: state.tick, frame, players, totalUnits: state.units.size, falloutTiles: state.falloutTiles, ...(frame === 0 ? { spawnPositions: analyzeSpawnPositions(state.tileState, reader.header.mapWidth, reader.header.mapHeight, players) } : {}) };
   };
 
   const completion = new Promise<ReplaySimulationResult>((resolve, reject) => {

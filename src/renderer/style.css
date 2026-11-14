@@ -1640,3 +1640,44 @@ body{
 @media(prefers-reduced-motion:reduce){
   .studio-card,.studio-button,.studio-nav{transition:none!important}
 }
+
+/* Match-specific start-position coaching */
+.spawn-coach-card{
+  display:flex;flex-direction:column;gap:16px;margin:0 0 18px;padding:20px;
+  border:1px solid #3b7053;border-radius:18px;
+  background:radial-gradient(ellipse at 95% 0%,rgba(166,230,108,.12),transparent 35%),linear-gradient(135deg,#142c25,#0d201c);
+  box-shadow:0 18px 46px rgba(0,0,0,.22)
+}
+.spawn-coach-heading{display:flex;align-items:flex-start;gap:13px}
+.spawn-coach-mark{flex:0 0 42px;width:42px;height:42px;display:grid;place-items:center;border:1px solid #5b8050;border-radius:13px;background:linear-gradient(145deg,#c8f47b,#64d7a9);color:#102219}
+.spawn-coach-heading h3{margin:5px 0 5px;color:#f1f8ed;font-size:19px;letter-spacing:-.4px}
+.spawn-coach-heading p{margin:0;color:#9db8a8;font-size:11px}
+.spawn-coach-metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px}
+.spawn-coach-metrics article{min-width:0;padding:13px 14px;border:1px solid #2d5144;border-radius:12px;background:rgba(5,19,16,.55)}
+.spawn-coach-metrics small{display:block;color:#88c9aa;font:800 8px 'Cascadia Code',monospace;letter-spacing:1px}
+.spawn-coach-metrics b{display:block;margin:8px 0 4px;color:#f2ffe9;font-size:18px;letter-spacing:-.3px;overflow-wrap:anywhere}
+.spawn-coach-metrics span{display:block;color:#9eb5a8;font-size:10px;line-height:1.45}
+.spawn-coach-advice{display:flex;gap:14px;align-items:flex-start;padding:14px 16px;border:1px solid #3d684d;border-radius:12px;background:rgba(20,48,34,.58)}
+.spawn-coach-advice>div{flex:0 0 145px;display:flex;flex-direction:column;gap:8px}
+.spawn-coach-advice>div>b{color:#e9f6e8;font-size:11px;line-height:1.4}
+.spawn-coach-advice>p{margin:0;color:#c1d4c6;font-size:11px;line-height:1.65}
+.spawn-classification{width:max-content;padding:4px 7px;border-radius:5px;font:800 8px 'Cascadia Code',monospace;letter-spacing:.8px}
+.spawn-classification.contested{color:#ffce98;background:rgba(143,81,31,.22);border:1px solid #8a613d}
+.spawn-classification.isolated{color:#c7ef86;background:rgba(83,124,51,.2);border:1px solid #68894d}
+.spawn-classification.mixed,.spawn-classification.unknown{color:#9fd9d1;background:rgba(44,111,101,.18);border:1px solid #426f68}
+.spawn-coach-terrain{border-top:1px solid #2c4b40;padding-top:12px}
+.spawn-coach-terrain summary{color:#a7c9b3;font-size:10px;cursor:pointer}
+.spawn-coach-terrain>div{display:flex;flex-wrap:wrap;gap:9px 18px;margin:11px 0;color:#9fb9a9;font-size:10px}
+.spawn-coach-terrain>div b{color:#e8f4e9}
+.spawn-coach-terrain>p,.spawn-coach-unavailable p{margin:0;color:#8fa99a;font-size:10px;line-height:1.6}
+.spawn-coach-unavailable{border-color:#665b3d;background:linear-gradient(135deg,#282719,#151f1b)}
+.spawn-coach-unavailable>b{color:#f0d99c;font-size:13px}
+@media(max-width:760px){
+  .spawn-coach-card{padding:15px;gap:13px}
+  .spawn-coach-metrics{grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}
+  .spawn-coach-metrics article{padding:11px}
+  .spawn-coach-metrics b{font-size:16px}
+  .spawn-coach-advice{flex-direction:column;gap:9px}
+  .spawn-coach-advice>div{flex-basis:auto}
+}
+@media(max-width:420px){.spawn-coach-metrics{grid-template-columns:1fr}}

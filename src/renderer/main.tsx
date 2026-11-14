@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { FileUp, Gamepad2, Clock3, Users, Map, ShieldCheck, AlertTriangle, CheckCircle2, HardDrive, ArrowRight, Link2, DownloadCloud, LayoutDashboard, Brain, ListChecks, ChevronDown, Building2, Activity, Search, Trophy, Swords, Ship, TrendingUp, CalendarDays, SlidersHorizontal, Home, ChevronRight, Sparkles, Compass } from 'lucide-react';
 import './style.css';
-import { Capacitor } from '@capacitor/core';
 import { analyzeActions } from '../main/decoder/ActionAnalysis';
 import { analyzeDetailedActions } from '../main/decoder/DetailedAnalysis';
 import { buildCoachInsights } from '../main/decoder/CoachInsights';
@@ -24,15 +23,6 @@ import { selectGamesToAnalyze, selectGamesToImport } from './AutoLibrarySync';
 // Electron provides its API through the isolated preload; normal browsers use
 // the browser adapter so the same React interface powers Windows and Android.
 installBrowserReplayAPI();
-if (!Capacitor.isNativePlatform() && typeof window !== 'undefined' && window.isSecureContext && 'serviceWorker' in navigator && location.protocol === 'https:') {
-  window.addEventListener('load', () => {
-    const scope = new URL('./', document.baseURI);
-    void navigator.serviceWorker.register(new URL('sw.js', document.baseURI), { scope: scope.pathname })
-      .catch(error => console.warn('[ReplayCoach] Offline-App-Shell konnte nicht aktiviert werden:', error));
-  }, { once: true });
-}
-
-
 type BatchMatchItem = Omit<StoredMatchEntry, 'status' | 'analysisStatus'> & {
   status: StoredMatchEntry['status'] | 'queued' | 'running';
   analysisStatus?: StoredAnalysisStatus | 'queued' | 'running';

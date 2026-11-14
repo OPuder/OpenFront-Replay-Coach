@@ -1,6 +1,11 @@
 import { unwrapGameRecord } from "../main/decoder/GameRecordShape";
 import { loadReplayEngineModule } from "./engineRegistry";
-import { analyzeSpawnPositions, type SpawnPositionMetric } from "./SpawnPositionAnalysis";
+import {
+  analyzeAlternativeSpawnPositions,
+  analyzeSpawnPositions,
+  type SpawnAlternativeMetric,
+  type SpawnPositionMetric,
+} from "./SpawnPositionAnalysis";
 
 export interface ReplayStateDelta {
   tiles: number;
@@ -115,6 +120,10 @@ export interface ReplaySimulationResult {
   spawnPositions?: SpawnPositionMetric[] | null;
   spawnPhaseEndTick?: number | null;
   spawnSnapshotTick?: number | null;
+  /** Alternative unowned manual-spawn centers, computed for the selected player. */
+  spawnAlternatives?: SpawnAlternativeMetric[] | null;
+  spawnAlternativesPlayerId?: number | null;
+  spawnMode?: "manual" | "random" | "unknown";
   message: string;
 }
 
@@ -408,6 +417,13 @@ export async function simulateReplay(
           let spawnPositions: SpawnPositionMetric[] | null = null;
           let spawnPhaseEndTick: number | null = null;
           let spawnSnapshotTick: number | null = null;
+          let spawnAlternatives: SpawnAlternativeMetric[] = [];
+          let spawnAlternativesPlayerId: number | null = null;
+          const rawGameConfig = record.info?.config ?? record.config ?? {};
+          const rawRandomSpawn = rawGameConfig.randomSpawn ?? rawGameConfig.publicGameModifiers?.isRandomSpawn;
+          const spawnMode: "manual" | "random" | "unknown" = typeof rawRandomSpawn === "boolean"
+            ? rawRandomSpawn ? "random" : "manual"
+            : "unknown";
           if (reader && finalFrame >= 0) {
             const recordedSpawnEnd = reader.header.spawnPhaseEnd?.tick ?? null;
             const hasRecordedEndFrame = recordedSpawnEnd !== null && recordedSpawnEnd <= finalFrame;
@@ -440,6 +456,21 @@ export async function simulateReplay(
               spawnPlayers,
               terrain ?? undefined,
             );
+            const selectedSpawnPlayer = selectedClientId
+              ? spawnPlayers.find((player) => player.clientID === selectedClientId)
+              : spawnPlayers.find((player) => /oligenole/i.test(player.name));
+            if (terrain && selectedSpawnPlayer) {
+              spawnAlternatives = analyzeAlternativeSpawnPositions(
+                spawnState.tileState,
+                reader.header.mapWidth,
+                reader.header.mapHeight,
+                spawnPlayers,
+                terrain,
+                selectedSpawnPlayer.id,
+                3,
+              );
+              spawnAlternativesPlayerId = selectedSpawnPlayer.id;
+            }
             spawnPhaseEndTick = hasRecordedEndFrame ? recordedSpawnEnd : null;
             spawnSnapshotTick = Number(spawnState.tick);
           }
@@ -641,6 +672,9 @@ export async function simulateReplay(
             spawnPositions,
             spawnPhaseEndTick,
             spawnSnapshotTick,
+            spawnAlternatives,
+            spawnAlternativesPlayerId,
+            spawnMode,
             message: recordedHashCount > 0
               ? `Simulation abgeschlossen: Alle ${recordedHashCount.toLocaleString("de-DE")} gespeicherten Hash-Prüfpunkte wurden von der Original-Engine erfolgreich abgeglichen.`
               : "Simulation abgeschlossen, aber das Replay enthält keine Hash-Prüfpunkte. Die Spielzustände wurden rekonstruiert, sind jedoch nicht anhand gespeicherter Hashes verifiziert."

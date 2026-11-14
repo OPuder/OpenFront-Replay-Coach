@@ -6,6 +6,7 @@ import { analyzeActions } from './decoder/ActionAnalysis';
 import { analyzeDetailedActions } from './decoder/DetailedAnalysis';
 import { buildCoachInsights } from './decoder/CoachInsights';
 import { assessReplayCompatibility } from './decoder/ReplayCompatibility';
+import { autoUpdateOnStartup, registerUpdaterIpc } from './updater';
 
 const isDev = !app.isPackaged;
 const API_BASE = 'https://api.openfront.io/public/game/';
@@ -477,7 +478,12 @@ ipcMain.handle('replay:open', async () => {
     importStatus: 'valid-stored-replay', decoderStatus: 'not-yet-decoded', notes: ['Replay-Metadaten und Containerstruktur erfolgreich erkannt.', 'Die komprimierten Frame-Chunks sind noch nicht in Spielzustände dekodiert.'] };
 });
 
-app.whenReady().then(() => { createWindow(); app.on('activate', () => { if (BrowserWindow.getAllWindows().length === 0) createWindow(); }); });
+registerUpdaterIpc();
+app.whenReady().then(async () => {
+  const updateScheduled = await autoUpdateOnStartup();
+  if (!updateScheduled) createWindow();
+  app.on('activate', () => { if (BrowserWindow.getAllWindows().length === 0) createWindow(); });
+});
 app.on('window-all-closed', () => { if (process.platform !== 'darwin') app.quit(); });
 
 ipcMain.handle('replay:open-official', async (_event, gameId: string) => {

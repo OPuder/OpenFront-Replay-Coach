@@ -442,7 +442,9 @@ export async function simulateReplay(
                 spawnTile: Number.isInteger(player.spawnTile) ? Number(player.spawnTile) : null,
               };
             });
-            let terrain = await loadReplayTerrainData(assets, reader.header.mapWidth, reader.header.mapHeight, signal);
+            let terrain = hasRecordedEndFrame
+              ? await loadReplayTerrainData(assets, reader.header.mapWidth, reader.header.mapHeight, signal)
+              : null;
             if (terrain && spawnState.terrain) {
               terrain = terrain.slice();
               for (const [ref, byte] of spawnState.terrain) {
@@ -459,7 +461,7 @@ export async function simulateReplay(
             const selectedSpawnPlayer = selectedClientId
               ? spawnPlayers.find((player) => player.clientID === selectedClientId)
               : spawnPlayers.find((player) => /oligenole/i.test(player.name));
-            if (terrain && selectedSpawnPlayer) {
+            if (hasRecordedEndFrame && terrain && selectedSpawnPlayer) {
               spawnAlternatives = analyzeAlternativeSpawnPositions(
                 spawnState.tileState,
                 reader.header.mapWidth,

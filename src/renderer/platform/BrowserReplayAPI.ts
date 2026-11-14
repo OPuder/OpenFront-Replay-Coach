@@ -4,6 +4,7 @@ import { analyzeActions } from "../../main/decoder/ActionAnalysis";
 import { analyzeDetailedActions } from "../../main/decoder/DetailedAnalysis";
 import { buildCoachInsights } from "../../main/decoder/CoachInsights";
 import { assessReplayCompatibility } from "../../main/decoder/ReplayCompatibility";
+import { resolveReplayJsonExport } from "../../main/decoder/ReplayJsonExport";
 import { Capacitor } from "@capacitor/core";
 import { Browser } from "@capacitor/browser";
 import { Directory, Encoding, Filesystem } from "@capacitor/filesystem";
@@ -373,9 +374,8 @@ async function loadPlayer(rawId: string, onProgress?: (progress: { loaded: numbe
   return { playerId, profile, games: uniqueGames, nextCursor: null, pagesLoaded: pages, mapPreviews };
 }
 
-async function saveReplayJson(gameId: string): Promise<{ saved: boolean; shared?: boolean; canceled?: boolean; filePath?: string; bytes?: number }> {
-  const raw = importedReplayJson.get(String(gameId));
-  if (!raw) throw new Error("Für diese Partie liegt keine Replay-JSON mehr im Browser-Speicher. Lade die Partie bitte erneut.");
+async function saveReplayJson(gameId: string, fallbackRecord?: unknown): Promise<{ saved: boolean; shared?: boolean; canceled?: boolean; filePath?: string; bytes?: number }> {
+  const raw = resolveReplayJsonExport(String(gameId), importedReplayJson.get(String(gameId)), fallbackRecord, MAX_REPLAY_BYTES);
   const fileName = "OpenFront-" + String(gameId).replace(/[^A-Za-z0-9_-]/g, "_") + ".json";
   const blob = new Blob([raw], { type: "application/json;charset=utf-8" });
   if (IS_NATIVE_ANDROID) {

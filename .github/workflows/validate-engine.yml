@@ -5,7 +5,7 @@ on:
   pull_request:
     paths:
       - ".gitmodules"
-      - "vendor/OpenFrontIO"
+      - "vendor/**"
       - "engine-build/**"
       - "package.json"
       - ".github/workflows/validate-engine.yml"
@@ -13,7 +13,7 @@ on:
     branches: [main]
     paths:
       - ".gitmodules"
-      - "vendor/OpenFrontIO"
+      - "vendor/**"
       - ".github/workflows/validate-engine.yml"
 
 permissions:
@@ -22,7 +22,7 @@ permissions:
 jobs:
   validate-engine:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 60
     steps:
       - name: Check out coach source
         uses: actions/checkout@v4

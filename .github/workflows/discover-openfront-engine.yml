@@ -1,0 +1,58 @@
+name: Discover new OpenFront engine revisions
+
+on:
+  schedule:
+    - cron: "23 */6 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: discover-openfront-engine
+  cancel-in-progress: false
+
+jobs:
+  discover:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Check out main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+          persist-credentials: true
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24.15.0"
+
+      - name: Discover latest exact upstream engine revision
+        id: discovery
+        run: |
+          set -Eeuo pipefail
+          before="$(git rev-parse HEAD)"
+          node scripts/discover-openfront-engine.mjs
+          if git diff --quiet && git diff --cached --quiet; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+            echo "before=$before" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Create a candidate engine pull request
+        if: steps.discovery.outputs.changed == 'true'
+        uses: peter-evans/create-pull-request@v6
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          branch: automation/openfront-engine-latest
+          delete-branch: true
+          commit-message: "build(engine): add latest exact OpenFront revision"
+          title: "build(engine): add latest OpenFront engine revision"
+          body: |
+            Automated candidate generated from the latest upstream OpenFront main commit.
+
+            The candidate is pinned to an exact immutable Git SHA and will be built and type-checked against every registered engine. This does not by itself claim that a replay has been hash-verified on this revision. A real replay recorded by this commit must pass the replay hash regression before the candidate can be described as fully replay-verified.

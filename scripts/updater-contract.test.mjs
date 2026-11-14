@@ -33,7 +33,6 @@ assert.doesNotMatch(renderer, /Web\/PWA|serviceWorker|isBrowserPwa/);
 assert.doesNotMatch(releaseWorkflow, /assembleDebug/);
 assert.match(releaseWorkflow, /permanent Android release signing key is required/);
 assert.match(releaseWorkflow, /needs\.build-android\.outputs\.signing_mode == 'permanent release key'/);
-assert.doesNotMatch(renderer, /Web\\/PWA|serviceWorker|isBrowserPwa/);
 assert.match(updater, /child\.once\('spawn', resolve\)/);
 assert.match(updater, /child\.once\('error', reject\)/);
 assert.match(updater, /Add-Content -LiteralPath \$Log/);

@@ -18,7 +18,9 @@ export function getTotalRecordedFrames(record: unknown): number {
   if (!Array.isArray(source.turns)) return total;
   for (const turn of source.turns) {
     if (!turn || typeof turn !== "object") continue;
-    const frame = Number((turn as { turnNumber?: unknown }).turnNumber);
+    const rawFrame = (turn as { turnNumber?: unknown }).turnNumber;
+    if (rawFrame === null || rawFrame === undefined) continue;
+    const frame = Number(rawFrame);
     if (Number.isInteger(frame) && frame >= 0) total = Math.max(total, frame + 1);
   }
   return total;

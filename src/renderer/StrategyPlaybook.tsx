@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import type { EngineCoachInsight } from "../main/decoder/EngineCoachInsights";
 type Tab = "start"|"eco"|"military"|"nuclear";
 const tabs: {id:Tab;label:string}[]=[{id:"start",label:"Startposition"},{id:"eco",label:"Eco & Gebäude"},{id:"military",label:"Truppen & Front"},{id:"nuclear",label:"Atomwaffen"}];
 function Rule({title,when,doThis,avoid}:{title:string;when:string;doThis:string;avoid:string}){return <article className="strategy-rule-card"><b>{title}</b><span>{when}</span><p>{doThis}</p><small><strong>Vermeiden:</strong> {avoid}</small></article>}
@@ -24,7 +25,7 @@ export interface StrategyMatchContext {
   attackCommands: number;
   buildCommands: number;
 }
-export function StrategyPlaybook({matchContext}:{matchContext?:StrategyMatchContext|null}){const [tab,setTab]=useState<Tab>("start");return <section className="strategy-playbook">
+export function StrategyPlaybook({matchContext,coachingInsights=[]}:{matchContext?:StrategyMatchContext|null;coachingInsights?:EngineCoachInsight[]}){const [tab,setTab]=useState<Tab>("start");return <section className="strategy-playbook">
 <header className="strategy-playbook-hero"><span className="eyebrow">STRATEGIE-COACH · SPIELWISSEN</span><h3>Was du wann, wo und warum einsetzen solltest</h3><p>Situative Entscheidungen statt starrer Build-Order. Karte, Lobby-Regeln, Nachbarn, Fronten und dein aktueller Engpass bestimmen die richtige Strategie.</p></header>
 {matchContext?.verified && <section className="strategy-match-context" aria-label="Dein Match-Kontext">
   <div className="strategy-match-context-head"><span className="eyebrow">AUS DEINER VERIFIZIERTEN PARTIE</span><b>{matchContext.playerName}</b></div>
@@ -40,6 +41,19 @@ export function StrategyPlaybook({matchContext}:{matchContext?:StrategyMatchCont
   </div>}
   {matchContext.spawn && !matchContext.spawn.spawnPhaseComplete && <p className="strategy-honesty">Die Startkoordinate ist aus dem Replay bekannt. Da das Ende der Spawnphase fehlt, werden spätere Grenz- und Geländewerte nicht als sichere Startbedingungen interpretiert.</p>}
   {matchContext.alternatives.length>0 && <div className="strategy-alternatives"><b>Vergleichbare freie Spawn-Mittelpunkte auf derselben Karte</b><div>{matchContext.alternatives.map((spot,index)=><span key={spot.x+"-"+spot.y}>#{index+1} · X {spot.x}, Y {spot.y} · {spot.neutralLand} neutrale Landfelder · {spot.coastalLand} Küstenfelder · {spot.adjacentPlayers} direkte Nachbarn</span>)}</div><small>Beschreibender Kartenvergleich, keine Siegchance und kein garantiert optimales Feld. Bei Zufallsspawn nur Vergleichspositionen.</small></div>}
+</section>}
+{coachingInsights.length>0 && <section className="strategy-decision-coaching" aria-label="Deine wichtigsten Coaching-Erkenntnisse">
+  <div className="strategy-decision-head"><div><span className="eyebrow">MATCH-BEZOGENES COACHING</span><h4>Die wichtigsten Entscheidungen aus dieser Partie</h4></div><span>{coachingInsights.length} priorisierte Hinweise</span></div>
+  <div className="strategy-decision-list">{coachingInsights.slice(0,3).map((insight,index)=><article className={"strategy-decision-card strategy-decision-"+insight.kind} key={insight.id}>
+    <div className="strategy-decision-card-head"><b>{String(index+1).padStart(2,"0")} · {insight.title}</b><span>{insight.kind==="strength"?"STÄRKE":insight.kind==="review"?"PRÜFEN":"BEOBACHTUNG"}{insight.priority? " · "+insight.priority.toUpperCase():""}</span></div>
+    <div className="strategy-decision-grid">
+      <div><small>ENTSCHEIDUNG</small><p>{insight.decision??insight.title}</p></div>
+      <div><small>KONTEXT & FOLGE</small><p>{insight.summary}</p><em>{insight.evidence}</em></div>
+      <div><small>BESSERE ALTERNATIVE</small><p>{insight.alternative??insight.nextStep}</p></div>
+      <div><small>DEINE LERNREGEL</small><p>{insight.nextStep}</p></div>
+    </div>
+    <small className="strategy-decision-limit">Einordnung: {insight.limitation}</small>
+  </article>)}</div>
 </section>}
 <nav className="strategy-tabs" aria-label="Strategiebereiche">{tabs.map(t=><button key={t.id} className={tab===t.id?"selected":""} onClick={()=>setTab(t.id)}>{t.label}</button>)}</nav>
 {tab==="start"&&<div className="strategy-section"><h4>Spawn- und Startposition</h4><p>Bewerte das Feld vor dem Setzen – nicht erst nach den ersten Angriffen.</p><div className="strategy-check-grid">

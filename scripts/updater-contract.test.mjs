@@ -81,3 +81,6 @@ assert.match(androidSigningGate, /apksigner.*verify/);
 assert.match(releaseWorkflow, /Verify published release contains exactly three usable artifacts/);
 assert.match(releaseWorkflow, /names\.length === 3/);
 assert.match(releaseWorkflow, /-Android\.apk/);
+
+const updateValidationWorkflow = read(".github/workflows/update-validation.yml");
+assert.match(updateValidationWorkflow, /if: always\(\)[\s\S]*?Test in-place Android update and preserve app data/);

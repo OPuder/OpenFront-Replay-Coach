@@ -48,7 +48,7 @@ previous_cert="$("$apksigner" verify --print-certs "$previous_apk" | awk -F': ' 
 current_cert="$("$apksigner" verify --print-certs "$current_apk" | awk -F': ' '/Signer #1 certificate SHA-256 digest:/ {print tolower($2); exit}')"
 
 if [[ -z "$previous_cert" || -z "$current_cert" || "$current_cert" != "$previous_cert" ]]; then
-  echo "::error::Android signing certificate does not match $previous_tag. Existing installations could not update in place; release is blocked."
+  echo "::error::Android signing certificate does not match $previous_tag. Published APK certificate: $previous_cert; configured release certificate: $current_cert. Existing installations cannot update in place with this key; recover the original keystore or plan a one-time reinstall."
   exit 1
 fi
 

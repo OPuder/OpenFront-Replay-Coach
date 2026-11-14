@@ -125,3 +125,9 @@ assert.doesNotMatch(read("src/main/main.ts"), /importedReplayJson/);
 const startupUpdater = updater.slice(updater.indexOf("export async function autoUpdateOnStartup"));
 assert.match(startupUpdater, /Installation wartet auf Bestätigung im Update Center/);
 assert.doesNotMatch(startupUpdater, /scheduleWindowsInstall\(/);
+
+const replaySimulation = read("src/renderer/ReplaySimulation.ts");
+assert.match(replaySimulation, /turns\.reduce\([\s\S]*?totalRecordedFrames/);
+assert.doesNotMatch(replaySimulation, /\.\.\.turns\.map/);
+assert.match(appRenderer, /engineReviewAbort\.current\?\.abort\(\)/);
+assert.match(appRenderer, /controller\.signal/);

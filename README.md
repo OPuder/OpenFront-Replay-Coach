@@ -46,7 +46,7 @@ The Windows package includes the pinned replay engine. Node.js, npm, Git and a s
 
 The Android app uses Capacitor's native HTTP stack for public OpenFront game/player data and official engine assets. It does not depend on a Cloudflare proxy. The APK is a direct download, not a Play Store listing.
 
-**Automatic updates:** Windows installer and portable editions check on startup and install verified GitHub releases in the background. Android checks on startup, downloads the signed APK, verifies its SHA-256 digest and opens the Android package installer; Android still requires the user to confirm installation. Existing Android installations can only be updated in place when every APK uses the same permanent signing key. A first switch from a debug-signed APK to the permanent key requires one uninstall/reinstall. Maintainers: see [the signing setup](docs/ANDROID_SIGNING.md). See [the update architecture](docs/AUTO_UPDATES.md) for details.
+**Automatic updates:** The first move from an older release to the updater-enabled bootstrap version still requires one manual install. After that, Windows installer and portable editions check on startup and install verified GitHub releases in the background. Android checks on startup, downloads the signed APK, verifies its SHA-256 digest and opens the Android package installer; Android still requires the user to confirm installation. Existing Android installations can only be updated in place when every APK uses the same permanent signing key. A first switch from a debug-signed APK to the permanent key requires one uninstall/reinstall. Maintainers: see [the signing setup](docs/ANDROID_SIGNING.md). See [the update architecture](docs/AUTO_UPDATES.md) for details.
 
 ## Data and privacy
 

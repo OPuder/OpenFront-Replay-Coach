@@ -90,7 +90,7 @@ async function scheduleWindowsInstall(downloadPath: string, portable: boolean): 
   const processId = process.pid;
   const targetDirectory = process.env.PORTABLE_EXECUTABLE_DIR || path.dirname(executable);
   const scriptPath = path.join(os.tmpdir(), 'openfront-replay-coach-update-' + processId + '.ps1');
-  const logPath = path.join(os.tmpdir(), 'openfront-replay-coach-update-' + processId + '.log');
+  const logPath = path.join(app.getPath('userData'), 'update-install.log');
   const common = [
     "$ErrorActionPreference = 'Stop'",
     '$ProcessIdToWait = ' + processId,
@@ -131,13 +131,20 @@ async function scheduleWindowsInstall(downloadPath: string, portable: boolean): 
     common,
     'try {',
     '  $Installer = $Download',
+    "  Add-Content -LiteralPath $Log -Value ('[' + (Get-Date -Format o) + '] Starte Installer: ' + $Installer)",
     "  $Exit = Start-Process -FilePath $Installer -ArgumentList '/S' -Wait -PassThru",
+    "  if ($Exit.ExitCode -ne 0) {",
+    "    Add-Content -LiteralPath $Log -Value ('[' + (Get-Date -Format o) + '] Installer ohne Elevation beendet: ' + $Exit.ExitCode + '; versuche mit Administratorrechten.')",
+    "    $Exit = Start-Process -FilePath $Installer -ArgumentList '/S' -Verb RunAs -Wait -PassThru",
+    '  }',
     "  if ($Exit.ExitCode -ne 0) { throw ('Der Windows-Installer wurde mit Exitcode ' + $Exit.ExitCode + ' beendet.') }",
     '  Start-Sleep -Seconds 2',
     "  if (-not (Test-Path -LiteralPath $Executable)) { throw 'Die aktualisierte Anwendung wurde am bisherigen Installationsort nicht gefunden.' }",
+    "  Add-Content -LiteralPath $Log -Value ('[' + (Get-Date -Format o) + '] Installer erfolgreich beendet; starte Anwendung.')",
     '  Start-Process -FilePath $Executable',
     '} catch {',
     '  $_ | Out-String | Add-Content -LiteralPath $Log',
+    '  Add-Content -LiteralPath $Log -Value ("[' + (Get-Date -Format o) + '] Update fehlgeschlagen; installierte Anwendung wird wieder gestartet.")',
     '  if (Test-Path -LiteralPath $Executable) { Start-Process -FilePath $Executable }',
     '  exit 1',
     '} finally {',

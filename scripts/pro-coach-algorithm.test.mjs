@@ -133,3 +133,12 @@ test('piracy coach reports cumulative piracy and trade income without claiming n
  assert.match(piracy.evidence,/Piraterie: \+80 Gold/);
  assert.match(piracy.limitation,/keine Nettorendite/);
 });
+
+test('opening assessment reports observed expansion but not unsupported best spawn location',()=>{
+ const samples=[sample(0,{tiles:40,goldEarned:10,troops:100}),sample(300,{tiles:45,goldEarned:40,troops:95}),sample(900,{tiles:65,goldEarned:110,troops:90}),sample(1800,{tiles:90,goldEarned:220,troops:120})];
+ const report=buildProCoachReport(samples,[],'p1',300);
+ assert.equal(report.opening.firstExpansionSeconds,30);
+ assert.equal(report.opening.territoryGainFirstThreeMinutes,50);
+ assert.match(report.opening.limitation,/Karten-Geometrie/);
+ assert.ok(report.findings.some(x=>x.id==='opening-review'));
+});

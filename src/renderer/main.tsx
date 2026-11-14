@@ -664,6 +664,9 @@ function CoachPanel({apiResult,preferredPlayerPublicId,decodedActions,simulation
   const selectedActionReviews = selectedPlayerReview ? (simulationResult?.actionReviews ?? []) : [];
   const spawnPositionReport = simulationResult?.spawnPositions ?? [];
   const selectedSpawnPosition = spawnPositionReport.find(position => position.clientID === selectedClientId) ?? null;
+  const spawnAlternatives = selectedSpawnPosition && simulationResult?.spawnAlternativesPlayerId === selectedSpawnPosition.id
+    ? simulationResult.spawnAlternatives ?? []
+    : [];
   const comparableSpawnLand = spawnPositionReport
     .filter(position => position.clientID !== null && position.nearbyNeutralLandTiles !== null)
     .map(position => position.nearbyNeutralLandTiles as number)
@@ -944,9 +947,24 @@ function CoachPanel({apiResult,preferredPlayerPublicId,decodedActions,simulation
         <details className="spawn-coach-terrain">
           <summary>Gelände und Datenqualität</summary>
           <div><span>Flachland: <b>{selectedSpawnPosition.nearbyPlainsTiles ?? '–'}</b></span><span>Hochland: <b>{selectedSpawnPosition.nearbyHighlandTiles ?? '–'}</b></span><span>Berge: <b>{selectedSpawnPosition.nearbyMountainTiles ?? '–'}</b></span><span>Unpassierbar: <b>{selectedSpawnPosition.nearbyImpassableTiles ?? '–'}</b></span><span>Kartenrand: <b>{selectedSpawnPosition.mapEdgeDistance ?? '–'} Felder</b></span></div>
-          <p>Gelände stammt aus der Map-Binärdatei des exakten Replay-Engine-Commits. Neutrale Felder werden im Luftlinienradius gezählt; das beweist keine durchgehend begehbare Verbindung. Die Einordnung vergleicht reale Spielerstarts und behauptet nicht, dass hypothetische Alternativkoordinaten sicher auswählbar gewesen wären.</p>
+          <p>Gelände stammt aus der Map-Binärdatei des exakten Replay-Engine-Commits. Neutrale Felder werden im Luftlinienradius gezählt; das beweist keine durchgehend begehbare Verbindung.</p>
         </details>
-      </section>}
+        {spawnAlternatives.length > 0 && <div className="spawn-alternatives">
+          <div className="spawn-alternatives-heading"><div><span>MAP-SCAN · ALTERNATIVE STARTS</span><b>Drei offene manuelle Spawn-Positionen</b></div><small>Kein Sieg-Score – Lagevergleich</small></div>
+          <div className="spawn-alternatives-grid">{spawnAlternatives.map((candidate,index)=><article key={`${candidate.x}-${candidate.y}`}>
+            <span>OPTION 0{index+1}</span><b>X {candidate.x} · Y {candidate.y}</b>
+            <div><small>Freies Land 25×25</small><strong>{fmt(candidate.nearbyNeutralLandTiles)}</strong></div>
+            <div><small>Nächster Spielerstart</small><strong>{candidate.nearestSpawnDistance === null ? '–' : `${candidate.nearestSpawnDistance} Felder`}</strong></div>
+            <div><small>Direkte Nachbarn</small><strong>{candidate.adjacentPlayerCount}</strong></div>
+            <div><small>Küstenfelder</small><strong>{fmt(candidate.nearbyCoastalLandTiles)}</strong></div>
+          </article>)}</div>
+          <p>{simulationResult?.spawnMode === 'random'
+            ? 'In dieser Partie war Zufallsspawn aktiv. Diese Koordinaten sind deshalb Vergleichspositionen und keine auswählbaren Alternativen.'
+            : simulationResult?.spawnMode === 'manual'
+              ? 'Diese Mittelpunkte lagen auf unbesetztem, passierbarem Land und wären im manuellen Spawn nach dem damaligen Karten-/Besitzstand grundsätzlich gültig gewesen.'
+              : 'Die Lobby-Spawnart ist nicht sicher bekannt. Die Koordinaten sind unbesetzte, passierbare Landmittelpunkte.'} Die Suche scannt große Karten rasterbasiert; die gefundenen Koordinaten sind echte Landfelder, aber kein mathematisch garantiertes globales Optimum. Sortiert wird nach freiem Land im 25×25-Fenster, Abstand zum nächsten Start, Grenzdruck und Küstenfeldern.</p>
+        </div>}
+      </section>
       {simulationResult?.spawnPositions && (!selectedSpawnPosition || selectedSpawnPosition.spawnTile === null) && <section className="spawn-coach-card spawn-coach-unavailable"><b>Startposition nicht vollständig rekonstruierbar</b><p>Für diesen Spieler enthält der ausgewertete Replay-Zustand keine gültige Spawn-Koordinate. Der Coach zeigt deshalb keine geschätzte Position als Tatsache an.</p></section>}
       <section className="coach-training-loop" aria-labelledby="training-loop-title">
         <div className="coach-training-loop-heading"><span className="coach-report-label">VOM REPLAY INS TRAINING</span><b id="training-loop-title">Dein Trainingsziel</b><p>Eine Sache bewusst in der nächsten Partie ausprobieren – statt zehn Statistiken gleichzeitig zu verfolgen.</p></div>

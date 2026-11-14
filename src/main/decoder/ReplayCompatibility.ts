@@ -1,7 +1,6 @@
 import { unwrapGameRecord } from "./GameRecordShape";
 import {
   PINNED_OPENFRONT_COMMIT,
-  SUPPORTED_OPENFRONT_COMMITS,
   resolveSupportedEngineCommit,
 } from "./ReplayEngineCatalog";
 
@@ -74,7 +73,7 @@ export function assessReplayCompatibility(
   if (!hashVerificationAvailable) {
     return {
       status: "version-compatible-no-hashes",
-      replayCommit,
+      replayCommit: resolvedReplayCommit,
       engineCommit: selectedEngineCommit,
       recordedHashCount,
       engineVersionCompatible: true,

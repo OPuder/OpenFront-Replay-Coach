@@ -215,3 +215,30 @@ test('desktop analysis concurrency scales conservatively with CPU and memory', (
   assert.equal(chooseBatchAnalysisConcurrency(false, 16, 8), 4, 'high-core desktop with ample reported memory uses four workers');
   assert.equal(chooseBatchAnalysisConcurrency(false, undefined, undefined), 2, 'unknown hardware uses safe default');
 });
+
+
+test('parallel ETA accounts for partially completed active workers before the first match finishes', async () => {
+  const controller = new AbortController();
+  const progress = [];
+  const summary = await runConcurrentBatchAnalysis(
+    ['a', 'b', 'c', 'd'].map(id => ({ id })),
+    {
+      signal: controller.signal,
+      concurrency: 2,
+      getId: item => item.id,
+      isCompatible: () => true,
+      analyze: async (item, onProgress) => {
+        onProgress(50, 'halfway');
+        await delay(35);
+        return { status: 'verified' };
+      },
+      onStatus: () => undefined,
+      onProgress: value => progress.push(value),
+    },
+  );
+  const inFlight = progress.find(value => value.done === 0 && value.active === 2);
+  assert.ok(inFlight, 'both workers should report in-flight progress');
+  assert.equal(inFlight.percent, 50, 'progress is averaged across active workers, not summed');
+  assert.ok(inFlight.estimatedRemainingMs > 0, 'ETA should be available before the first replay completes');
+  assert.equal(summary.completed, 4);
+});

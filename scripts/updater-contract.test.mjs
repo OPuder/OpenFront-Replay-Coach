@@ -109,3 +109,19 @@ assert.match("OpenFront Replay Coach Setup 2.2.45.exe", installerAssetMatcher, "
 assert.match("OpenFront.Replay.Coach.Setup.2.2.44.exe", installerAssetMatcher, "Legacy published installer filenames must remain supported.");
 assert.ok(releaseWorkflow.includes("names.some(name => /-win\\.zip$/i.test(name))"), "Release verification must match the actual Windows portable ZIP filename.");
 assert.ok(releaseWorkflow.includes("names.some(name => /-Android\\.apk$/i.test(name))"), "Release verification must match the actual Android APK filename.");
+
+
+const matchStore = read("src/renderer/matchStore.ts");
+const appRenderer = read("src/renderer/main.tsx");
+assert.match(matchStore, /const DB_VERSION = 2/);
+assert.match(matchStore, /const REPLAY_STORE = "replay-records"/);
+assert.match(matchStore, /event\.oldVersion < 2[\s\S]*?replays\.put[\s\S]*?cursor\.update/);
+assert.match(matchStore, /export async function loadImportedMatch\(/);
+assert.match(appRenderer, /withoutReplayRecord\(updated\)/);
+assert.match(appRenderer, /const candidates=selected/);
+assert.match(appRenderer, /await loadImportedMatch\(playerPage\.playerId,item\.game\.gameId\)/);
+assert.match(appRenderer, /Hydrate only the replay currently assigned to an analysis worker/);
+assert.doesNotMatch(read("src/main/main.ts"), /importedReplayJson/);
+const startupUpdater = updater.slice(updater.indexOf("export async function autoUpdateOnStartup"));
+assert.match(startupUpdater, /Installation wartet auf Bestätigung im Update Center/);
+assert.doesNotMatch(startupUpdater, /scheduleWindowsInstall\(/);

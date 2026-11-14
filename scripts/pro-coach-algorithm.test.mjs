@@ -179,5 +179,5 @@ test('summarizes very large action histories without min/max argument overflow',
   assert.equal(report.attackTroops.count, 150_000);
   assert.equal(report.attackTroops.min, 1);
   assert.equal(report.attackTroops.max, 9);
-  assert.equal(report.attackTroops.total, 750_000);
+  assert.equal(report.attackTroops.total, 749_991);
 });

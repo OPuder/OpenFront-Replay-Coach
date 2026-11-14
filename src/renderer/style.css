@@ -1917,3 +1917,12 @@ body{
  .insight-grid{grid-template-columns:1fr}
  .coach-lead-card h3{font-size:19px}
 }
+
+.library-pagination{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:15px 0 4px;padding:12px 14px;border:1px solid #29483d;border-radius:12px;background:#102018}
+.library-pagination>span{font-size:9px;color:#9ab09e}
+.library-pagination>div{display:flex;align-items:center;gap:8px}
+.library-pagination b{font:9px 'Cascadia Code',monospace;color:#c2d9c5}
+.library-pagination button{min-height:32px;padding:0 11px;border:1px solid #3a5b44;border-radius:8px;background:#172d20;color:#d9ecda;font-size:9px;font-weight:800;cursor:pointer}
+.library-pagination button:hover:not(:disabled){border-color:#8bb879;background:#203c29}
+.library-pagination button:disabled{opacity:.4;cursor:not-allowed}
+@media(max-width:760px){.library-pagination{align-items:flex-start;flex-direction:column}.library-pagination>div{width:100%;justify-content:space-between}.library-pagination button{min-height:38px;min-width:76px}}

@@ -662,6 +662,41 @@ function CoachPanel({apiResult,preferredPlayerPublicId,decodedActions,simulation
   const playerScoped=Boolean(selectedClientId);
   const selectedPlayerReview = simulationResult?.playerReview?.clientID === selectedClientId ? simulationResult.playerReview : null;
   const selectedActionReviews = selectedPlayerReview ? (simulationResult?.actionReviews ?? []) : [];
+  const spawnPositionReport = simulationResult?.spawnPositions ?? [];
+  const selectedSpawnPosition = spawnPositionReport.find(position => position.clientID === selectedClientId) ?? null;
+  const comparableSpawnLand = spawnPositionReport
+    .filter(position => position.clientID !== null && position.nearbyNeutralLandTiles !== null)
+    .map(position => position.nearbyNeutralLandTiles as number)
+    .sort((a,b)=>a-b);
+  const medianSpawnLand = comparableSpawnLand.length
+    ? comparableSpawnLand[Math.floor(comparableSpawnLand.length / 2)]
+    : null;
+  const spawnLandComparison = selectedSpawnPosition?.nearbyNeutralLandTiles === null || medianSpawnLand === null
+    ? null
+    : selectedSpawnPosition.nearbyNeutralLandTiles > medianSpawnLand
+      ? 'Mehr neutrales Land als der Lobby-Median'
+      : selectedSpawnPosition.nearbyNeutralLandTiles < medianSpawnLand
+        ? 'Weniger neutrales Land als der Lobby-Median'
+        : 'Neutrales Land auf Lobby-Median';
+  const spawnAdvice = selectedSpawnPosition ? [
+    selectedSpawnPosition.classification === 'contested'
+      ? 'Dein Start lag vergleichsweise nah an anderen Spielern und hatte direkte Grenzkontakte. Sichere zuerst eine Expansionsflanke und vermeide, früh mehrere Fronten gleichzeitig zu öffnen.'
+      : selectedSpawnPosition.classification === 'isolated'
+        ? 'Dein Start war im Lobbyvergleich relativ isoliert. Nutze den Puffer für kontrollierte Expansion und Wirtschaft, bevor du selbst eine neue Front eröffnest.'
+        : selectedSpawnPosition.classification === 'mixed'
+          ? 'Dein Start war weder klar isoliert noch eindeutig unter unmittelbarem Druck. Prüfe die Nachbarfronten, bevor du deine Expansion festlegst.'
+          : 'Die Spawnlage lässt sich mangels vergleichbarer Startdaten nicht sicher einordnen.',
+    spawnLandComparison === 'Mehr neutrales Land als der Lobby-Median'
+      ? 'Im 12-Felder-Luftlinienradius lag überdurchschnittlich viel neutrales Land. Sichere die freien Expansionswege früh, statt sie ungenutzt zu lassen.'
+      : spawnLandComparison === 'Weniger neutrales Land als der Lobby-Median'
+        ? 'Im 12-Felder-Luftlinienradius lag weniger neutrales Land als bei vergleichbaren Spielern. Plane früher einen Übergang zu einer sicheren Front oder einer anderen Expansionsrichtung.'
+        : '',
+    selectedSpawnPosition.nearbyCoastalLandTiles !== null && selectedSpawnPosition.nearbyCoastalLandTiles > 0
+      ? 'Neutrale Küstenfelder waren erreichbar. Häfen und Handel lohnen sich aber nur, wenn die konkrete Route geschützt ist.'
+      : selectedSpawnPosition.nearbyCoastalLandTiles === 0
+        ? 'Im untersuchten Nahbereich gab es keine neutrale Küstenfläche. Erzwinge deshalb keinen frühen Hafen nur wegen einer allgemeinen Build-Order.'
+        : '',
+  ].filter(Boolean).join(' ') : '';
   const playerActions=playerScoped ? decodedActions.filter(a=>a.clientId===selectedClientId) : [];
   const scopedAnalysis=analyzeActions(playerActions,apiResult.durationSeconds ?? 0);
   const details=analyzeDetailedActions(playerActions,apiResult.durationSeconds ?? 0);
@@ -884,6 +919,34 @@ function CoachPanel({apiResult,preferredPlayerPublicId,decodedActions,simulation
           <div className="pro-coach-phase-bars">{proCoachReport.phases.map(phase=><div className="pro-coach-phase-row" key={phase.id}><div className="pro-coach-phase-label"><b>{phase.label}</b><span>{phase.momentumIndex===null?'Nicht genug Daten':`Impuls ${phase.momentumIndex}/100`}</span></div><div className="pro-coach-bar"><i style={{width:`${phase.momentumIndex??0}%`}}/></div><small>Gebiet {phase.territoryPerMinute===null?'–':`${phase.territoryPerMinute.toFixed(1).replace('.',',')} / Min.`} · Gold {phase.incomePerMinute===null?'–':`${Math.round(phase.incomePerMinute).toLocaleString('de-DE')} / Min.`} · Truppen {phase.troopChangePerMinute===null?'–':`${phase.troopChangePerMinute>0?'+':''}${Math.round(phase.troopChangePerMinute).toLocaleString('de-DE')} / Min.`} · {phase.attacks} Angriffe</small></div>)}</div>
         </div>
       </section>}
+      {selectedSpawnPosition?.spawnTile !== null && selectedSpawnPosition?.spawnTile !== undefined && <section className="spawn-coach-card" aria-labelledby="spawn-coach-title">
+        <div className="spawn-coach-heading">
+          <div className="spawn-coach-mark"><Compass size={20}/></div>
+          <div><span className="coach-report-label">STARTPOSITION · ENGINE-REKONSTRUIERT</span><h3 id="spawn-coach-title">Dein tatsächlicher Spawn – und was er dir ermöglicht hat</h3>
+            <p>{simulationResult?.spawnPhaseEndTick != null
+              ? `Spawnphase endete bei ${(simulationResult.spawnPhaseEndTick / 10).toFixed(1).replace('.', ',')} Sekunden · ausgewerteter Zustand bei Tick ${simulationResult.spawnSnapshotTick ?? '–'}`
+              : 'Unvollständiges Replay: Startlage aus dem letzten verfügbaren Zustand rekonstruiert.'}</p>
+          </div>
+        </div>
+        <div className="spawn-coach-metrics">
+          <article><small>EXAKTE SPAWN-KOORDINATE</small><b>X {selectedSpawnPosition.spawnX} · Y {selectedSpawnPosition.spawnY}</b><span>Aus PlayerState.spawnTile, kein geschätzter Schwerpunkt</span></article>
+          <article><small>NÄCHSTER SPIELERSTART</small><b>{selectedSpawnPosition.nearestSpawnDistance === null ? '–' : `${selectedSpawnPosition.nearestSpawnDistance} Felder`}</b><span>Manhattan-Abstand wie in der Spawnlogik</span></article>
+          <article><small>DIREKTE GRENZKONTAKTE</small><b>{selectedSpawnPosition.adjacentRivals.length}</b><span>{selectedSpawnPosition.rivalBorderContacts} angrenzende Grenzfelder</span></article>
+          <article><small>FREIER LANDRAUM</small><b>{selectedSpawnPosition.nearbyNeutralLandTiles === null ? 'Nicht verfügbar' : fmt(selectedSpawnPosition.nearbyNeutralLandTiles)}</b><span>{spawnLandComparison ?? 'Neutrale Landfelder im 12-Felder-Luftlinienradius'}</span></article>
+          <article><small>GÜLTIGE STARTFELDER</small><b>{selectedSpawnPosition.spawnZoneLandTiles === null ? 'Nicht verfügbar' : `${selectedSpawnPosition.spawnZoneLandTiles} / ${selectedSpawnPosition.spawnZoneTotalTiles}`}</b><span>Land und nicht blockiert im Engine-Spawnradius</span></article>
+          <article><small>KÜSTENOPTIONEN</small><b>{selectedSpawnPosition.nearbyCoastalLandTiles === null ? 'Nicht verfügbar' : fmt(selectedSpawnPosition.nearbyCoastalLandTiles)}</b><span>Neutrale Küstenfelder im Nahbereich</span></article>
+        </div>
+        <div className="spawn-coach-advice">
+          <div><span className={`spawn-classification ${selectedSpawnPosition.classification}`}>{selectedSpawnPosition.classification === 'contested' ? 'UNTER DRUCK' : selectedSpawnPosition.classification === 'isolated' ? 'RELATIV ISOLIERT' : selectedSpawnPosition.classification === 'mixed' ? 'GEMISCHTE LAGE' : 'NICHT EINORDNEN'}</span><b>Was das für deine Eröffnung bedeutet</b></div>
+          <p>{spawnAdvice}</p>
+        </div>
+        <details className="spawn-coach-terrain">
+          <summary>Gelände und Datenqualität</summary>
+          <div><span>Hochland: <b>{selectedSpawnPosition.nearbyHighlandTiles ?? '–'}</b></span><span>Berge: <b>{selectedSpawnPosition.nearbyMountainTiles ?? '–'}</b></span><span>Unpassierbar: <b>{selectedSpawnPosition.nearbyImpassableTiles ?? '–'}</b></span><span>Kartenrand: <b>{selectedSpawnPosition.mapEdgeDistance ?? '–'} Felder</b></span></div>
+          <p>Gelände stammt aus der Map-Binärdatei des exakten Replay-Engine-Commits. Neutrale Felder werden im Luftlinienradius gezählt; das beweist keine durchgehend begehbare Verbindung. Die Einordnung vergleicht reale Spielerstarts und behauptet nicht, dass hypothetische Alternativkoordinaten sicher auswählbar gewesen wären.</p>
+        </details>
+      </section>}
+      {simulationResult?.spawnPositions && (!selectedSpawnPosition || selectedSpawnPosition.spawnTile === null) && <section className="spawn-coach-card spawn-coach-unavailable"><b>Startposition nicht vollständig rekonstruierbar</b><p>Für diesen Spieler enthält der ausgewertete Replay-Zustand keine gültige Spawn-Koordinate. Der Coach zeigt deshalb keine geschätzte Position als Tatsache an.</p></section>}
       <section className="coach-training-loop" aria-labelledby="training-loop-title">
         <div className="coach-training-loop-heading"><span className="coach-report-label">VOM REPLAY INS TRAINING</span><b id="training-loop-title">Dein Trainingsziel</b><p>Eine Sache bewusst in der nächsten Partie ausprobieren – statt zehn Statistiken gleichzeitig zu verfolgen.</p></div>
         {trainingGoal ? <div className={`coach-training-goal ${trainingGoal.completed?'is-complete':''}`}>

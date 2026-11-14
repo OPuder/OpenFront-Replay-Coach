@@ -25,6 +25,7 @@ assert.match(installer, /registerPlugin\(ApkUpdaterPlugin\.class\)/);
 assert.match(installer, /updater-fileprovider/);
 assert.match(renderer, /installDesktopUpdate/);
 assert.match(renderer, /installAndroidUpdate/);
+assert.doesNotMatch(renderer, /androidAutoUpdateAttempted/);
 assert.match(renderer, /registerPlugin<ApkUpdaterPlugin>/);
 assert.match(updater, /child\.once\('spawn', resolve\)/);
 assert.match(updater, /child\.once\('error', reject\)/);

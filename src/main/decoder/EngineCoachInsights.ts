@@ -620,5 +620,27 @@ export function buildEngineCoachInsights(
     findings.push(candidate.finding);
   }
 
+  // Piracy is evaluated from the game's cumulative piracyGold counter, not inferred from ship count.
+  const piracySamples = [...samples].sort((a, b) => a.tick - b.tick).map(sample => ({
+    tick: sample.tick, player: sample.players.find(player => player.clientID === review.clientID),
+  })).filter((entry): entry is { tick: number; player: EngineSamplePlayer } => Boolean(entry.player));
+  if (piracySamples.length >= 2) {
+    const firstPiracy = piracySamples[0].player.piracyGold;
+    const lastPiracy = piracySamples[piracySamples.length - 1].player.piracyGold;
+    const piracyGain = lastPiracy - firstPiracy;
+    const tradeGain = piracySamples[piracySamples.length - 1].player.tradeGold - piracySamples[0].player.tradeGold;
+    if (piracyGain > 0 || tradeGain > 0) {
+      findings.push({
+        id: "piracy-and-trade-income", kind: "observation", priority: piracyGain > 0 ? "medium" : "low",
+        title: piracyGain > 0 ? "Piraterie hat messbar Gold beigetragen" : "Handel hat messbar Gold beigetragen",
+        summary: `Kumulierte Piraterie-Einnahmen ${firstPiracy.toLocaleString("de-DE")} → ${lastPiracy.toLocaleString("de-DE")} Gold; Handels-Einnahmen änderten sich um ${tradeGain >= 0 ? "+" : ""}${tradeGain.toLocaleString("de-DE")} Gold.`,
+        evidence: `Piraterie: +${piracyGain.toLocaleString("de-DE")} Gold · Handel: ${tradeGain >= 0 ? "+" : ""}${tradeGain.toLocaleString("de-DE")} Gold · ${piracySamples.length} Zustandsstichproben.`,
+        nextStep: "Prüfe die Zeitpunkte mit deiner Flottenbindung und den damaligen Fronten. Vergleiche den Piraterie-Ertrag mit den Truppen und der Zeit, die dafür gebunden waren.",
+        seconds: null, confidence: piracySamples.length >= 8 ? "high" : "medium",
+        limitation: "Die kumulierte Einnahme zeigt einen beobachteten Ertrag, aber keine Nettorendite, verursachte Verluste oder verpasste Alternativen. Ohne räumliche und gegnerbezogene Daten lässt sich kein optimaler Piraterie-Zeitpunkt ableiten.",
+      });
+    }
+  }
+
   return findings;
 }

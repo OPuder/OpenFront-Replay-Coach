@@ -121,3 +121,24 @@ test('replay timeline keeps recorded moments before coach markers at the same ti
   );
   assert.deepEqual(timeline.map(item => item.id), ['event-0', 'coach-coach']);
 });
+
+import { buildEngineCoachInsights } from '../src/main/decoder/EngineCoachInsights.ts';
+
+test('piracy coach reports cumulative piracy and trade income without claiming net profit',()=>{
+ const base={id:1,name:'Player',clientID:'p1',alive:true,gold:100,goldEarned:100,tradeGold:20,trainGold:0,piracyGold:5,troops:100,tiles:50,units:0,unitCounts:{},unitTroops:{},unitsUnderConstruction:0,outgoingAttacks:0,incomingAttacks:0,outgoingAttackDetails:[],incomingAttackDetails:[],attackTroops:0,allies:1,alliances:1,targets:0,betrayals:0,isTraitor:false,isDecaying:false,inDoomsdayClock:false};
+ const review={playerName:'Player',clientID:'p1',startTiles:50,endTiles:60,tilesGained:10,startGold:100,endGold:200,startTroops:100,endTroops:120,outgoingAttackSamples:0,longestNoExpansionSeconds:0};
+ const insights=buildEngineCoachInsights(review,[],[{tick:0,frame:0,players:[base]},{tick:1000,frame:1000,players:[{...base,piracyGold:85,tradeGold:45}]}]);
+ const piracy=insights.find(x=>x.id==='piracy-and-trade-income');
+ assert.ok(piracy);
+ assert.match(piracy.evidence,/Piraterie: \+80 Gold/);
+ assert.match(piracy.limitation,/keine Nettorendite/);
+});
+
+test('opening assessment reports observed expansion but not unsupported best spawn location',()=>{
+ const samples=[sample(0,{tiles:40,goldEarned:10,troops:100}),sample(300,{tiles:45,goldEarned:40,troops:95}),sample(900,{tiles:65,goldEarned:110,troops:90}),sample(1800,{tiles:90,goldEarned:220,troops:120})];
+ const report=buildProCoachReport(samples,[],'p1',300);
+ assert.equal(report.opening.firstExpansionSeconds,30);
+ assert.equal(report.opening.territoryGainFirstThreeMinutes,50);
+ assert.match(report.opening.limitation,/Karten-Geometrie/);
+ assert.ok(report.findings.some(x=>x.id==='opening-review'));
+});

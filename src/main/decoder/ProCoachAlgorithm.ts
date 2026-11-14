@@ -53,6 +53,15 @@ export interface ProCoachFinding {
   seconds: number | null;
   caveat: string;
 }
+export interface ProCoachOpening {
+  confidence: ProCoachConfidence;
+  firstExpansionSeconds: number | null;
+  territoryGainFirstThreeMinutes: number | null;
+  incomeGainFirstThreeMinutes: number | null;
+  troopChangeFirstThreeMinutes: number | null;
+  assessment: string;
+  limitation: string;
+}
 export interface ProCoachReport {
   confidence: ProCoachConfidence;
   confidenceLabel: string;
@@ -60,6 +69,7 @@ export interface ProCoachReport {
   scoreLabel: string;
   scoreExplanation: string;
   phases: ProCoachPhase[];
+  opening: ProCoachOpening;
   findings: ProCoachFinding[];
   metrics: Array<{ label: string; value: string; note: string; confidence: ProCoachConfidence }>;
   trainingRule: string;
@@ -111,6 +121,20 @@ export function buildProCoachReport(
   const peak=Math.max(0,...phaseMomentum);
   const phases=phasesBase.map(p=>({...p,momentumIndex:p.territoryPerMinute===null||peak<=0?null:Math.round(clamp((Math.max(0,p.territoryPerMinute)+Math.max(0,p.incomePerMinute??0)/1000)/peak*100))}));
   const findings:ProCoachFinding[]=[];
+  const openingSamples=alive.filter(x=>(x.sample.tick-(first?.sample.tick??0))/10<=180);
+  const openingFirst=openingSamples[0], openingLast=openingSamples.at(-1);
+  const openingSpan=openingFirst&&openingLast?(openingLast.sample.tick-openingFirst.sample.tick)/10:0;
+  const firstExpansion=openingFirst?openingSamples.find(x=>x.player.tiles>openingFirst.player.tiles):undefined;
+  const opening:ProCoachOpening={
+    confidence:openingSamples.length>=4&&openingSpan>=120?'high':openingSamples.length>=2&&openingSpan>=60?'medium':'low',
+    firstExpansionSeconds:firstExpansion&&openingFirst?(firstExpansion.sample.tick-openingFirst.sample.tick)/10:null,
+    territoryGainFirstThreeMinutes:openingFirst&&openingLast&&openingSpan>=120?openingLast.player.tiles-openingFirst.player.tiles:null,
+    incomeGainFirstThreeMinutes:openingFirst&&openingLast&&openingSpan>=120?openingLast.player.goldEarned-openingFirst.player.goldEarned:null,
+    troopChangeFirstThreeMinutes:openingFirst&&openingLast&&openingSpan>=120?openingLast.player.troops-openingFirst.player.troops:null,
+    assessment:openingSamples.length<2||openingSpan<60?'Zu wenig frühe Replay-Daten für eine belastbare Eröffnungsbewertung.':firstExpansion?'Frühe Expansion ist beobachtet. Prüfe, ob Einkommen und Truppenreserve parallel tragfähig blieben.':'Im beobachteten Eröffnungsfenster ist kein Gebietszuwachs nachweisbar. Prüfe Startdruck und erreichbare neutrale Gebiete.',
+    limitation:'Keine verlässliche Karten-Geometrie, Neutralgebiet-Verteilung, Nachbarentfernungen oder Engpässe in diesen Samples. Dies bewertet die Eröffnung, nicht den geografisch besten Spawn-Ort.'
+  };
+  if(opening.confidence!=='low') findings.push({id:'opening-review',priority:opening.firstExpansionSeconds===null?'medium':'low',confidence:opening.confidence,title:'Eröffnung: erste Expansion und Reserve prüfen',decision:'Bewerte die ersten drei Minuten anhand der ersten beobachteten Expansion.',consequence:opening.territoryGainFirstThreeMinutes===null?'Für drei Minuten fehlen ausreichend Zustandsdaten.':'Gebietsänderung: '+fmt(opening.territoryGainFirstThreeMinutes)+', Einkommensänderung: '+fmt(opening.incomeGainFirstThreeMinutes??0)+', Truppenänderung: '+fmt(opening.troopChangeFirstThreeMinutes??0)+'.',alternative:'Sichere erreichbare neutrale Gebiete, wenn die Karte es zulässt, und behalte eine Reserve für frühe Bedrohungen. Vergleiche Expansion immer mit Einkommen und Truppenbestand.',trainingRule:'Prüfe in der nächsten Partie bei 1:00, 2:00 und 3:00 Gebiet, Goldentwicklung und Truppenreserve gemeinsam.',evidence:'Erste Expansion: '+(opening.firstExpansionSeconds===null?'nicht beobachtet':clock(opening.firstExpansionSeconds))+' · Beobachtungsfenster: '+fmt(openingSpan)+' s.',seconds:opening.firstExpansionSeconds,caveat:opening.limitation});
   const attackActions=actions.filter(a=>a.type==='attack'&&a.delta30s);
   // Missing target observations are unknown, not a zero territorial response.
   const evaluatedAttackActions=attackActions.filter(a=>(a.delta30s?.tiles??0)>0||a.targetDelta30s!=null);
@@ -187,5 +211,5 @@ export function buildProCoachReport(
   ];
   const validPhases=phases.filter(p=>p.momentumIndex!==null&&p.activeSamples>=3);
   const matchScore=validPhases.length>=2?Math.round(median(validPhases.map(p=>p.momentumIndex??0))*.7+Math.max(...validPhases.map(p=>p.momentumIndex??0))*.3):null;
-  return {confidence:coverage,confidenceLabel:coverage==='high'?'Gute Datenbasis':coverage==='medium'?'Begrenzte Datenbasis':'Wenig Stichproben',matchScore,scoreLabel:'Match-Entwicklungsindex',scoreExplanation:'Relativer Gebiet-/Einkommensimpuls innerhalb dieser Partie. Kein Skill-Rating, keine Siegchance und keine Aussage über optimale Spielzüge.',phases,findings:ranked.slice(0,3),metrics,trainingRule:ranked[0]?.trainingRule??'Noch kein belastbares Trainingsziel. Prüfe die Zeitachse und sammle weitere verifizierte Partien.',dataCoverage:{samples:alive.length,actions:actions.length,durationMinutes}};
+  return {confidence:coverage,confidenceLabel:coverage==='high'?'Gute Datenbasis':coverage==='medium'?'Begrenzte Datenbasis':'Wenig Stichproben',matchScore,scoreLabel:'Match-Entwicklungsindex',scoreExplanation:'Relativer Gebiet-/Einkommensimpuls innerhalb dieser Partie. Kein Skill-Rating, keine Siegchance und keine Aussage über optimale Spielzüge.',phases,opening,findings:ranked.slice(0,3),metrics,trainingRule:ranked[0]?.trainingRule??'Noch kein belastbares Trainingsziel. Prüfe die Zeitachse und sammle weitere verifizierte Partien.',dataCoverage:{samples:alive.length,actions:actions.length,durationMinutes}};
 }

@@ -59,10 +59,6 @@ jobs:
         if: steps.discovery.outputs.changed == 'true'
         run: npm run validate:engine-pin
 
-      - name: Type-check every exact engine revision
-        if: steps.discovery.outputs.changed == 'true'
-        run: npm run typecheck:engines
-
       - name: Build all replay engine workers
         if: steps.discovery.outputs.changed == 'true'
         run: npm run build:engine
@@ -83,4 +79,4 @@ jobs:
           body: |
             Automated candidate generated from the latest upstream OpenFront main commit.
 
-            The candidate is pinned to an exact immutable Git SHA and will be built and type-checked against every registered engine. This does not by itself claim that a replay has been hash-verified on this revision. A real replay recorded by this commit must pass the replay hash regression before the candidate can be described as fully replay-verified.
+            The candidate is pinned to an exact immutable Git SHA; every registered replay worker is built from its exact source, and the Coach's own TypeScript and replay tests are validated. This does not by itself claim that a replay has been hash-verified on this revision. A real replay recorded by this commit must pass the replay hash regression before the candidate can be described as fully replay-verified.

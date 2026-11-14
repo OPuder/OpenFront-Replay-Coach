@@ -912,7 +912,7 @@ function CoachPanel({apiResult,preferredPlayerPublicId,decodedActions,simulation
       <button type="button" className={workspaceTab==='analysis'?'selected':''} onClick={()=>setWorkspaceTab('analysis')}><TrendingUp size={18}/><span><b>Analyse</b><small>Wirtschaft, Militär und Phasen</small></span></button>
       <button type="button" className={workspaceTab==='strategies'?'selected':''} onClick={()=>setWorkspaceTab('strategies')}><Compass size={18}/><span><b>Strategien</b><small>Spawn, Eco, Stacks & Nukes</small></span></button>
     </div>
-    {workspaceTab==='strategies' && <StrategyPlaybook matchContext={strategyMatchContext}/>}
+    {workspaceTab==='strategies' && <StrategyPlaybook matchContext={strategyMatchContext} coachingInsights={primaryEngineInsights}/>}
     {workspaceTab==='analysis' && <div className="analysis-navigation">
       <div className="analysis-navigation-heading"><b>Analysewerkzeuge</b><span>Wähle einen Bereich</span></div>
       <nav className="review-tabs coach-primary-tabs" aria-label="Analysewerkzeuge">

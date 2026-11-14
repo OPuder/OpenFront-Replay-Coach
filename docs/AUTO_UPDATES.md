@@ -1,5 +1,9 @@
 # Automatic updates
 
+## First update after installing an older version
+
+Releases published before the updater was included cannot install it retroactively. The first move from an older Windows or Android build to the bootstrap release therefore still needs the existing manual download/install step once. After that bootstrap update, subsequent releases use the automatic flow described below.
+
 ## Windows installer and portable edition
 
 The packaged Electron application checks the latest stable GitHub Release before opening its main window. Network errors, rate limits and malformed release metadata do not block startup: the existing version opens normally. When a newer release is available, the matching Windows asset is downloaded to a temporary directory and checked against the SHA-256 digest published by GitHub.

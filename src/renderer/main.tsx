@@ -36,6 +36,9 @@ function App() {
   const [mapRefreshKey, setMapRefreshKey] = useState(0);
   function navigateTo(page: 'dashboard'|'games'|'analysis') {
     engineReviewAbort.current?.abort(); engineReviewAbort.current=null; engineReviewRunId.current++;
+    // The aborted run's finally block is intentionally stale and cannot clear UI state.
+    // Clear its progress synchronously so navigation never leaves a phantom spinner.
+    setSimulationProgress(null);
     if (page !== 'analysis') {
       // Release the active raw GameRecord and sampled states when returning to
       // the library/dashboard; they can be hydrated again from IndexedDB.

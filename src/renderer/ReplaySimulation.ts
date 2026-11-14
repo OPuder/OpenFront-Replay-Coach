@@ -118,6 +118,8 @@ export interface ReplaySimulationResult {
   playerReview: null | { playerName: string; clientID: string | null; startTiles: number; endTiles: number; tilesGained: number; startGold: number; endGold: number; startTroops: number; endTroops: number; outgoingAttackSamples: number; longestNoExpansionSeconds: number };
   actionReviews: ReplayActionReview[];
   /** Spawn analysis captured at/after the recorded end of the spawn phase. */
+  mapWidth?: number | null;
+  mapHeight?: number | null;
   spawnPositions?: SpawnPositionMetric[] | null;
   spawnPhaseEndTick?: number | null;
   spawnSnapshotTick?: number | null;
@@ -416,6 +418,8 @@ export async function simulateReplay(
             lastSampledFrame = finalFrame;
           }
           const reader = readerRef.current;
+          let mapWidth: number | null = null;
+          let mapHeight: number | null = null;
           let spawnPositions: SpawnPositionMetric[] | null = null;
           let spawnPhaseEndTick: number | null = null;
           let spawnSnapshotTick: number | null = null;
@@ -433,6 +437,8 @@ export async function simulateReplay(
               players: any[];
               spawnPhaseEnd?: { tick: number; startTick: number } | null;
             };
+            mapWidth = Number.isInteger(spawnHeader.mapWidth) && spawnHeader.mapWidth > 0 ? spawnHeader.mapWidth : null;
+            mapHeight = Number.isInteger(spawnHeader.mapHeight) && spawnHeader.mapHeight > 0 ? spawnHeader.mapHeight : null;
             const recordedSpawnEnd = spawnHeader.spawnPhaseEnd?.tick ?? null;
             const hasRecordedEndFrame = recordedSpawnEnd !== null && recordedSpawnEnd <= finalFrame;
             const spawnFrame = hasRecordedEndFrame
@@ -684,6 +690,8 @@ export async function simulateReplay(
             samples,
             playerReview,
             actionReviews,
+            mapWidth,
+            mapHeight,
             spawnPositions,
             spawnPhaseEndTick,
             spawnSnapshotTick,

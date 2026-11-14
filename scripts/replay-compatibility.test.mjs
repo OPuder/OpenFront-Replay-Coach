@@ -1,5 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
+import { buildReplayEngineAssets } from '../src/renderer/ReplaySimulation.ts';
+import { resolveSupportedEngineCommit } from '../src/main/decoder/ReplayEngineCatalog.ts';
 import {
   assessReplayCompatibility,
   PINNED_OPENFRONT_COMMIT,
@@ -93,6 +95,33 @@ test('an unknown third engine build stays blocked instead of falling back to a b
   const result = assessReplayCompatibility(matchingRecord({
     gitCommit: 'fedcba9876543210fedcba9876543210fedcba98',
   }));
+  assert.equal(result.status, 'engine-version-mismatch');
+  assert.equal(result.engineVersionCompatible, false);
+});
+
+test('a unique abbreviated engine commit resolves to its exact bundled revision', () => {
+  const shortCommit = PINNED_OPENFRONT_COMMIT.slice(0, 10);
+  assert.equal(resolveSupportedEngineCommit(shortCommit), PINNED_OPENFRONT_COMMIT);
+  const result = assessReplayCompatibility(matchingRecord({ gitCommit: shortCommit }));
+  assert.equal(result.status, 'version-compatible-hashes-available');
+  assert.equal(result.engineVersionCompatible, true);
+  assert.equal(result.replayCommit, PINNED_OPENFRONT_COMMIT);
+  assert.equal(result.engineCommit, PINNED_OPENFRONT_COMMIT);
+});
+
+test('terrain asset URLs use the canonical full commit for abbreviated replay hashes', () => {
+  const shortCommit = PINNED_OPENFRONT_COMMIT.slice(0, 10);
+  const assets = buildReplayEngineAssets({
+    gitCommit: shortCommit,
+    info: { config: { gameMap: 'World' }, players: [] },
+    turns: [],
+  });
+  assert.ok(Object.values(assets.manifest).every(url => url.includes('/' + PINNED_OPENFRONT_COMMIT + '/resources/maps/')));
+});
+
+test('an abbreviated hash that does not identify a bundled engine remains unsupported', () => {
+  assert.equal(resolveSupportedEngineCommit('deadbee'), null);
+  const result = assessReplayCompatibility(matchingRecord({ gitCommit: 'deadbee' }));
   assert.equal(result.status, 'engine-version-mismatch');
   assert.equal(result.engineVersionCompatible, false);
 });

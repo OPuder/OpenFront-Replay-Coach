@@ -438,6 +438,26 @@ function App() {
         <section className="welcome-strip dashboard-hero"><div><span className="studio-eyebrow">PLAYER PROFILE</span><h2>Willkommen zurück, {profileName}</h2><p>Deine OpenFront-Partien auf einen Blick.</p></div><div className="profile-loader"><input value={playerId} onChange={e=>setPlayerId(e.target.value)} onKeyDown={e=>{if(e.key==='Enter') void loadPlayer();}} placeholder="OpenFront-Profillink oder Spieler-ID"/><button className="studio-button primary" onClick={()=>loadPlayer()} disabled={playerBusy || !playerId.trim()}><Users size={16}/>{playerBusy?'Lade …':'Konto laden'}</button></div></section>
         <section className="match-import-bar studio-card dashboard-import"><div><span className="studio-eyebrow">SCHNELLIMPORT</span><h3>Direkt in eine Partie springen</h3><p>Öffne einen beliebigen öffentlichen Match-Link – unabhängig von deiner Profilhistorie.</p></div><div className="match-import-controls"><input value={url} onChange={e=>setUrl(e.target.value)} onKeyDown={e=>{if(e.key==='Enter') void importUrl();}} placeholder="https://openfront.io/w5/game/…" aria-label="OpenFront-Match-Link"/><button className="studio-button primary" onClick={()=>void importUrl()} disabled={busy||!url.trim()}><FileUp size={16}/>{busy?'Partie wird geladen …':'Partie laden'}</button></div></section>
         {playerPage ? <>
+          <section className={`coach-spotlight ${longitudinalReport.status==='ready'?'ready':'warming'}`} aria-label="Persönliche Coaching-Zusammenfassung">
+            <div className="coach-spotlight-heading">
+              <div className="coach-spotlight-mark"><Sparkles size={21}/></div>
+              <div><span className="studio-eyebrow">COACH BRIEFING · DEIN NÄCHSTER SCHRITT</span><h2>{longitudinalReport.status==='ready'?'Woran du als Nächstes arbeiten solltest':'Dein Coach baut gerade dein Spielerprofil auf'}</h2><p>{longitudinalReport.status==='ready'?longitudinalReport.message:`${longitudinalReport.verifiedMatches} vollständig verifizierte Partien · Für wiederkehrende Muster werden mindestens zwei vergleichbare Partien benötigt.`}</p></div>
+            </div>
+            {longitudinalReport.status==='ready' ? <div className="coach-spotlight-grid">
+              <article className="coach-spotlight-item focus">
+                <span><Brain size={14}/> TRAININGSFOKUS</span>
+                <b>{longitudinalReport.recurringFindings[0]?.title ?? (longitudinalReport.weakestPhase? `Phase: ${longitudinalReport.weakestPhase.label}` : 'Noch kein wiederkehrender Fehler bestätigt')}</b>
+                <p>{longitudinalReport.recurringFindings[0]?.trainingRule ?? (longitudinalReport.weakestPhase? `Vergleiche in ${longitudinalReport.weakestPhase.label} die Entscheidungen und belegten Zustandswechsel in deinen Replays.` : 'Der Coach erfindet keine Schwäche. Verifiziere weitere Partien, damit wiederkehrende Muster sichtbar werden.')}</p>
+                {longitudinalReport.recurringFindings[0] && <small>{longitudinalReport.recurringFindings[0].occurrences} von {longitudinalReport.recurringFindings[0].comparableMatches} vergleichbaren Partien</small>}
+              </article>
+              <article className="coach-spotlight-item strength">
+                <span><ShieldCheck size={14}/> DAS MACHST DU GUT</span>
+                <b>{longitudinalReport.recurringStrengths[0]?.title ?? (longitudinalReport.strongestPhase? `Starke Phase: ${longitudinalReport.strongestPhase.label}` : 'Stärken werden weiter geprüft')}</b>
+                <p>{longitudinalReport.recurringStrengths[0]?.trainingRule ?? (longitudinalReport.strongestPhase? `Deine ${longitudinalReport.strongestPhase.label}-Phase zeigt wiederholt positive Werte. Behalte die konkreten Entscheidungen im Replay im Blick.` : 'Eine Stärke wird erst hervorgehoben, wenn sie in mehreren vergleichbaren, verifizierten Partien beobachtet wurde.')}</p>
+                {longitudinalReport.recurringStrengths[0] && <small>{longitudinalReport.recurringStrengths[0].occurrences} von {longitudinalReport.recurringStrengths[0].comparableMatches} vergleichbaren Partien</small>}
+              </article>
+            </div> : <div className="coach-spotlight-empty"><span>{longitudinalReport.verifiedMatches}</span><div><b>Langzeit-Coaching wird freigeschaltet</b><small>Die ersten Spiele werden gesammelt und einzeln analysiert. Unterschiedliche Modi und Spieltypen werden nicht vermischt.</small></div><button className="studio-button primary" onClick={()=>navigateTo('games')}>Partien prüfen <ArrowRight size={15}/></button></div>}
+          </section>
           <section className="studio-card longitudinal-coach-card dashboard-progression">
             <div className="card-heading"><div><span className="studio-eyebrow">LONGITUDINAL COACH</span><h3>Deine Entwicklung über mehrere Partien</h3></div><span className={`longitudinal-confidence ${longitudinalReport.confidence}`}>{longitudinalReport.confidence.toUpperCase()} CONFIDENCE</span></div>
             <div className="longitudinal-stats">

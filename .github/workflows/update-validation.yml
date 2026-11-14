@@ -1,0 +1,152 @@
+name: Update system validation
+
+on:
+  pull_request:
+    paths:
+      - "src/main/updater.ts"
+      - "src/renderer/UpdateCenter.tsx"
+      - "android-updater-template/**"
+      - "scripts/install-android-updater-plugin.mjs"
+      - "scripts/updater-contract.test.mjs"
+      - "scripts/validate-updater-release.mjs"
+      - "package.json"
+      - "package-lock.json"
+      - "android/**"
+      - ".github/workflows/update-validation.yml"
+      - ".github/workflows/release-on-main.yml"
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: update-validation-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  updater-contract-and-build:
+    name: Updater contracts, typecheck and Windows packaging
+    runs-on: windows-latest
+    timeout-minutes: 45
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24.15.0"
+          cache: npm
+
+      - name: Install dependencies once
+        run: npm ci
+
+      - name: Verify updater contract tests
+        run: node --test scripts/updater-contract.test.mjs
+
+      - name: Run full coaching and replay regression suite
+        run: npm run test:coach
+
+      - name: Build Windows application
+        run: npm run build
+
+      - name: Package Windows installer and portable edition
+        run: npx electron-builder --win nsis zip --publish never
+
+      - name: Verify Windows release packages
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $installer = Get-ChildItem release -Filter '*.exe' -File | Select-Object -First 1
+          $portable = Get-ChildItem release -Filter '*.zip' -File | Select-Object -First 1
+          if (-not $installer -or $installer.Length -lt 1MB) { throw 'Windows installer missing or implausibly small.' }
+          if (-not $portable -or $portable.Length -lt 1MB) { throw 'Windows portable ZIP missing or implausibly small.' }
+          $archive = Join-Path $env:TEMP 'ofrc-portable-validation'
+          Expand-Archive -LiteralPath $portable.FullName -DestinationPath $archive -Force
+          $appAsar = Get-ChildItem $archive -Filter 'app.asar' -File -Recurse | Select-Object -First 1
+          if (-not $appAsar -or $appAsar.Length -lt 1KB) { throw 'Portable ZIP does not contain a valid packaged app.asar.' }
+          Write-Host "Installer: $($installer.Name) ($($installer.Length) bytes)"
+          Write-Host "Portable: $($portable.Name) ($($portable.Length) bytes)"
+          Write-Host "Packaged app.asar: $($appAsar.Length) bytes"
+
+      - name: Upload verified Windows packages
+        uses: actions/upload-artifact@v4
+        with:
+          name: updater-validation-windows
+          path: |
+            release/*.exe
+            release/*.zip
+          if-no-files-found: error
+          retention-days: 7
+
+  android-apk-validation:
+    name: Android APK parse, identity, version and signature validation
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24.15.0"
+          cache: npm
+
+      - name: Install dependencies once
+        run: npm ci
+
+      - name: Verify updater contract tests
+        run: node --test scripts/updater-contract.test.mjs
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v4
+        with:
+          packages: "platforms;android-36 build-tools;36.0.0"
+
+      - name: Build renderer
+        run: npm run build:web
+
+      - name: Generate Android project and updater plugin
+        run: |
+          npx cap add android
+          npx cap sync android
+          node scripts/install-android-updater-plugin.mjs
+
+      - name: Build debug APK for package validation
+        run: |
+          cd android
+          ./gradlew --no-daemon assembleDebug
+
+      - name: Parse and validate APK metadata
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          APK="android/app/build/outputs/apk/debug/app-debug.apk"
+          test -s "$APK"
+          BT="$(find "$ANDROID_HOME/build-tools" -mindepth 1 -maxdepth 1 -type d | sort -V | tail -n 1)"
+          "$BT/apksigner" verify --verbose "$APK"
+          "$BT/aapt" dump badging "$APK" | tee /tmp/apk-badging.txt
+          grep -F "package: name='de.openfront.replaycoach'" /tmp/apk-badging.txt
+          grep -F "versionName='"$(node -p "require('./package.json').version")"'" /tmp/apk-badging.txt
+          sha256sum "$APK"
+
+      - name: Upload validated APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: updater-validation-android
+          path: android/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+          retention-days: 7

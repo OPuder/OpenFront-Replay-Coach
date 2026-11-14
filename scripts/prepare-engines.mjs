@@ -19,7 +19,7 @@ for (const engine of engines) {
     throw new Error(`Engine source ${engine.source} is not pinned to ${engine.commit}`);
   }
   console.log(`Installing dependencies for exact engine ${engine.commit}`);
-  const install = spawnSync("npm", ["ci", "--ignore-scripts"], { cwd: source, stdio: "inherit" });
+  const install = spawnSync(process.platform === "win32" ? "npm.cmd" : "npm", ["ci", "--ignore-scripts"], { cwd: source, stdio: "inherit", shell: process.platform === "win32" });
   if (install.status !== 0) throw new Error(`Dependency installation failed for ${engine.commit}`);
 }
 console.log(`Prepared ${engines.length} exact OpenFront replay engines.`);

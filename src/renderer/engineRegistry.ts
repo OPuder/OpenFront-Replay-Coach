@@ -1,4 +1,4 @@
-import { REPLAY_ENGINE_CATALOG } from "../main/decoder/ReplayEngineCatalog";
+import { REPLAY_ENGINE_CATALOG, resolveSupportedEngineCommit } from "../main/decoder/ReplayEngineCatalog";
 
 type ReplayEngineModule = typeof import("./engine/replay-engine-bc3e3334c573.js");
 
@@ -10,11 +10,14 @@ const loaders: Record<string, () => Promise<ReplayEngineModule>> = {
 };
 
 export async function loadReplayEngineModule(commit: string): Promise<ReplayEngineModule> {
-  const definition = REPLAY_ENGINE_CATALOG.find((engine) => engine.commit === commit);
-  const load = loaders[commit];
+  const resolvedCommit = resolveSupportedEngineCommit(commit);
+  const definition = resolvedCommit
+    ? REPLAY_ENGINE_CATALOG.find((engine) => engine.commit === resolvedCommit)
+    : undefined;
+  const load = resolvedCommit ? loaders[resolvedCommit] : undefined;
   if (!definition || !load) {
     throw new Error(
-      `Für Replay-Engine ${commit || "(unbekannt)"} ist kein exakt passender Engine-Build enthalten. Die Partie wird nicht mit einer anderen Version simuliert.`,
+      `Für Replay-Engine ${commit || "(unbekannt)"} ist kein eindeutig passender Engine-Build enthalten. Die Partie wird nicht mit einer anderen Version simuliert.`,
     );
   }
   return load();

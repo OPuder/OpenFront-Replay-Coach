@@ -425,14 +425,25 @@ export async function simulateReplay(
             ? rawRandomSpawn ? "random" : "manual"
             : "unknown";
           if (reader && finalFrame >= 0) {
-            const recordedSpawnEnd = reader.header.spawnPhaseEnd?.tick ?? null;
+            const spawnHeader = reader.header as unknown as {
+              mapWidth: number;
+              mapHeight: number;
+              players: any[];
+              spawnPhaseEnd?: { tick: number; startTick: number } | null;
+            };
+            const recordedSpawnEnd = spawnHeader.spawnPhaseEnd?.tick ?? null;
             const hasRecordedEndFrame = recordedSpawnEnd !== null && recordedSpawnEnd <= finalFrame;
             const spawnFrame = hasRecordedEndFrame
               ? Math.max(0, Math.floor(recordedSpawnEnd as number))
               : finalFrame;
             await reader.load(reader.chunkOf(spawnFrame));
-            const spawnState = reader.seek(spawnFrame);
-            const staticSpawnPlayers = new Map(reader.header.players.map((meta: any) => [meta.smallID, meta]));
+            const spawnState = reader.seek(spawnFrame) as unknown as {
+              tick: number;
+              players: ReadonlyMap<number, any>;
+              tileState: Uint16Array;
+              terrain?: ReadonlyMap<number, number>;
+            };
+            const staticSpawnPlayers = new Map(spawnHeader.players.map((meta: any) => [meta.smallID, meta]));
             const spawnPlayers = [...spawnState.players.entries()].map(([id, player]: [number, any]) => {
               const meta: any = staticSpawnPlayers.get(id) ?? {};
               return {
@@ -443,7 +454,7 @@ export async function simulateReplay(
               };
             });
             let terrain = hasRecordedEndFrame
-              ? await loadReplayTerrainData(assets, reader.header.mapWidth, reader.header.mapHeight, signal)
+              ? await loadReplayTerrainData(assets, spawnHeader.mapWidth, spawnHeader.mapHeight, signal)
               : null;
             if (terrain && spawnState.terrain) {
               terrain = terrain.slice();
@@ -453,8 +464,8 @@ export async function simulateReplay(
             }
             spawnPositions = analyzeSpawnPositions(
               spawnState.tileState,
-              reader.header.mapWidth,
-              reader.header.mapHeight,
+              spawnHeader.mapWidth,
+              spawnHeader.mapHeight,
               spawnPlayers,
               terrain ?? undefined,
             );
@@ -464,8 +475,8 @@ export async function simulateReplay(
             if (hasRecordedEndFrame && terrain && selectedSpawnPlayer) {
               spawnAlternatives = analyzeAlternativeSpawnPositions(
                 spawnState.tileState,
-                reader.header.mapWidth,
-                reader.header.mapHeight,
+                spawnHeader.mapWidth,
+                spawnHeader.mapHeight,
                 spawnPlayers,
                 terrain,
                 selectedSpawnPlayer.id,

@@ -192,6 +192,9 @@ jobs:
       - name: Build the original replay engine and Windows application
         run: npm run build
 
+      - name: Verify updater contract tests before packaging
+        run: node --test scripts/updater-contract.test.mjs
+
       - name: Package the installer and portable ZIP
         run: npx electron-builder --win nsis zip --publish never
 
@@ -249,6 +252,9 @@ jobs:
 
       - name: Install Coach and Capacitor dependencies
         run: npm ci
+
+      - name: Verify updater contract tests before APK packaging
+        run: node --test scripts/updater-contract.test.mjs
 
       - name: Build the shared renderer and original replay engine
         run: npm run build:web

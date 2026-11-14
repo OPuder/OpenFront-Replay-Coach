@@ -295,7 +295,7 @@ function App() {
     if(missing.length){ missing.forEach(game=>autoImportAttempted.current.add(game.gameId)); void loadSelectedGames(missing.map(game=>game.gameId)); return; }
     const pending=selectGamesToAnalyze(batchMatches,autoAnalysisAttempted.current).slice(0,1);
     if(pending.length){ pending.forEach(item=>autoAnalysisAttempted.current.add(item.game.gameId)); void analyzeSelectedGames(pending.map(item=>item.game.gameId)); }
-  },[playerPage,batchMatches,playerBusy,batchBusy,batchAnalysisBusy]);
+  },[autoSyncEnabled,playerPage,batchMatches,playerBusy,batchBusy,batchAnalysisBusy]);
 
   function openBatchMatch(gameId:string) {
     cancelBatchAnalysis();

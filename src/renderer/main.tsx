@@ -11,7 +11,7 @@ import { buildLongitudinalCoachReport } from '../main/decoder/LongitudinalCoach'
 import { selectPrimaryCoachInsights } from '../main/decoder/CoachInsightSelection';
 import { buildReplayTimeline } from '../main/decoder/CoachTimeline';
 import { chooseBatchAnalysisConcurrency, runConcurrentBatchAnalysis } from './BatchAnalysisRunner';
-import { assessReplayCompatibility } from '../main/decoder/ReplayCompatibility';
+import { assessReplayCompatibility, isReplayCompatibilityCurrent } from '../main/decoder/ReplayCompatibility';
 import type { ReplaySimulationResult } from './ReplaySimulation';
 import { selectPlayerSurvivalWindow } from './phaseSurvival';
 import { installBrowserReplayAPI } from './platform/BrowserReplayAPI';
@@ -60,6 +60,7 @@ function App() {
   const [batchBusy, setBatchBusy] = useState(false);
   function refreshStoredMatch(item: StoredMatchEntry): BatchMatchItem {
     if(!item.result?.record) return item;
+    if(isReplayCompatibilityCurrent(item.result.record,item.result.engineCompatibility)) return item;
     const compatibility=assessReplayCompatibility(item.result.record);
     const wasUnsupported=item.analysisStatus==='unsupported'||item.status==='engine-mismatch';
     const analysisStatus:StoredAnalysisStatus=compatibility.engineVersionCompatible

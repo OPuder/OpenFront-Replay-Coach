@@ -85,7 +85,7 @@ export function assessReplayCompatibility(
 
   return {
     status: "version-compatible-hashes-available",
-    replayCommit,
+    replayCommit: resolvedReplayCommit,
     engineCommit: selectedEngineCommit,
     recordedHashCount,
     engineVersionCompatible: true,

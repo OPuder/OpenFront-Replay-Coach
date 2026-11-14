@@ -421,7 +421,7 @@ function App() {
       <button className={`studio-nav ${activePage==='dashboard'?'active':''}`} onClick={()=>navigateTo('dashboard')}><LayoutDashboard size={17}/>Dashboard</button>
       <button className={`studio-nav ${activePage==='games'?'active':''}`} onClick={()=>navigateTo('games')}><ListChecks size={17}/>Meine Partien</button>
       <button className={`studio-nav ${activePage==='analysis'?'active':''}`} onClick={()=>navigateTo('analysis')} disabled={!apiResult && !replay}><Brain size={17}/>Coach & Replay</button>
-      <div className="studio-sidebar-bottom"><span><ShieldCheck size={14}/>{isDesktopShell ? 'Lokal auf diesem PC' : isMobileDevice ? 'Mobil im Browser' : 'Im Browser geöffnet'}</span><small>OpenFront Replay Coach · 2.2.30</small></div>
+      <div className="studio-sidebar-bottom"><span><ShieldCheck size={14}/>{isDesktopShell ? 'Lokal auf diesem PC' : isMobileDevice ? 'Mobil im Browser' : 'Im Browser geöffnet'}</span><small>OpenFront Replay Coach · 2.2.31</small></div>
     </aside>
     <nav className="studio-mobile-nav" aria-label="Hauptnavigation">
       <button className={activePage==='dashboard'?'active':''} onClick={()=>navigateTo('dashboard')}><LayoutDashboard/><span>Dashboard</span></button>
@@ -455,6 +455,7 @@ function App() {
                 <small className="progression-footnote">Die Raten beschreiben beobachtete Entwicklung pro Minute. Sie sind keine automatische Bewertung deiner Spielstärke: Karte, Lobby, Überlebenszeit und Datenabdeckung beeinflussen den Vergleich.</small>
               </div>
               {longitudinalReport.recurringFindings.length>0 ? <div className="longitudinal-findings"><span className="studio-eyebrow">WIEDERKEHRENDE MUSTER</span>{longitudinalReport.recurringFindings.map(finding=><article key={finding.id}><div><b>{finding.title}</b><small>{finding.occurrences}/{finding.comparableMatches} vergleichbare Partien · {Math.round(finding.frequency*100)} %</small></div><span className={`finding-priority ${finding.priority}`}>{finding.priority.toUpperCase()}</span><p>{finding.trainingRule}</p></article>)}</div> : <p className="longitudinal-coverage">Noch kein identisches Fehlermuster in mehreren Partien bestätigt.</p>}
+              {longitudinalReport.recurringStrengths.length>0 && <div className="longitudinal-findings longitudinal-strengths"><span className="studio-eyebrow">WIEDERKEHRENDE STÄRKEN · DAS MACHST DU GUT</span>{longitudinalReport.recurringStrengths.map(finding=><article key={finding.id}><div><b>{finding.title}</b><small>{finding.occurrences}/{finding.comparableMatches} vergleichbare Partien · {Math.round(finding.frequency*100)} %</small></div><span className="finding-priority medium">STÄRKE</span><p>{finding.trainingRule}</p></article>)}</div>}
               <div className="longitudinal-training"><Brain size={18}/><div><span>NÄCHSTER TRAININGSFOKUS</span><b>{longitudinalReport.trainingFocus}</b></div></div>
             </> : <div className="longitudinal-empty"><Brain size={22}/><div><b>Langzeit-Coaching wartet auf verifizierte Partien</b><small>Importiere und analysiere mindestens zwei Partien desselben Modus und Spieltyps. Nicht verifizierte Daten werden nicht zusammengerechnet.</small></div><button className="studio-button primary" onClick={()=>navigateTo('games')}>Partien analysieren <ArrowRight size={15}/></button></div>}
           </section>

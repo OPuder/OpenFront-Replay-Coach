@@ -46,6 +46,7 @@ export const REPLAY_ENGINE_CATALOG = [
     source: "vendor/OpenFrontIO-80bff198b68f",
     bundleId: "80bff198b68f",
   },
+  { commit: "7f34e15908286d490715c6e4af8c47df5b1b3fcc", source: "vendor/OpenFrontIO-7f34e1590828", bundleId: "7f34e1590828" },
 ] as const;
 
 export const SUPPORTED_OPENFRONT_COMMITS = REPLAY_ENGINE_CATALOG.map((engine) => engine.commit);

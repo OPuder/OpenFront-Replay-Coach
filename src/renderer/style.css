@@ -1714,3 +1714,23 @@ body{
 .strategy-alternatives>div>span{padding:10px;border:1px solid #294b44;border-radius:9px;background:#0b1c19;color:#c5ddd2;font-size:11px;line-height:1.5}
 .strategy-alternatives>small{font-size:10px;line-height:1.5;color:#91aa9f}
 @media(max-width:760px){.strategy-match-context-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.strategy-match-spawn{grid-template-columns:minmax(0,1fr)}.strategy-alternatives>div{grid-template-columns:minmax(0,1fr)}}
+
+/* Prioritized, evidence-led strategy decision cards */
+.strategy-decision-coaching{display:flex;flex-direction:column;gap:12px;padding:18px;border:1px solid #315e55;border-radius:15px;background:linear-gradient(135deg,#10221f,#101d2a)}
+.strategy-decision-head{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.strategy-decision-head h4{margin:5px 0 0;font-size:17px;color:#effaf4}
+.strategy-decision-head>span{font-size:10px;color:#9bb8ac}
+.strategy-decision-list{display:flex;flex-direction:column;gap:10px}
+.strategy-decision-card{padding:14px;border:1px solid #2a4b43;border-radius:11px;background:#0b1918}
+.strategy-decision-card-head{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;flex-wrap:wrap}
+.strategy-decision-card-head>b{font-size:13px;color:#effaf4}
+.strategy-decision-card-head>span{font-size:9px;letter-spacing:.08em;color:#91cdb8;font-weight:800}
+.strategy-decision-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:12px}
+.strategy-decision-grid>div{min-width:0;padding:10px;border-radius:8px;background:#10231f}
+.strategy-decision-grid small{font-size:9px;letter-spacing:.08em;color:#8eb6a7;font-weight:800}
+.strategy-decision-grid p{margin:5px 0 0;font-size:12px;line-height:1.55;color:#d8e9e1}
+.strategy-decision-grid em{display:block;margin-top:6px;font-size:10px;line-height:1.5;color:#9fb8ad;font-style:normal}
+.strategy-decision-limit{display:block;margin-top:10px;font-size:10px;line-height:1.5;color:#91a99f}
+.strategy-decision-strength{border-color:#326c58}
+.strategy-decision-review{border-color:#725a3b}
+@media(max-width:760px){.strategy-decision-grid{grid-template-columns:minmax(0,1fr)}.strategy-decision-card{padding:12px}}

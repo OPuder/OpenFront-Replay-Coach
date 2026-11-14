@@ -420,7 +420,7 @@ function App() {
     }
     setError(''); setSaveNotice('');
     try {
-      const result = await window.replayAPI.saveReplayJson(apiResult.gameId);
+      const result = await window.replayAPI.saveReplayJson(apiResult.gameId, apiResult.record);
       if (result?.saved) setSaveNotice(isDesktopShell
         ? `Gespeichert (${result.bytes} Bytes): ${result.filePath} – der Speicherort wurde im Explorer geöffnet.`
         : result.shared

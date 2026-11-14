@@ -163,7 +163,7 @@ export function buildLongitudinalCoachReport(
       attackFollowThroughPercent:(()=>{const evaluated=(entry.input.simulation?.actionReviews??[]).filter((raw:any)=>raw?.type==="attack"&&raw.delta30s&&raw.targetDelta30s);if(!evaluated.length)return null;const productive=evaluated.filter((raw:any)=>Number(raw.delta30s.tiles)>0||Number(raw.targetDelta30s.tiles)<0).length;return productive/evaluated.length*100;})(),
       reviewedFindings:entry.report.findings.length};
   });
-  const trend=(id:"territory"|"income",label:string,unit:string):LongitudinalMetricTrend=>{
+  const trend=(id:"territory"|"income"|"attack-follow-through",label:string,unit:string):LongitudinalMetricTrend=>{
     const values=matchProgress.map(item=>id==="territory"?item.territoryPerMinute:item.incomePerMinute).filter((value):value is number=>value!==null&&Number.isFinite(value));
     const previous=values.length>=2?values[values.length-2]:null,latest=values.length>=2?values[values.length-1]:null;
     const delta=previous!==null&&latest!==null?latest-previous:null,threshold=previous===null?0:Math.max(0.05,Math.abs(previous)*0.03);

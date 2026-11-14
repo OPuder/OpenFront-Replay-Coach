@@ -151,6 +151,7 @@ jobs:
           ./gradlew --no-daemon assembleDebug
 
       - name: Parse and validate APK metadata
+        id: parse_apk
         shell: bash
         run: |
           set -Eeuo pipefail
@@ -174,7 +175,7 @@ jobs:
         run: bash scripts/verify-android-release-signing.sh
 
       - name: Test in-place Android update and preserve app data
-        if: always()
+        if: always() && steps.parse_apk.outcome == 'success'
         timeout-minutes: 20
         uses: reactivecircus/android-emulator-runner@v2
         with:

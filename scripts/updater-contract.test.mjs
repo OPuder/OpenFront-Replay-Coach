@@ -83,4 +83,4 @@ assert.match(releaseWorkflow, /names\.length === 3/);
 assert.match(releaseWorkflow, /-Android\.apk/);
 
 const updateValidationWorkflow = read(".github/workflows/update-validation.yml");
-assert.match(updateValidationWorkflow, /Test in-place Android update and preserve app data[\s\S]*?if: always\(\)/);
+assert.match(updateValidationWorkflow, /Test in-place Android update and preserve app data[\s\S]*?if: always\(\) && steps\.parse_apk\.outcome == 'success'/);

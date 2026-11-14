@@ -77,14 +77,16 @@ async function scheduleWindowsInstall(downloadPath: string, portable: boolean): 
   const processId = process.pid;
   const targetDirectory = process.env.PORTABLE_EXECUTABLE_DIR || path.dirname(executable);
   const scriptPath = path.join(os.tmpdir(), 'openfront-replay-coach-update-' + processId + '.ps1');
+  const logPath = path.join(os.tmpdir(), 'openfront-replay-coach-update-' + processId + '.log');
   const common = [
     "$ErrorActionPreference = 'Stop'",
     '$ProcessIdToWait = ' + processId,
     '$Executable = ' + quotePowerShell(executable),
     '$Download = ' + quotePowerShell(downloadPath),
+    '$Log = ' + quotePowerShell(logPath),
     'try { Wait-Process -Id $ProcessIdToWait -ErrorAction SilentlyContinue } catch {}',
     'Start-Sleep -Milliseconds 900'
-  ].join('\n');
+  ].join('\\n');
   const portableScript = [
     common,
     '$Target = ' + quotePowerShell(targetDirectory),
@@ -98,16 +100,12 @@ async function scheduleWindowsInstall(downloadPath: string, portable: boolean): 
     "  if (-not $NewExe) { throw 'Die Portable-ZIP enthält keine Programmdatei.' }",
     '  $Source = $NewExe.Directory.FullName',
     "  if (Test-Path -LiteralPath $Target) { Copy-Item -Path (Join-Path $Target '*') -Destination $Backup -Recurse -Force -ErrorAction SilentlyContinue }",
-    '  try {',
-    "    Copy-Item -Path (Join-Path $Source '*') -Destination $Target -Recurse -Force",
-    "    if (-not (Test-Path -LiteralPath $Executable)) { throw 'Die aktualisierte Programmdatei fehlt.' }",
-    '  } catch {',
-    "    Copy-Item -Path (Join-Path $Backup '*') -Destination $Target -Recurse -Force -ErrorAction SilentlyContinue",
-    '    throw',
-    '  }',
+    "  Copy-Item -Path (Join-Path $Source '*') -Destination $Target -Recurse -Force",
+    "  if (-not (Test-Path -LiteralPath $Executable)) { throw 'Die aktualisierte Programmdatei fehlt.' }",
     '  Start-Process -FilePath $Executable',
     '} catch {',
     '  $_ | Out-String | Add-Content -LiteralPath $Log',
+    "  if (Test-Path -LiteralPath $Backup) { Copy-Item -Path (Join-Path $Backup '*') -Destination $Target -Recurse -Force -ErrorAction SilentlyContinue }",
     '  if (Test-Path -LiteralPath $Executable) { Start-Process -FilePath $Executable }',
     '  exit 1',
     '} finally {',
@@ -115,30 +113,29 @@ async function scheduleWindowsInstall(downloadPath: string, portable: boolean): 
     '  Remove-Item -LiteralPath $Backup -Recurse -Force -ErrorAction SilentlyContinue',
     '  Remove-Item -LiteralPath $Download -Force -ErrorAction SilentlyContinue',
     '}'
-  ].join('\n');
+  ].join('\\n');
   const installerScript = [
     common,
-    '$Installer = $Download',
-    "$Exit = Start-Process -FilePath $Installer -ArgumentList '/S' -Wait -PassThru",
-    "if ($Exit.ExitCode -ne 0) { throw ('Der Windows-Installer wurde mit Exitcode ' + $Exit.ExitCode + ' beendet.') }",
-    'Start-Sleep -Seconds 2',
-    "if (-not (Test-Path -LiteralPath $Executable)) { throw 'Die aktualisierte Anwendung wurde am bisherigen Installationsort nicht gefunden.' }",
-    'Start-Process -FilePath $Executable',
+    'try {',
+    '  $Installer = $Download',
+    "  $Exit = Start-Process -FilePath $Installer -ArgumentList '/S' -Wait -PassThru",
+    "  if ($Exit.ExitCode -ne 0) { throw ('Der Windows-Installer wurde mit Exitcode ' + $Exit.ExitCode + ' beendet.') }",
+    '  Start-Sleep -Seconds 2',
+    "  if (-not (Test-Path -LiteralPath $Executable)) { throw 'Die aktualisierte Anwendung wurde am bisherigen Installationsort nicht gefunden.' }",
+    '  Start-Process -FilePath $Executable',
     '} catch {',
     '  $_ | Out-String | Add-Content -LiteralPath $Log',
     '  if (Test-Path -LiteralPath $Executable) { Start-Process -FilePath $Executable }',
     '  exit 1',
     '} finally {',
-    '  Remove-Item -LiteralPath $Installer -Force -ErrorAction SilentlyContinue',
+    '  Remove-Item -LiteralPath $Download -Force -ErrorAction SilentlyContinue',
     '}'
-  ].join('\n');
+  ].join('\\n');
   await fs.writeFile(scriptPath, portable ? portableScript : installerScript, { encoding: 'utf8', flag: 'wx' });
   const child = spawn('powershell.exe', ['-NoLogo', '-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-File', scriptPath], {
     detached: true, stdio: 'ignore', windowsHide: true,
   });
-  // Do not quit the running Coach until Windows confirms that the detached
-  // installer helper process actually exists. Otherwise a spawn error leaves
-  // the user with a closed app and no update.
+  // Do not quit until Windows confirms that the detached helper process exists.
   await new Promise<void>((resolve, reject) => {
     child.once('spawn', resolve);
     child.once('error', reject);

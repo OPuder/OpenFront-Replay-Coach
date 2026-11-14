@@ -146,6 +146,26 @@ jobs:
           grep -F "versionName='"$(node -p "require('./package.json').version")"'" /tmp/apk-badging.txt
           sha256sum "$APK"
 
+      - name: Build higher-version APK before emulator startup
+        shell: bash
+        run: |
+          set -euo pipefail
+          apk="android/app/build/outputs/apk/debug/app-debug.apk"
+          baseline="$RUNNER_TEMP/openfront-coach-before-update.apk"
+          updated="$RUNNER_TEMP/openfront-coach-update.apk"
+          test -s "$apk"
+          cp "$apk" "$baseline"
+          current_version="$(node -p "require('./package.json').version")"
+          IFS='.' read -r major minor patch <<< "$current_version"
+          next_version="$major.$minor.$((patch + 1))"
+          node scripts/set-android-version.mjs "$next_version"
+          (cd android && timeout 600s ./gradlew --no-daemon assembleDebug)
+          test -s "$apk"
+          cp "$apk" "$updated"
+          cp "$baseline" "$apk"
+          test -s "$updated"
+          echo "OPENFRONT_UPDATE_APK=$updated" >> "$GITHUB_ENV"
+
       - name: Test in-place Android update and preserve app data
         if: always() && steps.parse_apk.outcome == 'success'
         timeout-minutes: 20

@@ -26,7 +26,21 @@ if (!manifest.includes(".updater-fileprovider")) {
   const provider = [
     '        <provider',
     '            android:name="androidx.core.content.FileProvider"',
-    '            android:authorities="\${applicationId}.updater-fileprovider"',
+    '            android:authorities="' + '
+    '            android:exported="false"',
+    '            android:grantUriPermissions="true">',
+    '            <meta-data',
+    '                android:name="android.support.FILE_PROVIDER_PATHS"',
+    '                android:resource="@xml/replay_coach_update_paths" />',
+    '        </provider>',
+    ''
+  ].join("\n");
+  manifest = manifest.replace("</application>", provider + "    </application>");
+  if (!manifest.includes(".updater-fileprovider")) throw new Error("AndroidManifest konnte den sicheren FileProvider nicht aufnehmen.");
+  await writeFile(manifestPath, manifest);
+}
+console.log("Android APK updater plugin installed: verified download, SHA-256 check, FileProvider and Android package-installer handoff.");
+ + '{applicationId}.updater-fileprovider"',
     '            android:exported="false"',
     '            android:grantUriPermissions="true">',
     '            <meta-data',

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { createRoot } from 'react-dom/client';
-import { FileUp, Gamepad2, Clock3, Users, Map, ShieldCheck, AlertTriangle, CheckCircle2, HardDrive, ArrowRight, Link2, DownloadCloud, LayoutDashboard, Brain, ListChecks, ChevronDown, Building2, Activity, Search, Trophy, Swords, Ship, TrendingUp, CalendarDays, SlidersHorizontal, Home, ChevronRight, Sparkles } from 'lucide-react';
+import { FileUp, Gamepad2, Clock3, Users, Map, ShieldCheck, AlertTriangle, CheckCircle2, HardDrive, ArrowRight, Link2, DownloadCloud, LayoutDashboard, Brain, ListChecks, ChevronDown, Building2, Activity, Search, Trophy, Swords, Ship, TrendingUp, CalendarDays, SlidersHorizontal, Home, ChevronRight, Sparkles, Compass } from 'lucide-react';
 import './style.css';
 import { Capacitor } from '@capacitor/core';
 import { analyzeActions } from '../main/decoder/ActionAnalysis';

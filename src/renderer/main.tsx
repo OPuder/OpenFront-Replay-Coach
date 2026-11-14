@@ -18,6 +18,7 @@ import { selectPlayerSurvivalWindow } from './phaseSurvival';
 import { installBrowserReplayAPI } from './platform/BrowserReplayAPI';
 import { loadImportedMatches, loadPlayerLibrary, saveImportedMatch, savePlayerLibrary, type StoredAnalysisStatus, type StoredMatchEntry } from './matchStore';
 import { UpdateCenter } from './UpdateCenter';
+import { StrategyPlaybook } from './StrategyPlaybook';
 
 // Electron provides its API through the isolated preload; normal browsers use
 // the browser adapter so the same React interface powers Windows and Android.
@@ -622,7 +623,7 @@ function ReplayTrendChart({title,description,unit,points}:{title:string;descript
 function fmtChartValue(value:number){return Math.round(value).toLocaleString('de-DE');}
 function selectedPlayerName(players:Array<{name:string;clientID:string|null}>,id:string){return players.find(p=>p.clientID===id)?.name ?? '';}
 function CoachPanel({apiResult,preferredPlayerPublicId,decodedActions,simulationResult,simulationProgress,onPlayerSelect,onExport,onSaveReplayJson,onOpenReplay,fmt}:{preferredPlayerPublicId:string|null;apiResult:ApiImportSummary;decodedActions:DecodedAction[];simulationResult:ReplaySimulationResult|null;simulationProgress:{percent:number;phase:string}|null;onPlayerSelect:(clientId:string)=>void;onExport:()=>void;onSaveReplayJson:()=>void;onOpenReplay:()=>void;fmt:(n:number)=>string}) {
-  const [workspaceTab,setWorkspaceTab]=useState<'coach'|'replay'|'analysis'>('coach');
+  const [workspaceTab,setWorkspaceTab]=useState<'coach'|'replay'|'analysis'|'strategies'>('coach');
   const [selectedTimelineId,setSelectedTimelineId]=useState<string|null>(null);
   type TrainingGoal = { title:string; instruction:string; gameId:string; mapName:string; createdAt:string; completed:boolean };
   const [trainingGoal,setTrainingGoal]=useState<TrainingGoal|null>(()=>{try{return JSON.parse(localStorage.getItem('openfront-coach-training-goal')||'null') as TrainingGoal|null;}catch{return null;}});
@@ -820,7 +821,9 @@ function CoachPanel({apiResult,preferredPlayerPublicId,decodedActions,simulation
       <button type="button" className={workspaceTab==='coach'?'selected':''} onClick={()=>setWorkspaceTab('coach')}><Brain size={18}/><span><b>Dein Coach</b><small>Fehler verstehen und besser spielen</small></span></button>
       <button type="button" className={workspaceTab==='replay'?'selected':''} onClick={()=>setWorkspaceTab('replay')}><Map size={18}/><span><b>Replay ansehen</b><small>Spielverlauf und Zeitpunkte</small></span></button>
       <button type="button" className={workspaceTab==='analysis'?'selected':''} onClick={()=>setWorkspaceTab('analysis')}><TrendingUp size={18}/><span><b>Analyse</b><small>Wirtschaft, Militär und Phasen</small></span></button>
+      <button type="button" className={workspaceTab==='strategies'?'selected':''} onClick={()=>setWorkspaceTab('strategies')}><Compass size={18}/><span><b>Strategien</b><small>Spawn, Eco, Stacks & Nukes</small></span></button>
     </div>
+    {workspaceTab==='strategies' && <StrategyPlaybook/>}
     {workspaceTab==='analysis' && <div className="analysis-navigation">
       <div className="analysis-navigation-heading"><b>Analysewerkzeuge</b><span>Wähle einen Bereich</span></div>
       <nav className="review-tabs coach-primary-tabs" aria-label="Analysewerkzeuge">

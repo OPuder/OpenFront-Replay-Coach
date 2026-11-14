@@ -2,18 +2,6 @@ name: Update system validation
 
 on:
   pull_request:
-    paths:
-      - "src/main/updater.ts"
-      - "src/renderer/UpdateCenter.tsx"
-      - "android-updater-template/**"
-      - "scripts/install-android-updater-plugin.mjs"
-      - "scripts/updater-contract.test.mjs"
-      - "scripts/validate-updater-release.mjs"
-      - "package.json"
-      - "package-lock.json"
-      - "android/**"
-      - ".github/workflows/update-validation.yml"
-      - ".github/workflows/release-on-main.yml"
   push:
     branches: [main]
   workflow_dispatch:
@@ -43,6 +31,9 @@ jobs:
         with:
           node-version: "24.15.0"
           cache: npm
+
+      - name: Set up the repository-pinned npm version
+        run: npm install --global npm@12.1.0
 
       - name: Install pinned OpenFront engine dependencies
         working-directory: vendor/OpenFrontIO
@@ -113,6 +104,9 @@ jobs:
         with:
           node-version: "24.15.0"
           cache: npm
+
+      - name: Set up the repository-pinned npm version
+        run: npm install --global npm@12.1.0
 
       - name: Install pinned OpenFront engine dependencies
         working-directory: vendor/OpenFrontIO

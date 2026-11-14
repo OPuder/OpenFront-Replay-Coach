@@ -18,6 +18,8 @@ import { selectPlayerSurvivalWindow } from './phaseSurvival';
 import { installBrowserReplayAPI } from './platform/BrowserReplayAPI';
 import { loadImportedMatches, loadPlayerLibrary, saveImportedMatch, savePlayerLibrary, type StoredAnalysisStatus, type StoredMatchEntry } from './matchStore';
 import { UpdateCenter } from './UpdateCenter';
+import { StrategyPlaybook } from './StrategyPlaybook';
+import { selectGamesToAnalyze, selectGamesToImport } from './AutoLibrarySync';
 
 // Electron provides its API through the isolated preload; normal browsers use
 // the browser adapter so the same React interface powers Windows and Android.
@@ -99,7 +101,7 @@ function App() {
   const [modeFilter, setModeFilter] = useState('all');
   const [typeFilter, setTypeFilter] = useState('all');
   const [gameSearch, setGameSearch] = useState('');
-  React.useEffect(() => { let active=true; const restore=async()=>{ try { const savedId=window.localStorage.getItem('ofrc:last-player-id'); if(!savedId) return; const [page,matches]=await Promise.all([loadPlayerLibrary(savedId),loadImportedMatches(savedId)]); if(!active || !page) return; const refreshed=await refreshStoredMatches(savedId,matches); if(!active) return; setPlayerId(savedId); setPlayerPage(page); setBatchMatches(refreshed); } catch(e) { console.warn('[ReplayCoach] Gespeicherte Spielbibliothek konnte nicht geladen werden:',e); } }; void restore(); return ()=>{active=false;}; }, []);
+  React.useEffect(() => { let active=true; const restore=async()=>{ try { const savedId=window.localStorage.getItem('ofrc:last-player-id'); if(!savedId) return; const [cachedPage,cachedMatches]=await Promise.all([loadPlayerLibrary(savedId),loadImportedMatches(savedId)]); if(!active) return; let page=cachedPage; try { page=await window.replayAPI.loadPlayer(savedId,progress=>{if(active)setPlayerProgress(progress);}); await savePlayerLibrary(page); } catch(syncError) { console.warn('[ReplayCoach] Online-Abgleich beim Start fehlgeschlagen; nutze lokalen Stand:',syncError); } if(!active || !page) return; const refreshed=await refreshStoredMatches(page.playerId,cachedMatches); if(!active) return; setPlayerId(savedId); setPlayerPage(page); setBatchMatches(refreshed); } catch(e) { console.warn('[ReplayCoach] Gespeicherte Spielbibliothek konnte nicht geladen werden:',e); } }; void restore(); return ()=>{active=false;}; }, []);
   async function loadPlayer() { cancelBatchAnalysis(); cancelBatchImport(); setPlayerBusy(true); setError(''); setPlayerProgress({loaded:0,pages:0,status:'Profil wird geladen …'}); try { const page = await window.replayAPI.loadPlayer(playerId, progress => setPlayerProgress(progress)); setPlayerPage(page); setSelectedGameIds([]); const matches=await loadImportedMatches(page.playerId); const refreshed=await refreshStoredMatches(page.playerId,matches); setBatchMatches(refreshed); await savePlayerLibrary(page); window.localStorage.setItem('ofrc:last-player-id',page.playerId); } catch(e) { setError(e instanceof Error ? e.message : String(e)); } finally { setPlayerBusy(false); } }
   function toggleGameSelection(gameId:string) { setSelectedGameIds(current => current.includes(gameId) ? current.filter(id=>id!==gameId) : [...current,gameId]); }
   function selectFilteredGames() { const ids=filteredGames.map(game=>game.gameId); setSelectedGameIds(current=>ids.every(id=>current.includes(id)) ? current.filter(id=>!ids.includes(id)) : [...new Set([...current,...ids])]); }
@@ -226,6 +228,14 @@ function App() {
       }
     }
   }
+  React.useEffect(() => {
+    if(!playerPage || playerBusy || batchBusy || batchAnalysisBusy) return;
+    const missing=selectGamesToImport(playerPage.games,batchMatches);
+    if(missing.length){ void loadSelectedGames(missing.map(game=>game.gameId)); return; }
+    const pending=selectGamesToAnalyze(batchMatches);
+    if(pending.length) void analyzeSelectedGames(pending.map(item=>item.game.gameId));
+  },[playerPage,batchMatches,playerBusy,batchBusy,batchAnalysisBusy]);
+
   function openBatchMatch(gameId:string) {
     cancelBatchAnalysis();
     const item=batchMatches.find(entry=>entry.game.gameId===gameId);
@@ -612,7 +622,7 @@ function ReplayTrendChart({title,description,unit,points}:{title:string;descript
 function fmtChartValue(value:number){return Math.round(value).toLocaleString('de-DE');}
 function selectedPlayerName(players:Array<{name:string;clientID:string|null}>,id:string){return players.find(p=>p.clientID===id)?.name ?? '';}
 function CoachPanel({apiResult,preferredPlayerPublicId,decodedActions,simulationResult,simulationProgress,onPlayerSelect,onExport,onSaveReplayJson,onOpenReplay,fmt}:{preferredPlayerPublicId:string|null;apiResult:ApiImportSummary;decodedActions:DecodedAction[];simulationResult:ReplaySimulationResult|null;simulationProgress:{percent:number;phase:string}|null;onPlayerSelect:(clientId:string)=>void;onExport:()=>void;onSaveReplayJson:()=>void;onOpenReplay:()=>void;fmt:(n:number)=>string}) {
-  const [workspaceTab,setWorkspaceTab]=useState<'coach'|'replay'|'analysis'>('coach');
+  const [workspaceTab,setWorkspaceTab]=useState<'coach'|'replay'|'analysis'|'strategies'>('coach');
   const [selectedTimelineId,setSelectedTimelineId]=useState<string|null>(null);
   type TrainingGoal = { title:string; instruction:string; gameId:string; mapName:string; createdAt:string; completed:boolean };
   const [trainingGoal,setTrainingGoal]=useState<TrainingGoal|null>(()=>{try{return JSON.parse(localStorage.getItem('openfront-coach-training-goal')||'null') as TrainingGoal|null;}catch{return null;}});
@@ -810,7 +820,9 @@ function CoachPanel({apiResult,preferredPlayerPublicId,decodedActions,simulation
       <button type="button" className={workspaceTab==='coach'?'selected':''} onClick={()=>setWorkspaceTab('coach')}><Brain size={18}/><span><b>Dein Coach</b><small>Fehler verstehen und besser spielen</small></span></button>
       <button type="button" className={workspaceTab==='replay'?'selected':''} onClick={()=>setWorkspaceTab('replay')}><Map size={18}/><span><b>Replay ansehen</b><small>Spielverlauf und Zeitpunkte</small></span></button>
       <button type="button" className={workspaceTab==='analysis'?'selected':''} onClick={()=>setWorkspaceTab('analysis')}><TrendingUp size={18}/><span><b>Analyse</b><small>Wirtschaft, Militär und Phasen</small></span></button>
+      <button type="button" className={workspaceTab==='strategies'?'selected':''} onClick={()=>setWorkspaceTab('strategies')}><Compass size={18}/><span><b>Strategien</b><small>Spawn, Eco, Stacks & Nukes</small></span></button>
     </div>
+    {workspaceTab==='strategies' && <StrategyPlaybook/>}
     {workspaceTab==='analysis' && <div className="analysis-navigation">
       <div className="analysis-navigation-heading"><b>Analysewerkzeuge</b><span>Wähle einen Bereich</span></div>
       <nav className="review-tabs coach-primary-tabs" aria-label="Analysewerkzeuge">

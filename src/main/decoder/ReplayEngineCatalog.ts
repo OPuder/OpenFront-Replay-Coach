@@ -14,3 +14,15 @@ export const REPLAY_ENGINE_CATALOG = [
 ] as const;
 
 export const SUPPORTED_OPENFRONT_COMMITS = REPLAY_ENGINE_CATALOG.map((engine) => engine.commit);
+
+/**
+ * Resolve a recorded full or abbreviated git SHA to exactly one bundled engine.
+ * Prefixes are accepted only when they identify one unique catalog entry.
+ */
+export function resolveSupportedEngineCommit(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  const commit = value.trim().toLowerCase();
+  if (!/^[0-9a-f]{7,40}$/.test(commit)) return null;
+  const matches = REPLAY_ENGINE_CATALOG.filter(engine => engine.commit.startsWith(commit));
+  return matches.length === 1 ? matches[0].commit : null;
+}

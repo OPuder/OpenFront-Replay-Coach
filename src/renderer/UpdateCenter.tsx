@@ -62,6 +62,13 @@ export function UpdateCenter() {
     return window.replayAPI.onUpdateProgress(progress => setInstallProgress(progress));
   }, [isDesktop]);
 
+  React.useEffect(() => {
+    if (!isDesktop || !window.replayAPI?.getUpdateStatus) return;
+    void window.replayAPI.getUpdateStatus().then(status => {
+      if (status?.failed) setError(status.message);
+    }).catch(() => undefined);
+  }, [isDesktop]);
+
   const latestVersion = release?.tag_name.replace(/^v/i, '') ?? '';
   const hasNewVersion = Boolean(latestVersion && compareVersions(latestVersion, currentVersion) > 0);
   const isCurrent = Boolean(latestVersion && !hasNewVersion);

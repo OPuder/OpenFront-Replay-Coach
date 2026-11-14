@@ -64,3 +64,10 @@ const main = read("src/main/main.ts");
 assert.match(main, /createWindow\(\);\s*void autoUpdateOnStartup\(\);/);
 assert.doesNotMatch(main, /const updateScheduled = await autoUpdateOnStartup\(\)/);
 console.log("Updater contract tests passed: Windows installer/portable, Android verified APK handoff and Android APK handoff.");
+
+assert.match(updater, /await writeAutoUpdateAttempt\(version\);[\s\S]*?await scheduleWindowsInstall\(downloadPath, portable\)/);
+assert.match(updater, /getWindowsUpdateStatus/);
+assert.match(updater, /konnte nicht abgeschlossen werden/);
+assert.match(read("src/main/preload.ts"), /getUpdateStatus/);
+assert.match(read("src/renderer/env.d.ts"), /getUpdateStatus/);
+assert.match(read("src/renderer/UpdateCenter.tsx"), /getUpdateStatus\(\)/);

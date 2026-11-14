@@ -229,16 +229,37 @@ async function installLatestWindowsUpdate(): Promise<{ scheduled: boolean; versi
     const portable = await isPortableInstall(app.getPath('exe'));
     const asset = chooseWindowsAsset(release, portable);
     const downloadPath = await downloadVerifiedAsset(asset);
-    // A user-triggered retry is explicit; clear the automatic-loop guard first.
+    // A user-triggered retry is explicit; clear the old guard, then persist this attempt
+    // so a failed detached installer cannot trigger an automatic restart loop.
     await clearAutoUpdateAttempt();
-    await scheduleWindowsInstall(downloadPath, portable);
+    await writeAutoUpdateAttempt(version);
+    try {
+      await scheduleWindowsInstall(downloadPath, portable);
+    } catch (error) {
+      await clearAutoUpdateAttempt();
+      throw error;
+    }
     return { scheduled: true, version };
   })();
   try { return await activeWindowsUpdate; }
   finally { activeWindowsUpdate = null; }
 }
+export async function getWindowsUpdateStatus(): Promise<{ failed: boolean; message: string } | null> {
+  if (process.platform !== 'win32' || !app.isPackaged) return null;
+  const attempt = await readAutoUpdateAttempt();
+  if (!attempt) return null;
+  if (attempt.installedVersion !== app.getVersion()) {
+    await clearAutoUpdateAttempt();
+    return null;
+  }
+  return {
+    failed: true,
+    message: 'Das Update auf Version ' + attempt.targetVersion + ' konnte nicht abgeschlossen werden. Deine bisherige Version ' + app.getVersion() + ' bleibt erhalten. Du kannst das Update jetzt erneut versuchen.'
+  };
+}
 export function registerUpdaterIpc(): void {
   ipcMain.handle('updates:install', async () => installLatestWindowsUpdate());
+  ipcMain.handle('updates:status', async () => getWindowsUpdateStatus());
 }
 export async function autoUpdateOnStartup(): Promise<boolean> {
   if (process.platform !== 'win32' || !app.isPackaged) return false;
@@ -261,7 +282,12 @@ export async function autoUpdateOnStartup(): Promise<boolean> {
     // Persist before handing off to the detached installer. If it fails to
     // replace the running executable, the next launch must not enter a restart loop.
     await writeAutoUpdateAttempt(version);
-    await scheduleWindowsInstall(downloadPath, portable);
+    try {
+      await scheduleWindowsInstall(downloadPath, portable);
+    } catch (error) {
+      await clearAutoUpdateAttempt();
+      throw error;
+    }
     return true;
   } catch (error) {
     console.warn('[ReplayCoach] Automatisches Update übersprungen; Programm startet mit der installierten Version:', error);

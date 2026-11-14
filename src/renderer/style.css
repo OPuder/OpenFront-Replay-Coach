@@ -2110,3 +2110,237 @@ body{
 .engine-coverage-groups article small,.engine-coverage-groups article p{margin:0;font-size:10px;line-height:1.5;color:#91a8ba}
 .engine-coverage-groups article p{overflow-wrap:anywhere}
 @media(max-width:650px){.engine-coverage-groups article{grid-template-columns:1fr;gap:5px}}
+
+
+/* ──────────────────────────────────────────────────────────────────────────
+   STUDIO REDESIGN · v1
+   Shift the interface from stacked admin cards to a focused coaching workspace.
+   Existing component markup and analysis behavior remain unchanged.
+   ────────────────────────────────────────────────────────────────────────── */
+:root{
+  --bg:#080d12;
+  --surface:#101923;
+  --surface-2:#142231;
+  --surface-3:#1a2b3c;
+  --line:#263b4d;
+  --line-soft:#1c2d3d;
+  --text:#edf4fb;
+  --muted:#91a5b8;
+  --faint:#657b90;
+  --accent:#b9f36b;
+  --accent-2:#68d6bd;
+  --blue:#8ebeff;
+  --radius:14px;
+  --shadow:0 18px 50px rgba(0,0,0,.28);
+}
+html{background:var(--bg)}
+body{
+  color:var(--text);
+  background:
+    radial-gradient(ellipse at 75% -18%,rgba(47,101,91,.22),transparent 42%),
+    radial-gradient(ellipse at 0% 55%,rgba(34,73,106,.16),transparent 36%),
+    var(--bg);
+}
+.studio-shell{grid-template-columns:232px minmax(0,1fr);max-width:1920px;margin:0 auto}
+.studio-sidebar{
+  padding:25px 15px 18px;
+  background:rgba(8,14,20,.94);
+  border-right:1px solid rgba(129,164,192,.16);
+  box-shadow:12px 0 40px rgba(0,0,0,.12);
+}
+.studio-brand{padding:3px 8px 38px;gap:12px}
+.studio-brand-icon{width:42px;height:42px;border-radius:12px;box-shadow:0 0 28px rgba(185,243,107,.12)}
+.studio-brand b{font-size:12px;letter-spacing:.13em}
+.studio-brand small{font-size:9px;letter-spacing:.15em;color:#8299ad}
+.studio-nav-label{padding:0 11px;margin-bottom:9px;color:#647c91;font-size:9px;letter-spacing:.16em}
+.studio-nav{
+  min-height:43px;margin:3px 0;padding:0 12px;border:1px solid transparent;border-radius:9px;
+  color:#9eb1c3;font-size:12px;font-weight:600;gap:11px;
+}
+.studio-nav:hover{background:rgba(129,164,192,.08);color:#edf4fb}
+.studio-nav.active{
+  color:#dfffb9;background:linear-gradient(90deg,rgba(185,243,107,.13),rgba(185,243,107,.035));
+  border-color:rgba(185,243,107,.16);box-shadow:inset 2px 0 #b9f36b;
+}
+.studio-sidebar-bottom{border-top:1px solid rgba(129,164,192,.14);padding:15px 8px 0}
+.studio-sidebar-bottom span{font-size:10px;color:#a4b8c9}
+.studio-sidebar-bottom small{font-size:9px;color:#61798d}
+.studio-main{width:100%;max-width:1540px;padding:30px clamp(22px,3.5vw,58px) 72px}
+.studio-header{
+  align-items:flex-end;gap:22px;padding:0 0 22px;margin:0 0 22px;
+  border-bottom:1px solid rgba(129,164,192,.18);
+}
+.studio-eyebrow{font-size:9px;letter-spacing:.17em;color:#82a0b8;font-weight:800}
+.studio-header h1{font-size:clamp(25px,3vw,36px);line-height:1.08;letter-spacing:-.045em;margin:8px 0}
+.studio-header p{font-size:12px;color:#8fa5b8;max-width:650px;line-height:1.6}
+.studio-header-actions{gap:9px}
+.studio-button{min-height:38px;border-radius:8px;padding:0 13px;font-size:11px;font-weight:700}
+.studio-button.primary{background:#b9f36b;color:#14200d;box-shadow:0 5px 18px rgba(185,243,107,.13)}
+.studio-button.primary:hover{background:#d0ff91;transform:translateY(-1px)}
+.studio-button.subtle{background:#142231;border-color:#2b4053;color:#c7d7e5}
+.studio-button.subtle:hover{background:#1a2d40;border-color:#48627a}
+.studio-card,.welcome-strip,.coach-spotlight,.overview-panel,.game-card,.training-focus-card{
+  border-radius:12px;box-shadow:none;
+}
+.studio-card{
+  background:linear-gradient(145deg,rgba(18,30,43,.92),rgba(13,23,34,.94));
+  border:1px solid rgba(130,164,192,.16);
+}
+.welcome-strip.dashboard-hero{
+  display:grid;grid-template-columns:minmax(0,1fr) minmax(320px,.8fr);align-items:center;
+  gap:25px;padding:25px 27px;margin-bottom:14px;
+  background:linear-gradient(110deg,rgba(25,47,58,.92),rgba(16,29,42,.94));
+  border:1px solid rgba(126,170,185,.2);border-radius:13px;
+}
+.dashboard-hero h2{font-size:clamp(20px,2.2vw,27px);letter-spacing:-.035em;margin:7px 0}
+.dashboard-hero p{color:#93a9ba;font-size:11px}
+.profile-loader{display:flex;gap:8px;align-items:center}
+.profile-loader input,.match-import-controls input,.studio-main input:not([type=checkbox]){
+  min-height:39px;border:1px solid #30485c;border-radius:8px;background:#0b1520;color:#eaf2fa;
+  padding:0 12px;font-size:11px;min-width:0;
+}
+.profile-loader input{flex:1}
+.profile-loader input::placeholder,.match-import-controls input::placeholder{color:#627b90}
+.dashboard-import{
+  display:grid;grid-template-columns:minmax(230px,.8fr) minmax(320px,1.2fr);align-items:center;gap:22px;
+  padding:17px 20px;margin:0 0 25px;border-radius:11px;
+}
+.dashboard-import h3{font-size:13px;margin:5px 0}
+.dashboard-import p{font-size:10px;color:#8ea4b7;line-height:1.5}
+.match-import-controls{display:flex;gap:8px}
+.match-import-controls input{flex:1}
+.coach-spotlight{
+  padding:22px 23px;margin:0 0 24px;
+  background:linear-gradient(125deg,rgba(26,51,52,.86),rgba(15,29,39,.96) 60%);
+  border:1px solid rgba(104,214,189,.22);
+}
+.coach-spotlight-heading{gap:14px}
+.coach-spotlight-mark{width:38px;height:38px;border-radius:10px;background:rgba(104,214,189,.12);color:#7fe2c7}
+.coach-spotlight-heading h2{font-size:19px;letter-spacing:-.025em;margin:5px 0}
+.coach-spotlight-heading p{font-size:11px;line-height:1.55;color:#a0b4c2}
+.coach-spotlight-grid{gap:0;margin-top:19px;border-top:1px solid rgba(135,178,180,.16)}
+.coach-spotlight-item{padding:15px 18px 4px 0;border:0;border-radius:0;background:transparent}
+.coach-spotlight-item+ .coach-spotlight-item{padding-left:20px;border-left:1px solid rgba(135,178,180,.16)}
+.coach-spotlight-item>span{font-size:9px;letter-spacing:.13em}
+.coach-spotlight-item>b{font-size:13px;line-height:1.4}
+.coach-spotlight-item p{font-size:10px;line-height:1.6;color:#93a9b9}
+.coach-spotlight-item small{font-size:9px;color:#7892a5}
+.coach-spotlight-empty{margin-top:17px;padding:15px 0 0;border-top:1px solid rgba(135,178,180,.16)}
+.dashboard-progression{padding:20px 22px;margin:0 0 24px;border-radius:12px}
+.card-heading{align-items:center;margin-bottom:15px}
+.card-heading h3{font-size:15px;letter-spacing:-.02em;margin:5px 0}
+.longitudinal-confidence{font-size:9px;letter-spacing:.1em;padding:6px 9px;border-radius:5px}
+.longitudinal-stats{display:flex;gap:0;margin:0;border-block:1px solid rgba(129,164,192,.15)}
+.longitudinal-stats>div{flex:1;padding:13px 15px;border-right:1px solid rgba(129,164,192,.13)}
+.longitudinal-stats>div:first-child{padding-left:0}
+.longitudinal-stats>div:last-child{border:0}
+.longitudinal-stats b{font-size:23px;letter-spacing:-.04em}
+.longitudinal-stats span{font-size:9px;color:#8fa5b8}
+.longitudinal-coverage{font-size:10px;color:#90a6b8;line-height:1.55}
+.longitudinal-phase-grid{gap:0;border-block:1px solid rgba(129,164,192,.14)}
+.longitudinal-phase{padding:13px 15px;border:0;border-right:1px solid rgba(129,164,192,.14);border-radius:0;background:transparent}
+.longitudinal-phase:first-child{padding-left:0}
+.longitudinal-phase:last-child{border-right:0}
+.longitudinal-phase>span,.longitudinal-phase>small{font-size:9px;color:#8fa5b8}
+.longitudinal-phase>b{font-size:20px}
+.progression-panel{margin-top:20px;padding:17px 0 0;border:0;border-top:1px solid rgba(129,164,192,.14);border-radius:0;background:transparent}
+.progression-heading{margin-bottom:12px}
+.progression-heading .studio-eyebrow{font-size:9px}
+.progression-trends{gap:0;border-block:1px solid rgba(129,164,192,.13)}
+.progression-trend{padding:13px 14px;border:0;border-right:1px solid rgba(129,164,192,.13);border-radius:0;background:transparent}
+.progression-trend:first-child{padding-left:0}
+.progression-trend:last-child{border:0}
+.progression-trend>span,.progression-trend>small{font-size:9px;color:#8fa5b8}
+.progression-trend>b{font-size:20px}
+.progression-matches{gap:0;overflow-x:auto;padding:12px 0}
+.progression-matches>article{min-width:115px;padding:10px 12px;border:0;border-right:1px solid rgba(129,164,192,.13);border-radius:0;background:transparent}
+.progression-matches>article:first-child{padding-left:0}
+.progression-matches>article>span,.progression-matches>article>small{font-size:8px}
+.longitudinal-findings{display:grid;gap:0;margin-top:17px}
+.longitudinal-findings>article{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:5px 15px;padding:12px 0;border:0;border-top:1px solid rgba(129,164,192,.13);border-radius:0;background:transparent}
+.longitudinal-findings>article p{grid-column:1/-1;font-size:10px;line-height:1.5;color:#9bb0c0}
+.longitudinal-training{margin-top:14px;padding:13px 15px;border:1px solid rgba(185,243,107,.18);border-radius:9px;background:rgba(185,243,107,.055)}
+.dashboard-metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:0;margin:0 0 24px;padding:10px 0;border-block:1px solid rgba(129,164,192,.18)}
+.dashboard-metrics .stat-card{min-height:66px;padding:9px 16px;border:0;border-right:1px solid rgba(129,164,192,.14);border-radius:0;background:transparent;box-shadow:none}
+.dashboard-metrics .stat-card:first-child{padding-left:0}
+.dashboard-metrics .stat-card:last-child{border:0}
+.dashboard-metrics .stat-card .stat-top>span{font-size:8px;color:#8198ac}
+.dashboard-metrics .stat-card .stat-top>i svg{color:#8fbdca}
+.dashboard-metrics .stat-card>b{font-size:21px}
+.dashboard-metrics .stat-card>small{font-size:9px;color:#8096a9}
+.dashboard-lower-grid{gap:24px}
+.dashboard-lower-grid>.studio-card{padding:18px 0;border:0;border-top:1px solid rgba(129,164,192,.18);border-radius:0;background:transparent}
+.dashboard-lower-grid .card-heading{padding:0 0 10px}
+.dashboard-lower-grid .recent-game-grid{gap:0}
+.dashboard-lower-grid .recent-game-grid .game-card{border:0;border-bottom:1px solid rgba(129,164,192,.13);border-radius:0;background:transparent}
+.library-overview-strip{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:0;margin:12px 0 18px;border-block:1px solid rgba(129,164,192,.17);background:transparent}
+.library-overview-strip>article{padding:13px 16px;border:0;border-right:1px solid rgba(129,164,192,.14);border-radius:0;background:transparent;box-shadow:none}
+.library-overview-strip>article:first-child{padding-left:0}
+.library-overview-strip>article:last-child{border:0}
+.batch-toolbar.studio-card{padding:14px 17px;border:1px solid rgba(129,164,192,.17);border-radius:10px;background:rgba(17,29,42,.78)}
+.batch-results.studio-card,.batch-progress.studio-card{padding:14px 0;border:0;border-bottom:1px solid rgba(129,164,192,.15);border-radius:0;background:transparent}
+.game-grid{gap:12px}
+.game-card{overflow:hidden;border:1px solid rgba(129,164,192,.16);background:linear-gradient(145deg,#142232,#0e1925);transition:border-color .18s,transform .18s}
+.game-card:hover{transform:translateY(-2px);border-color:rgba(142,190,255,.4)}
+.game-card-action{border-radius:7px}
+.studio-main .overview-panel{padding:17px 18px;border:1px solid rgba(129,164,192,.16);background:rgba(15,27,40,.82)}
+.coach-hero-redesign{border-radius:12px;box-shadow:none}
+.pro-coach-report{padding:20px 0 4px;border:0;border-block:1px solid rgba(129,164,192,.17);border-radius:0;background:transparent;box-shadow:none}
+.pro-coach-metric-grid{gap:0;border-block:1px solid rgba(129,164,192,.14)}
+.pro-coach-metric{padding:13px 15px;border:0;border-right:1px solid rgba(129,164,192,.14);border-radius:0;background:transparent;box-shadow:none}
+.pro-coach-phase-bars{gap:15px}
+.pro-coach-phase-row{padding:12px 0;border:0;border-top:2px solid rgba(129,164,192,.2);border-radius:0;background:transparent;box-shadow:none}
+.training-focus-grid{gap:0;border-block:1px solid rgba(129,164,192,.15)}
+.training-focus-card{padding:15px 17px;border:0;border-right:1px solid rgba(129,164,192,.14);border-radius:0;background:transparent}
+.training-focus-card:first-child{padding-left:0}
+.training-focus-card:last-child{border:0}
+.training-focus-card>b{font-size:12px}
+.training-focus-card p,.training-focus-card small{font-size:10px;line-height:1.55;color:#92a8ba}
+.coach-deep-dive{border:0;border-bottom:1px solid rgba(129,164,192,.16);border-radius:0;background:transparent}
+.coach-deep-dive>summary{padding:14px 2px}
+.spawn-coach-card{border:0;border-block:1px solid rgba(129,164,192,.17);border-radius:0;background:transparent;box-shadow:none}
+.error,.success{border-radius:8px}
+.studio-mobile-nav{border-top:1px solid rgba(129,164,192,.2);background:rgba(8,14,20,.96);backdrop-filter:blur(16px)}
+.studio-mobile-nav button{font-size:10px}
+.studio-mobile-nav button.active{color:#c9fa8f}
+.studio-main button:disabled{opacity:.48;cursor:not-allowed}
+:focus-visible{outline:2px solid #b9f36b!important;outline-offset:3px}
+@media(max-width:1100px){
+  .studio-shell{grid-template-columns:205px minmax(0,1fr)}
+  .studio-main{padding-inline:25px}
+  .welcome-strip.dashboard-hero{grid-template-columns:1fr}
+}
+@media(max-width:820px){
+  .studio-shell{display:block}
+  .studio-sidebar{display:none}
+  .studio-main{padding:22px 18px 90px}
+  .studio-header{align-items:flex-start;flex-direction:column;padding-bottom:17px}
+  .studio-header-actions{width:100%;flex-wrap:wrap}
+  .studio-header-actions>*{flex:1}
+  .welcome-strip.dashboard-hero{padding:19px}
+  .profile-loader{flex-direction:column;align-items:stretch}
+  .profile-loader input{width:100%}
+  .dashboard-import{grid-template-columns:1fr;padding:15px}
+  .coach-spotlight{padding:17px}
+  .dashboard-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .dashboard-metrics .stat-card{padding:10px 12px;border-bottom:1px solid rgba(129,164,192,.13)}
+  .dashboard-metrics .stat-card:nth-child(2n){border-right:0}
+  .dashboard-metrics .stat-card:nth-last-child(-n+2){border-bottom:0}
+}
+@media(max-width:560px){
+  .studio-main{padding-inline:13px}
+  .studio-header h1{font-size:25px}
+  .match-import-controls{flex-direction:column}
+  .coach-spotlight-grid{grid-template-columns:1fr}
+  .coach-spotlight-item,.coach-spotlight-item+.coach-spotlight-item{padding:13px 0;border:0;border-top:1px solid rgba(135,178,180,.16)}
+  .longitudinal-stats>div{padding:10px 8px}
+  .longitudinal-stats b{font-size:19px}
+  .longitudinal-phase-grid,.progression-trends{grid-template-columns:1fr}
+  .longitudinal-phase,.longitudinal-phase:first-child,.progression-trend,.progression-trend:first-child{padding:12px 0;border:0;border-bottom:1px solid rgba(129,164,192,.13)}
+  .training-focus-grid{grid-template-columns:1fr}
+  .training-focus-card,.training-focus-card:first-child{padding:13px 0;border:0;border-bottom:1px solid rgba(129,164,192,.13)}
+  .pro-coach-metric-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media(prefers-reduced-motion:reduce){
+  *,*::before,*::after{scroll-behavior:auto!important;transition:none!important;animation:none!important}
+}

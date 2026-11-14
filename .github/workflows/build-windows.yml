@@ -20,9 +20,6 @@ jobs:
       - name: Check out source
         uses: actions/checkout@v4
 
-      - name: Check out only the pinned public OpenFront source
-        run: git submodule update --init --depth 1 vendor/OpenFrontIO vendor/OpenFrontIO-8b5d071eed95
-
       - name: Set up upstream Node.js
         uses: actions/setup-node@v4
         with:
@@ -31,13 +28,8 @@ jobs:
       - name: Set up upstream npm
         run: npm install --global npm@12.1.0
 
-      - name: Install pinned OpenFront workspaces
-        working-directory: vendor/OpenFrontIO
-        run: npm ci --ignore-scripts
-
-      - name: Install exact historical OpenFront engine dependencies
-        working-directory: vendor/OpenFrontIO-8b5d071eed95
-        run: npm ci --ignore-scripts
+      - name: Prepare all exact historical OpenFront engines
+        run: npm run prepare:engines
 
       - name: Install Coach dependencies
         run: npm ci

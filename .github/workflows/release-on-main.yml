@@ -107,22 +107,12 @@ jobs:
     needs: prepare-release
     if: needs.prepare-release.outputs.skip != 'true'
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 60
     steps:
       - name: Check out the release source
         uses: actions/checkout@v4
         with:
           ref: ${{ needs.prepare-release.outputs.release_sha }}
-
-      - name: Check out only the pinned public OpenFront source
-        timeout-minutes: 10
-        run: git submodule update --init --depth 1 vendor/OpenFrontIO vendor/OpenFrontIO-8b5d071eed95
-
-      - name: Verify the exact upstream revision
-        shell: bash
-        run: |
-          test "$(git -C vendor/OpenFrontIO rev-parse HEAD)" = "bc3e3334c573c4959ec6a6745df6826d07233b4d"
-          test "$(git -C vendor/OpenFrontIO-8b5d071eed95 rev-parse HEAD)" = "8b5d071eed95f07c701b32e4c64e95b03f8577c1"
 
       - name: Set up Node.js and npm
         uses: actions/setup-node@v4
@@ -132,21 +122,11 @@ jobs:
       - name: Set up pinned npm
         run: npm install --global npm@12.1.0
 
-      - name: Install pinned upstream dependencies
-        working-directory: vendor/OpenFrontIO
-        run: npm ci --ignore-scripts
+      - name: Prepare all exact historical OpenFront engines
+        run: npm run prepare:engines
 
-      - name: Install exact historical OpenFront engine dependencies
-        working-directory: vendor/OpenFrontIO-8b5d071eed95
-        run: npm ci --ignore-scripts
-
-      - name: Type-check the original engine and replay pipeline
-        working-directory: vendor/OpenFrontIO
-        run: npm run typecheck
-
-      - name: Type-check the historical Europe engine and replay pipeline
-        working-directory: vendor/OpenFrontIO-8b5d071eed95
-        run: npm run typecheck
+      - name: Type-check all exact replay engine revisions
+        run: npm run typecheck:engines
 
       - name: Build all exact replay engine workers
         run: |
@@ -158,17 +138,13 @@ jobs:
     needs: prepare-release
     if: needs.prepare-release.outputs.skip != 'true'
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
     steps:
       - name: Check out the exact release source
         uses: actions/checkout@v4
         with:
           ref: ${{ needs.prepare-release.outputs.release_sha }}
           submodules: false
-
-      - name: Check out only the pinned public OpenFront source
-        timeout-minutes: 10
-        run: git submodule update --init --depth 1 vendor/OpenFrontIO vendor/OpenFrontIO-8b5d071eed95
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
@@ -181,13 +157,8 @@ jobs:
       - name: Install Coach dependencies
         run: npm ci
 
-      - name: Install pinned OpenFront engine workspaces
-        working-directory: vendor/OpenFrontIO
-        run: npm ci --ignore-scripts
-
-      - name: Install historical Europe engine workspaces
-        working-directory: vendor/OpenFrontIO-8b5d071eed95
-        run: npm ci --ignore-scripts
+      - name: Prepare all exact historical OpenFront engines
+        run: npm run prepare:engines
 
       - name: Build all exact replay engine worker bundles
         run: npm run build:engine
@@ -227,10 +198,6 @@ jobs:
         with:
           ref: ${{ needs.prepare-release.outputs.release_sha }}
 
-      - name: Check out only the pinned public OpenFront source
-        timeout-minutes: 10
-        run: git submodule update --init --depth 1 vendor/OpenFrontIO vendor/OpenFrontIO-8b5d071eed95
-
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
@@ -239,13 +206,8 @@ jobs:
       - name: Set up pinned npm
         run: npm install --global npm@12.1.0
 
-      - name: Install pinned OpenFront dependencies
-        working-directory: vendor/OpenFrontIO
-        run: npm ci --ignore-scripts
-
-      - name: Install exact historical OpenFront engine dependencies
-        working-directory: vendor/OpenFrontIO-8b5d071eed95
-        run: npm ci --ignore-scripts
+      - name: Prepare all exact historical OpenFront engines
+        run: npm run prepare:engines
 
       - name: Install Coach dependencies
         run: npm ci
@@ -290,10 +252,6 @@ jobs:
         with:
           ref: ${{ needs.prepare-release.outputs.release_sha }}
 
-      - name: Check out only the pinned public OpenFront source
-        timeout-minutes: 10
-        run: git submodule update --init --depth 1 vendor/OpenFrontIO vendor/OpenFrontIO-8b5d071eed95
-
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
@@ -303,13 +261,8 @@ jobs:
       - name: Set up pinned npm
         run: npm install --global npm@12.1.0
 
-      - name: Install pinned OpenFront dependencies
-        working-directory: vendor/OpenFrontIO
-        run: npm ci --ignore-scripts
-
-      - name: Install exact historical OpenFront engine dependencies
-        working-directory: vendor/OpenFrontIO-8b5d071eed95
-        run: npm ci --ignore-scripts
+      - name: Prepare all exact historical OpenFront engines
+        run: npm run prepare:engines
 
       - name: Install Coach and Capacitor dependencies
         run: npm ci

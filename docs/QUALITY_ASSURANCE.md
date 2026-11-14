@@ -8,14 +8,15 @@ Every pull request targeting `main` runs the relevant application, replay and up
 
 - **Windows build and package validation:** pinned OpenFront engine revisions, coach dependencies, TypeScript/Electron/Vite build, installer and portable ZIP creation, package-content checks, and a real packaged Electron renderer startup smoke test.
 - **Android build validation:** native configuration contract, Capacitor renderer build, APK assembly, APK signature parsing, application ID and version metadata checks.
-- **Replay compatibility:** exact pinned current and historical engine revisions, engine worker build, real public Europe and Levant replay fixtures, coaching regression tests, mixed-engine batch processing, replay hashes, cancellation and IndexedDB persistence.
+- **Replay compatibility:** every exact engine revision in `engine-build/engines.json` is checked out and pinned, all engine workers are built, and every engine source is type-checked. Real public Europe and Levant fixtures verify hash reconstruction, coaching regressions, mixed-engine batches, cancellation and IndexedDB persistence. A catalog entry is not described as hash-verified until a real replay from that exact commit passes its recorded checkpoints.
+- **Historical and future engine coverage:** the replay corpus is used to register every observed exact `gitCommit`. A scheduled upstream monitor opens a candidate PR when OpenFront main advances. Candidate builds and typechecks run automatically; a matching real replay is still required before claiming hash verification.
 - **Update validation:** Windows/Android updater contract tests and full coaching/replay regression suite, plus Windows package smoke validation.
 
 The update validation workflow runs on every pull request so changes outside the updater files cannot silently bypass its integration checks.
 
 ## Release gates
 
-A GitHub Release must not be published unless the exact release commit passes:
+A GitHub Release is started explicitly through the release workflow and must not be published unless the exact release commit passes:
 
 1. Exact upstream engine revision checks and both engine typechecks.
 2. The complete replay/coaching regression suite against real replay fixtures.

@@ -199,3 +199,51 @@ test('malformed action records cannot crash recurring strength analysis',()=>{
   assert.equal(report.matchProgress[0].attackFollowThroughSamples,1);
   assert.equal(report.status,'insufficient-data');
 });
+
+
+test('cohort options expose every verified mode and type group without mixing them',()=>{
+  const report=buildLongitudinalCoachReport([
+    match('ffa-a',{mode:'Free For All',type:'Public'}),
+    match('ffa-b',{mode:'Free For All',type:'Public'}),
+    match('ffa-c',{mode:'Free For All',type:'Public'}),
+    match('single-a',{mode:'Free For All',type:'Singleplayer'}),
+    match('single-b',{mode:'Free For All',type:'Singleplayer'}),
+    match('team-a',{mode:'Team',type:'Public'}),
+    match('unverified',{mode:'Team',type:'Public',analysisStatus:'unverified',simulation:makeSimulation({status:'unverified'})}),
+  ]);
+  assert.deepEqual(report.cohortOptions,[
+    {key:'free for all|public',label:'Free For All · Public',matches:3},
+    {key:'free for all|singleplayer',label:'Free For All · Singleplayer',matches:2},
+    {key:'team|public',label:'Team · Public',matches:1},
+  ]);
+  assert.equal(report.selectedCohortKey,'free for all|public');
+  assert.equal(report.comparableMatches,3);
+  assert.equal(report.excludedMatches,4);
+});
+
+test('selected cohort changes all longitudinal metrics and keeps other groups excluded',()=>{
+  const report=buildLongitudinalCoachReport([
+    match('public-a',{mode:'Free For All',type:'Public'}),
+    match('public-b',{mode:'Free For All',type:'Public'}),
+    match('single-a',{mode:'Free For All',type:'Singleplayer'}),
+    match('single-b',{mode:'Free For All',type:'Singleplayer'}),
+    match('single-c',{mode:'Free For All',type:'Singleplayer'}),
+  ],'free for all|singleplayer');
+  assert.equal(report.selectedCohortKey,'free for all|singleplayer');
+  assert.equal(report.comparableGroup,'Free For All · Singleplayer');
+  assert.equal(report.comparableMatches,3);
+  assert.deepEqual(report.matchProgress.map(item=>item.gameId),['single-a','single-b','single-c']);
+  assert.equal(report.recurringFindings.find(item=>item.id==='attack-follow-through')?.comparableMatches,3);
+  assert.equal(report.excludedMatches,2);
+});
+
+test('unknown selected cohort falls back to the largest valid cohort',()=>{
+  const report=buildLongitudinalCoachReport([
+    match('team-a',{mode:'Team',type:'Public'}),
+    match('team-b',{mode:'Team',type:'Public'}),
+    match('ffa-a',{mode:'Free For All',type:'Public'}),
+  ],'missing|cohort');
+  assert.equal(report.selectedCohortKey,'team|public');
+  assert.equal(report.comparableGroup,'Team · Public');
+  assert.equal(report.comparableMatches,2);
+});

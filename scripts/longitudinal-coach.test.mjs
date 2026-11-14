@@ -177,3 +177,25 @@ test('malformed action records are excluded instead of being fabricated at time 
   const report=buildLongitudinalCoachReport([match('malformed-a',{simulation})]);
   assert.equal(report.matchProgress[0].attackFollowThroughSamples,6);
 });
+
+
+test('malformed action records cannot crash recurring strength analysis',()=>{
+  const simulation=makeSimulation({
+    playerReview:{
+      clientID:'p1',playerName:'Player',startTiles:100,endTiles:110,tilesGained:10,
+      startGold:500,endGold:700,startTroops:300,endTroops:320,
+      outgoingAttackSamples:0,longestNoExpansionSeconds:0,
+    },
+    actionReviews:[
+      null,
+      undefined,
+      {type:'attack',delta30s:{tiles:99,gold:0,troops:0}},
+      {type:'attack',seconds:NaN,delta30s:{tiles:99,gold:0,troops:0}},
+      {type:'attack',seconds:10,delta30s:{tiles:1,gold:0,troops:0}},
+    ],
+  });
+  const report=buildLongitudinalCoachReport([match('safe-a',{simulation})]);
+  assert.equal(report.verifiedMatches,1);
+  assert.equal(report.matchProgress[0].attackFollowThroughSamples,0);
+  assert.equal(report.status,'insufficient-data');
+});

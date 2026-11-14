@@ -1,5 +1,6 @@
+import { createHash } from "node:crypto";
 import { spawnSync } from "node:child_process";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync, rmSync, symlinkSync } from "node:fs";
 import path from "node:path";
 
 const engines = JSON.parse(readFileSync("engine-build/engines.json", "utf8"));
@@ -12,14 +13,39 @@ const checkout = spawnSync("git", ["submodule", "update", "--init", "--depth", "
 });
 if (checkout.status !== 0) throw new Error("Could not initialize all exact OpenFront engine submodules.");
 
+// Historical revisions in this catalog share two immutable dependency lockfiles.
+// Install each lockfile once and link the identical node_modules tree into its
+// matching engine sources. This avoids ten redundant multi-minute npm installs.
+const dependencyGroups = new Map();
 for (const engine of engines) {
   const source = path.resolve(engine.source);
   const revision = spawnSync("git", ["-C", source, "rev-parse", "HEAD"], { encoding: "utf8" });
   if (revision.status !== 0 || revision.stdout.trim() !== engine.commit) {
     throw new Error(`Engine source ${engine.source} is not pinned to ${engine.commit}`);
   }
-  console.log(`Installing dependencies for exact engine ${engine.commit}`);
-  const install = spawnSync(process.platform === "win32" ? "npm.cmd" : "npm", ["ci", "--ignore-scripts"], { cwd: source, stdio: "inherit", shell: process.platform === "win32" });
-  if (install.status !== 0) throw new Error(`Dependency installation failed for ${engine.commit}`);
+  const lockPath = path.join(source, "package-lock.json");
+  if (!existsSync(lockPath)) throw new Error(`Missing package-lock.json for ${engine.commit}`);
+  const lockHash = createHash("sha256").update(readFileSync(lockPath)).digest("hex");
+  const group = dependencyGroups.get(lockHash) ?? [];
+  group.push(engine);
+  dependencyGroups.set(lockHash, group);
 }
-console.log(`Prepared ${engines.length} exact OpenFront replay engines.`);
+
+for (const [lockHash, group] of dependencyGroups) {
+  const representative = group[0];
+  const representativePath = path.resolve(representative.source);
+  console.log(`Installing shared dependencies for ${group.length} exact engines (lock ${lockHash.slice(0, 12)})`);
+  const install = spawnSync(process.platform === "win32" ? "npm.cmd" : "npm", ["ci", "--ignore-scripts"], {
+    cwd: representativePath,
+    stdio: "inherit",
+    shell: process.platform === "win32",
+  });
+  if (install.status !== 0) throw new Error(`Dependency installation failed for lockfile group ${lockHash}`);
+
+  for (const engine of group.slice(1)) {
+    const target = path.join(path.resolve(engine.source), "node_modules");
+    if (existsSync(target)) rmSync(target, { recursive: true, force: true });
+    symlinkSync(path.join(representativePath, "node_modules"), target, process.platform === "win32" ? "junction" : "dir");
+  }
+}
+console.log(`Prepared ${engines.length} exact OpenFront replay engines across ${dependencyGroups.size} immutable dependency groups.`);

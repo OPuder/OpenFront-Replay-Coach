@@ -20,6 +20,7 @@ import { UpdateCenter } from './UpdateCenter';
 import { StrategyPlaybook } from './StrategyPlaybook';
 import { selectGamesToAnalyze, selectGamesToImport } from './AutoLibrarySync';
 import { getReplayDisplayState } from './replayPresentation';
+import { buildReplayEngineCoverageReport } from './ReplayEngineCoverage';
 
 // Electron provides its API through the isolated preload; normal browsers use
 // the browser adapter so the same React interface powers Windows and Android.
@@ -408,6 +409,7 @@ function App() {
   const avgDuration = loadedGames.filter(g => Number.isFinite(g.durationSeconds) && (g.durationSeconds ?? 0) > 0).reduce((sum,g)=>sum+(g.durationSeconds ?? 0),0) / Math.max(1, loadedGames.filter(g => (g.durationSeconds ?? 0) > 0).length);
   const modeStats = Object.entries(loadedGames.reduce((acc:Record<string,number>,g)=>{const key=g.mode ?? 'Unbekannt';acc[key]=(acc[key]??0)+1;return acc;},{})).sort((a,b)=>b[1]-a[1]).slice(0,5);
   const importedBatchMatches=batchMatches.filter(item=>Boolean(item.result));
+  const engineCoverage=buildReplayEngineCoverageReport(importedBatchMatches.map(item=>({gameId:item.game.gameId,gitCommit:item.result?.record?.gitCommit})));
   const engineUnavailableCount=importedBatchMatches.filter(item=>item.status==='engine-mismatch'||item.analysisStatus==='unsupported').length;
   const verifiedReplayCount=importedBatchMatches.filter(item=>item.analysisStatus==='verified'&&item.simulation?.status==='verified').length;
   const pendingReplayCount=importedBatchMatches.filter(item=>item.status==='loaded'&&(!item.analysisStatus||item.analysisStatus==='pending')).length;
@@ -522,6 +524,13 @@ function App() {
           <article><span>REPLAYS GESPEICHERT</span><b>{fmt(importedBatchMatches.length)}</b><small>Auf diesem Gerät verfügbar</small></article>
           <article><span>HASH-VERIFIZIERT</span><b>{fmt(verifiedReplayCount)}</b><small>{fmt(engineUnavailableCount)} benötigen eine andere Engine-Version</small></article>
         </section>
+        {engineCoverage.groups.length>0 && <details className="engine-coverage" open={engineCoverage.unsupported>0}>
+          <summary><span><b>Engine-Abdeckung</b><small>{engineCoverage.supported} von {engineCoverage.total} importierten Replays nutzen eine eingebundene Original-Engine</small></span><strong>{engineCoverage.unsupported+engineCoverage.missingCommit} offen</strong><ChevronDown size={16}/></summary>
+          <div className="engine-coverage-groups">{engineCoverage.groups.map(group=><article key={group.commit??'missing'}>
+            <div><b>{group.commit??'Keine gültige Engine-ID im Replay'}</b><small>{group.count} {group.count===1?'Partie':'Partien'} · {group.commit?'Diese exakte Original-Version ist noch nicht eingebunden.':'Ohne Commit-ID ist keine sichere Engine-Zuordnung möglich.'}</small></div>
+            <p>{group.gameIds.join(' · ')}</p>
+          </article>)}</div>
+        </details>}
         <section className="batch-toolbar studio-card"><div><b>{selectedGameIds.length} Partien ausgewählt</b><small>Importiere mehrere Replays und analysiere sie anschließend einzeln mit ihrer Original-Engine.</small></div><div><button className="studio-button subtle" onClick={selectFilteredGames} disabled={!filteredGames.length || batchBusy || batchAnalysisBusy}>{filteredGames.every(game=>selectedGameIds.includes(game.gameId))?'Auswahl aufheben':'Gefilterte auswählen'}</button><button className="studio-button primary" onClick={()=>void loadSelectedGames()} disabled={!selectedGameIds.length || batchBusy || batchAnalysisBusy}><FileUp size={15}/>{batchBusy?'Importiere …':` ${selectedGameIds.length} Partien laden`}</button><button className="studio-button coach-action" onClick={()=>void analyzeSelectedGames()} disabled={!selectedPendingAnalysisCount || batchBusy || batchAnalysisBusy}><Brain size={15}/>{batchAnalysisBusy?'Analysiere …':` ${selectedPendingAnalysisCount} Partien analysieren`}</button>{batchBusy && <button className="studio-button subtle" onClick={cancelBatchImport}>Import abbrechen</button>}{batchAnalysisBusy && <button className="studio-button subtle" onClick={cancelBatchAnalysis}>Analyse abbrechen</button>}</div></section>
         {batchProgress && <section className="batch-progress studio-card" aria-live="polite"><b>{batchBusy?`Importiere ${batchProgress.gameId||'Partien'} …`:`Import abgeschlossen: ${batchProgress.done} / ${batchProgress.total}`}</b><span>{batchProgress.done} von {batchProgress.total} Partien verarbeitet</span><div className="batch-progress-track"><i style={{width:`${batchProgress.total?batchProgress.done/batchProgress.total*100:0}%`}}/></div></section>}
         {batchAnalysisProgress && <section className="batch-progress studio-card analysis-progress" aria-live="polite"><b>{batchAnalysisBusy?`Analysiere ${batchAnalysisProgress.gameId||'Partien'} …`:`Analyse abgeschlossen: ${batchAnalysisProgress.done} / ${batchAnalysisProgress.total}`}</b><span>{batchAnalysisProgress.phase} · {batchAnalysisProgress.percent}%</span><div className="batch-progress-track"><i style={{width:`${Math.min(100,batchAnalysisProgress.total?(batchAnalysisProgress.done+batchAnalysisProgress.percent/100)/batchAnalysisProgress.total*100:0)}%`}}/></div></section>}

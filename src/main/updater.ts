@@ -86,7 +86,7 @@ async function scheduleWindowsInstall(downloadPath: string, portable: boolean): 
     '$Log = ' + quotePowerShell(logPath),
     'try { Wait-Process -Id $ProcessIdToWait -ErrorAction SilentlyContinue } catch {}',
     'Start-Sleep -Milliseconds 900'
-  ].join('\\n');
+  ].join('\n');
   const portableScript = [
     common,
     '$Target = ' + quotePowerShell(targetDirectory),
@@ -113,7 +113,7 @@ async function scheduleWindowsInstall(downloadPath: string, portable: boolean): 
     '  Remove-Item -LiteralPath $Backup -Recurse -Force -ErrorAction SilentlyContinue',
     '  Remove-Item -LiteralPath $Download -Force -ErrorAction SilentlyContinue',
     '}'
-  ].join('\\n');
+  ].join('\n');
   const installerScript = [
     common,
     'try {',
@@ -130,7 +130,7 @@ async function scheduleWindowsInstall(downloadPath: string, portable: boolean): 
     '} finally {',
     '  Remove-Item -LiteralPath $Download -Force -ErrorAction SilentlyContinue',
     '}'
-  ].join('\\n');
+  ].join('\n');
   await fs.writeFile(scriptPath, portable ? portableScript : installerScript, { encoding: 'utf8', flag: 'wx' });
   const child = spawn('powershell.exe', ['-NoLogo', '-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-File', scriptPath], {
     detached: true, stdio: 'ignore', windowsHide: true,

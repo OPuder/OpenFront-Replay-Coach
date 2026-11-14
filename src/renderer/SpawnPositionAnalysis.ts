@@ -287,3 +287,174 @@ export function analyzeSpawnPositions(
           : "mixed",
   }));
 }
+
+
+export interface SpawnAlternativeMetric {
+  x: number;
+  y: number;
+  nearbyNeutralLandTiles: number;
+  nearbyCoastalLandTiles: number;
+  nearestSpawnDistance: number | null;
+  adjacentPlayerCount: number;
+  mapEdgeDistance: number;
+}
+
+/**
+ * Finds a small set of real, manually selectable land centers on the same map.
+ * A center is valid for manual spawning when it is unowned land and therefore
+ * contributes at least its own tile to OpenFront's radius-4 getSpawnTiles().
+ * Ranking is deliberately descriptive (free land, spacing, border pressure),
+ * not a win-probability score.
+ */
+export function analyzeAlternativeSpawnPositions(
+  tileState: Uint16Array,
+  width: number,
+  height: number,
+  players: readonly SpawnPlayerRef[],
+  terrainState: Uint8Array,
+  playerId: number,
+  limit = 3,
+): SpawnAlternativeMetric[] {
+  if (
+    !Number.isInteger(width) ||
+    !Number.isInteger(height) ||
+    width <= 0 ||
+    height <= 0 ||
+    tileState.length !== width * height ||
+    terrainState.length !== width * height ||
+    !players.some((player) => player.id === playerId)
+  ) {
+    return [];
+  }
+
+  const stride = width + 1;
+  const prefixLength = stride * (height + 1);
+  const landPrefix = new Uint32Array(prefixLength);
+  const coastPrefix = new Uint32Array(prefixLength);
+
+  for (let y = 0; y < height; y++) {
+    let landRow = 0;
+    let coastRow = 0;
+    for (let x = 0; x < width; x++) {
+      const ref = y * width + x;
+      const owner = tileState[ref] & OWNER_MASK;
+      const terrain = terrainState[ref];
+      if (owner === 0 && isLand(terrain) && !isImpassable(terrain)) {
+        landRow++;
+        if (hasOceanNeighbor(terrainState, ref, width, height)) coastRow++;
+      }
+      const prefixRef = (y + 1) * stride + x + 1;
+      landPrefix[prefixRef] = landPrefix[prefixRef - stride] + landRow;
+      coastPrefix[prefixRef] = coastPrefix[prefixRef - stride] + coastRow;
+    }
+  }
+
+  const rectangleSum = (prefix: Uint32Array, x0: number, y0: number, x1: number, y1: number) => {
+    const left = Math.max(0, x0);
+    const top = Math.max(0, y0);
+    const right = Math.min(width - 1, x1);
+    const bottom = Math.min(height - 1, y1);
+    if (left > right || top > bottom) return 0;
+    const a = top * stride + left;
+    const b = top * stride + right + 1;
+    const c = (bottom + 1) * stride + left;
+    const d = (bottom + 1) * stride + right + 1;
+    return prefix[d] - prefix[b] - prefix[c] + prefix[a];
+  };
+
+  const selectedPlayer = players.find((player) => player.id === playerId)!;
+  const actualSpawnTile = Number.isInteger(selectedPlayer.spawnTile)
+    ? selectedPlayer.spawnTile as number
+    : null;
+  const otherSpawnTiles = players
+    .filter((player) => player.id !== playerId && Number.isInteger(player.spawnTile))
+    .map((player) => player.spawnTile as number)
+    .filter((tile) => tile >= 0 && tile < tileState.length);
+  const step = width * height > 2_000_000 ? 4 : width * height > 500_000 ? 2 : 1;
+  const pool: SpawnAlternativeMetric[] = [];
+  const poolLimit = 48;
+
+  const isBetter = (a: SpawnAlternativeMetric, b: SpawnAlternativeMetric) => {
+    if (a.nearbyNeutralLandTiles !== b.nearbyNeutralLandTiles) {
+      return a.nearbyNeutralLandTiles > b.nearbyNeutralLandTiles;
+    }
+    const aDistance = a.nearestSpawnDistance ?? -1;
+    const bDistance = b.nearestSpawnDistance ?? -1;
+    if (aDistance !== bDistance) return aDistance > bDistance;
+    if (a.adjacentPlayerCount !== b.adjacentPlayerCount) {
+      return a.adjacentPlayerCount < b.adjacentPlayerCount;
+    }
+    if (a.nearbyCoastalLandTiles !== b.nearbyCoastalLandTiles) {
+      return a.nearbyCoastalLandTiles > b.nearbyCoastalLandTiles;
+    }
+    return a.mapEdgeDistance > b.mapEdgeDistance;
+  };
+
+  for (let y = 0; y < height; y += step) {
+    for (let x = 0; x < width; x += step) {
+      const ref = y * width + x;
+      const terrain = terrainState[ref];
+      if ((tileState[ref] & OWNER_MASK) !== 0 || !isLand(terrain) || isImpassable(terrain)) continue;
+
+      if (actualSpawnTile !== null) {
+        const ownX = actualSpawnTile % width;
+        const ownY = Math.floor(actualSpawnTile / width);
+        if (Math.abs(x - ownX) + Math.abs(y - ownY) < 20) continue;
+      }
+
+      let adjacentPlayerCount = 0;
+      const neighbors = [
+        y > 0 ? ref - width : -1,
+        y + 1 < height ? ref + width : -1,
+        x > 0 ? ref - 1 : -1,
+        x + 1 < width ? ref + 1 : -1,
+      ];
+      for (const neighbor of neighbors) {
+        if (neighbor < 0) continue;
+        const owner = tileState[neighbor] & OWNER_MASK;
+        if (owner !== 0 && owner !== playerId) adjacentPlayerCount++;
+      }
+
+      let nearestSpawnDistance: number | null = null;
+      if (otherSpawnTiles.length) {
+        nearestSpawnDistance = Infinity;
+        for (const otherTile of otherSpawnTiles) {
+          const otherX = otherTile % width;
+          const otherY = Math.floor(otherTile / width);
+          nearestSpawnDistance = Math.min(
+            nearestSpawnDistance,
+            Math.abs(x - otherX) + Math.abs(y - otherY),
+          );
+        }
+      }
+
+      const candidate: SpawnAlternativeMetric = {
+        x,
+        y,
+        nearbyNeutralLandTiles: rectangleSum(landPrefix, x - CONTEXT_RADIUS, y - CONTEXT_RADIUS, x + CONTEXT_RADIUS, y + CONTEXT_RADIUS),
+        nearbyCoastalLandTiles: rectangleSum(coastPrefix, x - CONTEXT_RADIUS, y - CONTEXT_RADIUS, x + CONTEXT_RADIUS, y + CONTEXT_RADIUS),
+        nearestSpawnDistance,
+        adjacentPlayerCount,
+        mapEdgeDistance: Math.min(x, y, width - 1 - x, height - 1 - y),
+      };
+
+      let insertAt = pool.findIndex((existing) => isBetter(candidate, existing));
+      if (insertAt < 0) {
+        if (pool.length < poolLimit) pool.push(candidate);
+      } else {
+        pool.splice(insertAt, 0, candidate);
+        if (pool.length > poolLimit) pool.pop();
+      }
+    }
+  }
+
+  const selected: SpawnAlternativeMetric[] = [];
+  for (const candidate of pool) {
+    const separated = selected.every((existing) =>
+      Math.abs(existing.x - candidate.x) + Math.abs(existing.y - candidate.y) >= 18
+    );
+    if (separated) selected.push(candidate);
+    if (selected.length >= Math.max(1, Math.min(5, Math.floor(limit)))) break;
+  }
+  return selected;
+}

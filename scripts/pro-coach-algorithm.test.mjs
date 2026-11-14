@@ -139,6 +139,28 @@ test('opening assessment reports observed expansion but not unsupported best spa
  const report=buildProCoachReport(samples,[],'p1',300);
  assert.equal(report.opening.firstExpansionSeconds,30);
  assert.equal(report.opening.territoryGainFirstThreeMinutes,50);
- assert.match(report.opening.limitation,/Karten-Geometrie/);
+ assert.match(report.opening.limitation,/Startkarten-Geometrie/);
  assert.ok(report.findings.some(x=>x.id==='opening-review'));
+});
+
+import { analyzeSpawnPositions } from '../src/renderer/SpawnPositionAnalysis.ts';
+
+test('spawn analysis uses actual owner-grid adjacency and relative starting positions',()=>{
+ const grid=new Uint16Array(25);
+ grid[6]=1; grid[7]=2; grid[24]=3;
+ const result=analyzeSpawnPositions(grid,5,5,[{id:1,clientID:'p1',name:'You'},{id:2,clientID:'p2',name:'Rival'},{id:3,clientID:'p3',name:'Far'}]);
+ const you=result.find(x=>x.clientID==='p1');
+ assert.equal(you.startTiles,1);
+ assert.deepEqual(you.adjacentRivals,[2]);
+ assert.equal(you.rivalBorderContacts,1);
+ assert.equal(you.classification,'contested');
+});
+
+test('match coach creates a spawn-position lesson from first-frame spatial evidence',()=>{
+ const spawnPositions=[{id:1,clientID:'p1',name:'You',startTiles:12,centerX:24,centerY:31,adjacentRivals:[2],rivalBorderContacts:4,nearestRivalDistance:5.2,classification:'contested'}];
+ const samples=[{...sample(0,{tiles:40,goldEarned:10,troops:100}),spawnPositions},sample(300,{tiles:45,goldEarned:40,troops:95}),sample(900,{tiles:65,goldEarned:110,troops:90}),sample(1800,{tiles:90,goldEarned:220,troops:120})];
+ const report=buildProCoachReport(samples,[],'p1',300);
+ assert.equal(report.opening.spawnPosition.classification,'contested');
+ assert.ok(report.findings.some(x=>x.id==='spawn-position-review'));
+ assert.match(report.opening.limitation,/Owner-Grid/);
 });

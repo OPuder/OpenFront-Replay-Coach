@@ -4,6 +4,7 @@ import { analyzeActions } from "../../main/decoder/ActionAnalysis";
 import { analyzeDetailedActions } from "../../main/decoder/DetailedAnalysis";
 import { buildCoachInsights } from "../../main/decoder/CoachInsights";
 import { assessReplayCompatibility } from "../../main/decoder/ReplayCompatibility";
+import { resolveReplayJsonExport } from "../../main/decoder/ReplayJsonExport";
 import { Capacitor } from "@capacitor/core";
 import { Browser } from "@capacitor/browser";
 import { Directory, Encoding, Filesystem } from "@capacitor/filesystem";
@@ -374,16 +375,7 @@ async function loadPlayer(rawId: string, onProgress?: (progress: { loaded: numbe
 }
 
 async function saveReplayJson(gameId: string, fallbackRecord?: unknown): Promise<{ saved: boolean; shared?: boolean; canceled?: boolean; filePath?: string; bytes?: number }> {
-  let raw = importedReplayJson.get(String(gameId));
-  if (!raw && fallbackRecord && typeof fallbackRecord === "object" && !Array.isArray(fallbackRecord)) {
-    try { raw = JSON.stringify(fallbackRecord); }
-    catch { throw new Error("Die gespeicherten Replay-Daten konnten nicht für den JSON-Export vorbereitet werden."); }
-    if (!raw) throw new Error("Die gespeicherten Replay-Daten sind leer.");
-    const root = JSON.parse(raw).game ?? JSON.parse(raw);
-    const storedId = String(root?.info?.gameID ?? root?.info?.gameId ?? "");
-    if (storedId && storedId !== String(gameId)) throw new Error("Die gespeicherten Replay-Daten gehören zu einer anderen Partie.");
-  }
-  if (!raw) throw new Error("Die Original-JSON ist für diese Partie nicht mehr verfügbar. Öffne die Partie erneut über ihren OpenFront-Link und versuche den Export noch einmal.");
+  const raw = resolveReplayJsonExport(String(gameId), importedReplayJson.get(String(gameId)), fallbackRecord, MAX_REPLAY_BYTES);
   const fileName = "OpenFront-" + String(gameId).replace(/[^A-Za-z0-9_-]/g, "_") + ".json";
   const blob = new Blob([raw], { type: "application/json;charset=utf-8" });
   if (IS_NATIVE_ANDROID) {

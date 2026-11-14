@@ -16,13 +16,13 @@ The updater refuses assets without a GitHub SHA-256 digest, assets with a mismat
 
 ## Android
 
-The app checks releases at startup and shows an update action when a newer version exists. The APK is downloaded only after the user taps the update button. The native Capacitor plugin checks the exact release size and SHA-256 digest, then validates the Android package ID, exact release version, increasing version code and current signing certificate against the installed app before handing it to Android through a private FileProvider. Android controls the final install confirmation and may ask once for permission to install apps from this source.
+The app checks releases at startup and shows an update action when a newer version exists. The APK is downloaded only after the user taps the update button. The native Capacitor plugin checks the exact release size and SHA-256 digest, then validates the Android package ID, version code and signing certificate against the installed app before handing it to Android through a private FileProvider. Android controls the final install confirmation and may ask once for permission to install apps from this source.
 
 Android does not permit ordinary apps to silently replace themselves. In-place updates also require every APK to be signed with the same permanent private signing key. Configure the four GitHub Actions signing secrets described in [ANDROID_SIGNING.md](ANDROID_SIGNING.md); never commit the keystore or passwords.
 
-## Release targets
+## Web / PWA
 
-Only three distributables are published: Windows installer, Windows portable ZIP and Android APK. There is no PWA/Web ZIP in the release pipeline.
+A deployed PWA checks its service-worker script when the browser starts or revisits the app. A newly deployed service worker activates and the page reloads onto the new app shell. The in-app update check can request an immediate service-worker refresh. A GitHub Release does not itself publish files to a website: the configured web host must deploy the new PWA build first. The downloadable Web/PWA ZIP remains a self-hosted package.
 
 ## Data safety
 

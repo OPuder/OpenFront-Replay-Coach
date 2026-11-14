@@ -37,9 +37,9 @@ Den kopierten Inhalt direkt als Wert von `ANDROID_KEYSTORE_BASE64` in GitHub ein
 ## 3. Verhalten der Release-Pipeline
 
 - Sind **alle vier** Secrets gesetzt, baut GitHub Actions eine Release-APK mit dem dauerhaften Schlüssel.
-- Fehlt mindestens eines, wird die Release-Pipeline abgebrochen. Eine Debug-signierte APK darf niemals als Release veröffentlicht werden, weil sie bestehende Installationen nicht zuverlässig aktualisieren kann.
-- Sobald die Secrets gesetzt sind, werden alle Android-Releases mit demselben Schlüssel signiert. Eine bereits installierte APK, die mit einem anderen oder temporären Debug-Schlüssel signiert wurde, muss einmalig entfernt werden, bevor die erste dauerhaft signierte APK installiert wird. APKs, die bereits mit dem dauerhaften Projektschlüssel signiert sind, werden direkt über die bestehende Installation aktualisiert.
-- Die App prüft beim Start und anschließend regelmäßig auf eine neuere Version. Nach Bestätigung durch den Nutzer lädt sie die APK herunter und prüft Größe, SHA-256-Prüfsumme, Paket-ID, Release-Version, VersionCode und den aktuellen Signaturschlüssel. Erst danach öffnet Android den Systemdialog. Android verlangt weiterhin eine Bestätigung; eine normale App darf sich nicht selbst lautlos aktualisieren.
+- Fehlt mindestens eines, bleibt der Build vorerst funktionsfähig und erzeugt eine Debug-signierte APK. Diese ist installierbar, aber Updates über eine bestehende Installation sind damit nicht zuverlässig.
+- Sobald die Secrets gesetzt sind, werden alle folgenden Android-Releases mit demselben Schlüssel signiert. Eine bereits installierte Debug-APK muss einmalig deinstalliert werden, bevor die erste dauerhaft signierte APK installiert wird.
+- Die App lädt eine neuere APK beim Start automatisch herunter und prüft Größe sowie SHA-256-Prüfsumme. Anschließend öffnet Android den Systemdialog. Android verlangt weiterhin eine Bestätigung; eine normale App darf sich nicht selbst lautlos aktualisieren.
 - Beim ersten Update kann Android einmalig die Berechtigung zum Installieren unbekannter Apps verlangen. Nach der Freigabe erneut auf Aktualisieren tippen.
 - Windows Installer und Portable ZIP sind davon unabhängig.
 

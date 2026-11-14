@@ -1697,3 +1697,20 @@ body{
 .spawn-alternatives-grid article strong{color:#dff1df;font-size:10px}
 .spawn-alternatives>p{margin:10px 0 0;color:#8fa99a;font-size:9px;line-height:1.6}
 @media(max-width:760px){.spawn-alternatives-grid{grid-template-columns:1fr}.spawn-alternatives-heading{align-items:flex-start;flex-direction:column;gap:4px}}
+
+/* Verified match context inside the strategy coach */
+.strategy-match-context{display:flex;flex-direction:column;gap:14px;padding:18px;border:1px solid #315e55;border-radius:15px;background:linear-gradient(135deg,#102a25,#10202a)}
+.strategy-match-context-head{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.strategy-match-context-head>b{font-size:13px;color:#e9fff4}
+.strategy-match-context-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px}
+.strategy-match-context-grid article,.strategy-match-spawn>div{display:flex;flex-direction:column;gap:5px;min-width:0;padding:12px;border:1px solid #294b44;border-radius:10px;background:#0b1c19}
+.strategy-match-context-grid small,.strategy-match-spawn small{font-size:10px;color:#8fb6aa;text-transform:uppercase;letter-spacing:.06em}
+.strategy-match-context-grid strong,.strategy-match-spawn strong{font-size:15px;color:#effff7;overflow-wrap:anywhere}
+.strategy-match-context-grid span,.strategy-match-spawn span{font-size:11px;line-height:1.45;color:#b1c9c0}
+.strategy-match-spawn{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
+.strategy-alternatives{display:flex;flex-direction:column;gap:9px}
+.strategy-alternatives>b{font-size:12px;color:#d7f7e9}
+.strategy-alternatives>div{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.strategy-alternatives>div>span{padding:10px;border:1px solid #294b44;border-radius:9px;background:#0b1c19;color:#c5ddd2;font-size:11px;line-height:1.5}
+.strategy-alternatives>small{font-size:10px;line-height:1.5;color:#91aa9f}
+@media(max-width:760px){.strategy-match-context-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.strategy-match-spawn{grid-template-columns:minmax(0,1fr)}.strategy-alternatives>div{grid-template-columns:minmax(0,1fr)}}

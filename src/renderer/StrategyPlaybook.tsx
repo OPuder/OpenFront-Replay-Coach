@@ -2,8 +2,45 @@ import React, { useState } from "react";
 type Tab = "start"|"eco"|"military"|"nuclear";
 const tabs: {id:Tab;label:string}[]=[{id:"start",label:"Startposition"},{id:"eco",label:"Eco & Gebäude"},{id:"military",label:"Truppen & Front"},{id:"nuclear",label:"Atomwaffen"}];
 function Rule({title,when,doThis,avoid}:{title:string;when:string;doThis:string;avoid:string}){return <article className="strategy-rule-card"><b>{title}</b><span>{when}</span><p>{doThis}</p><small><strong>Vermeiden:</strong> {avoid}</small></article>}
-export function StrategyPlaybook(){const [tab,setTab]=useState<Tab>("start");return <section className="strategy-playbook">
+export interface StrategyMatchContext {
+  verified: boolean;
+  playerName: string;
+  spawn: {
+    x: number | null;
+    y: number | null;
+    classification: "isolated" | "contested" | "mixed" | "unknown";
+    neutralLand: number | null;
+    coastalLand: number | null;
+    rivalContacts: number;
+    spawnPhaseComplete: boolean;
+  } | null;
+  alternatives: Array<{ x: number; y: number; neutralLand: number; coastalLand: number; adjacentPlayers: number }>;
+  startGold: number;
+  endGold: number;
+  startTroops: number;
+  endTroops: number;
+  startTiles: number;
+  endTiles: number;
+  attackCommands: number;
+  buildCommands: number;
+}
+export function StrategyPlaybook({matchContext}:{matchContext?:StrategyMatchContext|null}){const [tab,setTab]=useState<Tab>("start");return <section className="strategy-playbook">
 <header className="strategy-playbook-hero"><span className="eyebrow">STRATEGIE-COACH · SPIELWISSEN</span><h3>Was du wann, wo und warum einsetzen solltest</h3><p>Situative Entscheidungen statt starrer Build-Order. Karte, Lobby-Regeln, Nachbarn, Fronten und dein aktueller Engpass bestimmen die richtige Strategie.</p></header>
+{matchContext?.verified && <section className="strategy-match-context" aria-label="Dein Match-Kontext">
+  <div className="strategy-match-context-head"><span className="eyebrow">AUS DEINER VERIFIZIERTEN PARTIE</span><b>{matchContext.playerName}</b></div>
+  <div className="strategy-match-context-grid">
+    <article><small>Startgebiet</small><strong>{matchContext.startTiles.toLocaleString("de-DE")} → {matchContext.endTiles.toLocaleString("de-DE")}</strong><span>Felder · Nettoveränderung {matchContext.endTiles-matchContext.startTiles>0?"+":""}{(matchContext.endTiles-matchContext.startTiles).toLocaleString("de-DE")}</span></article>
+    <article><small>Goldbestand</small><strong>{matchContext.startGold.toLocaleString("de-DE")} → {matchContext.endGold.toLocaleString("de-DE")}</strong><span>Gold · keine Nettogewinn-Aussage</span></article>
+    <article><small>Truppenbestand</small><strong>{matchContext.startTroops.toLocaleString("de-DE")} → {matchContext.endTroops.toLocaleString("de-DE")}</strong><span>Truppen · Start bis letzter Messpunkt</span></article>
+    <article><small>Aktionen</small><strong>{matchContext.attackCommands} Angriffe · {matchContext.buildCommands} Bauten</strong><span>Protokollierte Befehle, kein Erfolgsurteil</span></article>
+  </div>
+  {matchContext.spawn && <div className="strategy-match-spawn">
+    <div><small>Tatsächlicher Spawn</small><strong>{matchContext.spawn.x===null||matchContext.spawn.y===null?"Koordinate nicht verfügbar":"X "+matchContext.spawn.x+" · Y "+matchContext.spawn.y}</strong><span>{matchContext.spawn.classification==="contested"?"Vergleichsweise umkämpft":matchContext.spawn.classification==="isolated"?"Vergleichsweise isoliert":matchContext.spawn.classification==="mixed"?"Gemischte Lage":"Nicht sicher klassifizierbar"} · {matchContext.spawn.rivalContacts} direkte Grenzkontakte</span></div>
+    <div><small>Umfeld der Startposition</small><strong>{matchContext.spawn.neutralLand===null?"Geländedaten fehlen":matchContext.spawn.neutralLand.toLocaleString("de-DE")+" neutrale Landfelder"}</strong><span>{matchContext.spawn.coastalLand===null?"Küstenwerte nicht verfügbar":matchContext.spawn.coastalLand.toLocaleString("de-DE")+" neutrale Küstenfelder"} · {matchContext.spawn.spawnPhaseComplete?"Spawnphasen-Snapshot":"Spawnphasen-Ende nicht belegt"}</span></div>
+  </div>}
+  {matchContext.spawn && !matchContext.spawn.spawnPhaseComplete && <p className="strategy-honesty">Die Startkoordinate ist aus dem Replay bekannt. Da das Ende der Spawnphase fehlt, werden spätere Grenz- und Geländewerte nicht als sichere Startbedingungen interpretiert.</p>}
+  {matchContext.alternatives.length>0 && <div className="strategy-alternatives"><b>Vergleichbare freie Spawn-Mittelpunkte auf derselben Karte</b><div>{matchContext.alternatives.map((spot,index)=><span key={spot.x+"-"+spot.y}>#{index+1} · X {spot.x}, Y {spot.y} · {spot.neutralLand} neutrale Landfelder · {spot.coastalLand} Küstenfelder · {spot.adjacentPlayers} direkte Nachbarn</span>)}</div><small>Beschreibender Kartenvergleich, keine Siegchance und kein garantiert optimales Feld. Bei Zufallsspawn nur Vergleichspositionen.</small></div>}
+</section>}
 <nav className="strategy-tabs" aria-label="Strategiebereiche">{tabs.map(t=><button key={t.id} className={tab===t.id?"selected":""} onClick={()=>setTab(t.id)}>{t.label}</button>)}</nav>
 {tab==="start"&&<div className="strategy-section"><h4>Spawn- und Startposition</h4><p>Bewerte das Feld vor dem Setzen – nicht erst nach den ersten Angriffen.</p><div className="strategy-check-grid">
 <Rule title="Offene Expansion" when="Mehrere freie Richtungen und neutrale Fläche sind erreichbar." doThis="Bevorzuge eine kompakte Startfläche mit mehreren Expansionswegen. Vermeide schmale Korridore, die dich früh an einen Gegner oder Engpass binden." avoid="Nur auf die größte sichtbare Fläche klicken, wenn sie dich in eine Sackgasse setzt."/>

@@ -98,6 +98,9 @@ assert.ok(
   "The debug emulator update test must run before the signing gate modifies generated Gradle configuration."
 );
 
-assert.ok(releaseWorkflow.includes("names.some(name => /\\.Setup\\.[0-9.]+\\.exe$/i.test(name))"), "Release verification must match the actual NSIS installer filename.");
+assert.ok(releaseWorkflow.includes("names.some(name => /(?:\\.Setup\\.| Setup )[0-9.]+\\.exe$/i.test(name))"), "Release verification must match both legacy dotted and actual spaced NSIS installer filenames.");
+const installerAssetMatcher = /(?:\\.Setup\\.| Setup )[\\d.]+\\.exe$/i;
+assert.match("OpenFront Replay Coach Setup 2.2.45.exe", installerAssetMatcher, "The current electron-builder NSIS filename must be detected.");
+assert.match("OpenFront.Replay.Coach.Setup.2.2.44.exe", installerAssetMatcher, "Legacy published installer filenames must remain supported.");
 assert.ok(releaseWorkflow.includes("names.some(name => /-win\\.zip$/i.test(name))"), "Release verification must match the actual Windows portable ZIP filename.");
 assert.ok(releaseWorkflow.includes("names.some(name => /-Android\\.apk$/i.test(name))"), "Release verification must match the actual Android APK filename.");

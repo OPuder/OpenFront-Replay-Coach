@@ -10,7 +10,7 @@ import { buildProCoachReport } from '../main/decoder/ProCoachAlgorithm';
 import { buildLongitudinalCoachReport } from '../main/decoder/LongitudinalCoach';
 import { selectPrimaryCoachInsights } from '../main/decoder/CoachInsightSelection';
 import { buildReplayTimeline } from '../main/decoder/CoachTimeline';
-import { runSequentialBatchAnalysis } from './BatchAnalysisRunner';
+import { runConcurrentBatchAnalysis } from './BatchAnalysisRunner';
 import { assessReplayCompatibility } from '../main/decoder/ReplayCompatibility';
 import type { ReplaySimulationResult } from './ReplaySimulation';
 import { selectPlayerSurvivalWindow } from './phaseSurvival';
@@ -51,7 +51,7 @@ function App() {
   const [selectedGameIds, setSelectedGameIds] = useState<string[]>([]);
   const [batchMatches, setBatchMatches] = useState<BatchMatchItem[]>([]);
   const [batchAnalysisBusy, setBatchAnalysisBusy] = useState(false);
-  const [batchAnalysisProgress, setBatchAnalysisProgress] = useState<{done:number;total:number;gameId:string;percent:number;phase:string}|null>(null);
+  const [batchAnalysisProgress, setBatchAnalysisProgress] = useState<{done:number;total:number;gameId:string;percent:number;phase:string;active:number}|null>(null);
   const batchAnalysisRunId = React.useRef(0);
   const batchAnalysisAbort = React.useRef<AbortController|null>(null);
   const autoImportAttempted = React.useRef(new Set<string>());
@@ -104,36 +104,48 @@ function App() {
     if (!playerPage || batchBusy || batchAnalysisBusy || gameIds.length===0) return;
     const games=gameIds.map(id=>playerPage.games.find(game=>game.gameId===id)).filter((game):game is PlayerGame=>Boolean(game));
     const runId=++batchRunId.current;
+    const existingIds=new Set(batchMatches.filter(item=>Boolean(item.result)).map(item=>item.game.gameId));
     setBatchBusy(true); setError(''); setBatchProgress({done:0,total:games.length,gameId:''});
     let done=0;
-    for (const game of games) {
-      if(runId!==batchRunId.current) break;
-      setBatchProgress({done,total:games.length,gameId:game.gameId});
-      if (batchMatches.some(item=>item.game.gameId===game.gameId && item.result)) { done++; continue; }
-      setBatchMatches(current=>[...current.filter(item=>item.game.gameId!==game.gameId),{game,status:'running'}]);
-      try {
-        const imported=await window.replayAPI.importReplayUrl(`https://openfront.io/w5/game/${game.gameId}`);
-        if(runId!==batchRunId.current) break;
-        if ('canceled' in imported) throw new Error('Import wurde abgebrochen.');
-        const normalizeMap=(value:unknown)=>String(value??'').trim().toLowerCase().replace(/[\\s.()_-]+/g,'');
-        const selectedMap=game.map||imported.mapName;
-        const previews=Object.entries(playerPage.mapPreviews??{});
-        const preview=(selectedMap ? playerPage.mapPreviews?.[String(selectedMap).trim().toLowerCase()] : undefined) || previews.find(([key])=>normalizeMap(key)===normalizeMap(selectedMap))?.[1] || previews.find(([key])=>normalizeMap(key)===normalizeMap(imported.mapName))?.[1] || game.previewUrl;
-        if (preview) imported.previewUrl=preview;
-        else if (selectedMap) { try { imported.previewUrl=(await window.replayAPI.resolveMapPreview(selectedMap)).imageUrl; } catch { imported.previewUrl=null; } }
-        if(runId!==batchRunId.current) break;
-        const status: 'engine-mismatch' | 'loaded'=imported.engineCompatibility?.engineVersionCompatible===false ? 'engine-mismatch' : 'loaded';
-        const entry:BatchMatchItem={game,result:imported,status,analysisStatus:status==='engine-mismatch'?'unsupported':'pending'};
-        setBatchMatches(current=>[...current.filter(item=>item.game.gameId!==game.gameId),entry]);
-        try { await persistBatchItem(entry); } catch(storageError) { console.warn('[ReplayCoach] Replay wurde geladen, konnte aber nicht lokal gesichert werden:',storageError); setError(`Partie ${game.gameId} geladen, aber lokale Speicherung fehlgeschlagen: ${storageError instanceof Error?storageError.message:String(storageError)}`); }
-      } catch (e) {
-        if(runId!==batchRunId.current) break;
-        const entry:BatchMatchItem={game,status:'failed',analysisStatus:'failed',error:e instanceof Error?e.message:String(e)};
-        setBatchMatches(current=>[...current.filter(item=>item.game.gameId!==game.gameId),entry]);
-        try { await persistBatchItem(entry); } catch(storageError) { console.warn('[ReplayCoach] Importfehler konnte nicht lokal gespeichert werden:',storageError); }
+    let nextIndex=0;
+    const publishImportProgress=(gameId='')=>setBatchProgress({done,total:games.length,gameId});
+    const worker=async()=>{
+      while(runId===batchRunId.current){
+        const index=nextIndex++;
+        if(index>=games.length) return;
+        const game=games[index];
+        if(existingIds.has(game.gameId)){ done++; publishImportProgress(game.gameId); continue; }
+        setBatchMatches(current=>[...current.filter(item=>item.game.gameId!==game.gameId),{game,status:'running'}]);
+        try {
+          const imported=await window.replayAPI.importReplayUrl(`https://openfront.io/w5/game/${game.gameId}`);
+          if(runId!==batchRunId.current) return;
+          if ('canceled' in imported) throw new Error('Import wurde abgebrochen.');
+          const normalizeMap=(value:unknown)=>String(value??'').trim().toLowerCase().replace(/[\\s.()_-]+/g,'');
+          const selectedMap=game.map||imported.mapName;
+          const previews=Object.entries(playerPage.mapPreviews??{});
+          const preview=(selectedMap ? playerPage.mapPreviews?.[String(selectedMap).trim().toLowerCase()] : undefined) || previews.find(([key])=>normalizeMap(key)===normalizeMap(selectedMap))?.[1] || previews.find(([key])=>normalizeMap(key)===normalizeMap(imported.mapName))?.[1] || game.previewUrl;
+          if (preview) imported.previewUrl=preview;
+          else if (selectedMap) { try { imported.previewUrl=(await window.replayAPI.resolveMapPreview(selectedMap)).imageUrl; } catch { imported.previewUrl=null; } }
+          if(runId!==batchRunId.current) return;
+          const status: 'engine-mismatch' | 'loaded'=imported.engineCompatibility?.engineVersionCompatible===false ? 'engine-mismatch' : 'loaded';
+          const entry:BatchMatchItem={game,result:imported,status,analysisStatus:status==='engine-mismatch'?'unsupported':'pending'};
+          existingIds.add(game.gameId);
+          setBatchMatches(current=>[...current.filter(item=>item.game.gameId!==game.gameId),entry]);
+          try { await persistBatchItem(entry); } catch(storageError) { console.warn('[ReplayCoach] Replay wurde geladen, konnte aber nicht lokal gesichert werden:',storageError); setError(`Partie ${game.gameId} geladen, aber lokale Speicherung fehlgeschlagen: ${storageError instanceof Error?storageError.message:String(storageError)}`); }
+        } catch (e) {
+          if(runId!==batchRunId.current) return;
+          const entry:BatchMatchItem={game,status:'failed',analysisStatus:'failed',error:e instanceof Error?e.message:String(e)};
+          setBatchMatches(current=>[...current.filter(item=>item.game.gameId!==game.gameId),entry]);
+          try { await persistBatchItem(entry); } catch(storageError) { console.warn('[ReplayCoach] Importfehler konnte nicht lokal gespeichert werden:',storageError); }
+        }
+        done++;
+        publishImportProgress(game.gameId);
       }
-      done++;
-    }
+    };
+    // A small network pool cuts library import time without overwhelming the
+    // OpenFront public API or causing dozens of simultaneous large downloads.
+    const importConcurrency=isMobileDevice?1:3;
+    await Promise.all(Array.from({length:Math.min(importConcurrency,games.length||1)},()=>worker()));
     if(runId===batchRunId.current) { setBatchProgress({done,total:games.length,gameId:''}); setBatchBusy(false); }
   }
   function cancelBatchImport() { batchRunId.current++; setBatchBusy(false); setBatchProgress(current=>current?{...current,gameId:''}:null); }
@@ -176,11 +188,14 @@ function App() {
     const controller=new AbortController();
     batchAnalysisAbort.current=controller;
     setBatchAnalysisBusy(true); setError('');
-    setBatchAnalysisProgress({done:0,total:candidates.length,gameId:'',percent:0,phase:'Analyse wird vorbereitet'});
+    setBatchAnalysisProgress({done:0,total:candidates.length,gameId:'',percent:0,phase:'Analyse wird vorbereitet',active:0});
     try {
       const {simulateReplay,buildReplayEngineAssets}=await import('./ReplaySimulation');
       if(runId!==batchAnalysisRunId.current||controller.signal.aborted) return;
-      await runSequentialBatchAnalysis<BatchMatchItem,ReplaySimulationResult>(candidates,{
+      await runConcurrentBatchAnalysis<BatchMatchItem,ReplaySimulationResult>(candidates,{
+        // Two independent engine workers substantially reduce total wait time on PCs.
+        // Phones remain sequential to protect memory, thermals and battery life.
+        concurrency:isMobileDevice?1:2,
         signal:controller.signal,
         getId:item=>item.game.gameId,
         isCompatible:item=>Boolean(item.result?.record&&item.result.engineCompatibility?.engineVersionCompatible===true),
@@ -436,8 +451,8 @@ function App() {
       <header className="studio-header"><div><div className="studio-eyebrow">OPENFRONT / PERFORMANCE STUDIO</div><h1>{activePage==='dashboard'?'Dein Performance-Dashboard':activePage==='games'?'Deine Spielbibliothek':'Match Review'}</h1><p>{activePage==='dashboard'?'Deine Entwicklung, letzte Partien und nächste Trainingsschwerpunkte.':activePage==='games'?'Finde eine Partie und öffne ihre Karten- und Aktionsübersicht.':'Spielverlauf, beobachtete Entscheidungen und Replay an einem Ort.'}</p></div><div className="studio-header-actions"><UpdateCenter/><button className="studio-button subtle" onClick={openReplay} disabled={busy}><FileUp size={16}/> Replay importieren</button></div></header>
       {error && <div className="error"><AlertTriangle size={18}/>{error}</div>}{saveNotice && <div className="success"><CheckCircle2 size={18}/>{saveNotice}</div>}
       {playerBusy && playerProgress && <div className="load-progress studio-card"><div><b>{playerProgress.status}</b><span>{playerProgress.loaded.toLocaleString('de-DE')} Partien · {playerProgress.pages} Seiten</span></div><div className="load-progress-track"><div/></div></div>}
-      {activePage!=='games' && batchBusy && batchProgress && <section className="batch-progress studio-card global-library-progress" aria-live="polite"><b>Spielbibliothek wird vollständig eingelesen</b><span>{batchProgress.done} von {batchProgress.total} Partien importiert · {batchProgress.gameId||'Bitte App geöffnet lassen'}</span><div className="batch-progress-track"><i style={{width:`${batchProgress.total?batchProgress.done/batchProgress.total*100:0}%`}}/></div></section>}
-      {activePage!=='games' && batchAnalysisBusy && batchAnalysisProgress && <section className="batch-progress studio-card global-library-progress" aria-live="polite"><b>Langzeitanalyse wird aufgebaut</b><span>{batchAnalysisProgress.done} von {batchAnalysisProgress.total} Partien · {batchAnalysisProgress.gameId||batchAnalysisProgress.phase}</span><div className="batch-progress-track"><i style={{width:`${Math.min(100,batchAnalysisProgress.total?(batchAnalysisProgress.done+batchAnalysisProgress.percent/100)/batchAnalysisProgress.total*100:0)}%`}}/></div></section>}
+      {activePage!=='games' && batchBusy && batchProgress && <section className="batch-progress studio-card global-library-progress" aria-live="polite"><b>Spielbibliothek wird vollständig eingelesen</b><span>{batchProgress.done} von {batchProgress.total} Partien importiert · {isMobileDevice?'Ein Import gleichzeitig':'Bis zu drei Importe gleichzeitig'} · {batchProgress.gameId||'Bitte App geöffnet lassen'}</span><div className="batch-progress-track"><i style={{width:`${batchProgress.total?batchProgress.done/batchProgress.total*100:0}%`}}/></div></section>}
+      {activePage!=='games' && batchAnalysisBusy && batchAnalysisProgress && <section className="batch-progress studio-card global-library-progress" aria-live="polite"><b>Langzeitanalyse wird aufgebaut</b><span>{batchAnalysisProgress.done} von {batchAnalysisProgress.total} Partien · {batchAnalysisProgress.active>1?`${batchAnalysisProgress.active} gleichzeitig · `:''}{batchAnalysisProgress.gameId||batchAnalysisProgress.phase}</span><div className="batch-progress-track"><i style={{width:`${Math.min(100,batchAnalysisProgress.total?(batchAnalysisProgress.done+batchAnalysisProgress.percent/100)/batchAnalysisProgress.total*100:0)}%`}}/></div></section>}
       {activePage==='dashboard' && <>
         <section className="welcome-strip dashboard-hero"><div><span className="studio-eyebrow">PLAYER PROFILE</span><h2>Willkommen zurück, {profileName}</h2><p>Deine OpenFront-Partien auf einen Blick.</p></div><div className="profile-loader"><input value={playerId} onChange={e=>setPlayerId(e.target.value)} onKeyDown={e=>{if(e.key==='Enter') void loadPlayer();}} placeholder="OpenFront-Profillink oder Spieler-ID"/><button className="studio-button primary" onClick={()=>loadPlayer()} disabled={playerBusy || !playerId.trim()}><Users size={16}/>{playerBusy?'Lade …':'Konto laden'}</button></div></section>
         <section className="match-import-bar studio-card dashboard-import"><div><span className="studio-eyebrow">SCHNELLIMPORT</span><h3>Direkt in eine Partie springen</h3><p>Öffne einen beliebigen öffentlichen Match-Link – unabhängig von deiner Profilhistorie.</p></div><div className="match-import-controls"><input value={url} onChange={e=>setUrl(e.target.value)} onKeyDown={e=>{if(e.key==='Enter') void importUrl();}} placeholder="https://openfront.io/w5/game/…" aria-label="OpenFront-Match-Link"/><button className="studio-button primary" onClick={()=>void importUrl()} disabled={busy||!url.trim()}><FileUp size={16}/>{busy?'Partie wird geladen …':'Partie laden'}</button></div></section>

@@ -38,6 +38,7 @@ test('uses the exact spawn tile and pinned terrain for start-zone coaching', () 
   assert.ok(first.spawnZoneTotalTiles >= first.spawnZoneLandTiles);
   assert.ok(first.nearbyNeutralLandTiles > 0);
   assert.ok(first.nearbyCoastalLandTiles > 0);
+  assert.ok(first.nearbyPlainsTiles > 0);
   assert.ok(first.nearbyImpassableTiles > 0);
   assert.ok(first.nearbyHighlandTiles > 0);
   assert.ok(first.nearbyMountainTiles > 0);

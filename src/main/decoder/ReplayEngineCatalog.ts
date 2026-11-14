@@ -2,7 +2,7 @@ export const PINNED_OPENFRONT_COMMIT = "7f34e15908286d490715c6e4af8c47df5b1b3fcc
 
 export const REPLAY_ENGINE_CATALOG = [
   {
-    commit: PINNED_OPENFRONT_COMMIT,
+    commit: "bc3e3334c573c4959ec6a6745df6826d07233b4d",
     source: "vendor/OpenFrontIO",
     bundleId: "bc3e3334c573",
   },

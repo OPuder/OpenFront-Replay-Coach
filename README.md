@@ -1,6 +1,6 @@
 # OpenFront Replay Coach
 
-**Replay analysis and tactical coaching for OpenFront — on Windows and Android.**
+**Replay analysis and tactical coaching for OpenFront — Windows and Android.**
 
 The Replay Coach reconstructs supported OpenFront game records with the original, pinned OpenFront engine. It turns recorded decisions into a readable match review: what happened, when it happened, which fronts were active and which game-state changes can be verified.
 
@@ -10,9 +10,9 @@ The Replay Coach reconstructs supported OpenFront game records with the original
 | --- | --- | --- |
 | **Windows Installer** | `OpenFront Replay Coach Setup.exe` | Normal Windows setup |
 | **Windows Portable** | `OpenFront Replay Coach-win.zip` | Extract and run |
-| **Android** | `OpenFront-Replay-Coach-Android.apk` | Install the APK once on the phone |
+| **Android APK** | `OpenFront-Replay-Coach-Android.apk` | Install the APK once on the phone |
 
-All three editions are published together in each successful GitHub Release. Windows checks for updates at startup and installs them automatically; the update button can also apply a release that appeared while the app was open. The Windows portable edition updates its extracted program files without touching user data. Android downloads and verifies the APK automatically when a new release is detected, then opens Android's required installation confirmation. The browser/PWA edition activates newly deployed service-worker builds automatically. Android needs no Cloudflare account, no Play Store account and no separate server. Friends can download the APK directly from Releases.
+All three editions are published together in each successful GitHub Release. Windows checks for updates at startup and installs them automatically; the update button can also apply a release that appeared while the app was open. The Windows portable edition updates its extracted program files without touching user data. Android downloads and verifies the APK automatically when a new release is detected, then opens Android's required installation confirmation. Android needs no Cloudflare account, no Play Store account and no separate server. Friends can download the APK directly from Releases.
 
 **Android setup:** [docs/ANDROID_WEB_APP.md](docs/ANDROID_WEB_APP.md)  
 **Maintainer setup (permanent APK signing):** [docs/ANDROID_SIGNING.md](docs/ANDROID_SIGNING.md)
@@ -52,7 +52,6 @@ The Android app uses Capacitor's native HTTP stack for public OpenFront game/pla
 
 - Replay files selected from the device are processed locally by the app and are not uploaded to a Coach-owned storage service.
 - The Android app calls only OpenFront's public game/player API and public engine assets. It does not use account sessions, login tokens or game-write endpoints.
-- The browser/PWA source is retained as an optional self-hosted edition. Its public API requires same-origin Pages Functions; it is built and tested, but no external hosting account is required for the Windows or Android releases.
 - The original engine version must match the replay's recorded engine commit before a full hash-verified replay is claimed.
 
 ## Limits
@@ -68,7 +67,7 @@ The OpenFront engine is pinned to commit:
 
 `bc3e3334c573c4959ec6a6745df6826d07233b4d`
 
-Every main-branch release validates the pinned engine, Windows installer/portable package, Android APK and optional browser/PWA build. The workflow publishes only after all required build and smoke-test jobs succeed.
+Every main-branch release validates the pinned engine, Windows installer, Windows portable package and Android APK. The workflow publishes only after all required build and smoke-test jobs succeed.
 
 ## License
 

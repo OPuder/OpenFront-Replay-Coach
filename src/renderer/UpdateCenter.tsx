@@ -1,12 +1,14 @@
 import React from 'react';
-import { Capacitor } from '@capacitor/core';
-import { CheckCircle2, Download, RefreshCw, Smartphone, MonitorDown, Globe, AlertCircle } from 'lucide-react';
+import { Capacitor, registerPlugin } from '@capacitor/core';
+import { CheckCircle2, RefreshCw, Smartphone, MonitorDown, Globe, AlertCircle } from 'lucide-react';
 import './UpdateCenter.css';
 
 declare const __APP_VERSION__: string;
 
-type ReleaseAsset = { name: string; browser_download_url: string; size: number };
+type ReleaseAsset = { name: string; browser_download_url: string; size: number; digest?: string | null };
 type LatestRelease = { tag_name: string; html_url: string; published_at: string; assets: ReleaseAsset[] };
+type ApkUpdaterPlugin = { downloadAndInstall(options: { url: string; digest: string; size: number; name: string }): Promise<{ started: boolean }> };
+const ApkUpdater = registerPlugin<ApkUpdaterPlugin>('ApkUpdater');
 
 function compareVersions(left: string, right: string): number {
   const parse = (value: string) => value.replace(/^v/i, '').split(/[.+-]/).slice(0, 3).map(part => Number.parseInt(part, 10) || 0);
@@ -26,6 +28,9 @@ export function UpdateCenter() {
   const [error, setError] = React.useState('');
   const [webUpdateWaiting, setWebUpdateWaiting] = React.useState(false);
   const [applyingWebUpdate, setApplyingWebUpdate] = React.useState(false);
+  const [installing, setInstalling] = React.useState(false);
+  const [installProgress, setInstallProgress] = React.useState<{ phase: string; percent: number } | null>(null);
+  const [installMessage, setInstallMessage] = React.useState('');
   const currentVersion = __APP_VERSION__;
   const isAndroid = Capacitor.isNativePlatform() && Capacitor.getPlatform() === 'android';
   const isDesktop = /Electron/i.test(navigator.userAgent);
@@ -63,6 +68,11 @@ export function UpdateCenter() {
   }, []);
 
   React.useEffect(() => {
+    if (!isDesktop || !window.replayAPI?.onUpdateProgress) return;
+    return window.replayAPI.onUpdateProgress(progress => setInstallProgress(progress));
+  }, [isDesktop]);
+
+  React.useEffect(() => {
     if (!isBrowserPwa || !('serviceWorker' in navigator)) return;
     const onControllerChange = () => window.location.reload();
     navigator.serviceWorker.addEventListener('controllerchange', onControllerChange);
@@ -73,10 +83,41 @@ export function UpdateCenter() {
   const latestVersion = release?.tag_name.replace(/^v/i, '') ?? '';
   const hasNewVersion = Boolean(latestVersion && compareVersions(latestVersion, currentVersion) > 0);
   const isCurrent = Boolean(latestVersion && !hasNewVersion);
-  const installer = release && findAsset(release.assets, /Setup.*\.exe$/i);
+  const installer = release && findAsset(release.assets, /\.Setup\.[\d.]+\.exe$/i);
   const portable = release && findAsset(release.assets, /-win\.zip$/i);
   const apk = release && findAsset(release.assets, /-Android\.apk$/i);
   const web = release && findAsset(release.assets, /-Web-PWA\.zip$/i);
+
+  async function installDesktopUpdate() {
+    setInstalling(true); setError(''); setInstallMessage('Update wird vorbereitet …');
+    try {
+      const result = await window.replayAPI.installUpdate();
+      setInstallMessage(result.scheduled ? `Version ${result.version} ist geprüft. Das Programm startet nach der Installation neu.` : 'Update konnte nicht gestartet werden.');
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : 'Update konnte nicht installiert werden.');
+      setInstalling(false);
+    }
+  }
+
+  async function installAndroidUpdate(asset: ReleaseAsset | undefined) {
+    if (!asset?.digest) { setError('Für diese APK fehlt die offizielle SHA-256-Prüfsumme.'); return; }
+    setInstalling(true); setError(''); setInstallMessage('APK wird heruntergeladen und geprüft …');
+    try {
+      await ApkUpdater.downloadAndInstall({ url: asset.browser_download_url, digest: asset.digest, size: asset.size, name: asset.name });
+      setInstallMessage('Android-Installationsdialog wurde geöffnet. Bestätige dort das Update.');
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : 'Android-Update fehlgeschlagen.');
+      setInstalling(false);
+    }
+  }
+
+  const androidAutoUpdateAttempted = React.useRef(false);
+  React.useEffect(() => {
+    if (isAndroid && hasNewVersion && apk && !androidAutoUpdateAttempted.current) {
+      androidAutoUpdateAttempted.current = true;
+      void installAndroidUpdate(apk);
+    }
+  }, [isAndroid, hasNewVersion, apk?.name]);
 
   function applyWebUpdate() {
     void navigator.serviceWorker.getRegistration().then(registration => {
@@ -94,9 +135,9 @@ export function UpdateCenter() {
     </button>
     <div className="update-center-popover">
       <div className="update-center-heading"><div><span>SOFTWARE-UPDATES</span><b>Version {currentVersion}</b></div><button type="button" onClick={() => void checkForUpdates()} disabled={checking} aria-label="Erneut prüfen"><RefreshCw size={14}/></button></div>
-      {error ? <p className="update-center-message is-error"><AlertCircle size={15}/>{error}</p> : checking && !release ? <p className="update-center-message">Suche nach einer aktuellen Version …</p> : hasNewVersion ? <div className="update-center-release"><span className="update-center-badge">NEUE VERSION · {latestVersion}</span><p>Eine neuere stabile Version ist verfügbar. Wähle den Download für dein Gerät.</p>
-        {isDesktop && <>{installer && <a href={installer.browser_download_url} target="_blank" rel="noreferrer"><MonitorDown size={15}/>Windows installieren <small>Setup EXE · {Math.round(installer.size / 1048576)} MB</small></a>}{portable && <a href={portable.browser_download_url} target="_blank" rel="noreferrer"><Download size={15}/>Windows portable <small>ZIP · manuell ersetzen</small></a>}</>}
-        {isAndroid && apk && <a href={apk.browser_download_url} target="_blank" rel="noreferrer"><Smartphone size={15}/>Android APK herunterladen <small>Android fragt vor der Installation nach</small></a>}
+      {error && <p className="update-center-message is-error"><AlertCircle size={15}/>{error}</p>}{checking && !release ? <p className="update-center-message">Suche nach einer aktuellen Version …</p> : hasNewVersion ? <div className="update-center-release"><span className="update-center-badge">NEUE VERSION · {latestVersion}</span><p>Eine neuere stabile Version ist verfügbar. Wähle den Download für dein Gerät.</p>
+        {isDesktop && <><button type="button" className="update-center-apply" onClick={() => void installDesktopUpdate()} disabled={installing || checking}><MonitorDown size={15}/>{installing ? "Update wird installiert …" : "Jetzt herunterladen und installieren"}</button>{installProgress && <div className="update-center-progress"><span>{installProgress.phase}</span><div><i style={{width: installProgress.percent + "%"}}/></div></div>}{installMessage && <p className="update-center-message">{installMessage}</p>}{portable && installer && <small className="update-center-platform">Windows Installer und Portable werden automatisch passend zur Installation ausgewählt.</small>}</>}
+        {isAndroid && apk && <><button type="button" className="update-center-apply" onClick={() => void installAndroidUpdate(apk)} disabled={installing}><Smartphone size={15}/>{installing ? "APK wird vorbereitet …" : "Android-Update herunterladen und installieren"}</button>{installMessage && <p className="update-center-message">{installMessage}</p>}<small className="update-center-platform">Android zeigt zur Sicherheit seinen eigenen Installationsdialog. Eine Bestätigung ist erforderlich.</small></>}
         {isBrowserPwa && <>{web && <a href={web.browser_download_url} target="_blank" rel="noreferrer"><Globe size={15}/>Web/PWA-Paket <small>Nur für eigene Bereitstellung</small></a>}{webUpdateWaiting && <button type="button" className="update-center-apply" onClick={applyWebUpdate} disabled={applyingWebUpdate}><RefreshCw size={15}/>Web-App jetzt aktualisieren</button>}</>}
         <a className="update-center-release-link" href={release?.html_url} target="_blank" rel="noreferrer">Release-Notizen ansehen</a>
       </div> : isCurrent ? <p className="update-center-message is-current"><CheckCircle2 size={15}/>Du verwendest die aktuelle Version {currentVersion}.</p> : <p className="update-center-message">Noch keine veröffentlichte stabile Version gefunden.</p>}

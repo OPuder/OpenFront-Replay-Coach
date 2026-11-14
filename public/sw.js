@@ -1,4 +1,4 @@
-const CACHE_NAME = "openfront-replay-coach-shell-v2.2.4";
+const CACHE_NAME = "openfront-replay-coach-shell-v2.2.34";
 
 self.addEventListener("install", event => {
   event.waitUntil((async () => {
@@ -35,6 +35,10 @@ self.addEventListener("install", event => {
     }));
     await self.skipWaiting();
   })());
+});
+
+self.addEventListener("message", event => {
+  if (event.data?.type === "SKIP_WAITING") self.skipWaiting();
 });
 
 self.addEventListener("activate", event => {

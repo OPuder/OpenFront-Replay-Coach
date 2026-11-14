@@ -1,6 +1,12 @@
 import { contextBridge, ipcRenderer } from 'electron';
 contextBridge.exposeInMainWorld('replayAPI', {
   openReplay: () => ipcRenderer.invoke('replay:open'),
+  installUpdate: () => ipcRenderer.invoke('updates:install'),
+  onUpdateProgress: (callback: (progress: { phase: string; percent: number }) => void) => {
+    const listener = (_event: Electron.IpcRendererEvent, progress: { phase: string; percent: number }) => callback(progress);
+    ipcRenderer.on('updates:progress', listener);
+    return () => ipcRenderer.removeListener('updates:progress', listener);
+  },
   loadPlayer: (playerId: string, onProgress?: (progress: {loaded:number;pages:number;status:string}) => void) => {
     const listener = (_event: Electron.IpcRendererEvent, progress: {loaded:number;pages:number;status:string}) => onProgress?.(progress);
     ipcRenderer.on('player:load-progress', listener);

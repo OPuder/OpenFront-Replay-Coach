@@ -3,6 +3,8 @@ declare global {
   interface Window {
     replayAPI: {
       openReplay: () => Promise<ReplaySummary | null>;
+      installUpdate: () => Promise<{ scheduled: boolean; version: string }>;
+      onUpdateProgress: (callback: (progress: { phase: string; percent: number }) => void) => () => void;
       loadPlayer: (
         playerId: string,
         onProgress?: (progress: { loaded: number; pages: number; status: string }) => void,

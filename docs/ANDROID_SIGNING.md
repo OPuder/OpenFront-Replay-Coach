@@ -39,6 +39,8 @@ Den kopierten Inhalt direkt als Wert von `ANDROID_KEYSTORE_BASE64` in GitHub ein
 - Sind **alle vier** Secrets gesetzt, baut GitHub Actions eine Release-APK mit dem dauerhaften Schlüssel.
 - Fehlt mindestens eines, bleibt der Build vorerst funktionsfähig und erzeugt eine Debug-signierte APK. Diese ist installierbar, aber Updates über eine bestehende Installation sind damit nicht zuverlässig.
 - Sobald die Secrets gesetzt sind, werden alle folgenden Android-Releases mit demselben Schlüssel signiert. Eine bereits installierte Debug-APK muss einmalig deinstalliert werden, bevor die erste dauerhaft signierte APK installiert wird.
+- Die App lädt eine neuere APK beim Start automatisch herunter und prüft Größe sowie SHA-256-Prüfsumme. Anschließend öffnet Android den Systemdialog. Android verlangt weiterhin eine Bestätigung; eine normale App darf sich nicht selbst lautlos aktualisieren.
+- Beim ersten Update kann Android einmalig die Berechtigung zum Installieren unbekannter Apps verlangen. Nach der Freigabe erneut auf Aktualisieren tippen.
 - Windows Installer und Portable ZIP sind davon unabhängig.
 
 **Wichtig:** Keystore-Datei und Passwörter unbedingt dauerhaft sichern. Niemals einen neuen Schlüssel für spätere Releases erzeugen, solange die App unter derselben Android-Paket-ID weitergeführt wird.

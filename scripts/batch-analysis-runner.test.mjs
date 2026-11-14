@@ -211,7 +211,7 @@ test('parallel analysis cancellation does not start queued matches after abort',
 test('desktop analysis concurrency scales conservatively with CPU and memory', () => {
   assert.equal(chooseBatchAnalysisConcurrency(true, 16, 32), 1, 'mobile remains sequential');
   assert.equal(chooseBatchAnalysisConcurrency(false, 4, 16), 2, 'small CPU keeps two workers');
-  assert.equal(chooseBatchAnalysisConcurrency(false, 8, 8), 3, 'mid/high tier desktop uses three workers');
-  assert.equal(chooseBatchAnalysisConcurrency(false, 16, 32), 4, 'high-memory desktop uses four workers');
+  assert.equal(chooseBatchAnalysisConcurrency(false, 8, 4), 3, 'mid/high tier desktop uses three workers');
+  assert.equal(chooseBatchAnalysisConcurrency(false, 16, 8), 4, 'high-core desktop with ample reported memory uses four workers');
   assert.equal(chooseBatchAnalysisConcurrency(false, undefined, undefined), 2, 'unknown hardware uses safe default');
 });

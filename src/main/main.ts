@@ -46,8 +46,8 @@ function validPlayerId(value: unknown): string {
 }
 
 const previewCache = new Map<string, string | null>();
-// Keep the most recently imported API records available for an explicit later JSON export.
-const importedReplayJson = new Map<string, string>();
+// Raw replay payloads are persisted by the renderer and supplied explicitly on export.
+// Keeping duplicate multi-megabyte JSON strings here caused unbounded session memory growth.
 let assetManifestCache: { manifest: Record<string, string>; cdnBase: string; fetchedAt: number } | null = null;
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
@@ -362,9 +362,6 @@ ipcMain.handle('replay:import-url', async (_event, input: string) => {
   try { record = JSON.parse(text); } catch { throw new Error('Die OpenFront-API hat keine gültige JSON-Antwort geliefert.'); }
   if (!record || typeof record !== 'object' || Array.isArray(record)) throw new Error('Die API-Antwort hat ein unerwartetes Format.');
 
-  importedReplayJson.set(gameId, text);
-  // Keep memory bounded: the latest 30 imports are enough for the active review session.
-  while (importedReplayJson.size > 30) importedReplayJson.delete(importedReplayJson.keys().next().value as string);
   const savePath: string | null = null;
   const summary = summarizeRecord(record, gameId, byteLength, savePath);
   summary.previewUrl = await resolveOfficialMapPreview(summary.mapName);
@@ -376,7 +373,7 @@ ipcMain.handle('replay:import-url', async (_event, input: string) => {
 
 ipcMain.handle('replay:save-json', async (event, gameId: string, fallbackRecord?: unknown) => {
   const id = String(gameId ?? '').trim();
-  const raw = resolveReplayJsonExport(id, importedReplayJson.get(id), fallbackRecord, MAX_RESPONSE_BYTES);
+  const raw = resolveReplayJsonExport(id, undefined, fallbackRecord, MAX_RESPONSE_BYTES);
 
   const safeId = id.replace(/[^A-Za-z0-9_-]/g, '_');
   const defaultPath = path.join(app.getPath('downloads'), `OpenFront-${safeId}.json`);

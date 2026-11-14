@@ -1926,3 +1926,12 @@ body{
 .library-pagination button:hover:not(:disabled){border-color:#8bb879;background:#203c29}
 .library-pagination button:disabled{opacity:.4;cursor:not-allowed}
 @media(max-width:760px){.library-pagination{align-items:flex-start;flex-direction:column}.library-pagination>div{width:100%;justify-content:space-between}.library-pagination button{min-height:38px;min-width:76px}}
+
+.batch-status-pill.queued,.batch-status-pill.running{border-color:#3b5b67;background:#15282b;color:#a9dce1}
+.batch-status-pill.unverified{border-color:#735c36;background:#2b251a;color:#e4c68d}
+.batch-status-pill.engine-missing{border-color:#6c5732;background:#2b2518;color:#e8c77f}
+.batch-status-pill.saved{border-color:#3d594e;background:#16251e;color:#b5cbb9}
+.batch-status-pill.failed{border-color:#75443d;background:#301d1b;color:#f0a79b}
+.game-replay-state.unverified{border-color:#735c36;background:#2b251a;color:#e4c68d}
+.game-replay-state.failed{border-color:#75443d;background:#301d1b;color:#f0a79b}
+.game-replay-state.queued,.game-replay-state.running{border-color:#3b5b67;background:#15282b;color:#a9dce1}

@@ -364,21 +364,19 @@ jobs:
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
           set -Eeuo pipefail
-          if [[ -n "$ANDROID_KEYSTORE_BASE64" && -n "$ANDROID_KEYSTORE_PASSWORD" && -n "$ANDROID_KEY_ALIAS" && -n "$ANDROID_KEY_PASSWORD" ]]; then
-            keystore="$RUNNER_TEMP/openfront-replay-coach-release.jks"
-            printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$keystore"
-            test -s "$keystore"
-            export ANDROID_KEYSTORE_PATH="$keystore"
-            node scripts/configure-android-signing.mjs
-            (cd android && ./gradlew --no-daemon assembleRelease)
-            apk="android/app/build/outputs/apk/release/app-release.apk"
-            echo "signing_mode=permanent release key" >> "$GITHUB_OUTPUT"
-          else
-            echo "::warning::Android signing secrets are incomplete; building a temporary debug-signed APK. In-place updates will not be reliable until all four secrets are configured."
-            (cd android && ./gradlew --no-daemon assembleDebug)
-            apk="android/app/build/outputs/apk/debug/app-debug.apk"
-            echo "signing_mode=temporary debug key (uninstall may be required for updates)" >> "$GITHUB_OUTPUT"
+          if [[ -z "$ANDROID_KEYSTORE_BASE64" || -z "$ANDROID_KEYSTORE_PASSWORD" || -z "$ANDROID_KEY_ALIAS" || -z "$ANDROID_KEY_PASSWORD" ]]; then
+            echo "::error::A permanent Android release signing key is required. Refusing to publish an APK that cannot update existing installations."
+            exit 1
           fi
+          keystore="$RUNNER_TEMP/openfront-replay-coach-release.jks"
+          printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$keystore"
+          test -s "$keystore"
+          export ANDROID_KEYSTORE_PATH="$keystore"
+          node scripts/configure-android-signing.mjs
+          node scripts/verify-android-keystore.mjs
+          (cd android && ./gradlew --no-daemon assembleRelease)
+          apk="android/app/build/outputs/apk/release/app-release.apk"
+          echo "signing_mode=permanent release key" >> "$GITHUB_OUTPUT"
           test -s "$apk"
           build_tools="$(find "$ANDROID_HOME/build-tools" -mindepth 1 -maxdepth 1 -type d | sort -V | tail -n 1)"
           "$build_tools/apksigner" verify --verbose "$apk"
@@ -399,7 +397,7 @@ jobs:
   publish-release:
     name: Publish Windows and Android editions as one GitHub Release
     needs: [prepare-release, validate-engine, validate-replay, build-windows, build-android]
-    if: needs.prepare-release.outputs.skip != 'true'
+    if: needs.prepare-release.outputs.skip != 'true' && needs.build-android.outputs.signing_mode == 'permanent release key'
     runs-on: ubuntu-latest
     permissions:
       contents: write

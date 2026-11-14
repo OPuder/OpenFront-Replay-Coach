@@ -3,6 +3,7 @@ import android.content.Intent;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.content.pm.Signature;
+import android.content.pm.SigningInfo;
 import android.net.Uri;
 import android.os.Build;
 import android.provider.Settings;
@@ -26,10 +27,14 @@ public class ApkUpdaterPlugin extends Plugin {
     public void downloadAndInstall(PluginCall call) {
         final String url = call.getString("url");
         final String expectedDigest = call.getString("digest");
+        final String expectedVersion = call.getString("version");
         final Double sizeValue = call.getDouble("size");
         final long expectedSize = sizeValue == null ? -1L : sizeValue.longValue();
         if (url == null || !url.startsWith("https://github.com/OPuder/OpenFront-Replay-Coach/releases/download/")) {
             call.reject("Ungültige Update-Quelle."); return;
+        }
+        if (expectedVersion == null || !expectedVersion.matches("^\\d+\\.\\d+\\.\\d+$")) {
+            call.reject("Die Release-Versionsnummer fehlt oder ist ungültig."); return;
         }
         if (expectedDigest == null || !expectedDigest.matches("(?i)^sha256:[a-f0-9]{64}$")) {
             call.reject("Die Release-Prüfsumme fehlt oder ist ungültig."); return;
@@ -73,7 +78,7 @@ public class ApkUpdaterPlugin extends Plugin {
                     if (apk.exists() && !apk.delete()) throw new IllegalStateException("Alte Update-Datei kann nicht ersetzt werden.");
                     if (!temp.renameTo(apk)) throw new IllegalStateException("Die geprüfte APK kann nicht gespeichert werden.");
                 }
-                verifyDownloadedPackage(apk);
+                verifyDownloadedPackage(apk, expectedVersion);
                 getActivity().runOnUiThread(() -> openInstaller(call, apk));
             } catch (Exception error) {
                 call.reject("Android-Update fehlgeschlagen: " + error.getMessage(), error);
@@ -85,9 +90,11 @@ public class ApkUpdaterPlugin extends Plugin {
 
 
     @SuppressWarnings("deprecation")
-    private void verifyDownloadedPackage(File apk) throws Exception {
+    private void verifyDownloadedPackage(File apk, String expectedVersion) throws Exception {
         PackageManager manager = getContext().getPackageManager();
-        PackageInfo incoming = manager.getPackageArchiveInfo(apk.getAbsolutePath(), PackageManager.GET_SIGNATURES);
+        int signatureFlags = Build.VERSION.SDK_INT >= Build.VERSION_CODES.P
+                ? PackageManager.GET_SIGNING_CERTIFICATES : PackageManager.GET_SIGNATURES;
+        PackageInfo incoming = manager.getPackageArchiveInfo(apk.getAbsolutePath(), signatureFlags);
         if (incoming == null || incoming.packageName == null) {
             throw new IllegalStateException("Android kann die heruntergeladene APK nicht als gültiges Installationspaket lesen. Die Datei wurde nicht installiert.");
         }
@@ -95,7 +102,10 @@ public class ApkUpdaterPlugin extends Plugin {
         if (!installedPackage.equals(incoming.packageName)) {
             throw new SecurityException("Falsche Android-App in der Update-Datei: " + incoming.packageName);
         }
-        PackageInfo installed = manager.getPackageInfo(installedPackage, PackageManager.GET_SIGNATURES);
+        if (!expectedVersion.equals(incoming.versionName)) {
+            throw new SecurityException("Versionskonflikt: Release " + expectedVersion + ", APK " + incoming.versionName + ". Die APK wurde nicht installiert.");
+        }
+        PackageInfo installed = manager.getPackageInfo(installedPackage, signatureFlags);
         long incomingVersion = Build.VERSION.SDK_INT >= Build.VERSION_CODES.P
                 ? incoming.getLongVersionCode() : incoming.versionCode;
         long installedVersion = Build.VERSION.SDK_INT >= Build.VERSION_CODES.P
@@ -103,12 +113,21 @@ public class ApkUpdaterPlugin extends Plugin {
         if (incomingVersion <= installedVersion) {
             throw new IllegalStateException("Die heruntergeladene APK ist nicht neuer als die installierte Version (APK " + incomingVersion + ", installiert " + installedVersion + ").");
         }
-        Signature[] incomingSignatures = incoming.signatures;
-        Signature[] installedSignatures = installed.signatures;
+        Signature[] incomingSignatures = currentSigners(incoming);
+        Signature[] installedSignatures = currentSigners(installed);
         if (incomingSignatures == null || installedSignatures == null || incomingSignatures.length == 0 ||
                 !Arrays.equals(incomingSignatures, installedSignatures)) {
-            throw new SecurityException("Die APK wurde mit einem anderen Signaturschlüssel erstellt. Android kann sie nicht über die bestehende Installation aktualisieren. Bitte installiere die APK einmal manuell neu.");
+            throw new SecurityException("Die APK wurde mit einem anderen Signaturschlüssel erstellt. Android kann sie nicht über die bestehende Installation aktualisieren. Die installierte App bleibt erhalten; installiere nur eine APK mit dem ursprünglichen Projektschlüssel.");
         }
+    }
+
+    @SuppressWarnings("deprecation")
+    private Signature[] currentSigners(PackageInfo info) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            SigningInfo signingInfo = info.signingInfo;
+            return signingInfo == null ? null : signingInfo.getApkContentsSigners();
+        }
+        return info.signatures;
     }
 
     private void openInstaller(PluginCall call, File apk) {

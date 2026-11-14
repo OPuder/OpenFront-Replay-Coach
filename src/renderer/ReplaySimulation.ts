@@ -1,4 +1,5 @@
 import { unwrapGameRecord } from "../main/decoder/GameRecordShape";
+import { resolveSupportedEngineCommit } from "../main/decoder/ReplayEngineCatalog";
 import { loadReplayEngineModule } from "./engineRegistry";
 import {
   analyzeAlternativeSpawnPositions,
@@ -199,9 +200,10 @@ function replayMapAssetId(value: unknown): string {
  */
 export function buildReplayEngineAssets(input: unknown): EngineAssets {
   const record = unwrapGameRecord(input);
-  const commit = typeof record.gitCommit === "string" ? record.gitCommit.toLowerCase() : "";
-  if (!/^[0-9a-f]{40}$/.test(commit)) {
-    throw new Error("Das Replay enthält keine vollständige OpenFront-Engine-Commit-ID.");
+  const recordedCommit = typeof record.gitCommit === "string" ? record.gitCommit.toLowerCase() : "";
+  const commit = resolveSupportedEngineCommit(recordedCommit);
+  if (!commit) {
+    throw new Error("Für die Replay-Engine " + (recordedCommit || "(unbekannt)") + " ist kein eindeutig passender Original-Build eingebunden.");
   }
   const mapId = replayMapAssetId(record.info?.config?.gameMap ?? record.config?.gameMap);
   if (!/^[a-z0-9_-]{2,80}$/.test(mapId)) {

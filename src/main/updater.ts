@@ -144,7 +144,7 @@ async function scheduleWindowsInstall(downloadPath: string, portable: boolean): 
     '  Start-Process -FilePath $Executable',
     '} catch {',
     '  $_ | Out-String | Add-Content -LiteralPath $Log',
-    '  Add-Content -LiteralPath $Log -Value ("[' + (Get-Date -Format o) + '] Update fehlgeschlagen; installierte Anwendung wird wieder gestartet.")',
+    "  Add-Content -LiteralPath $Log -Value ('[' + (Get-Date -Format o) + '] Update fehlgeschlagen; installierte Anwendung wird wieder gestartet.')",
     '  if (Test-Path -LiteralPath $Executable) { Start-Process -FilePath $Executable }',
     '  exit 1',
     '} finally {',

@@ -26,13 +26,14 @@ if (updatedRenderer !== renderer) writeFileSync(rendererPath, updatedRenderer);
 
 const serviceWorkerPath = "public/sw.js";
 const serviceWorker = readFileSync(serviceWorkerPath, "utf8");
+const cacheNamePattern = /^const CACHE_NAME = "openfront-replay-coach-shell-[^"]+";/m;
+if (!cacheNamePattern.test(serviceWorker)) {
+  throw new Error("The PWA service-worker cache version declaration is missing.");
+}
 const updatedServiceWorker = serviceWorker.replace(
-  /^const CACHE_NAME = "openfront-replay-coach-shell-[^"]+";/m,
+  cacheNamePattern,
   'const CACHE_NAME = "openfront-replay-coach-shell-v' + version + '";',
 );
-if (updatedServiceWorker === serviceWorker) {
-  throw new Error("The PWA service-worker cache version could not be updated.");
-}
 writeFileSync(serviceWorkerPath, updatedServiceWorker);
 
 console.log("Release version set to " + version + ".");

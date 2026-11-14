@@ -72,7 +72,7 @@ export function UpdateCenter() {
   const latestVersion = release?.tag_name.replace(/^v/i, '') ?? '';
   const hasNewVersion = Boolean(latestVersion && compareVersions(latestVersion, currentVersion) > 0);
   const isCurrent = Boolean(latestVersion && !hasNewVersion);
-  const installer = release && findAsset(release.assets, /\.Setup\.[\d.]+\.exe$/i);
+  const installer = release && findAsset(release.assets, /(?:\.Setup\.| Setup )[\d.]+\.exe$/i);
   const portable = release && findAsset(release.assets, /-win\.zip$/i);
   const apk = release && findAsset(release.assets, /-Android\.apk$/i);
 

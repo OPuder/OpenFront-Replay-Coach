@@ -47,7 +47,7 @@ async function getLatestRelease(): Promise<Release> {
 function chooseWindowsAsset(release: Release, portable: boolean): ReleaseAsset {
   const asset = portable
     ? release.assets.find(item => /-win\.zip$/i.test(item.name))
-    : release.assets.find(item => /\.Setup\.[\d.]+\.exe$/i.test(item.name));
+    : release.assets.find(item => /(?:\.Setup\.| Setup )[\d.]+\.exe$/i.test(item.name));
   if (!asset) throw new Error(portable ? 'Für diese Version wurde kein Windows-Portable-Paket veröffentlicht.' : 'Für diese Version wurde kein Windows-Installer veröffentlicht.');
   if (!asset.digest?.startsWith('sha256:')) throw new Error('Das Release enthält keine SHA-256-Prüfsumme. Das Update wird aus Sicherheitsgründen nicht installiert.');
   if (!Number.isFinite(asset.size) || asset.size < 1 || asset.size > MAX_UPDATE_BYTES) throw new Error('Die Update-Datei hat eine ungültige oder nicht unterstützte Größe.');

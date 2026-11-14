@@ -42,7 +42,15 @@ jobs:
           node-version: "24.15.0"
           cache: npm
 
-      - name: Install dependencies once
+      - name: Install pinned OpenFront engine dependencies
+        working-directory: vendor/OpenFrontIO
+        run: npm ci --ignore-scripts
+
+      - name: Install historical OpenFront engine dependencies
+        working-directory: vendor/OpenFrontIO-8b5d071eed95
+        run: npm ci --ignore-scripts
+
+      - name: Install Coach dependencies once
         run: npm ci
 
       - name: Verify updater contract tests

@@ -412,7 +412,7 @@ function App() {
   const resultLabel = (result?:string) => result === 'victory' ? 'Sieg' : result === 'defeat' ? 'Niederlage' : 'Unvollständig';
   const size = (n: number) => n >= 1024 ** 3 ? `${(n / 1024 ** 3).toFixed(2)} GB` : `${(n / 1024 ** 2).toFixed(1)} MB`;
   const profileName = playerPage?.profile.username ?? playerPage?.profile.accountUsername ?? playerPage?.profile.displayName ?? playerPage?.playerId ?? 'Dein OpenFront-Profil';
-  const savedMatchesById=new Map(batchMatches.filter(item=>Boolean(item.result)).map(item=>[item.game.gameId,item] as const));
+  const savedMatchesById=new globalThis.Map(batchMatches.filter(item=>Boolean(item.result)).map(item=>[item.game.gameId,item] as const));
   const gameCards = (games: PlayerGame[]) => games.map(g => {
     const saved=savedMatchesById.get(g.gameId);
     const display=saved?getReplayDisplayState(saved):null;

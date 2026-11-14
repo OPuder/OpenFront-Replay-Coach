@@ -167,6 +167,7 @@ async function scheduleWindowsInstall(downloadPath: string, portable: boolean): 
     '  $Installed = $true',
     '} catch {',
     '  $_ | Out-String | Add-Content -LiteralPath $Log',
+    '  if (-not $BackupVerified) { $Restored = $true }',
     '  if ($BackupVerified) {',
     '    try {',
     "      Copy-Item -Path (Join-Path $Backup '*') -Destination $InstallDirectory -Recurse -Force",

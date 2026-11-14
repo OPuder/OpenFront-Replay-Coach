@@ -16,7 +16,7 @@ export interface LongitudinalMatchInput {
     samples: unknown[];
     playerReview: { clientID: string | null; playerName?: string; startTiles?: number; endTiles?: number; tilesGained?: number; startGold?: number; endGold?: number; startTroops?: number; endTroops?: number; outgoingAttackSamples?: number; longestNoExpansionSeconds?: number } | null;
     actionReviews: unknown[];
-    spawnPositions?: ProCoachSpawnPosition[];
+    spawnPositions?: ProCoachSpawnPosition[] | null;
   } | null;
 }
 

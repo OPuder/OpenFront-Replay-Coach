@@ -35,6 +35,7 @@ function App() {
   const [activePage, setActivePage] = useState<'dashboard'|'games'|'analysis'>('dashboard');
   const [mapRefreshKey, setMapRefreshKey] = useState(0);
   function navigateTo(page: 'dashboard'|'games'|'analysis') {
+    engineReviewAbort.current?.abort(); engineReviewAbort.current=null; engineReviewRunId.current++;
     setActivePage(page);
     setMapRefreshKey(key => key + 1);
   }

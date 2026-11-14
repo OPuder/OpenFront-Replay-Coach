@@ -126,6 +126,3 @@ test('automatic analysis queues pending imported games only and never loops term
  assert.deepEqual(selectGamesToAnalyze(entries).map(x=>x.game.gameId),['pending']);
 });
 
-import { selectGamesToAnalyze, selectGamesToImport } from '../src/renderer/AutoLibrarySync.ts';
-test('automatic library scan imports every unseen game',()=>{const games=[{gameId:'new-1'},{gameId:'old-1'},{gameId:'new-2'}];const stored=[{game:{gameId:'old-1'},result:{},analysisStatus:'verified'}];assert.deepEqual(selectGamesToImport(games,stored).map(x=>x.gameId),['new-1','new-2']);});
-test('automatic analysis queues only pending imported matches',()=>{const entries=[{game:{gameId:'pending'},result:{},analysisStatus:'pending'},{game:{gameId:'verified'},result:{},analysisStatus:'verified'},{game:{gameId:'failed'},analysisStatus:'failed'}];assert.deepEqual(selectGamesToAnalyze(entries).map(x=>x.game.gameId),['pending']);});

@@ -440,7 +440,7 @@ jobs:
               const names = assets.map(asset => asset.name);
               const checks = [
                 names.length === 3,
-                names.some(name => /\.Setup\.[0-9.]+\.exe$/i.test(name)),
+                names.some(name => /(?:\.Setup\.| Setup )[0-9.]+\.exe$/i.test(name)),
                 names.some(name => /-win\.zip$/i.test(name)),
                 names.some(name => /-Android\.apk$/i.test(name)),
                 assets.every(asset => asset.size > 1000000),

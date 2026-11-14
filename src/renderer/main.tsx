@@ -10,7 +10,7 @@ import { buildProCoachReport } from '../main/decoder/ProCoachAlgorithm';
 import { buildLongitudinalCoachReport } from '../main/decoder/LongitudinalCoach';
 import { selectPrimaryCoachInsights } from '../main/decoder/CoachInsightSelection';
 import { buildReplayTimeline } from '../main/decoder/CoachTimeline';
-import { runConcurrentBatchAnalysis } from './BatchAnalysisRunner';
+import { chooseBatchAnalysisConcurrency, runConcurrentBatchAnalysis } from './BatchAnalysisRunner';
 import { assessReplayCompatibility } from '../main/decoder/ReplayCompatibility';
 import type { ReplaySimulationResult } from './ReplaySimulation';
 import { selectPlayerSurvivalWindow } from './phaseSurvival';
@@ -216,6 +216,7 @@ function App() {
     };
     await saveImportedMatch(playerPage.playerId,stored);
   }
+  const lastBatchProgressUpdate=React.useRef({at:0,done:-1,active:-1});
   async function analyzeSelectedGames(gameIds=selectedGameIds) {
     if(!playerPage||batchBusy||batchAnalysisBusy||batchAnalysisAbort.current||gameIds.length===0) return;
     const candidates=gameIds.map(id=>batchMatches.find(item=>item.game.gameId===id)).filter((item):item is BatchMatchItem=>Boolean(item?.result));
@@ -229,9 +230,8 @@ function App() {
       const {simulateReplay,buildReplayEngineAssets}=await import('./ReplaySimulation');
       if(runId!==batchAnalysisRunId.current||controller.signal.aborted) return;
       await runConcurrentBatchAnalysis<BatchMatchItem,ReplaySimulationResult>(candidates,{
-        // Two independent engine workers substantially reduce total wait time on PCs.
-        // Phones remain sequential to protect memory, thermals and battery life.
-        concurrency:isMobileDevice?1:2,
+        // Scale only when both CPU and memory headroom are known; mobile stays sequential.
+        concurrency:chooseBatchAnalysisConcurrency(isMobileDevice,navigator.hardwareConcurrency,(navigator as Navigator & {deviceMemory?:number}).deviceMemory),
         signal:controller.signal,
         getId:item=>item.game.gameId,
         isCompatible:item=>Boolean(item.result?.record&&item.result.engineCompatibility?.engineVersionCompatible===true),
@@ -261,7 +261,16 @@ function App() {
           }
         },
         onProgress:progress=>{
-          if(runId===batchAnalysisRunId.current) setBatchAnalysisProgress(progress);
+          if(runId!==batchAnalysisRunId.current) return;
+          // Engine workers can emit progress for every replay chunk. Updating React
+          // on every message rerenders the whole studio dozens of times per second.
+          // Keep completion/worker transitions immediate and throttle routine ticks.
+          const now=Date.now();
+          const previous=lastBatchProgressUpdate.current;
+          if(progress.done!==previous.done||progress.active!==previous.active||now-previous.at>=150||progress.done===progress.total){
+            lastBatchProgressUpdate.current={at:now,done:progress.done,active:progress.active};
+            setBatchAnalysisProgress(progress);
+          }
         },
       });
     } catch(analysisError) {

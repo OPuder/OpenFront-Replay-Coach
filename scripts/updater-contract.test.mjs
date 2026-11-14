@@ -29,6 +29,7 @@ assert.match(renderer, /installAndroidUpdate/);
 assert.doesNotMatch(renderer, /androidAutoUpdateAttempted/);
 assert.match(renderer, /registerPlugin<ApkUpdaterPlugin>/);
 assert.match(renderer, /version: latestVersion/);
+assert.match(renderer, /keine Android-APK veröffentlicht/);
 assert.doesNotMatch(renderer, /Web\/PWA|serviceWorker|isBrowserPwa/);
 assert.doesNotMatch(releaseWorkflow, /assembleDebug/);
 assert.match(releaseWorkflow, /permanent Android release signing key is required/);

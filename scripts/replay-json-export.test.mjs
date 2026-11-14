@@ -15,7 +15,7 @@ test("rebuilds JSON from a persisted match after process restart", () => {
 });
 
 test("rejects records belonging to another match", () => {
-  assert.throws(() => resolveReplayJsonExport("other-game", undefined, record, 1024), /andere Partie/);
+  assert.throws(() => resolveReplayJsonExport("other-game", undefined, record, 1024), /anderen Partie/);
 });
 
 test("rejects missing persisted source data", () => {

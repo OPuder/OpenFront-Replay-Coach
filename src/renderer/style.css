@@ -1856,3 +1856,64 @@ body{
 .game-replay-state.engine-missing{border-color:#6c5732;background:#2b2518;color:#e8c77f}
 .game-replay-state.saved{border-color:#3d594e;background:#16251e;color:#b5cbb9}
 .game-replay-state.verified{border-color:#32664c;background:#152b20;color:#aee5b8}
+
+/* Coach workspace hierarchy: insight first, diagnostics on demand. */
+.analysis-hero{display:grid;grid-template-columns:minmax(0,1.55fr) minmax(260px,.75fr);border:1px solid #31513f;border-radius:17px;background:#102118}
+.analysis-map-preview{min-height:250px}
+.analysis-hero-side{display:flex;flex-direction:column;align-items:stretch;gap:9px;padding:20px;background:linear-gradient(145deg,#172d20,#102019)}
+.analysis-hero-side>.studio-eyebrow{margin-top:3px}
+.analysis-hero-side>b{font-size:11px;overflow-wrap:anywhere;color:#d9e9dc}
+.analysis-hero-side .studio-button{width:100%}
+.compatibility-notice{border-color:#3b6348;background:#162b1e}
+.compatibility-notice span{color:#b5e6a4}
+.compatibility-notice small{color:#a9c0ad}
+.compatibility-notice.limited{border-color:#6a5733;background:#2a2418}
+.compatibility-notice.limited span{color:#e8c77f}
+.coach-workspace{margin-top:25px}
+.player-scope-bar{border-color:#31533f;background:linear-gradient(110deg,#172d21,#12231b)}
+.coach-engine-status{border-color:#3d6048;background:linear-gradient(110deg,#172c20,#112118)}
+.coach-engine-status.is-warning{border-color:#6b5734;background:linear-gradient(110deg,#2a251a,#1c2119)}
+.coach-engine-status-title{gap:12px}
+.coach-status-indicator{border-radius:999px;padding:5px 8px;background:#233a29;color:#bce9a9}
+.coach-engine-status.is-warning .coach-status-indicator{background:#40351e;color:#edce8a}
+.workspace-switcher{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px;margin:18px 0 22px}
+.workspace-switcher>button{min-width:0;display:flex;align-items:center;gap:10px;padding:13px 14px;border:1px solid #2e4b3a;border-radius:12px;background:#112219;color:#a8c0ad;text-align:left}
+.workspace-switcher>button>svg{width:19px;height:19px;flex:none;color:#9fcea0}
+.workspace-switcher>button span{min-width:0;display:flex;flex-direction:column;gap:3px}
+.workspace-switcher>button b{font-size:10px;color:#e6f1e7}
+.workspace-switcher>button small{font-size:8px;line-height:1.35;color:#8ba392}
+.workspace-switcher>button.selected{border-color:#78a86b;background:linear-gradient(140deg,#203b29,#172d20);box-shadow:inset 0 0 0 1px #78a86b30}
+.workspace-switcher>button.selected>svg{color:#c4f2a9}
+.coach-page-heading{margin:22px 0 15px}
+.coach-page-heading h3{font-size:23px;letter-spacing:-.7px}
+.coach-live-pill{border-color:#3b6348;background:#172d20;color:#b7e6a4}
+.coach-lead-card{border-color:#456747;background:radial-gradient(ellipse at 100% 0%,rgba(147,211,109,.14),transparent 42%),linear-gradient(145deg,#1b3525,#102118)}
+.coach-lead-card h3{font-size:22px;line-height:1.2;letter-spacing:-.65px}
+.coach-lead-summary{font-size:12px;line-height:1.7}
+.coach-lead-decision,.coach-lead-training{border-color:#365540;background:rgba(9,25,15,.4)}
+.coach-insights-section{display:flex;flex-direction:column;gap:16px}
+.insight-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.insight-card{border-color:#2e4b3a;background:linear-gradient(145deg,#172b20,#102017);box-shadow:0 10px 28px #0002}
+.insight-card:hover{border-color:#69946a;transform:translateY(-1px)}
+.insight-icon{background:#29442c;color:#c3efa6}
+.coach-question{border-color:#5b5434;background:#29281c;color:#e7dfbe}
+.analysis-navigation{margin:18px 0 12px}
+.review-tabs button{border-radius:9px}
+.review-tabs button.selected{border-color:#6b9d67;background:#1d3725;color:#e6f6dc}
+.technical-details{border-color:#2e4b3a;background:#0d1d14}
+.technical-details summary{color:#afc4b3}
+@media(max-width:1050px){
+ .workspace-switcher{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .analysis-hero{grid-template-columns:minmax(0,1fr) 270px}
+}
+@media(max-width:760px){
+ .analysis-hero{grid-template-columns:1fr}
+ .analysis-map-preview{min-height:190px}
+ .analysis-hero-side{padding:15px}
+ .workspace-switcher{grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}
+ .workspace-switcher>button{padding:11px 9px;gap:7px}
+ .workspace-switcher>button small{font-size:7px}
+ .coach-page-heading{align-items:flex-start;flex-direction:column}
+ .insight-grid{grid-template-columns:1fr}
+ .coach-lead-card h3{font-size:19px}
+}

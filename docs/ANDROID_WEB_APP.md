@@ -25,13 +25,9 @@ The APK is built with Capacitor 8. Its documented Android support starts at Andr
 
 ## Updating the APK
 
-The APK is signed by the GitHub Actions build. Until a permanent private signing key is configured as a GitHub Actions secret, each CI run uses its own temporary debug signing key. Android may therefore reject an in-place update over the previous CI APK. When that happens:
+The app checks for a newer release when it starts. If one is available, use the update button to download and verify the APK; Android then displays its own installation confirmation. Before opening that dialog, the updater checks the package ID, version code and signing certificate against the installed app and explains any mismatch.
 
-1. Remove the old OpenFront Replay Coach app.
-2. Download and install the newest APK.
-3. Reopen the app and load your profile again.
-
-A permanent signing key can be added later as a private GitHub Actions secret. This is separate from Cloudflare and does not require Play Store access.
+Every release is signed with the configured permanent GitHub Actions key. If an older installation was signed with a different key, Android cannot update it in place; that installation must be removed once and the latest APK installed manually. The permanent key must remain unchanged for all future releases.
 
 ## Optional browser/PWA source
 

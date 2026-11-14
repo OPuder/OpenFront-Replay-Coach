@@ -77,12 +77,12 @@ assert.match(androidSigningGate, /ANDROID_KEYSTORE_PATH/);
 assert.match(androidSigningGate, /Android signing certificate does not match/);
 assert.match(androidSigningGate, /apksigner.*verify/);
 const androidUpdateRegression = read("scripts/test-android-in-place-update.sh");
-assert.ok(androidUpdateRegression.includes('adb shell "run-as $package_id sh -c'), "Android test must quote the remote run-as shell command as one argument.");
-assert.ok(androidUpdateRegression.includes('adb shell "run-as $package_id cat files/update-regression/sentinel.txt"'), "Android test must read the app-data sentinel through run-as.");
-assert.match(androidUpdateRegression, /adb install -r/);
+assert.ok(androidUpdateRegression.includes('adb -s emulator-5554 shell "run-as $package_id sh -c'), "Android test must quote the remote run-as shell command as one argument.");
+assert.ok(androidUpdateRegression.includes('adb -s emulator-5554 shell "run-as $package_id cat files/update-regression/sentinel.txt"'), "Android test must read the app-data sentinel through run-as.");
+assert.match(androidUpdateRegression, /adb -s emulator-5554 install -r/);
 assert.match(androidUpdateRegression, /keep-this-data/);
 assert.match(androidUpdateRegression, /versionCode=\$expected_version_code/);
-assert.match(androidUpdateRegression, /adb shell monkey/);
+assert.match(androidUpdateRegression, /adb -s emulator-5554 shell monkey/);
 
 
 assert.match(releaseWorkflow, /Verify published release contains exactly three usable artifacts/);

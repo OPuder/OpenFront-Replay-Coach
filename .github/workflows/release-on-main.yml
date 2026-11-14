@@ -355,13 +355,14 @@ jobs:
           RELEASE_VERSION: ${{ needs.prepare-release.outputs.version }}
         run: node scripts/set-android-version.mjs "$RELEASE_VERSION"
 
-      - name: Build permanently signed release APK (or temporary debug APK before setup)
+      - name: Build permanently signed release APK
         id: apk
         env:
           ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          GH_TOKEN: ${{ github.token }}
         run: |
           set -Eeuo pipefail
           if [[ -z "$ANDROID_KEYSTORE_BASE64" || -z "$ANDROID_KEYSTORE_PASSWORD" || -z "$ANDROID_KEY_ALIAS" || -z "$ANDROID_KEY_PASSWORD" ]]; then
@@ -380,6 +381,24 @@ jobs:
           test -s "$apk"
           build_tools="$(find "$ANDROID_HOME/build-tools" -mindepth 1 -maxdepth 1 -type d | sort -V | tail -n 1)"
           "$build_tools/apksigner" verify --verbose "$apk"
+          previous_tag="$(gh release list --limit 1 --json tagName --jq '.[0].tagName // empty')"
+          if [[ -n "$previous_tag" ]]; then
+            previous_dir="$RUNNER_TEMP/previous-release"
+            mkdir -p "$previous_dir"
+            gh release download "$previous_tag" --pattern '*-Android.apk' --dir "$previous_dir"
+            previous_apk="$(find "$previous_dir" -type f -name '*.apk' -print -quit)"
+            if [[ -z "$previous_apk" ]]; then
+              echo "::error::The latest release $previous_tag has no Android APK; refusing an unverified signing transition."
+              exit 1
+            fi
+            current_cert="$("$build_tools/apksigner" verify --print-certs "$apk" | awk -F': ' '/Signer #1 certificate SHA-256 digest:/ {print tolower($2); exit}')"
+            previous_cert="$("$build_tools/apksigner" verify --print-certs "$previous_apk" | awk -F': ' '/Signer #1 certificate SHA-256 digest:/ {print tolower($2); exit}')"
+            if [[ -z "$current_cert" || -z "$previous_cert" || "$current_cert" != "$previous_cert" ]]; then
+              echo "::error::Android signing certificate changed. Existing installations could not update; release blocked."
+              exit 1
+            fi
+            echo "Android signing certificate matches $previous_tag; in-place update identity preserved."
+          fi
           "$build_tools/aapt" dump badging "$apk" | tee /tmp/apk-badging.txt
           grep -F "package: name='de.openfront.replaycoach'" /tmp/apk-badging.txt
           grep -F "versionName='${{ needs.prepare-release.outputs.version }}'" /tmp/apk-badging.txt

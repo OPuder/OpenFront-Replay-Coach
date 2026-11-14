@@ -229,7 +229,7 @@ test('parallel ETA accounts for partially completed active workers before the fi
       isCompatible: () => true,
       analyze: async (item, onProgress) => {
         await delay(5);
-        onProgress(50, 'halfway');
+        onProgress(item.id === 'a' ? 20 : 80, 'halfway');
         await delay(35);
         return { status: 'verified' };
       },

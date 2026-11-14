@@ -933,6 +933,7 @@ function CoachPanel({apiResult,preferredPlayerPublicId,decodedActions,simulation
           <article><small>NÄCHSTER SPIELERSTART</small><b>{selectedSpawnPosition.nearestSpawnDistance === null ? '–' : `${selectedSpawnPosition.nearestSpawnDistance} Felder`}</b><span>Manhattan-Abstand wie in der Spawnlogik</span></article>
           <article><small>DIREKTE GRENZKONTAKTE</small><b>{selectedSpawnPosition.adjacentRivals.length}</b><span>{selectedSpawnPosition.rivalBorderContacts} angrenzende Grenzfelder</span></article>
           <article><small>FREIER LANDRAUM</small><b>{selectedSpawnPosition.nearbyNeutralLandTiles === null ? 'Nicht verfügbar' : fmt(selectedSpawnPosition.nearbyNeutralLandTiles)}</b><span>{spawnLandComparison ?? 'Neutrale Landfelder im 12-Felder-Luftlinienradius'}</span></article>
+          <article><small>STARTGEBIET</small><b>{fmt(selectedSpawnPosition.startTiles)} Felder</b><span>Besitzstand beim Spawn-Snapshot</span></article>
           <article><small>GÜLTIGE STARTFELDER</small><b>{selectedSpawnPosition.spawnZoneLandTiles === null ? 'Nicht verfügbar' : `${selectedSpawnPosition.spawnZoneLandTiles} / ${selectedSpawnPosition.spawnZoneTotalTiles}`}</b><span>Land und nicht blockiert im Engine-Spawnradius</span></article>
           <article><small>KÜSTENOPTIONEN</small><b>{selectedSpawnPosition.nearbyCoastalLandTiles === null ? 'Nicht verfügbar' : fmt(selectedSpawnPosition.nearbyCoastalLandTiles)}</b><span>Neutrale Küstenfelder im Nahbereich</span></article>
         </div>
@@ -942,7 +943,7 @@ function CoachPanel({apiResult,preferredPlayerPublicId,decodedActions,simulation
         </div>
         <details className="spawn-coach-terrain">
           <summary>Gelände und Datenqualität</summary>
-          <div><span>Hochland: <b>{selectedSpawnPosition.nearbyHighlandTiles ?? '–'}</b></span><span>Berge: <b>{selectedSpawnPosition.nearbyMountainTiles ?? '–'}</b></span><span>Unpassierbar: <b>{selectedSpawnPosition.nearbyImpassableTiles ?? '–'}</b></span><span>Kartenrand: <b>{selectedSpawnPosition.mapEdgeDistance ?? '–'} Felder</b></span></div>
+          <div><span>Flachland: <b>{selectedSpawnPosition.nearbyPlainsTiles ?? '–'}</b></span><span>Hochland: <b>{selectedSpawnPosition.nearbyHighlandTiles ?? '–'}</b></span><span>Berge: <b>{selectedSpawnPosition.nearbyMountainTiles ?? '–'}</b></span><span>Unpassierbar: <b>{selectedSpawnPosition.nearbyImpassableTiles ?? '–'}</b></span><span>Kartenrand: <b>{selectedSpawnPosition.mapEdgeDistance ?? '–'} Felder</b></span></div>
           <p>Gelände stammt aus der Map-Binärdatei des exakten Replay-Engine-Commits. Neutrale Felder werden im Luftlinienradius gezählt; das beweist keine durchgehend begehbare Verbindung. Die Einordnung vergleicht reale Spielerstarts und behauptet nicht, dass hypothetische Alternativkoordinaten sicher auswählbar gewesen wären.</p>
         </details>
       </section>}

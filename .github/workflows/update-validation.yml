@@ -80,7 +80,7 @@ jobs:
 
   android-apk-validation:
     name: Android APK parse, identity, version and signature validation
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     timeout-minutes: 45
     steps:
       - name: Check out source

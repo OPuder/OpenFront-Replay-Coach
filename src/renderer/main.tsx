@@ -17,6 +17,7 @@ import type { ReplaySimulationResult } from './ReplaySimulation';
 import { selectPlayerSurvivalWindow } from './phaseSurvival';
 import { installBrowserReplayAPI } from './platform/BrowserReplayAPI';
 import { loadImportedMatches, loadPlayerLibrary, saveImportedMatch, savePlayerLibrary, type StoredAnalysisStatus, type StoredMatchEntry } from './matchStore';
+import { UpdateCenter } from './UpdateCenter';
 
 // Electron provides its API through the isolated preload; normal browsers use
 // the browser adapter so the same React interface powers Windows and Android.
@@ -416,7 +417,7 @@ function App() {
       <button className={activePage==='analysis'?'active':''} onClick={()=>navigateTo('analysis')} disabled={!apiResult && !replay}><Brain/><span>Coach</span></button>
     </nav>
     <main className="studio-main">
-      <header className="studio-header"><div><div className="studio-eyebrow">OPENFRONT / PERFORMANCE STUDIO</div><h1>{activePage==='dashboard'?'Dein Performance-Dashboard':activePage==='games'?'Deine Spielbibliothek':'Match Review'}</h1><p>{activePage==='dashboard'?'Deine Entwicklung, letzte Partien und nächste Trainingsschwerpunkte.':activePage==='games'?'Finde eine Partie und öffne ihre Karten- und Aktionsübersicht.':'Spielverlauf, beobachtete Entscheidungen und Replay an einem Ort.'}</p></div><div className="studio-header-actions"><button className="studio-button subtle" onClick={openReplay} disabled={busy}><FileUp size={16}/> Replay importieren</button></div></header>
+      <header className="studio-header"><div><div className="studio-eyebrow">OPENFRONT / PERFORMANCE STUDIO</div><h1>{activePage==='dashboard'?'Dein Performance-Dashboard':activePage==='games'?'Deine Spielbibliothek':'Match Review'}</h1><p>{activePage==='dashboard'?'Deine Entwicklung, letzte Partien und nächste Trainingsschwerpunkte.':activePage==='games'?'Finde eine Partie und öffne ihre Karten- und Aktionsübersicht.':'Spielverlauf, beobachtete Entscheidungen und Replay an einem Ort.'}</p></div><div className="studio-header-actions"><UpdateCenter/><button className="studio-button subtle" onClick={openReplay} disabled={busy}><FileUp size={16}/> Replay importieren</button></div></header>
       {error && <div className="error"><AlertTriangle size={18}/>{error}</div>}{saveNotice && <div className="success"><CheckCircle2 size={18}/>{saveNotice}</div>}
       {playerBusy && playerProgress && <div className="load-progress studio-card"><div><b>{playerProgress.status}</b><span>{playerProgress.loaded.toLocaleString('de-DE')} Partien · {playerProgress.pages} Seiten</span></div><div className="load-progress-track"><div/></div></div>}
       {activePage==='dashboard' && <>

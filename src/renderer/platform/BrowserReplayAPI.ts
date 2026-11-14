@@ -373,9 +373,17 @@ async function loadPlayer(rawId: string, onProgress?: (progress: { loaded: numbe
   return { playerId, profile, games: uniqueGames, nextCursor: null, pagesLoaded: pages, mapPreviews };
 }
 
-async function saveReplayJson(gameId: string): Promise<{ saved: boolean; shared?: boolean; canceled?: boolean; filePath?: string; bytes?: number }> {
-  const raw = importedReplayJson.get(String(gameId));
-  if (!raw) throw new Error("Für diese Partie liegt keine Replay-JSON mehr im Browser-Speicher. Lade die Partie bitte erneut.");
+async function saveReplayJson(gameId: string, fallbackRecord?: unknown): Promise<{ saved: boolean; shared?: boolean; canceled?: boolean; filePath?: string; bytes?: number }> {
+  let raw = importedReplayJson.get(String(gameId));
+  if (!raw && fallbackRecord && typeof fallbackRecord === "object" && !Array.isArray(fallbackRecord)) {
+    try { raw = JSON.stringify(fallbackRecord); }
+    catch { throw new Error("Die gespeicherten Replay-Daten konnten nicht für den JSON-Export vorbereitet werden."); }
+    if (!raw) throw new Error("Die gespeicherten Replay-Daten sind leer.");
+    const root = JSON.parse(raw).game ?? JSON.parse(raw);
+    const storedId = String(root?.info?.gameID ?? root?.info?.gameId ?? "");
+    if (storedId && storedId !== String(gameId)) throw new Error("Die gespeicherten Replay-Daten gehören zu einer anderen Partie.");
+  }
+  if (!raw) throw new Error("Die Original-JSON ist für diese Partie nicht mehr verfügbar. Öffne die Partie erneut über ihren OpenFront-Link und versuche den Export noch einmal.");
   const fileName = "OpenFront-" + String(gameId).replace(/[^A-Za-z0-9_-]/g, "_") + ".json";
   const blob = new Blob([raw], { type: "application/json;charset=utf-8" });
   if (IS_NATIVE_ANDROID) {

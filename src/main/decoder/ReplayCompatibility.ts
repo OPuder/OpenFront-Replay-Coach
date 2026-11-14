@@ -2,6 +2,7 @@ import { unwrapGameRecord } from "./GameRecordShape";
 import {
   PINNED_OPENFRONT_COMMIT,
   SUPPORTED_OPENFRONT_COMMITS,
+  resolveSupportedEngineCommit,
 } from "./ReplayEngineCatalog";
 
 export { PINNED_OPENFRONT_COMMIT, SUPPORTED_OPENFRONT_COMMITS } from "./ReplayEngineCatalog";
@@ -32,11 +33,10 @@ export function assessReplayCompatibility(
     typeof obj.gitCommit === "string" && /^[0-9a-f]{7,40}$/i.test(obj.gitCommit)
       ? obj.gitCommit.toLowerCase()
       : null;
-  const selectedEngineCommit =
-    engineCommit ??
-    (replayCommit && SUPPORTED_OPENFRONT_COMMITS.some((commit) => commit === replayCommit)
-      ? replayCommit
-      : PINNED_OPENFRONT_COMMIT);
+  const resolvedReplayCommit = resolveSupportedEngineCommit(replayCommit);
+  const selectedEngineCommit = engineCommit
+    ? resolveSupportedEngineCommit(engineCommit) ?? engineCommit.toLowerCase()
+    : resolvedReplayCommit ?? PINNED_OPENFRONT_COMMIT;
   const turns = Array.isArray(obj.turns) ? obj.turns : [];
   const recordedHashCount = turns.filter((turn) => {
     if (!turn || typeof turn !== "object") return false;
@@ -58,10 +58,10 @@ export function assessReplayCompatibility(
     };
   }
 
-  if (replayCommit !== selectedEngineCommit) {
+  if (!resolvedReplayCommit || resolvedReplayCommit !== selectedEngineCommit) {
     return {
       status: "engine-version-mismatch",
-      replayCommit,
+      replayCommit: resolvedReplayCommit ?? replayCommit,
       engineCommit: selectedEngineCommit,
       recordedHashCount,
       engineVersionCompatible: false,

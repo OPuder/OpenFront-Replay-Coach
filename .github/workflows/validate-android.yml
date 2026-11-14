@@ -4,7 +4,7 @@ on:
   pull_request:
     branches: [main]
   push:
-    branches: [release-automation-2.2.4]
+    branches: [release-automation-2.2.4, chore/verify-permanent-android-signing, fix/android-keystore-validation]
   workflow_dispatch:
 
 permissions:
@@ -84,25 +84,52 @@ jobs:
       - name: Set Android application version
         run: node scripts/set-android-version.mjs "$(node -p "require('./package.json').version")"
 
-      - name: Build debug APK
-        working-directory: android
-        run: ./gradlew --no-daemon assembleDebug
+      - name: Validate permanent keystore credentials
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: node scripts/verify-android-keystore.mjs
+
+      - name: Build APK with permanent signing when configured
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          set -Eeuo pipefail
+          if [[ -n "$ANDROID_KEYSTORE_BASE64" && -n "$ANDROID_KEYSTORE_PASSWORD" && -n "$ANDROID_KEY_ALIAS" && -n "$ANDROID_KEY_PASSWORD" ]]; then
+            keystore="$RUNNER_TEMP/openfront-replay-coach-release.jks"
+            printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$keystore"
+            test -s "$keystore"
+            export ANDROID_KEYSTORE_PATH="$keystore"
+            node scripts/configure-android-signing.mjs
+            (cd android && ./gradlew --no-daemon assembleRelease)
+            echo "APK_PATH=android/app/build/outputs/apk/release/app-release.apk" >> "$GITHUB_ENV"
+            echo "APK_SIGNING_MODE=permanent" >> "$GITHUB_ENV"
+          else
+            (cd android && ./gradlew --no-daemon assembleDebug)
+            echo "APK_PATH=android/app/build/outputs/apk/debug/app-debug.apk" >> "$GITHUB_ENV"
+            echo "APK_SIGNING_MODE=debug" >> "$GITHUB_ENV"
+          fi
 
       - name: Verify APK signature, package ID and version
         run: |
           set -Eeuo pipefail
-          apk="android/app/build/outputs/apk/debug/app-debug.apk"
           version="$(node -p "require('./package.json').version")"
-          test -s "$apk"
-          "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --verbose "$apk"
-          "$ANDROID_HOME/build-tools/36.0.0/aapt" dump badging "$apk" | tee /tmp/apk-badging.txt
+          test -s "$APK_PATH"
+          "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --verbose --print-certs "$APK_PATH"
+          "$ANDROID_HOME/build-tools/36.0.0/aapt" dump badging "$APK_PATH" | tee /tmp/apk-badging.txt
           grep -F "package: name='de.openfront.replaycoach'" /tmp/apk-badging.txt
           grep -F "versionName='$version'" /tmp/apk-badging.txt
+          echo "Verified APK signing mode: $APK_SIGNING_MODE"
 
-      - name: Upload Android validation APK
+      - name: Upload validated Android APK
         uses: actions/upload-artifact@v4
         with:
-          name: OpenFront-Replay-Coach-Android-Debug
-          path: android/app/build/outputs/apk/debug/app-debug.apk
+          name: OpenFront-Replay-Coach-Android-Validated
+          path: ${{ env.APK_PATH }}
           if-no-files-found: error
           retention-days: 14

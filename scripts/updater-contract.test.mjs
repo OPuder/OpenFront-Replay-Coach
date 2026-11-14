@@ -81,4 +81,4 @@ assert.match(androidSigningGate, /apksigner.*verify/);
 const releaseWorkflow = read(".github/workflows/release-on-main.yml");
 assert.match(releaseWorkflow, /Verify published release contains exactly three usable artifacts/);
 assert.match(releaseWorkflow, /names\.length === 3/);
-assert.match(releaseWorkflow, /-Android\\.apk/);
+assert.match(releaseWorkflow, /-Android\.apk/);

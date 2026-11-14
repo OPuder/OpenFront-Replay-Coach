@@ -191,7 +191,7 @@ export function chooseBatchAnalysisConcurrency(isMobile: boolean, hardwareConcur
   if (isMobile) return 1;
   const cores = Number.isFinite(hardwareConcurrency) ? Math.max(1, Math.floor(hardwareConcurrency!)) : 2;
   const memory = Number.isFinite(deviceMemoryGb) ? deviceMemoryGb! : 0;
-  if (cores >= 12 && memory >= 16) return 4;
-  if (cores >= 8 && memory >= 8) return 3;
+  if (cores >= 16 && memory >= 8) return 4;
+  if (cores >= 8 && memory >= 4) return 3;
   return 2;
 }

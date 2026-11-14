@@ -38,11 +38,11 @@ jobs:
       - name: Prepare all exact historical OpenFront engines
         run: npm run prepare:engines
 
-      - name: Type-check all exact replay engine revisions
-        run: npm run typecheck:engines
-
       - name: Install Coach build dependencies
         run: npm ci
 
-      - name: Bundle all exact replay engine workers for Electron
+      - name: Build every exact replay engine worker
         run: npm run build:engine
+
+      - name: Verify all engine pins and runtime mappings
+        run: npm run validate:engine-pin

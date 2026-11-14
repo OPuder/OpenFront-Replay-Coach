@@ -5,7 +5,7 @@ on:
   pull_request:
     paths:
       - ".gitmodules"
-      - "vendor/OpenFrontIO"
+      - "vendor/**"
       - "engine-build/**"
       - "package.json"
       - ".github/workflows/validate-engine.yml"
@@ -13,7 +13,7 @@ on:
     branches: [main]
     paths:
       - ".gitmodules"
-      - "vendor/OpenFrontIO"
+      - "vendor/**"
       - ".github/workflows/validate-engine.yml"
 
 permissions:
@@ -22,24 +22,10 @@ permissions:
 jobs:
   validate-engine:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 60
     steps:
       - name: Check out coach source
         uses: actions/checkout@v4
-
-      # The upstream repository declares a private nested submodule that is
-      # unrelated to replay simulation. Initialize only the public engine.
-      - name: Check out only the pinned public OpenFront source
-        run: git submodule update --init --depth 1 vendor/OpenFrontIO vendor/OpenFrontIO-8b5d071eed95
-
-      - name: Verify exact engine revision
-        shell: bash
-        run: |
-          expected="bc3e3334c573c4959ec6a6745df6826d07233b4d"
-          actual="$(git -C vendor/OpenFrontIO rev-parse HEAD)"
-          echo "Expected: $expected"
-          echo "Actual:   $actual"
-          test "$actual" = "$expected"
 
       - name: Set up upstream Node.js
         uses: actions/setup-node@v4
@@ -49,21 +35,14 @@ jobs:
       - name: Set up upstream npm
         run: npm install --global npm@12.1.0
 
-      - name: Install pinned upstream workspaces
-        working-directory: vendor/OpenFrontIO
-        run: npm ci --ignore-scripts
+      - name: Prepare all exact historical OpenFront engines
+        run: npm run prepare:engines
 
-      - name: Install exact historical OpenFront engine dependencies
-        working-directory: vendor/OpenFrontIO-8b5d071eed95
-        run: npm ci --ignore-scripts
+      - name: Install Coach build dependencies
+        run: npm ci
 
-      - name: Type-check original engine and replay pipeline
-        working-directory: vendor/OpenFrontIO
-        run: npm run typecheck
-
-      - name: Type-check historical Europe engine and replay pipeline
-        working-directory: vendor/OpenFrontIO-8b5d071eed95
-        run: npm run typecheck
-
-      - name: Bundle all exact replay engine workers for Electron
+      - name: Build every exact replay engine worker
         run: npm run build:engine
+
+      - name: Verify all engine pins and runtime mappings
+        run: npm run validate:engine-pin

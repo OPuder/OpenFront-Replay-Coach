@@ -17,14 +17,10 @@ jobs:
   updater-contract-and-build:
     name: Updater contracts, typecheck and Windows packaging
     runs-on: windows-latest
-    timeout-minutes: 45
+    timeout-minutes: 60
     steps:
       - name: Check out source
         uses: actions/checkout@v4
-
-      - name: Check out only the pinned public OpenFront source
-        timeout-minutes: 10
-        run: git submodule update --init --depth 1 vendor/OpenFrontIO vendor/OpenFrontIO-8b5d071eed95
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
@@ -35,13 +31,8 @@ jobs:
       - name: Set up the repository-pinned npm version
         run: npm install --global npm@12.1.0
 
-      - name: Install pinned OpenFront engine dependencies
-        working-directory: vendor/OpenFrontIO
-        run: npm ci --ignore-scripts
-
-      - name: Install historical OpenFront engine dependencies
-        working-directory: vendor/OpenFrontIO-8b5d071eed95
-        run: npm ci --ignore-scripts
+      - name: Prepare all exact historical OpenFront engines
+        run: npm run prepare:engines
 
       - name: Install Coach dependencies once
         run: npm ci
@@ -95,10 +86,6 @@ jobs:
       - name: Check out source
         uses: actions/checkout@v4
 
-      - name: Check out only the pinned public OpenFront source
-        timeout-minutes: 10
-        run: git submodule update --init --depth 1 vendor/OpenFrontIO vendor/OpenFrontIO-8b5d071eed95
-
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
@@ -108,13 +95,8 @@ jobs:
       - name: Set up the repository-pinned npm version
         run: npm install --global npm@12.1.0
 
-      - name: Install pinned OpenFront engine dependencies
-        working-directory: vendor/OpenFrontIO
-        run: npm ci --ignore-scripts
-
-      - name: Install historical OpenFront engine dependencies
-        working-directory: vendor/OpenFrontIO-8b5d071eed95
-        run: npm ci --ignore-scripts
+      - name: Prepare all exact historical OpenFront engines
+        run: npm run prepare:engines
 
       - name: Install Coach dependencies once
         run: npm ci

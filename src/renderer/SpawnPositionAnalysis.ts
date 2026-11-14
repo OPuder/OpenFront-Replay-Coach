@@ -330,22 +330,18 @@ export function analyzeAlternativeSpawnPositions(
   const stride = width + 1;
   const prefixLength = stride * (height + 1);
   const landPrefix = new Uint32Array(prefixLength);
-  const coastPrefix = new Uint32Array(prefixLength);
 
   for (let y = 0; y < height; y++) {
     let landRow = 0;
-    let coastRow = 0;
     for (let x = 0; x < width; x++) {
       const ref = y * width + x;
       const owner = tileState[ref] & OWNER_MASK;
       const terrain = terrainState[ref];
       if (owner === 0 && isLand(terrain) && !isImpassable(terrain)) {
         landRow++;
-        if (hasOceanNeighbor(terrainState, ref, width, height)) coastRow++;
       }
       const prefixRef = (y + 1) * stride + x + 1;
       landPrefix[prefixRef] = landPrefix[prefixRef - stride] + landRow;
-      coastPrefix[prefixRef] = coastPrefix[prefixRef - stride] + coastRow;
     }
   }
 
@@ -432,7 +428,7 @@ export function analyzeAlternativeSpawnPositions(
         x,
         y,
         nearbyNeutralLandTiles: rectangleSum(landPrefix, x - CONTEXT_RADIUS, y - CONTEXT_RADIUS, x + CONTEXT_RADIUS, y + CONTEXT_RADIUS),
-        nearbyCoastalLandTiles: rectangleSum(coastPrefix, x - CONTEXT_RADIUS, y - CONTEXT_RADIUS, x + CONTEXT_RADIUS, y + CONTEXT_RADIUS),
+        nearbyCoastalLandTiles: 0,
         nearestSpawnDistance,
         adjacentPlayerCount,
         mapEdgeDistance: Math.min(x, y, width - 1 - x, height - 1 - y),
@@ -447,6 +443,21 @@ export function analyzeAlternativeSpawnPositions(
       }
     }
   }
+
+  // Coastline is only a tie-breaker. Count it for the small retained pool
+  // instead of allocating a second full-map prefix buffer (important on mobile).
+  for (const candidate of pool) {
+    let coastal = 0;
+    for (let y = Math.max(0, candidate.y - CONTEXT_RADIUS); y <= Math.min(height - 1, candidate.y + CONTEXT_RADIUS); y++) {
+      for (let x = Math.max(0, candidate.x - CONTEXT_RADIUS); x <= Math.min(width - 1, candidate.x + CONTEXT_RADIUS); x++) {
+        const ref = y * width + x;
+        if ((tileState[ref] & OWNER_MASK) !== 0 || !isLand(terrainState[ref]) || isImpassable(terrainState[ref])) continue;
+        if (hasOceanNeighbor(terrainState, ref, width, height)) coastal++;
+      }
+    }
+    candidate.nearbyCoastalLandTiles = coastal;
+  }
+  pool.sort((a,b)=>isBetter(a,b)?-1:isBetter(b,a)?1:0);
 
   const selected: SpawnAlternativeMetric[] = [];
   for (const candidate of pool) {

@@ -35,6 +35,7 @@ assert.match(renderer, /version: latestVersion/);
 assert.match(renderer, /keine Android-APK veröffentlicht/);
 assert.doesNotMatch(renderer, /Web\/PWA|serviceWorker|isBrowserPwa/);
 assert.doesNotMatch(releaseWorkflow, /assembleDebug/);
+assert.match(releaseWorkflow, /push:\\s*branches: \\[main\\]/);
 assert.match(releaseWorkflow, /permanent Android release signing key is required/);
 assert.match(releaseWorkflow, /Signer #1 certificate SHA-256 digest/);
 assert.match(releaseWorkflow, /Android signing certificate changed/);

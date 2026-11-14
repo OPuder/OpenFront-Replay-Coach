@@ -1,7 +1,9 @@
 name: Release all editions from main
 
 on:
-  # Publishing is explicit: ordinary main merges must not create unfinished public releases.
+  # Main merges enter the fully gated release pipeline; manual dispatch remains available for retries.
+  push:
+    branches: [main]
   workflow_dispatch:
 
 permissions:

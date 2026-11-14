@@ -63,6 +63,8 @@ function App() {
   const [batchAnalysisProgress, setBatchAnalysisProgress] = useState<{done:number;total:number;gameId:string;percent:number;phase:string}|null>(null);
   const batchAnalysisRunId = React.useRef(0);
   const batchAnalysisAbort = React.useRef<AbortController|null>(null);
+  const autoImportAttempted = React.useRef(new Set<string>());
+  const autoAnalysisAttempted = React.useRef(new Set<string>());
   const [batchBusy, setBatchBusy] = useState(false);
   function refreshStoredMatch(item: StoredMatchEntry): BatchMatchItem {
     if(!item.result?.record) return item;
@@ -230,10 +232,10 @@ function App() {
   }
   React.useEffect(() => {
     if(!playerPage || playerBusy || batchBusy || batchAnalysisBusy) return;
-    const missing=selectGamesToImport(playerPage.games,batchMatches);
-    if(missing.length){ void loadSelectedGames(missing.map(game=>game.gameId)); return; }
-    const pending=selectGamesToAnalyze(batchMatches);
-    if(pending.length) void analyzeSelectedGames(pending.map(item=>item.game.gameId));
+    const missing=selectGamesToImport(playerPage.games,batchMatches,autoImportAttempted.current);
+    if(missing.length){ missing.forEach(game=>autoImportAttempted.current.add(game.gameId)); void loadSelectedGames(missing.map(game=>game.gameId)); return; }
+    const pending=selectGamesToAnalyze(batchMatches,autoAnalysisAttempted.current);
+    if(pending.length){ pending.forEach(item=>autoAnalysisAttempted.current.add(item.game.gameId)); void analyzeSelectedGames(pending.map(item=>item.game.gameId)); }
   },[playerPage,batchMatches,playerBusy,batchBusy,batchAnalysisBusy]);
 
   function openBatchMatch(gameId:string) {

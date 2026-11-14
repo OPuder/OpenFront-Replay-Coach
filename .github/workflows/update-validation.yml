@@ -80,7 +80,9 @@ jobs:
 
   android-apk-validation:
     name: Android APK parse, identity, version and signature validation
-    runs-on: ubuntu-latest
+    # Keep emulator integration tests on the stable LTS runner; ubuntu-latest
+    # moved to 26.04 and the Android 34 emulator repeatedly went offline there.
+    runs-on: ubuntu-24.04
     timeout-minutes: 45
     steps:
       - name: Check out source

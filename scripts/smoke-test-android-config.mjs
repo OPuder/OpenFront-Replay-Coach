@@ -9,6 +9,8 @@ const config = readFileSync(path.join(root, "capacitor.config.ts"), "utf8");
 const adapter = readFileSync(path.join(root, "src/renderer/platform/BrowserReplayAPI.ts"), "utf8");
 const renderer = readFileSync(path.join(root, "src/renderer/main.tsx"), "utf8");
 const versionScript = readFileSync(path.join(root, "scripts/set-android-version.mjs"), "utf8");
+const updaterPlugin = readFileSync(path.join(root, "android-updater-template/ApkUpdaterPlugin.java"), "utf8");
+const updaterInstaller = readFileSync(path.join(root, "scripts/install-android-updater-plugin.mjs"), "utf8");
 const nativeIcon = path.join(root, "assets/icon.svg");
 
 for (const name of ["@capacitor/core", "@capacitor/android", "@capacitor/browser", "@capacitor/filesystem", "@capacitor/share"]) {
@@ -27,5 +29,7 @@ assert.ok(adapter.includes("Filesystem.writeFile") && adapter.includes("Director
 assert.ok(adapter.includes("Share.share") && adapter.includes("Browser.open"), "Native Android share/browser integration is missing");
 assert.ok(renderer.includes("!Capacitor.isNativePlatform()") && renderer.includes("navigator.serviceWorker.register"), "PWA service worker must stay disabled inside native Android app");
 assert.ok(versionScript.includes("versionCode") && versionScript.includes("versionName"), "Android versionCode/versionName logic is missing");
+assert.ok(updaterPlugin.includes("MessageDigest.getInstance(\"SHA-256\")") && updaterPlugin.includes("FileProvider.getUriForFile"), "Secure Android APK updater plugin is missing");
+assert.ok(updaterInstaller.includes("registerPlugin(ApkUpdaterPlugin.class)") && updaterInstaller.includes("updater-fileprovider"), "Android updater plugin registration is missing");
 
 console.log("Android configuration smoke test passed: Capacitor HTTP, public OpenFront API, native exports and app versioning are configured.");

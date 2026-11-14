@@ -178,3 +178,13 @@ export function runSequentialBatchAnalysis<
 ): Promise<BatchAnalysisSummary> {
   return runConcurrentBatchAnalysis(items, { ...options, concurrency: 1 });
 }
+
+/** Select a safe worker count from available hardware without assuming that more is always faster. */
+export function chooseBatchAnalysisConcurrency(isMobile: boolean, hardwareConcurrency?: number, deviceMemoryGb?: number): number {
+  if (isMobile) return 1;
+  const cores = Number.isFinite(hardwareConcurrency) ? Math.max(1, Math.floor(hardwareConcurrency!)) : 2;
+  const memory = Number.isFinite(deviceMemoryGb) ? deviceMemoryGb! : 0;
+  if (cores >= 12 && memory >= 16) return 4;
+  if (cores >= 8 && memory >= 8) return 3;
+  return 2;
+}

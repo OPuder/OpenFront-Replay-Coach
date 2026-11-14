@@ -126,3 +126,15 @@ test('automatic analysis queues pending imported games only and never loops term
  assert.deepEqual(selectGamesToAnalyze(entries).map(x=>x.game.gameId),['pending']);
 });
 
+
+test('automatic scan retries failed imports only once in the current session',()=>{
+ const games=[{gameId:'failed'},{gameId:'ok'}];
+ const entries=[{game:{gameId:'failed'},status:'failed'}];
+ assert.deepEqual(selectGamesToImport(games,entries).map(x=>x.gameId),['failed','ok']);
+ assert.deepEqual(selectGamesToImport(games,entries,new Set(['failed','ok'])),[]);
+});
+test('automatic analysis retries failed analysis only once in the current session',()=>{
+ const entries=[{game:{gameId:'failed'},result:{},analysisStatus:'failed'}];
+ assert.equal(selectGamesToAnalyze(entries).length,1);
+ assert.equal(selectGamesToAnalyze(entries,new Set(['failed'])).length,0);
+});

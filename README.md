@@ -52,7 +52,7 @@ The Android app uses Capacitor's native HTTP stack for public OpenFront game/pla
 
 - Replay files selected from the device are processed locally by the app and are not uploaded to a Coach-owned storage service.
 - The Android app calls only OpenFront's public game/player API and public engine assets. It does not use account sessions, login tokens or game-write endpoints.
-- - The original engine version must match the replay's recorded engine commit before a full hash-verified replay is claimed.
+- The original engine version must match the replay's recorded engine commit before a full hash-verified replay is claimed.
 
 ## Limits
 

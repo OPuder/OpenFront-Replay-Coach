@@ -81,7 +81,7 @@ export interface ProCoachReport {
 const fmt = (n:number) => Math.round(n).toLocaleString('de-DE');
 const clock = (s:number) => `${Math.floor(Math.max(0,s)/60)}:${String(Math.floor(Math.max(0,s)%60)).padStart(2,'0')}`;
 const clamp = (n:number,min=0,max=100) => Math.max(min,Math.min(max,n));
-const median = (values:number[]) => { const a=[...values].sort((x,y)=>x-y); return a.length ? a[Math.floor(a.length/2)] : 0; };
+const median = (values:number[]) => { const a=[...values].sort((x,y)=>x-y); if(!a.length)return 0; const middle=Math.floor(a.length/2); return a.length%2?a[middle]:(a[middle-1]+a[middle])/2; };
 const confidenceFor = (samples:number, actions:number):ProCoachConfidence => samples>=12 && actions>=8 ? 'high' : samples>=6 && actions>=3 ? 'medium' : 'low';
 
 /**

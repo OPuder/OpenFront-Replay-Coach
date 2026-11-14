@@ -215,3 +215,29 @@ test('desktop analysis concurrency scales conservatively with CPU and memory', (
   assert.equal(chooseBatchAnalysisConcurrency(false, 16, 8), 4, 'high-core desktop with ample reported memory uses four workers');
   assert.equal(chooseBatchAnalysisConcurrency(false, undefined, undefined), 2, 'unknown hardware uses safe default');
 });
+
+
+test('automatic import repairs partial stored rows after restart',()=>{
+ const games=[{gameId:'partial-loaded'},{gameId:'partial-running'},{gameId:'complete'},{gameId:'failed'}];
+ const stored=[
+  {game:{gameId:'partial-loaded'},status:'loaded'},
+  {game:{gameId:'partial-running'},status:'running'},
+  {game:{gameId:'complete'},status:'loaded',result:{gameId:'complete'}},
+  {game:{gameId:'failed'},status:'failed'},
+ ];
+ assert.deepEqual(selectGamesToImport(games,stored).map(x=>x.gameId),['partial-loaded','partial-running','failed']);
+});
+
+test('a complete duplicate row prevents unnecessary re-import of a partial duplicate',()=>{
+ const games=[{gameId:'same'}];
+ const stored=[
+  {game:{gameId:'same'},status:'loaded'},
+  {game:{gameId:'same'},status:'loaded',result:{gameId:'same'}},
+ ];
+ assert.deepEqual(selectGamesToImport(games,stored),[]);
+});
+
+test('automatic import ignores empty or whitespace-only game identifiers',()=>{
+ const games=[{gameId:''},{gameId:'   '},{gameId:'valid'}];
+ assert.deepEqual(selectGamesToImport(games,[]).map(x=>x.gameId),['valid']);
+});

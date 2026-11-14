@@ -185,7 +185,7 @@ export function buildLongitudinalCoachReport(
       territoryPerMinute:avg(territory.map(item=>item.territoryPerMinute!).filter(Number.isFinite)),
       incomePerMinute:avg(income.map(item=>item.incomePerMinute!).filter(Number.isFinite)),
       phaseMomentum:{early:phase("early")?.momentumIndex??null,mid:phase("mid")?.momentumIndex??null,late:phase("late")?.momentumIndex??null},
-      attackFollowThroughPercent:(()=>{const evaluated=entry.actions.filter(raw=>raw.type==="attack"&&Number.isFinite(raw.delta30s?.tiles)&&(Number(raw.delta30s.tiles)>0||Number.isFinite(raw.targetDelta30s?.tiles)));if(!evaluated.length)return null;const productive=evaluated.filter(raw=>Number(raw.delta30s!.tiles)>0||(Number.isFinite(raw.targetDelta30s?.tiles)&&Number(raw.targetDelta30s!.tiles)<0)).length;return productive/evaluated.length*100;})(),
+      attackFollowThroughPercent:(()=>{const evaluated=entry.actions.filter(raw=>raw.type==="attack"&&Number.isFinite(raw.delta30s?.tiles)&&((raw.delta30s?.tiles??0)>0||Number.isFinite(raw.targetDelta30s?.tiles)));if(!evaluated.length)return null;const productive=evaluated.filter(raw=>(raw.delta30s?.tiles??0)>0||(Number.isFinite(raw.targetDelta30s?.tiles)&&Number(raw.targetDelta30s!.tiles)<0)).length;return productive/evaluated.length*100;})(),
       attackFollowThroughSamples:entry.actions.filter(raw=>raw.type==="attack"&&Number.isFinite(raw.delta30s?.tiles)&&(Number(raw.delta30s!.tiles)>0||Number.isFinite(raw.targetDelta30s?.tiles))).length,
       reviewedFindings:entry.report.findings.length};
   });

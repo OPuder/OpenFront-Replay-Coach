@@ -137,9 +137,11 @@ window.__verifyBatchStoreTest = async () => {
     sampleCount: item.simulation?.samples?.length ?? 0,
     jsonExportRestored: (() => {
       try {
-        const raw = resolveReplayJsonExport(item.game.gameId, undefined, item.result?.record, 750 * 1024 * 1024);
+        const recordGameId = String(item.result?.record?.info?.gameID ?? item.result?.record?.game?.info?.gameID ?? "");
+        if (!recordGameId) return false;
+        const raw = resolveReplayJsonExport(recordGameId, undefined, item.result?.record, 750 * 1024 * 1024);
         const restored = JSON.parse(raw);
-        return String(restored?.info?.gameID ?? restored?.game?.info?.gameID ?? "") === item.game.gameId;
+        return String(restored?.info?.gameID ?? restored?.game?.info?.gameID ?? "") === recordGameId;
       } catch { return false; }
     })(),
   }));

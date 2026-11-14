@@ -1324,3 +1324,101 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{ou
   .dashboard-progression{padding:15px}
   .dashboard-lower-grid{grid-template-columns:minmax(0,1fr)}
 }
+
+
+/* Readability and responsive usability pass — desktop and touch screens. */
+.studio-main{min-width:0;width:100%;max-width:1720px;margin-inline:auto;padding:clamp(20px,2.2vw,36px) clamp(18px,2.4vw,42px) 56px}
+.studio-header{gap:20px}
+.studio-header h1{font-size:clamp(25px,2.1vw,34px);line-height:1.12;letter-spacing:-.7px}
+.studio-header p{font-size:13px;line-height:1.55;max-width:70ch}
+.studio-eyebrow,.studio-nav-label{font-size:10px;letter-spacing:.1em}
+.studio-card{min-width:0;padding:clamp(16px,1.5vw,24px);border-radius:15px}
+.studio-card p,.studio-card small{overflow-wrap:anywhere}
+.studio-card p{line-height:1.6}
+.card-heading h3{font-size:clamp(15px,1.3vw,19px);line-height:1.3}
+.stat-card>small,.progression-trend>small,.progression-matches>article>small{font-size:11px;line-height:1.45}
+.progression-matches>article>span,.progression-phase>span{font-size:10px}
+.progression-matches>article>b{font-size:13px}
+.longitudinal-findings article small,.longitudinal-findings article p{font-size:12px;line-height:1.55}
+.longitudinal-training span{font-size:10px}
+.longitudinal-training b{font-size:13px;line-height:1.55}
+.studio-button{min-height:40px;font-size:12px}
+.studio-nav{min-height:44px;font-size:13px}
+.studio-sidebar{width:236px}
+.studio-shell{grid-template-columns:236px minmax(0,1fr)}
+.studio-main :is(input,select,textarea){font-size:14px;min-height:42px}
+.studio-main :is(button,a){touch-action:manipulation}
+.studio-main :is(p,span,b,strong,small,label){min-width:0}
+.studio-main :is(.studio-card,.panel,.pro-coach-finding,.replay-event-detail){overflow-wrap:anywhere}
+.replay-stage-overlay h3{font-size:clamp(21px,2vw,30px);line-height:1.15}
+.replay-stage-overlay p,.replay-stage-side p{font-size:12px;line-height:1.6}
+.replay-event-button{padding:10px 12px}
+.replay-event-detail-main>p,.replay-event-evidence span,.replay-event-action span{font-size:13px;line-height:1.6}
+.pro-coach-finding-outcome>p,.pro-coach-finding-action>p,.pro-coach-finding-details p{font-size:13px;line-height:1.6}
+.pro-coach-finding-details b,.pro-coach-finding-outcome>span,.pro-coach-finding-action>span{font-size:10px}
+@media(max-width:1100px){
+ .studio-shell{grid-template-columns:204px minmax(0,1fr)}
+ .studio-sidebar{width:204px}
+ .studio-main{padding-inline:22px}
+ .dashboard-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media(max-width:720px){
+ .studio-main{padding:16px 14px calc(104px + env(safe-area-inset-bottom));}
+ .studio-header{display:flex;flex-direction:column;align-items:stretch;gap:12px}
+ .studio-header h1{font-size:clamp(23px,7vw,29px);line-height:1.12}
+ .studio-header p{font-size:13px;line-height:1.55}
+ .studio-header-actions{display:flex;flex-wrap:wrap;gap:8px}
+ .studio-header-actions .studio-button{font-size:12px;min-height:42px;flex:1}
+ .studio-card{padding:16px;border-radius:14px}
+ .card-heading{align-items:flex-start;gap:10px}
+ .card-heading h3{font-size:16px;line-height:1.3}
+ .studio-eyebrow,.studio-nav-label{font-size:10px}
+ .studio-card p,.studio-card small{font-size:12px;line-height:1.55}
+ .studio-button{min-height:44px;font-size:13px}
+ .studio-main :is(input,select,textarea){font-size:16px;min-height:46px}
+ .dashboard-hero{padding:19px 17px}
+ .dashboard-hero h2{font-size:23px;line-height:1.2}
+ .dashboard-import p{font-size:12px}
+ .dashboard-import .match-import-controls input{font-size:16px;min-height:46px}
+ .dashboard-metrics{grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
+ .dashboard-metrics .stat-card{padding:13px;min-height:108px}
+ .dashboard-metrics .stat-card>b{font-size:clamp(21px,6vw,26px)}
+ .dashboard-metrics .stat-card>small{font-size:11px;line-height:1.45}
+ .longitudinal-stats{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .longitudinal-stats>div{padding:12px}
+ .longitudinal-stats b{font-size:22px}
+ .longitudinal-stats span{font-size:11px;line-height:1.4}
+ .longitudinal-phase-grid{grid-template-columns:1fr}
+ .longitudinal-phase{padding:13px}
+ .longitudinal-phase>b{font-size:20px}
+ .longitudinal-findings article{grid-template-columns:minmax(0,1fr);gap:8px}
+ .longitudinal-findings article p{grid-column:1}
+ .progression-trends{grid-template-columns:1fr}
+ .progression-trend{padding:13px}
+ .progression-trend>span,.progression-trend>small{font-size:11px}
+ .progression-trend>b{font-size:22px}
+ .progression-matches{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .progression-matches>article{padding:11px}
+ .progression-matches>article>b{font-size:12px}
+ .progression-matches>article>small{font-size:11px}
+ .replay-stage-overlay{left:16px;right:16px;bottom:16px}
+ .replay-stage-overlay h3{font-size:22px}
+ .replay-stage-overlay p{font-size:12px}
+ .replay-stage-side{padding:16px}
+ .replay-stage-side>div b{font-size:22px}
+ .replay-event-button{padding:12px 10px}
+ .replay-event-detail{padding:14px}
+ .replay-event-detail-main h4{font-size:17px;line-height:1.3}
+ .replay-event-detail-main>p,.replay-event-evidence span,.replay-event-action span{font-size:13px;line-height:1.6}
+ .pro-coach-finding-compact h4{font-size:17px;line-height:1.3}
+ .pro-coach-finding-outcome>p,.pro-coach-finding-action>p,.pro-coach-finding-details p{font-size:13px;line-height:1.6}
+ .studio-mobile-nav{min-height:64px;background:rgba(7,14,27,.97);border-top:1px solid #294363;backdrop-filter:blur(18px)}
+ .studio-mobile-nav button{min-height:48px;font-size:11px}
+}
+@media(max-width:380px){
+ .studio-main{padding-inline:10px}
+ .studio-card{padding:13px}
+ .dashboard-metrics{grid-template-columns:1fr 1fr}
+ .dashboard-metrics .stat-card>b{font-size:20px}
+ .progression-matches{grid-template-columns:1fr}
+}

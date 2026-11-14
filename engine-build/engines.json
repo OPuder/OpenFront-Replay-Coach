@@ -43,5 +43,10 @@
     "commit": "80bff198b68f02e18e986b5535835c0e3ff6cbba",
     "source": "vendor/OpenFrontIO-80bff198b68f",
     "bundleId": "80bff198b68f"
+  },
+  {
+    "commit": "7f34e15908286d490715c6e4af8c47df5b1b3fcc",
+    "source": "vendor/OpenFrontIO-7f34e1590828",
+    "bundleId": "7f34e1590828"
   }
 ]

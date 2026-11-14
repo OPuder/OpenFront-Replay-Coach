@@ -474,7 +474,7 @@ jobs:
           RELEASE_TAG: ${{ needs.prepare-release.outputs.tag }}
         run: |
           set -Eeuo pipefail
-          gh release view "$RELEASE_TAG" --json assets | node -e '
+          gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --json assets | node -e '
             let input = "";
             process.stdin.setEncoding("utf8");
             process.stdin.on("data", chunk => input += chunk);

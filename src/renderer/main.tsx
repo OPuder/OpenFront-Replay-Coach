@@ -890,7 +890,25 @@ function CoachPanel({apiResult,preferredPlayerPublicId,decodedActions,simulation
       <button type="button" className={workspaceTab==='analysis'?'selected':''} onClick={()=>setWorkspaceTab('analysis')}><TrendingUp size={18}/><span><b>Analyse</b><small>Wirtschaft, Militär und Phasen</small></span></button>
       <button type="button" className={workspaceTab==='strategies'?'selected':''} onClick={()=>setWorkspaceTab('strategies')}><Compass size={18}/><span><b>Strategien</b><small>Spawn, Eco, Stacks & Nukes</small></span></button>
     </div>
-    {workspaceTab==='strategies' && <StrategyPlaybook/>}
+    {workspaceTab==='strategies' && <StrategyPlaybook matchContext={simulationResult?.status==='verified' && selectedPlayerReview ? {
+      verified:true,
+      playerName:selectedPlayerReview.playerName,
+      spawn:selectedSpawnPosition ? {
+        x:selectedSpawnPosition.spawnX,
+        y:selectedSpawnPosition.spawnY,
+        classification:selectedSpawnPosition.classification,
+        neutralLand:selectedSpawnPosition.nearbyNeutralLandTiles,
+        coastalLand:selectedSpawnPosition.nearbyCoastalLandTiles,
+        rivalContacts:selectedSpawnPosition.rivalBorderContacts,
+        spawnPhaseComplete:simulationResult.spawnPhaseEndTick!==null && simulationResult.spawnPhaseEndTick!==undefined,
+      } : null,
+      alternatives:spawnAlternatives.map(spot=>({x:spot.x,y:spot.y,neutralLand:spot.nearbyNeutralLandTiles,coastalLand:spot.nearbyCoastalLandTiles,adjacentPlayers:spot.adjacentPlayerCount})),
+      startGold:selectedPlayerReview.startGold,endGold:selectedPlayerReview.endGold,
+      startTroops:selectedPlayerReview.startTroops,endTroops:selectedPlayerReview.endTroops,
+      startTiles:selectedPlayerReview.startTiles,endTiles:selectedPlayerReview.endTiles,
+      attackCommands:playerActions.filter(action=>action.type==='attack').length,
+      buildCommands:playerActions.filter(action=>action.type==='build_unit').length,
+    } : null}/>
     {workspaceTab==='analysis' && <div className="analysis-navigation">
       <div className="analysis-navigation-heading"><b>Analysewerkzeuge</b><span>Wähle einen Bereich</span></div>
       <nav className="review-tabs coach-primary-tabs" aria-label="Analysewerkzeuge">

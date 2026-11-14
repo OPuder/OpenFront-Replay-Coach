@@ -120,7 +120,7 @@ assert.match(matchStore, /export async function loadImportedMatch\(/);
 assert.match(appRenderer, /withoutReplayRecord\(updated\)/);
 assert.match(appRenderer, /const candidates=selected/);
 assert.match(appRenderer, /await loadImportedMatch\(playerPage\.playerId,item\.game\.gameId\)/);
-assert.match(appRenderer, /Hydrate only the replay currently assigned to an analysis worker/);
+assert.match(appRenderer, /Keep the entire queue lightweight/);
 assert.doesNotMatch(read("src/main/main.ts"), /importedReplayJson/);
 const startupUpdater = updater.slice(updater.indexOf("export async function autoUpdateOnStartup"));
 assert.match(startupUpdater, /Installation wartet auf Bestätigung im Update Center/);

@@ -33,6 +33,8 @@ export interface StrategyMatchContext {
   buildCommands: number;
 }
 function SpawnMap({context}:{context:StrategyMatchContext}) {
+  const [imageFailed,setImageFailed]=useState(false);
+  React.useEffect(()=>setImageFailed(false),[context.mapPreviewUrl]);
   const width=context.mapWidth,height=context.mapHeight;
   if(!width||!height) return null;
   const actual=context.spawn?projectSpawnMapMarker(context.spawn.x,context.spawn.y,width,height):null;
@@ -42,8 +44,8 @@ function SpawnMap({context}:{context:StrategyMatchContext}) {
   return <section className="strategy-spawn-map-panel" aria-label={`Startpositionen auf ${context.mapName}`}>
     <div className="strategy-spawn-map-heading"><div><small>STARTPOSITIONEN AUF DER KARTE</small><b>{context.mapName}</b></div><span>{context.spawnMode==="random"?"Zufallsspawn · Vergleichspositionen":context.spawnMode==="manual"?"Manueller Spawn · freie Alternativen":"Spawnmodus unbekannt"}</span></div>
     <div className="strategy-spawn-map" style={{aspectRatio:`${width} / ${height}`}}>
-      {context.mapPreviewUrl
-        ? <img src={context.mapPreviewUrl} alt={`Originale Kartenvorschau ${context.mapName}`} loading="lazy" decoding="async"/>
+      {context.mapPreviewUrl&&!imageFailed
+        ? <img src={context.mapPreviewUrl} alt={`Originale Kartenvorschau ${context.mapName}`} loading="lazy" decoding="async" onError={()=>setImageFailed(true)}/>
         : <div className="strategy-spawn-map-grid" aria-hidden="true"><span>{context.mapName}</span><small>Kartenbild nicht verfügbar · Koordinaten maßstabsgetreu</small></div>}
       {others.map((player,index)=><span key={player.name+"-"+index} className={`strategy-spawn-marker ${player.isHuman?"rival-human":"rival-bot"}`} style={{left:`${player.position!.leftPercent}%`,top:`${player.position!.topPercent}%`}} title={player.name} aria-label={`Startposition von ${player.name}`}/>)}
       {alternatives.map(spot=><span key={spot.x+"-"+spot.y} className="strategy-spawn-marker alternative" style={{left:`${spot.position!.leftPercent}%`,top:`${spot.position!.topPercent}%`}} title={`Freie Alternative ${spot.index+1}: X ${spot.x}, Y ${spot.y}`} aria-label={`Freie Startalternative ${spot.index+1}`}>{spot.index+1}</span>)}

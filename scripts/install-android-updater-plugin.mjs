@@ -26,7 +26,7 @@ if (!manifest.includes(".updater-fileprovider")) {
   const provider = [
     '        <provider',
     '            android:name="androidx.core.content.FileProvider"',
-    '            android:authorities="' + '
+    '            android:authorities="' + String.fromCharCode(36) + '{applicationId}.updater-fileprovider"',
     '            android:exported="false"',
     '            android:grantUriPermissions="true">',
     '            <meta-data',

@@ -108,10 +108,23 @@ test('progression is chronological and only includes verified matches', () => {
   ]);
   assert.deepEqual(report.matchProgress.map(item=>item.gameId),['earlier','later']);
   assert.equal(report.matchProgress.length,2);
-  assert.equal(report.metricTrends.length,2);
+  assert.equal(report.metricTrends.length,3);
   assert.equal(report.metricTrends.find(item=>item.id==='territory')?.direction,'declined');
 });
 test('progression does not claim a trend from one match',()=>{
   const report=buildLongitudinalCoachReport([match('only')]);
   assert.equal(report.metricTrends.find(item=>item.id==='territory')?.direction,'insufficient-data');
+});
+
+test('attack follow-through compares only attacks with observed target outcomes',()=>{
+  const simulation=makeSimulation({actionReviews:[
+    {type:'attack',seconds:20,delta30s:{tiles:2,gold:0,troops:-10},targetDelta30s:{tiles:0,gold:0,troops:0}},
+    {type:'attack',seconds:40,delta30s:{tiles:0,gold:0,troops:-20},targetDelta30s:{tiles:-3,gold:0,troops:-10}},
+    {type:'attack',seconds:60,delta30s:{tiles:0,gold:0,troops:-30},targetDelta30s:{tiles:0,gold:0,troops:0}},
+    {type:'attack',seconds:80,delta30s:{tiles:0,gold:0,troops:-30},targetDelta30s:null},
+    {type:'build',seconds:90,delta30s:{tiles:0,gold:0,troops:0},targetDelta30s:{tiles:0,gold:0,troops:0}},
+  ]});
+  const report=buildLongitudinalCoachReport([match('a',{simulation}),match('b',{simulation})]);
+  assert.ok(Math.abs(report.matchProgress[0].attackFollowThroughPercent - 200/3) < 1e-9);
+  assert.equal(report.metricTrends.find(item=>item.id==='attack-follow-through')?.direction,'stable');
 });

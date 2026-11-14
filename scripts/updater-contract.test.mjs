@@ -25,5 +25,6 @@ assert.match(renderer, /installAndroidUpdate/);
 assert.match(renderer, /registerPlugin<ApkUpdaterPlugin>/);
 assert.match(worker, /SKIP_WAITING/);
 assert.match(versionScript, /updatedServiceWorker/);
+assert.match(versionScript, /cacheNamePattern\.test\(serviceWorker\)/);
 assert.match(versionScript, /public\/sw\.js/);
 console.log("Updater contract tests passed: Windows installer/portable, Android verified APK handoff and PWA activation.");

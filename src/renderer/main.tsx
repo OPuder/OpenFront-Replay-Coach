@@ -93,6 +93,7 @@ function App() {
   const [modeFilter, setModeFilter] = useState('all');
   const [typeFilter, setTypeFilter] = useState('all');
   const [gameSearch, setGameSearch] = useState('');
+  const [libraryPage, setLibraryPage] = useState(0);
   React.useEffect(() => { let active=true; const restore=async()=>{ try { const savedId=window.localStorage.getItem('ofrc:last-player-id'); if(!savedId) return; const [cachedPage,cachedMatches]=await Promise.all([loadPlayerLibrary(savedId),loadImportedMatches(savedId)]); if(!active) return; let page=cachedPage; try { page=await window.replayAPI.loadPlayer(savedId,progress=>{if(active)setPlayerProgress(progress);}); await savePlayerLibrary(page); } catch(syncError) { console.warn('[ReplayCoach] Online-Abgleich beim Start fehlgeschlagen; nutze lokalen Stand:',syncError); } if(!active || !page) return; const refreshed=await refreshStoredMatches(page.playerId,cachedMatches); if(!active) return; setPlayerId(savedId); setPlayerPage(page); setBatchMatches(refreshed); } catch(e) { console.warn('[ReplayCoach] Gespeicherte Spielbibliothek konnte nicht geladen werden:',e); } }; void restore(); return ()=>{active=false;}; }, []);
   async function loadPlayer() { autoImportAttempted.current.clear(); autoAnalysisAttempted.current.clear(); cancelBatchAnalysis(); cancelBatchImport(); setPlayerBusy(true); setError(''); setPlayerProgress({loaded:0,pages:0,status:'Profil wird geladen …'}); try { const page = await window.replayAPI.loadPlayer(playerId, progress => setPlayerProgress(progress)); setPlayerPage(page); setSelectedGameIds([]); const matches=await loadImportedMatches(page.playerId); const refreshed=await refreshStoredMatches(page.playerId,matches); setBatchMatches(refreshed); await savePlayerLibrary(page); window.localStorage.setItem('ofrc:last-player-id',page.playerId); } catch(e) { setError(e instanceof Error ? e.message : String(e)); } finally { setPlayerBusy(false); } }
   function toggleGameSelection(gameId:string) { setSelectedGameIds(current => current.includes(gameId) ? current.filter(id=>id!==gameId) : [...current,gameId]); }
@@ -380,6 +381,9 @@ function App() {
   const fmt = (n: number) => n.toLocaleString('de-DE');
   const loadedGames = playerPage?.games ?? [];
   const filteredGames = loadedGames.filter(g => (gameFilter === 'all' || g.result === gameFilter) && (modeFilter === 'all' || (g.mode ?? '').toLowerCase() === modeFilter.toLowerCase()) && (typeFilter === 'all' || (g.type ?? '').toLowerCase() === typeFilter.toLowerCase()) && (!gameSearch.trim() || `${g.map ?? ''} ${g.mode ?? ''} ${g.gameId}`.toLowerCase().includes(gameSearch.trim().toLowerCase())));
+  const libraryPageSize=24;
+  const currentLibraryPage=Math.min(libraryPage,Math.max(0,Math.ceil(filteredGames.length/libraryPageSize)-1));
+  const visibleGames=filteredGames.slice(currentLibraryPage*libraryPageSize,(currentLibraryPage+1)*libraryPageSize);
   const wins = loadedGames.filter(g => g.result === 'victory').length;
   const losses = loadedGames.filter(g => g.result === 'defeat').length;
   const completedGames = wins + losses;
@@ -406,8 +410,9 @@ function App() {
   const resultLabel = (result?:string) => result === 'victory' ? 'Sieg' : result === 'defeat' ? 'Niederlage' : 'Unvollständig';
   const size = (n: number) => n >= 1024 ** 3 ? `${(n / 1024 ** 3).toFixed(2)} GB` : `${(n / 1024 ** 2).toFixed(1)} MB`;
   const profileName = playerPage?.profile.username ?? playerPage?.profile.accountUsername ?? playerPage?.profile.displayName ?? playerPage?.playerId ?? 'Dein OpenFront-Profil';
+  const savedMatchesById=new Map(batchMatches.filter(item=>Boolean(item.result)).map(item=>[item.game.gameId,item] as const));
   const gameCards = (games: PlayerGame[]) => games.map(g => {
-    const saved=batchMatches.find(item=>item.game.gameId===g.gameId&&item.result);
+    const saved=savedMatchesById.get(g.gameId);
     const replayState=saved?.analysisStatus==='verified'&&saved.simulation?.status==='verified'?'verified':saved?.status==='engine-mismatch'||saved?.analysisStatus==='unsupported'?'engine-missing':saved?'saved':undefined;
     return <GameCard key={g.gameId} game={g} previewUrl={playerPage?.mapPreviews?.[String(g.map ?? '').trim().toLowerCase()]} refreshKey={mapRefreshKey} selected={selectedGameIds.includes(g.gameId)} replayState={replayState} onToggle={()=>toggleGameSelection(g.gameId)} onAnalyze={() => void choosePlayerGame(g.gameId)} />;
   });
@@ -512,7 +517,8 @@ function App() {
             return <article className="batch-result-row" key={item.game.gameId}><div className="batch-result-copy"><b>{item.game.map??item.result?.mapName??'Unbekannte Karte'}</b><small>{item.game.gameId} · {item.game.start?new Date(item.game.start).toLocaleDateString('de-DE'):'Datum unbekannt'}{item.game.durationSeconds?' · '+clock(item.game.durationSeconds):''}</small>{unavailable&&<small className="batch-result-explanation">Replay ist gespeichert. Für eine sichere Simulation fehlt noch exakt die Engine-Version dieses Spiels.</small>}{item.error&&<small className="batch-error">{item.error}</small>}{item.analysisError&&!unavailable&&<small className="batch-error">{item.analysisError}</small>}</div><span className={'batch-status-pill '+(unavailable?'limited':verified?'verified':item.status==='failed'||item.analysisStatus==='failed'?'failed':'pending')}>{statusLabel}</span><div className="batch-result-actions">{item.result&&<button className="text-action" onClick={()=>openBatchMatch(item.game.gameId)}>Öffnen <ArrowRight size={14}/></button>}{item.error&&<button className="text-action" onClick={()=>void loadSelectedGames([item.game.gameId])} disabled={batchBusy||batchAnalysisBusy}>Erneut laden</button>}</div></article>;
           })}</div>
         </details>
-        {filteredGames.length ? <div className="game-library-grid">{gameCards(filteredGames)}</div> : <section className="empty-account studio-card"><Map size={28}/><b>Keine Partien gefunden</b><p>Lade dein Konto oder passe die Filter an.</p></section>}
+        {filteredGames.length ? <div className="game-library-grid">{gameCards(visibleGames)}</div> : <section className="empty-account studio-card"><Map size={28}/><b>Keine Partien gefunden</b><p>Lade dein Konto oder passe die Filter an.</p></section>}
+        {filteredGames.length>libraryPageSize && <nav className="library-pagination" aria-label="Seiten der Spielbibliothek"><span>{currentLibraryPage*libraryPageSize+1}–{Math.min((currentLibraryPage+1)*libraryPageSize,filteredGames.length)} von {filteredGames.length} Partien</span><div><button type="button" onClick={()=>setLibraryPage(Math.max(0,currentLibraryPage-1))} disabled={currentLibraryPage===0}>Zurück</button><b>Seite {currentLibraryPage+1} / {Math.ceil(filteredGames.length/libraryPageSize)}</b><button type="button" onClick={()=>setLibraryPage(Math.min(Math.ceil(filteredGames.length/libraryPageSize)-1,currentLibraryPage+1))} disabled={currentLibraryPage>=Math.ceil(filteredGames.length/libraryPageSize)-1}>Weiter</button></div></nav>}
         
       </>}
       {activePage==='analysis' && <>

@@ -671,7 +671,7 @@ function CoachPanel({apiResult,preferredPlayerPublicId,decodedActions,simulation
   const medianSpawnLand = comparableSpawnLand.length
     ? comparableSpawnLand[Math.floor(comparableSpawnLand.length / 2)]
     : null;
-  const spawnLandComparison = selectedSpawnPosition?.nearbyNeutralLandTiles === null || medianSpawnLand === null
+  const spawnLandComparison = !selectedSpawnPosition || selectedSpawnPosition.nearbyNeutralLandTiles === null || medianSpawnLand === null
     ? null
     : selectedSpawnPosition.nearbyNeutralLandTiles > medianSpawnLand
       ? 'Mehr neutrales Land als der Lobby-Median'
@@ -919,7 +919,7 @@ function CoachPanel({apiResult,preferredPlayerPublicId,decodedActions,simulation
           <div className="pro-coach-phase-bars">{proCoachReport.phases.map(phase=><div className="pro-coach-phase-row" key={phase.id}><div className="pro-coach-phase-label"><b>{phase.label}</b><span>{phase.momentumIndex===null?'Nicht genug Daten':`Impuls ${phase.momentumIndex}/100`}</span></div><div className="pro-coach-bar"><i style={{width:`${phase.momentumIndex??0}%`}}/></div><small>Gebiet {phase.territoryPerMinute===null?'–':`${phase.territoryPerMinute.toFixed(1).replace('.',',')} / Min.`} · Gold {phase.incomePerMinute===null?'–':`${Math.round(phase.incomePerMinute).toLocaleString('de-DE')} / Min.`} · Truppen {phase.troopChangePerMinute===null?'–':`${phase.troopChangePerMinute>0?'+':''}${Math.round(phase.troopChangePerMinute).toLocaleString('de-DE')} / Min.`} · {phase.attacks} Angriffe</small></div>)}</div>
         </div>
       </section>}
-      {selectedSpawnPosition?.spawnTile !== null && selectedSpawnPosition?.spawnTile !== undefined && <section className="spawn-coach-card" aria-labelledby="spawn-coach-title">
+      {selectedSpawnPosition && selectedSpawnPosition.spawnTile !== null && <section className="spawn-coach-card" aria-labelledby="spawn-coach-title">
         <div className="spawn-coach-heading">
           <div className="spawn-coach-mark"><Compass size={20}/></div>
           <div><span className="coach-report-label">STARTPOSITION · ENGINE-REKONSTRUIERT</span><h3 id="spawn-coach-title">Dein tatsächlicher Spawn – und was er dir ermöglicht hat</h3>

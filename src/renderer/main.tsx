@@ -671,8 +671,11 @@ function CoachPanel({apiResult,preferredPlayerPublicId,decodedActions,simulation
     .filter(position => position.clientID !== null && position.nearbyNeutralLandTiles !== null)
     .map(position => position.nearbyNeutralLandTiles as number)
     .sort((a,b)=>a-b);
+  const spawnLandMiddle = Math.floor(comparableSpawnLand.length / 2);
   const medianSpawnLand = comparableSpawnLand.length
-    ? comparableSpawnLand[Math.floor(comparableSpawnLand.length / 2)]
+    ? comparableSpawnLand.length % 2 === 0
+      ? (comparableSpawnLand[spawnLandMiddle - 1] + comparableSpawnLand[spawnLandMiddle]) / 2
+      : comparableSpawnLand[spawnLandMiddle]
     : null;
   const spawnLandComparison = !selectedSpawnPosition || selectedSpawnPosition.nearbyNeutralLandTiles === null || medianSpawnLand === null
     ? null

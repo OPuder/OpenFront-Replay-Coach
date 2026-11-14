@@ -15,7 +15,7 @@ const makeFixture = () => {
   terrain[ref(8, 7)] = 0x20;
   terrain[ref(9, 8)] = 0x80 | 31;
   terrain[ref(7, 6)] = 0x80 | 12;
-  terrain[ref(7, 7)] = 0x80 | 22;
+  terrain[ref(7, 7)] = 0x80 | 0x40 | 22;
 
   const players = [
     { id: 1, clientID: 'human-1', name: 'Player 1', spawnTile: ref(5, 5) },

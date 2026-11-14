@@ -240,7 +240,7 @@ export async function simulateReplay(
   const samples: ReplayStateSample[] = [];
   let lastSampledFrame = -1;
   const turns: any[] = Array.isArray(record.turns) ? record.turns : [];
-  const recordedHashCount = turns.filter((turn: any) => turn.hash !== null && turn.hash !== undefined).length;
+  const recordedHashCount = turns.reduce((count: number, turn: any) => count + (turn?.hash !== null && turn?.hash !== undefined ? 1 : 0), 0);
   // Keep the regular overview cadence, but also capture the frames immediately
   // before and after every action by the selected player. The action frame
   // itself is not read by the outcome evaluator, so omit that redundant sample.
@@ -254,10 +254,11 @@ export async function simulateReplay(
   // OpenFront decompresses sparse records by inserting empty turns for every
   // omitted game tick. ReplayProcessor then emits one frame per decompressed
   // turn, so frame index equals the original turnNumber (not array position).
-  const totalRecordedFrames = Math.max(
-    Number(record?.info?.num_turns ?? 0),
-    ...turns.map((turn: any) => Number(turn?.turnNumber ?? -1) + 1),
-    0,
+  // Do not spread a potentially huge turn array into Math.max: long replays
+  // can exceed the engine's argument limit and allocate another large array.
+  const totalRecordedFrames = turns.reduce(
+    (maximum: number, turn: any) => Math.max(maximum, Number(turn?.turnNumber ?? -1) + 1),
+    Math.max(0, Number(record?.info?.num_turns ?? 0)),
   );
   for (let frame = 0; frame < totalRecordedFrames; frame += cadence) sampleFrames.add(frame);
   if (selectedClientId) {

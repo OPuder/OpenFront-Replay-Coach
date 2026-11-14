@@ -16,7 +16,7 @@ concurrency:
 jobs:
   discover:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 90
     steps:
       - name: Check out main
         uses: actions/checkout@v4
@@ -42,6 +42,34 @@ jobs:
             echo "changed=true" >> "$GITHUB_OUTPUT"
             echo "before=$before" >> "$GITHUB_OUTPUT"
           fi
+
+      - name: Set up pinned npm
+        if: steps.discovery.outputs.changed == 'true'
+        run: npm install --global npm@12.1.0
+
+      - name: Prepare every exact replay engine revision
+        if: steps.discovery.outputs.changed == 'true'
+        run: npm run prepare:engines
+
+      - name: Install Coach dependencies
+        if: steps.discovery.outputs.changed == 'true'
+        run: npm ci
+
+      - name: Verify every source pin
+        if: steps.discovery.outputs.changed == 'true'
+        run: npm run validate:engine-pin
+
+      - name: Type-check every exact engine revision
+        if: steps.discovery.outputs.changed == 'true'
+        run: npm run typecheck:engines
+
+      - name: Build all replay engine workers
+        if: steps.discovery.outputs.changed == 'true'
+        run: npm run build:engine
+
+      - name: Run coach and existing real-replay regressions
+        if: steps.discovery.outputs.changed == 'true'
+        run: npm run test:coach
 
       - name: Create a candidate engine pull request
         if: steps.discovery.outputs.changed == 'true'

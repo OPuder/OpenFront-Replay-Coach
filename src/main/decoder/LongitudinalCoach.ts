@@ -65,6 +65,7 @@ type NormalizedMatch = {
   input: LongitudinalMatchInput;
   report: ProCoachReport;
   strengths: EngineCoachInsight[];
+  actions: ProCoachAction[];
 };
 
 const priorityRank = (value: ProCoachFinding["priority"]) =>
@@ -101,17 +102,23 @@ function buildMatchReport(input: LongitudinalMatchInput): NormalizedMatch | null
     !Array.isArray(simulation.actionReviews)
   ) return null;
 
-  const actions = simulation.actionReviews.map((raw: any): ProCoachAction => ({
-    seconds: Number(raw.seconds ?? 0),
-    type: String(raw.type ?? ""),
-    label: String(raw.label ?? ""),
-    targetName: raw.targetName == null ? null : String(raw.targetName),
-    delta10s: raw.delta10s ?? null,
-    delta30s: raw.delta30s ?? null,
-    targetDelta30s: raw.targetDelta30s ?? null,
-    ownFrontContextBefore: raw.ownFrontContextBefore ?? null,
-    targetPressureBefore: raw.targetPressureBefore ?? null,
-  }));
+  // Malformed or incomplete action records must not be silently assigned time 0.
+  // That would fabricate an opening action and could distort longitudinal attack rates.
+  const actions = simulation.actionReviews
+    .filter((raw: any) => raw && typeof raw === "object"
+      && typeof raw.seconds === "number" && Number.isFinite(raw.seconds) && raw.seconds >= 0
+      && typeof raw.type === "string" && raw.type.trim().length > 0)
+    .map((raw: any): ProCoachAction => ({
+      seconds: raw.seconds,
+      type: raw.type,
+      label: typeof raw.label === "string" ? raw.label : "",
+      targetName: raw.targetName == null ? null : String(raw.targetName),
+      delta10s: raw.delta10s ?? null,
+      delta30s: raw.delta30s ?? null,
+      targetDelta30s: raw.targetDelta30s ?? null,
+      ownFrontContextBefore: raw.ownFrontContextBefore ?? null,
+      targetPressureBefore: raw.targetPressureBefore ?? null,
+    }));
   const duration = Number(input.durationSeconds);
   const report = buildProCoachReport(
     simulation.samples as ProCoachPlayerSample[],
@@ -133,7 +140,7 @@ function buildMatchReport(input: LongitudinalMatchInput): NormalizedMatch | null
         simulation.samples as Parameters<typeof buildEngineCoachInsights>[2],
       ).filter(insight => insight.kind === "strength")
     : [];
-  return { input, report, strengths };
+  return { input, report, strengths, actions };
 }
 
 /**
@@ -178,8 +185,8 @@ export function buildLongitudinalCoachReport(
       territoryPerMinute:avg(territory.map(item=>item.territoryPerMinute!).filter(Number.isFinite)),
       incomePerMinute:avg(income.map(item=>item.incomePerMinute!).filter(Number.isFinite)),
       phaseMomentum:{early:phase("early")?.momentumIndex??null,mid:phase("mid")?.momentumIndex??null,late:phase("late")?.momentumIndex??null},
-      attackFollowThroughPercent:(()=>{const evaluated=(entry.input.simulation?.actionReviews??[]).filter((raw:any)=>raw?.type==="attack"&&Number.isFinite(raw.delta30s?.tiles)&&(Number(raw.delta30s.tiles)>0||Number.isFinite(raw.targetDelta30s?.tiles)));if(!evaluated.length)return null;const productive=evaluated.filter((raw:any)=>Number(raw.delta30s.tiles)>0||(Number.isFinite(raw.targetDelta30s?.tiles)&&Number(raw.targetDelta30s.tiles)<0)).length;return productive/evaluated.length*100;})(),
-      attackFollowThroughSamples:(entry.input.simulation?.actionReviews??[]).filter((raw:any)=>raw?.type==="attack"&&Number.isFinite(raw.delta30s?.tiles)&&(Number(raw.delta30s.tiles)>0||Number.isFinite(raw.targetDelta30s?.tiles))).length,
+      attackFollowThroughPercent:(()=>{const evaluated=entry.actions.filter(raw=>raw.type==="attack"&&Number.isFinite(raw.delta30s?.tiles)&&(Number(raw.delta30s.tiles)>0||Number.isFinite(raw.targetDelta30s?.tiles)));if(!evaluated.length)return null;const productive=evaluated.filter(raw=>Number(raw.delta30s!.tiles)>0||(Number.isFinite(raw.targetDelta30s?.tiles)&&Number(raw.targetDelta30s!.tiles)<0)).length;return productive/evaluated.length*100;})(),
+      attackFollowThroughSamples:entry.actions.filter(raw=>raw.type==="attack"&&Number.isFinite(raw.delta30s?.tiles)&&(Number(raw.delta30s!.tiles)>0||Number.isFinite(raw.targetDelta30s?.tiles))).length,
       reviewedFindings:entry.report.findings.length};
   });
   const trend=(id:"territory"|"income"|"attack-follow-through",label:string,unit:string):LongitudinalMetricTrend=>{

@@ -36,6 +36,14 @@ function App() {
   const [mapRefreshKey, setMapRefreshKey] = useState(0);
   function navigateTo(page: 'dashboard'|'games'|'analysis') {
     engineReviewAbort.current?.abort(); engineReviewAbort.current=null; engineReviewRunId.current++;
+    if (page !== 'analysis') {
+      // Release the active raw GameRecord and sampled states when returning to
+      // the library/dashboard; they can be hydrated again from IndexedDB.
+      setApiResult(null);
+      setSimulationResult(null);
+      setDecodedActions([]);
+      setReplay(null);
+    }
     setActivePage(page);
     setMapRefreshKey(key => key + 1);
   }

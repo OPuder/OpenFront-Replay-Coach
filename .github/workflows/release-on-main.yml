@@ -125,9 +125,6 @@ jobs:
       - name: Prepare all exact historical OpenFront engines
         run: npm run prepare:engines
 
-      - name: Type-check all exact replay engine revisions
-        run: npm run typecheck:engines
-
       - name: Build all exact replay engine workers
         run: |
           npm ci

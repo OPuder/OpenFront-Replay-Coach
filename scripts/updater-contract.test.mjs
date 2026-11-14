@@ -97,3 +97,7 @@ assert.ok(
     updateValidationWorkflow.indexOf("Verify permanent Android release signing key and continuity"),
   "The debug emulator update test must run before the signing gate modifies generated Gradle configuration."
 );
+
+assert.ok(releaseWorkflow.includes("names.some(name => /\\.Setup\\.[0-9.]+\\.exe$/i.test(name))"), "Release verification must match the actual NSIS installer filename.");
+assert.ok(releaseWorkflow.includes("names.some(name => /-win\\.zip$/i.test(name))"), "Release verification must match the actual Windows portable ZIP filename.");
+assert.ok(releaseWorkflow.includes("names.some(name => /-Android\\.apk$/i.test(name))"), "Release verification must match the actual Android APK filename.");

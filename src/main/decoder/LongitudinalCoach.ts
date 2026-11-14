@@ -39,8 +39,8 @@ export interface LongitudinalFinding {
   examples: Array<{ gameId: string; mapName: string; evidence: string }>;
 }
 
-export interface LongitudinalMatchProgress { gameId:string; mapName:string; playedAt:string|null; territoryPerMinute:number|null; incomePerMinute:number|null; phaseMomentum:{early:number|null;mid:number|null;late:number|null}; reviewedFindings:number; }
-export interface LongitudinalMetricTrend { id:"territory"|"income"; label:string; previous:number|null; latest:number|null; delta:number|null; direction:"improved"|"declined"|"stable"|"insufficient-data"; unit:string; }
+export interface LongitudinalMatchProgress { gameId:string; mapName:string; playedAt:string|null; territoryPerMinute:number|null; incomePerMinute:number|null; attackFollowThroughPercent:number|null; phaseMomentum:{early:number|null;mid:number|null;late:number|null}; reviewedFindings:number; }
+export interface LongitudinalMetricTrend { id:"territory"|"income"|"attack-follow-through"; label:string; previous:number|null; latest:number|null; delta:number|null; direction:"improved"|"declined"|"stable"|"insufficient-data"; unit:string; }
 export interface LongitudinalCoachReport {
   status: "ready" | "insufficient-data";
   importedMatches: number;
@@ -160,6 +160,7 @@ export function buildLongitudinalCoachReport(
       territoryPerMinute:avg(territory.map(item=>item.territoryPerMinute!).filter(Number.isFinite)),
       incomePerMinute:avg(income.map(item=>item.incomePerMinute!).filter(Number.isFinite)),
       phaseMomentum:{early:phase("early")?.momentumIndex??null,mid:phase("mid")?.momentumIndex??null,late:phase("late")?.momentumIndex??null},
+      attackFollowThroughPercent:(()=>{const evaluated=(entry.input.simulation?.actionReviews??[]).filter((raw:any)=>raw?.type==="attack"&&raw.delta30s&&raw.targetDelta30s);if(!evaluated.length)return null;const productive=evaluated.filter((raw:any)=>Number(raw.delta30s.tiles)>0||Number(raw.targetDelta30s.tiles)<0).length;return productive/evaluated.length*100;})(),
       reviewedFindings:entry.report.findings.length};
   });
   const trend=(id:"territory"|"income",label:string,unit:string):LongitudinalMetricTrend=>{
@@ -169,7 +170,7 @@ export function buildLongitudinalCoachReport(
     const direction=delta===null?"insufficient-data":delta>threshold?"improved":delta< -threshold?"declined":"stable";
     return {id,label,previous,latest,delta,direction,unit};
   };
-  const metricTrends=[trend("territory","Gebietszuwachs","Gebiete/min"),trend("income","Einkommenszuwachs","Gold/min")];
+  const metricTrends=[trend("territory","Gebietszuwachs","Gebiete/min"),trend("income","Einkommenszuwachs","Gold/min"),trend("attack-follow-through","Angriffs-Folge","%")];
 
   const phaseSummaries: LongitudinalPhaseSummary[] = phaseIds.map(phase => {
     const values = comparable.map(entry => entry.report.phases.find(item => item.id === phase.id))

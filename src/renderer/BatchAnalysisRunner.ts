@@ -10,7 +10,7 @@ export interface BatchAnalysisProgress {
   done: number;
   total: number;
   gameId: string;
-  /** Sum of the current progress percentages of all active simulations. */
+  /** Average progress percentage across currently active simulations. */
   percent: number;
   phase: string;
   active: number;
@@ -87,18 +87,25 @@ export async function runConcurrentBatchAnalysis<
 
   const publishProgress = (gameId = "") => {
     const active = [...activeProgress.entries()];
+    const elapsedMs = Date.now() - startedAt;
+    const activePercent = active.length
+      ? active.reduce((sum, [, value]) => sum + value.percent, 0) / active.length
+      : 0;
+    // Count partial work from every active worker. This keeps the ETA meaningful
+    // when several long replays run concurrently and none has finished yet.
+    const completedWork = Math.min(summary.total, summary.completed + active.reduce((sum, [, value]) => sum + value.percent / 100, 0));
     onProgress({
       done: summary.completed,
       total: summary.total,
       gameId: gameId || active.map(([id]) => id).join(", "),
-      percent: active.reduce((sum, [, value]) => sum + value.percent, 0),
+      percent: activePercent,
       phase: active.length
         ? active.map(([id, value]) => `${id}: ${value.phase}`).join(" · ")
         : summary.cancelled ? "Analyse abgebrochen" : "Partie abgeschlossen",
       active: active.length,
-      elapsedMs: Date.now() - startedAt,
-      estimatedRemainingMs: summary.completed > 0
-        ? Math.max(0, (Date.now() - startedAt) / summary.completed * (summary.total - summary.completed))
+      elapsedMs,
+      estimatedRemainingMs: completedWork > 0
+        ? Math.max(0, elapsedMs / completedWork * (summary.total - completedWork))
         : null,
     });
   };

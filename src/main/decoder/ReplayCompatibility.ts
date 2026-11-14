@@ -94,3 +94,39 @@ export function assessReplayCompatibility(
       "Die exakte Original-Engine ist verfügbar und Hash-Prüfpunkte sind vorhanden. Ob die Simulation korrekt ist, steht erst nach dem tatsächlichen Abgleich aller Hashes fest.",
   };
 }
+
+/**
+ * Checks whether persisted compatibility metadata still matches the current
+ * engine catalog. This avoids rescanning every hash checkpoint on each launch.
+ * Hash counts are reused only when the recorded engine and status still match.
+ */
+export function isReplayCompatibilityCurrent(
+  record: unknown,
+  previous: ReplayCompatibility | undefined,
+): boolean {
+  if (!previous) return false;
+  const obj = unwrapGameRecord(record);
+  const replayCommit =
+    typeof obj.gitCommit === "string" && /^[0-9a-f]{7,40}$/i.test(obj.gitCommit)
+      ? obj.gitCommit.toLowerCase()
+      : null;
+  const resolvedReplayCommit = resolveSupportedEngineCommit(replayCommit);
+  const expectedReplayCommit = replayCommit
+    ? resolvedReplayCommit ?? replayCommit
+    : null;
+  const expectedEngineCommit = resolvedReplayCommit ?? PINNED_OPENFRONT_COMMIT;
+  const hashCount = previous.recordedHashCount;
+  if (!Number.isSafeInteger(hashCount) || hashCount < 0) return false;
+  const expectedStatus: ReplayCompatibilityStatus = !replayCommit
+    ? "missing-engine-version"
+    : !resolvedReplayCommit
+      ? "engine-version-mismatch"
+      : hashCount > 0
+        ? "version-compatible-hashes-available"
+        : "version-compatible-no-hashes";
+  return previous.replayCommit === expectedReplayCommit
+    && previous.engineCommit === expectedEngineCommit
+    && previous.status === expectedStatus
+    && previous.engineVersionCompatible === Boolean(resolvedReplayCommit)
+    && previous.hashVerificationAvailable === (hashCount > 0);
+}

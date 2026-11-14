@@ -32,11 +32,20 @@ if [[ -z "$previous_apk" ]]; then
   exit 1
 fi
 
+export ANDROID_KEYSTORE_PATH="$keystore"
+node scripts/configure-android-signing.mjs
+(
+  cd android
+  timeout 600s ./gradlew --no-daemon assembleRelease
+) || { echo "::error::A release APK could not be built with the permanent signing key."; exit 1; }
+current_apk="android/app/build/outputs/apk/release/app-release.apk"
+test -s "$current_apk"
 build_tools="$(find "$ANDROID_HOME/build-tools" -mindepth 1 -maxdepth 1 -type d | sort -V | tail -n 1)"
 apksigner="$build_tools/apksigner"
 "$apksigner" verify --verbose "$previous_apk"
+"$apksigner" verify --verbose "$current_apk"
 previous_cert="$("$apksigner" verify --print-certs "$previous_apk" | awk -F': ' '/Signer #1 certificate SHA-256 digest:/ {print tolower($2); exit}')"
-current_cert="$(keytool -exportcert -keystore "$keystore" -storepass "$ANDROID_KEYSTORE_PASSWORD" -alias "$ANDROID_KEY_ALIAS" | sha256sum | awk '{print tolower($1)}')"
+current_cert="$("$apksigner" verify --print-certs "$current_apk" | awk -F': ' '/Signer #1 certificate SHA-256 digest:/ {print tolower($2); exit}')"
 
 if [[ -z "$previous_cert" || -z "$current_cert" || "$current_cert" != "$previous_cert" ]]; then
   echo "::error::Android signing certificate does not match $previous_tag. Existing installations could not update in place; release is blocked."

@@ -1,6 +1,6 @@
 import React from 'react';
 import { Capacitor, registerPlugin } from '@capacitor/core';
-import { CheckCircle2, Download, RefreshCw, Smartphone, MonitorDown, Globe, AlertCircle } from 'lucide-react';
+import { CheckCircle2, RefreshCw, Smartphone, MonitorDown, Globe, AlertCircle } from 'lucide-react';
 import './UpdateCenter.css';
 
 declare const __APP_VERSION__: string;

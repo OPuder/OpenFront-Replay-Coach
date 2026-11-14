@@ -16,7 +16,7 @@ The updater refuses assets without a GitHub SHA-256 digest, assets with a mismat
 
 ## Android
 
-The app checks releases at startup. If a newer version exists, its native Capacitor plugin downloads the APK to the app cache, checks the exact release size and SHA-256 digest, then hands the APK to Android through a private FileProvider. Android controls the final install confirmation and may ask once for permission to install apps from this source.
+The app checks releases at startup and shows an update action when a newer version exists. The APK is downloaded only after the user taps the update button. The native Capacitor plugin checks the exact release size and SHA-256 digest, then validates the Android package ID, version code and signing certificate against the installed app before handing it to Android through a private FileProvider. Android controls the final install confirmation and may ask once for permission to install apps from this source.
 
 Android does not permit ordinary apps to silently replace themselves. In-place updates also require every APK to be signed with the same permanent private signing key. Configure the four GitHub Actions signing secrets described in [ANDROID_SIGNING.md](ANDROID_SIGNING.md); never commit the keystore or passwords.
 

@@ -111,14 +111,6 @@ export function UpdateCenter() {
     }
   }
 
-  const androidAutoUpdateAttempted = React.useRef(false);
-  React.useEffect(() => {
-    if (isAndroid && hasNewVersion && apk && !androidAutoUpdateAttempted.current) {
-      androidAutoUpdateAttempted.current = true;
-      void installAndroidUpdate(apk);
-    }
-  }, [isAndroid, hasNewVersion, apk?.name]);
-
   function applyWebUpdate() {
     void navigator.serviceWorker.getRegistration().then(registration => {
       if (!registration?.waiting) { window.location.reload(); return; }

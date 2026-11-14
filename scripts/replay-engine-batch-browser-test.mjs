@@ -131,6 +131,7 @@ async function main() {
     assert.equal(item?.analysisStatus, "verified");
     assert.equal(item?.simulationStatus, "verified");
     assert.ok(item?.sampleCount > 0);
+    assert.equal(item?.jsonExportRestored, true, `${gameId} must export its persisted original JSON after renderer reload`);
   }
   const unsupportedStored = persisted.find(entry => entry.gameId === "unsupported-engine");
   assert.equal(unsupportedStored?.status, "engine-mismatch");

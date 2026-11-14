@@ -16,6 +16,7 @@ declare global {
       getReplayEngineAssets: () => Promise<{manifest:Record<string,string>;cdnBase:string}>;
       saveReplayJson: (
         gameId: string,
+        record?: unknown,
       ) => Promise<{ saved: boolean; shared?: boolean; canceled?: boolean; filePath?: string; bytes?: number }>;
       openOfficialReplay: (gameId: string) => Promise<{ opened: boolean; url: string }>;
     };

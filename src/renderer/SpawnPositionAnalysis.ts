@@ -38,7 +38,7 @@ export interface SpawnPositionMetric {
 
 const OWNER_MASK = 0x0fff;
 const LAND_BIT = 1 << 7;
-const OCEAN_BIT = 1 << 5;
+const SHORELINE_BIT = 1 << 6;
 const MAGNITUDE_MASK = 0x1f;
 const IMPASSABLE_MAGNITUDE = 31;
 const SPAWN_RADIUS = 4;
@@ -52,15 +52,9 @@ function isImpassable(terrain: number): boolean {
   return isLand(terrain) && (terrain & MAGNITUDE_MASK) === IMPASSABLE_MAGNITUDE;
 }
 
-function hasOceanNeighbor(terrain: Uint8Array, ref: number, width: number, height: number): boolean {
-  const x = ref % width;
-  const y = Math.floor(ref / width);
-  return (
-    (y > 0 && (terrain[ref - width] & OCEAN_BIT) !== 0) ||
-    (y + 1 < height && (terrain[ref + width] & OCEAN_BIT) !== 0) ||
-    (x > 0 && (terrain[ref - 1] & OCEAN_BIT) !== 0) ||
-    (x + 1 < width && (terrain[ref + 1] & OCEAN_BIT) !== 0)
-  );
+function isCoastalLand(terrain: number): boolean {
+  // Bit 6 is OpenFront's precomputed shoreline marker.
+  return isLand(terrain) && (terrain & SHORELINE_BIT) !== 0;
 }
 
 /**
@@ -211,7 +205,7 @@ export function analyzeSpawnPositions(
           if (magnitude < 10) plains++;
           if (magnitude >= 10 && magnitude < 20) highland++;
           if (magnitude >= 20 && magnitude < IMPASSABLE_MAGNITUDE) mountain++;
-          if (hasOceanNeighbor(terrain, ref, width, height)) coastalLand++;
+          if (isCoastalLand(tileTerrain)) coastalLand++;
         }
       }
 
@@ -469,7 +463,7 @@ export function analyzeAlternativeSpawnPositions(
       for (let x = Math.max(0, candidate.x - CONTEXT_RADIUS); x <= Math.min(width - 1, candidate.x + CONTEXT_RADIUS); x++) {
         const ref = y * width + x;
         if ((tileState[ref] & OWNER_MASK) !== 0 || !isLand(terrainState[ref]) || isImpassable(terrainState[ref])) continue;
-        if (hasOceanNeighbor(terrainState, ref, width, height)) coastal++;
+        if (isCoastalLand(terrainState[ref])) coastal++;
       }
     }
     candidate.nearbyCoastalLandTiles = coastal;

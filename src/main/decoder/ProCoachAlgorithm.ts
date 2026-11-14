@@ -104,6 +104,8 @@ export function buildProCoachReport(
   // safest available replay-length estimate (not the selected player's survival time).
   const reportedDuration = Number.isFinite(durationSeconds) && durationSeconds > 0 ? durationSeconds : 0;
   const safeDuration = Math.max(1, reportedDuration || (ordered.at(-1)?.tick ?? 0) / 10);
+  // Retain the full replay clock for overall duration metrics as well as phase boundaries.
+  const endSeconds = safeDuration;
   const phaseDefs = [
     {id:'early' as const,label:'Early Game',from:0,to:.3},
     {id:'mid' as const,label:'Mid Game',from:.3,to:.7},
@@ -180,7 +182,7 @@ export function buildProCoachReport(
       seconds:a.seconds,caveat:'Aktive Angriffsobjekte zeigen Bindung, aber nicht zwingend getrennte geografische Fronten oder Erreichbarkeit anderer Ziele.'
     });
   }
-  const longPause=(()=>{let best:{from:number;to:number;seconds:number}|null=null;for(let i=1;i<alive.length;i++){const from=(alive[i-1].sample.tick-(first?.sample.tick??0))/10,to=(alive[i].sample.tick-(first?.sample.tick??0))/10;if(to-from>90&&(!best||to-from>best.seconds))best={from,to,seconds:to-from};}return best;})();
+  const longPause=(()=>{let best:{from:number;to:number;seconds:number}|null=null;for(let i=1;i<alive.length;i++){const from=alive[i-1].sample.tick/10,to=alive[i].sample.tick/10;if(to-from>90&&(!best||to-from>best.seconds))best={from,to,seconds:to-from};}return best;})();
   if(longPause&&longPause.seconds>=120){
     findings.push({id:'expansion-rhythm',priority:longPause.seconds>=240?'medium':'low',confidence:confidenceFor(alive.length,actions.length),title:'Lange Lücke zwischen beobachteten Zuständen',
       decision:`Zwischen ${clock(longPause.from)} und ${clock(longPause.to)} liegen ${fmt(longPause.seconds)} Sekunden zwischen erfassten Zuständen.`,

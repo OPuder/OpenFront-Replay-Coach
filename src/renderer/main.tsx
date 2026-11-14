@@ -99,7 +99,7 @@ function App() {
   const [modeFilter, setModeFilter] = useState('all');
   const [typeFilter, setTypeFilter] = useState('all');
   const [gameSearch, setGameSearch] = useState('');
-  React.useEffect(() => { let active=true; const restore=async()=>{ try { const savedId=window.localStorage.getItem('ofrc:last-player-id'); if(!savedId) return; const [page,matches]=await Promise.all([loadPlayerLibrary(savedId),loadImportedMatches(savedId)]); if(!active || !page) return; const refreshed=await refreshStoredMatches(savedId,matches); if(!active) return; setPlayerId(savedId); setPlayerPage(page); setBatchMatches(refreshed); } catch(e) { console.warn('[ReplayCoach] Gespeicherte Spielbibliothek konnte nicht geladen werden:',e); } }; void restore(); return ()=>{active=false;}; }, []);
+  React.useEffect(() => { let active=true; const restore=async()=>{ try { const savedId=window.localStorage.getItem('ofrc:last-player-id'); if(!savedId) return; const [cachedPage,cachedMatches]=await Promise.all([loadPlayerLibrary(savedId),loadImportedMatches(savedId)]); if(!active) return; let page=cachedPage; try { page=await window.replayAPI.loadPlayer(savedId,progress=>{if(active)setPlayerProgress(progress);}); await savePlayerLibrary(page); } catch(syncError) { console.warn('[ReplayCoach] Online-Abgleich beim Start fehlgeschlagen; nutze lokalen Stand:',syncError); } if(!active || !page) return; const refreshed=await refreshStoredMatches(page.playerId,cachedMatches); if(!active) return; setPlayerId(savedId); setPlayerPage(page); setBatchMatches(refreshed); } catch(e) { console.warn('[ReplayCoach] Gespeicherte Spielbibliothek konnte nicht geladen werden:',e); } }; void restore(); return ()=>{active=false;}; }, []);
   async function loadPlayer() { cancelBatchAnalysis(); cancelBatchImport(); setPlayerBusy(true); setError(''); setPlayerProgress({loaded:0,pages:0,status:'Profil wird geladen …'}); try { const page = await window.replayAPI.loadPlayer(playerId, progress => setPlayerProgress(progress)); setPlayerPage(page); setSelectedGameIds([]); const matches=await loadImportedMatches(page.playerId); const refreshed=await refreshStoredMatches(page.playerId,matches); setBatchMatches(refreshed); await savePlayerLibrary(page); window.localStorage.setItem('ofrc:last-player-id',page.playerId); } catch(e) { setError(e instanceof Error ? e.message : String(e)); } finally { setPlayerBusy(false); } }
   function toggleGameSelection(gameId:string) { setSelectedGameIds(current => current.includes(gameId) ? current.filter(id=>id!==gameId) : [...current,gameId]); }
   function selectFilteredGames() { const ids=filteredGames.map(game=>game.gameId); setSelectedGameIds(current=>ids.every(id=>current.includes(id)) ? current.filter(id=>!ids.includes(id)) : [...new Set([...current,...ids])]); }
@@ -226,6 +226,16 @@ function App() {
       }
     }
   }
+  React.useEffect(() => {
+    if(!playerPage || playerBusy || batchBusy || batchAnalysisBusy) return;
+    // First install: import every match in the profile. Later launches: only new games
+    // are missing from the local library. Existing failures are left visible for retry.
+    const missing=playerPage.games.filter(game=>!batchMatches.some(item=>item.game.gameId===game.gameId));
+    if(missing.length){ void loadSelectedGames(missing.map(game=>game.gameId)); return; }
+    const pending=batchMatches.filter(item=>item.result && (item.analysisStatus===undefined || item.analysisStatus==='pending'));
+    if(pending.length) void analyzeSelectedGames(pending.map(item=>item.game.gameId));
+  },[playerPage,batchMatches,playerBusy,batchBusy,batchAnalysisBusy]);
+
   function openBatchMatch(gameId:string) {
     cancelBatchAnalysis();
     const item=batchMatches.find(entry=>entry.game.gameId===gameId);

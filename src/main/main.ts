@@ -6,6 +6,7 @@ import { analyzeActions } from './decoder/ActionAnalysis';
 import { analyzeDetailedActions } from './decoder/DetailedAnalysis';
 import { buildCoachInsights } from './decoder/CoachInsights';
 import { assessReplayCompatibility } from './decoder/ReplayCompatibility';
+import { resolveReplayJsonExport } from './decoder/ReplayJsonExport';
 import { autoUpdateOnStartup, registerUpdaterIpc } from './updater';
 
 const isDev = !app.isPackaged;
@@ -375,30 +376,7 @@ ipcMain.handle('replay:import-url', async (_event, input: string) => {
 
 ipcMain.handle('replay:save-json', async (event, gameId: string, fallbackRecord?: unknown) => {
   const id = String(gameId ?? '').trim();
-  let raw = importedReplayJson.get(id);
-  // The renderer may restore this match from IndexedDB after an app restart.
-  // In that case the in-memory import cache is intentionally empty; use the
-  // original GameRecord already persisted with the selected match instead.
-  if (!raw && fallbackRecord && typeof fallbackRecord === 'object' && !Array.isArray(fallbackRecord)) {
-    try {
-      raw = JSON.stringify(fallbackRecord);
-    } catch {
-      throw new Error('Die gespeicherten Replay-Daten konnten nicht für den JSON-Export vorbereitet werden.');
-    }
-    if (Buffer.byteLength(raw, 'utf8') > MAX_RESPONSE_BYTES) {
-      throw new Error('Die Replay-JSON überschreitet das unterstützte Exportlimit von 750 MB.');
-    }
-    let parsed: any;
-    try { parsed = JSON.parse(raw); } catch { throw new Error('Die gespeicherten Replay-Daten sind keine gültige JSON-Datei.'); }
-    const root = parsed?.game ?? parsed;
-    const storedId = String(root?.info?.gameID ?? root?.info?.gameId ?? parsed?.gameID ?? '');
-    if (storedId && storedId !== id) {
-      throw new Error('Die gespeicherten Replay-Daten gehören zu einer anderen Partie. Der Export wurde abgebrochen.');
-    }
-  }
-  if (!raw) {
-    throw new Error('Die Original-JSON ist für diese Partie nicht mehr verfügbar. Öffne die Partie erneut über ihren OpenFront-Link und versuche den Export noch einmal.');
-  }
+  const raw = resolveReplayJsonExport(id, importedReplayJson.get(id), fallbackRecord, MAX_RESPONSE_BYTES);
 
   const safeId = id.replace(/[^A-Za-z0-9_-]/g, '_');
   const defaultPath = path.join(app.getPath('downloads'), `OpenFront-${safeId}.json`);

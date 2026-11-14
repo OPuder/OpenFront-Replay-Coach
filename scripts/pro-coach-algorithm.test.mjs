@@ -164,3 +164,22 @@ test('match coach creates a spawn-position lesson from first-frame spatial evide
  assert.ok(report.findings.some(x=>x.id==='spawn-position-review'));
  assert.match(report.opening.limitation,/Owner-Grid/);
 });
+
+
+test('early, mid and late phases stay on the full replay timeline after player elimination',()=>{
+ const samples=[
+   sample(0,{tiles:100,goldEarned:100}),
+   sample(600,{tiles:120,goldEarned:180}),
+   sample(1200,{tiles:140,goldEarned:260}),
+   sample(1800,{tiles:160,goldEarned:340}),
+   sample(2400,{tiles:180,goldEarned:420}),
+   sample(3000,{tiles:200,goldEarned:500}),
+   {...sample(3100),players:[player({alive:false,tiles:200,goldEarned:500})]},
+ ];
+ const report=buildProCoachReport(samples,[],'p1',1200);
+ assert.ok(report.phases[0].activeSamples>=3);
+ assert.equal(report.phases[1].activeSamples,0);
+ assert.equal(report.phases[1].territoryPerMinute,null);
+ assert.equal(report.phases[2].activeSamples,0);
+ assert.equal(report.phases[2].territoryPerMinute,null);
+});

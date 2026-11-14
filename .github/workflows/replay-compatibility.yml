@@ -24,9 +24,6 @@ jobs:
         with:
           submodules: false
 
-      - name: Check out the exact public OpenFront engine
-        run: git submodule update --init --depth 1 vendor/OpenFrontIO vendor/OpenFrontIO-8b5d071eed95
-
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
@@ -39,13 +36,8 @@ jobs:
       - name: Install Coach dependencies
         run: npm ci
 
-      - name: Install pinned OpenFront engine workspaces
-        working-directory: vendor/OpenFrontIO
-        run: npm ci --ignore-scripts
-
-      - name: Install historical Europe engine workspaces
-        working-directory: vendor/OpenFrontIO-8b5d071eed95
-        run: npm ci --ignore-scripts
+      - name: Prepare all exact historical OpenFront engines
+        run: npm run prepare:engines
 
       - name: Build all exact replay engine worker bundles
         run: npm run build:engine

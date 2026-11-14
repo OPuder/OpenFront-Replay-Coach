@@ -967,7 +967,7 @@ function CoachPanel({apiResult,preferredPlayerPublicId,decodedActions,simulation
               ? 'Diese Mittelpunkte lagen auf unbesetztem, passierbarem Land und wären im manuellen Spawn nach dem damaligen Karten-/Besitzstand grundsätzlich gültig gewesen.'
               : 'Die Lobby-Spawnart ist nicht sicher bekannt. Die Koordinaten sind unbesetzte, passierbare Landmittelpunkte.'} Die Suche scannt große Karten rasterbasiert; die gefundenen Koordinaten sind echte Landfelder, aber kein mathematisch garantiertes globales Optimum. Sortiert wird nach freiem Land im 25×25-Fenster, Abstand zum nächsten Start, Grenzdruck und Küstenfeldern.</p>
         </div>}
-      </section>
+      </section>}
       {simulationResult?.spawnPositions && (!selectedSpawnPosition || selectedSpawnPosition.spawnTile === null) && <section className="spawn-coach-card spawn-coach-unavailable"><b>Startposition nicht vollständig rekonstruierbar</b><p>Für diesen Spieler enthält der ausgewertete Replay-Zustand keine gültige Spawn-Koordinate. Der Coach zeigt deshalb keine geschätzte Position als Tatsache an.</p></section>}
       <section className="coach-training-loop" aria-labelledby="training-loop-title">
         <div className="coach-training-loop-heading"><span className="coach-report-label">VOM REPLAY INS TRAINING</span><b id="training-loop-title">Dein Trainingsziel</b><p>Eine Sache bewusst in der nächsten Partie ausprobieren – statt zehn Statistiken gleichzeitig zu verfolgen.</p></div>

@@ -4,6 +4,7 @@ set -Eeuo pipefail
 package_id="de.openfront.replaycoach"
 apk="android/app/build/outputs/apk/debug/app-debug.apk"
 before_apk="$RUNNER_TEMP/openfront-coach-before-update.apk"
+update_apk="${OPENFRONT_UPDATE_APK:-$RUNNER_TEMP/openfront-coach-update.apk}"
 
 log() { echo "::notice::[Android update regression] $*"; }
 fail() { echo "::error::[Android update regression] $*"; exit 1; }
@@ -31,16 +32,9 @@ timeout 30s adb shell "run-as $package_id sh -c 'mkdir -p files/update-regressio
 current_version="$(node -p "require('./package.json').version")"
 IFS='.' read -r major minor patch <<< "$current_version"
 next_version="$major.$minor.$((patch + 1))"
-log "Building update APK with version $next_version."
-node scripts/set-android-version.mjs "$next_version"
-(
-  cd android
-  timeout 600s ./gradlew --no-daemon assembleDebug
-) || fail "Gradle did not produce the updated APK within 10 minutes."
-
-test -s "$apk" || fail "Updated APK is missing."
-log "Installing the higher-version APK over the existing installation."
-timeout 120s adb install -r "$apk" || fail "Android rejected the in-place APK update."
+test -s "$update_apk" || fail "Prebuilt higher-version APK is missing."
+log "Installing the prebuilt update APK for version $next_version."
+timeout 120s adb install -r "$update_apk" || fail "Android rejected the in-place APK update."
 saved="$(timeout 30s adb shell "run-as $package_id cat files/update-regression/sentinel.txt" | tr -d '\r')" || fail "Could not read the preserved app-data sentinel."
 [[ "$saved" == "keep-this-data" ]] || fail "App data was not preserved after adb install -r."
 

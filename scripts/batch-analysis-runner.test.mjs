@@ -247,7 +247,7 @@ test('batch analysis skips entries without a stable replay identity', async () =
   const controller = new AbortController();
   const started = [];
   const summary = await runSequentialBatchAnalysis(
-    [{ id: '' }, { id: '   ' }, { id: 'valid' }],
+    [{ id: '' }, { id: '   ' }, { id: undefined }, { id: null }, { id: 'valid' }],
     {
       signal: controller.signal,
       getId: item => item.id,

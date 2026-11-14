@@ -126,5 +126,17 @@ test('attack follow-through compares only attacks with observed target outcomes'
   ]});
   const report=buildLongitudinalCoachReport([match('a',{simulation}),match('b',{simulation})]);
   assert.ok(Math.abs(report.matchProgress[0].attackFollowThroughPercent - 200/3) < 1e-9);
+  assert.equal(report.matchProgress[0].attackFollowThroughSamples, 3);
+  assert.equal(report.metricTrends.find(item=>item.id==='attack-follow-through')?.observations, 2);
   assert.equal(report.metricTrends.find(item=>item.id==='attack-follow-through')?.direction,'stable');
+});
+
+test('attack follow-through keeps own territory gains when target observation is missing', () => {
+  const simulation=makeSimulation({actionReviews:[
+    {type:'attack',seconds:20,delta30s:{tiles:2,gold:0,troops:-10},targetDelta30s:null},
+    {type:'attack',seconds:40,delta30s:{tiles:0,gold:0,troops:-20},targetDelta30s:null},
+  ]});
+  const report=buildLongitudinalCoachReport([match('a',{simulation})]);
+  assert.equal(report.matchProgress[0].attackFollowThroughSamples, 1);
+  assert.equal(report.matchProgress[0].attackFollowThroughPercent, 100);
 });

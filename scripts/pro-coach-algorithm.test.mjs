@@ -139,7 +139,7 @@ test('opening assessment reports observed expansion but not unsupported best spa
  const report=buildProCoachReport(samples,[],'p1',300);
  assert.equal(report.opening.firstExpansionSeconds,30);
  assert.equal(report.opening.territoryGainFirstThreeMinutes,50);
- assert.match(report.opening.limitation,/Karten-Geometrie/);
+ assert.match(report.opening.limitation,/Startkarten-Geometrie/);
  assert.ok(report.findings.some(x=>x.id==='opening-review'));
 });
 

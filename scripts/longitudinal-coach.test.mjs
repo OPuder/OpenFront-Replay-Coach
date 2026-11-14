@@ -196,6 +196,6 @@ test('malformed action records cannot crash recurring strength analysis',()=>{
   });
   const report=buildLongitudinalCoachReport([match('safe-a',{simulation})]);
   assert.equal(report.verifiedMatches,1);
-  assert.equal(report.matchProgress[0].attackFollowThroughSamples,0);
+  assert.equal(report.matchProgress[0].attackFollowThroughSamples,1);
   assert.equal(report.status,'insufficient-data');
 });

@@ -68,21 +68,22 @@ async function isPortableInstall(executable: string): Promise<boolean> {
     await fs.access(path.join(path.dirname(executable), 'Uninstall OpenFront Replay Coach.exe'));
     return false;
   } catch { /* ZIP-extracted edition has no NSIS uninstaller. */ }
-  const roots = [process.env.ProgramFiles, process.env['ProgramFiles(x86)'], path.join(os.homedir(), 'AppData', 'Local', 'Programs')]
-    .filter((value): value is string => Boolean(value)).map(value => path.resolve(value).toLowerCase());
-  const current = path.resolve(executable).toLowerCase();
-  return !roots.some(root => current.startsWith(root + path.sep));
+  // The ZIP edition has no NSIS uninstaller, regardless of where the user
+  // extracted it (including Program Files). Never infer edition from location.
+  return true;
 }
 async function scheduleWindowsInstall(downloadPath: string, portable: boolean): Promise<void> {
   const executable = app.getPath('exe');
   const processId = process.pid;
   const targetDirectory = process.env.PORTABLE_EXECUTABLE_DIR || path.dirname(executable);
   const scriptPath = path.join(os.tmpdir(), 'openfront-replay-coach-update-' + processId + '.ps1');
+  const logPath = path.join(os.tmpdir(), 'openfront-replay-coach-update-' + processId + '.log');
   const common = [
     "$ErrorActionPreference = 'Stop'",
     '$ProcessIdToWait = ' + processId,
     '$Executable = ' + quotePowerShell(executable),
     '$Download = ' + quotePowerShell(downloadPath),
+    '$Log = ' + quotePowerShell(logPath),
     'try { Wait-Process -Id $ProcessIdToWait -ErrorAction SilentlyContinue } catch {}',
     'Start-Sleep -Milliseconds 900'
   ].join('\n');
@@ -99,14 +100,14 @@ async function scheduleWindowsInstall(downloadPath: string, portable: boolean): 
     "  if (-not $NewExe) { throw 'Die Portable-ZIP enthält keine Programmdatei.' }",
     '  $Source = $NewExe.Directory.FullName',
     "  if (Test-Path -LiteralPath $Target) { Copy-Item -Path (Join-Path $Target '*') -Destination $Backup -Recurse -Force -ErrorAction SilentlyContinue }",
-    '  try {',
-    "    Copy-Item -Path (Join-Path $Source '*') -Destination $Target -Recurse -Force",
-    "    if (-not (Test-Path -LiteralPath $Executable)) { throw 'Die aktualisierte Programmdatei fehlt.' }",
-    '  } catch {',
-    "    Copy-Item -Path (Join-Path $Backup '*') -Destination $Target -Recurse -Force -ErrorAction SilentlyContinue",
-    '    throw',
-    '  }',
+    "  Copy-Item -Path (Join-Path $Source '*') -Destination $Target -Recurse -Force",
+    "  if (-not (Test-Path -LiteralPath $Executable)) { throw 'Die aktualisierte Programmdatei fehlt.' }",
     '  Start-Process -FilePath $Executable',
+    '} catch {',
+    '  $_ | Out-String | Add-Content -LiteralPath $Log',
+    "  if (Test-Path -LiteralPath $Backup) { Copy-Item -Path (Join-Path $Backup '*') -Destination $Target -Recurse -Force -ErrorAction SilentlyContinue }",
+    '  if (Test-Path -LiteralPath $Executable) { Start-Process -FilePath $Executable }',
+    '  exit 1',
     '} finally {',
     '  Remove-Item -LiteralPath $Stage -Recurse -Force -ErrorAction SilentlyContinue',
     '  Remove-Item -LiteralPath $Backup -Recurse -Force -ErrorAction SilentlyContinue',
@@ -115,32 +116,50 @@ async function scheduleWindowsInstall(downloadPath: string, portable: boolean): 
   ].join('\n');
   const installerScript = [
     common,
-    '$Installer = $Download',
-    "$Exit = Start-Process -FilePath $Installer -ArgumentList '/S' -Wait -PassThru",
-    "if ($Exit.ExitCode -ne 0) { throw ('Der Windows-Installer wurde mit Exitcode ' + $Exit.ExitCode + ' beendet.') }",
-    'Start-Sleep -Seconds 2',
-    "if (-not (Test-Path -LiteralPath $Executable)) { throw 'Die aktualisierte Anwendung wurde am bisherigen Installationsort nicht gefunden.' }",
-    'Start-Process -FilePath $Executable',
-    'Remove-Item -LiteralPath $Installer -Force -ErrorAction SilentlyContinue'
+    'try {',
+    '  $Installer = $Download',
+    "  $Exit = Start-Process -FilePath $Installer -ArgumentList '/S' -Wait -PassThru",
+    "  if ($Exit.ExitCode -ne 0) { throw ('Der Windows-Installer wurde mit Exitcode ' + $Exit.ExitCode + ' beendet.') }",
+    '  Start-Sleep -Seconds 2',
+    "  if (-not (Test-Path -LiteralPath $Executable)) { throw 'Die aktualisierte Anwendung wurde am bisherigen Installationsort nicht gefunden.' }",
+    '  Start-Process -FilePath $Executable',
+    '} catch {',
+    '  $_ | Out-String | Add-Content -LiteralPath $Log',
+    '  if (Test-Path -LiteralPath $Executable) { Start-Process -FilePath $Executable }',
+    '  exit 1',
+    '} finally {',
+    '  Remove-Item -LiteralPath $Download -Force -ErrorAction SilentlyContinue',
+    '}'
   ].join('\n');
   await fs.writeFile(scriptPath, portable ? portableScript : installerScript, { encoding: 'utf8', flag: 'wx' });
   const child = spawn('powershell.exe', ['-NoLogo', '-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-File', scriptPath], {
     detached: true, stdio: 'ignore', windowsHide: true,
   });
-  child.once('error', error => console.error('[ReplayCoach] Update-Helfer konnte nicht gestartet werden:', error));
+  // Do not quit until Windows confirms that the detached helper process exists.
+  await new Promise<void>((resolve, reject) => {
+    child.once('spawn', resolve);
+    child.once('error', reject);
+  });
   child.unref();
-  setTimeout(() => app.quit(), 250);
+  await new Promise(resolve => setTimeout(resolve, 800));
+  app.quit();
 }
+let activeWindowsUpdate: Promise<{ scheduled: boolean; version: string }> | null = null;
 async function installLatestWindowsUpdate(): Promise<{ scheduled: boolean; version: string }> {
+  if (activeWindowsUpdate) return activeWindowsUpdate;
   if (process.platform !== 'win32' || !app.isPackaged) throw new Error('Automatische Installation ist nur in der installierten oder portablen Windows-App verfügbar.');
-  const release = await getLatestRelease();
-  const version = release.tag_name.replace(/^v/i, '');
-  if (compareVersions(version, app.getVersion()) <= 0) throw new Error('Du verwendest bereits die aktuelle Version.');
-  const portable = await isPortableInstall(app.getPath('exe'));
-  const asset = chooseWindowsAsset(release, portable);
-  const downloadPath = await downloadVerifiedAsset(asset);
-  await scheduleWindowsInstall(downloadPath, portable);
-  return { scheduled: true, version };
+  activeWindowsUpdate = (async () => {
+    const release = await getLatestRelease();
+    const version = release.tag_name.replace(/^v/i, '');
+    if (compareVersions(version, app.getVersion()) <= 0) throw new Error('Du verwendest bereits die aktuelle Version.');
+    const portable = await isPortableInstall(app.getPath('exe'));
+    const asset = chooseWindowsAsset(release, portable);
+    const downloadPath = await downloadVerifiedAsset(asset);
+    await scheduleWindowsInstall(downloadPath, portable);
+    return { scheduled: true, version };
+  })();
+  try { return await activeWindowsUpdate; }
+  finally { activeWindowsUpdate = null; }
 }
 export function registerUpdaterIpc(): void {
   ipcMain.handle('updates:install', async () => installLatestWindowsUpdate());

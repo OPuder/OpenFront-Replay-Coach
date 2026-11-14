@@ -479,9 +479,11 @@ ipcMain.handle('replay:open', async () => {
 });
 
 registerUpdaterIpc();
-app.whenReady().then(async () => {
-  const updateScheduled = await autoUpdateOnStartup();
-  if (!updateScheduled) createWindow();
+app.whenReady().then(() => {
+  // Show the app immediately. The release check and verified download run in
+  // the background so a slow GitHub connection never looks like a failed launch.
+  createWindow();
+  void autoUpdateOnStartup();
   app.on('activate', () => { if (BrowserWindow.getAllWindows().length === 0) createWindow(); });
 });
 app.on('window-all-closed', () => { if (process.platform !== 'darwin') app.quit(); });

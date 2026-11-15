@@ -559,8 +559,24 @@ window.__verifyBatchStoreTest = async () => {
         }))
       : [];
     const recordGameId = String(record?.info?.gameID ?? record?.game?.info?.gameID ?? "");
+    const expectedIdentity: Record<string, { engineId: string; clientId: string }> = {
+      "c2R2JHZgUi": { engineId: "8b5d071eed95f07c701b32e4c64e95b03f8577c1", clientId: "BKujk1rv" },
+      "dLNCLHCvMK": { engineId: "bc3e3334c573c4959ec6a6745df6826d07233b4d", clientId: "WcBMSBYj" },
+    };
+    const expected = expectedIdentity[item.game.gameId];
+    if (!expected || recordGameId !== item.game.gameId || record?.gitCommit !== expected.engineId
+      || clientId !== expected.clientId || !/oligenole/i.test(String(simulation?.playerReview?.playerName ?? ""))) {
+      throw new Error(`Persisted replay identity mismatch after renderer reload: ${JSON.stringify({
+        gameId: item.game.gameId, recordGameId, engineId: record?.gitCommit ?? null,
+        expectedEngineId: expected?.engineId ?? null, clientId,
+        expectedClientId: expected?.clientId ?? null,
+        playerName: simulation?.playerReview?.playerName ?? null,
+      })}`);
+    }
     return {
       gameId: item.game.gameId,
+      matchId: recordGameId,
+      engineId: String(record.gitCommit),
       status: item.status,
       analysisStatus: item.analysisStatus,
       simulationStatus: simulation?.status,

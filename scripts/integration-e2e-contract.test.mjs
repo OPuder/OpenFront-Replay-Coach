@@ -177,9 +177,12 @@ test("longitudinal production analysis excludes non-verified matches and dedupli
   const report = buildLongitudinalCoachReport([
     verifiedA, verifiedA, verifiedB, unverified,
   ]);
+  // The report counts all imported/verified rows, but match identity is
+  // deduplicated before comparable cohorts and metric calculations.
   assert.equal(report.importedMatches, 4);
   assert.equal(report.verifiedMatches, 3);
   assert.equal(report.comparableMatches, 2);
+  assert.deepEqual(report.matchProgress.map(match => match.gameId).sort(), ["real-a", "real-b"]);
   assert.equal(report.status, "ready");
   const ignored = buildLongitudinalCoachReport([unverified]);
   assert.equal(ignored.comparableMatches, 0);

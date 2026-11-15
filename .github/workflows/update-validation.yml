@@ -3,7 +3,7 @@ name: Update system validation
 on:
   pull_request:
   push:
-    branches: [main]
+    branches: [main, feature/release-update-system]
   workflow_dispatch:
 
 permissions:
@@ -43,7 +43,7 @@ jobs:
         run: npm ci
 
       - name: Verify updater contract tests and syntax
-        run: node --check scripts/verify-windows-in-place-updates.mjs && node --check scripts/windows-webview-storage.mjs && node --check scripts/android-webview-storage.mjs && node --check scripts/windows-upgrade-fixture.mjs && node --check scripts/windows-upgrade-storage-contract.mjs && node --test scripts/updater-contract.test.mjs scripts/windows-upgrade-storage-contract.test.mjs && node --import ./vendor/OpenFrontIO/node_modules/tsx/dist/loader.mjs --test scripts/update-preferences.test.mjs
+        run: node --check scripts/verify-windows-in-place-updates.mjs && node --check scripts/windows-webview-storage.mjs && node --check scripts/android-webview-storage.mjs && node --check scripts/windows-upgrade-fixture.mjs && node --check scripts/windows-upgrade-storage-contract.mjs && node --test scripts/updater-contract.test.mjs scripts/windows-upgrade-storage-contract.test.mjs scripts/android-webview-target.test.mjs && node --import ./vendor/OpenFrontIO/node_modules/tsx/dist/loader.mjs --test scripts/update-preferences.test.mjs
 
       - name: Run full coaching and replay regression suite
         run: npm run test:coach

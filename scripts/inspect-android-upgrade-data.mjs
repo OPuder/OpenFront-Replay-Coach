@@ -56,13 +56,28 @@ try {
 
   const stores = Object.fromEntries(snapshot.indexedDb.stores.map(store => [store.name, store]));
   const relationships = snapshot.indexedDb.relationships;
-  const playerId = snapshot.localStorage.entries.find(entry => entry.key === "ofrc:last-player-id")?.value;
+  const localEntries = snapshot.localStorage.entries;
+  const playerId = localEntries.find(entry => entry.key === "ofrc:last-player-id")?.value;
+  const trainingGoalEntry = localEntries.find(entry => entry.key === "openfront-coach-training-goal")?.value;
+  const trainingGoal = trainingGoalEntry ? JSON.parse(trainingGoalEntry) : null;
   const matches = stores.matches?.records ?? [];
   const replays = stores["replay-records"]?.records ?? [];
   const profiles = stores.profiles?.records ?? [];
+  const matchMetadata = matches.map(record => record.metadata ?? {});
+  const verifiedAnalyses = matchMetadata.filter(item => item.analysisStatus === "verified"
+    && item.simulationStatus === "verified" && Number(item.sampleCount) > 0 && Number(item.actionReviewCount) > 0);
+  const matchIds = new Set(matchMetadata.map(item => String(item.gameId ?? "")));
   if (!playerId) throw new Error("The actual UI-seeded player profile key is missing from LocalStorage.");
+  if (!snapshot.indexedDb.relationships.profileIds.includes(playerId)
+    || !snapshot.indexedDb.relationships.matchProfileIds.includes(playerId)) {
+    throw new Error("The actual UI profile ID is not consistently linked across LocalStorage and IndexedDB.");
+  }
   if (profiles.length < 1 || matches.length < 2 || replays.length < 2) {
     throw new Error(`Expected a real profile and at least two persisted full replays; found profiles=${profiles.length}, matches=${matches.length}, replayRecords=${replays.length}.`);
+  }
+  if (!verifiedAnalyses.length) throw new Error("No verified replay analysis result survived in the match records.");
+  if (!trainingGoal || !matchIds.has(String(trainingGoal.gameId ?? ""))) {
+    throw new Error("The actual UI-created training goal is missing or does not reference a persisted match.");
   }
   if (relationships.missingReplayRecords.length || relationships.orphanReplayRecords.length) {
     throw new Error(`IndexedDB match/replay relationships are inconsistent: ${JSON.stringify(relationships)}`);
@@ -72,7 +87,9 @@ try {
   console.log(JSON.stringify({
     result: "PASS",
     appVersion: snapshot.appVersion,
-    localStorageKeys: snapshot.localStorage.entries.map(entry => entry.key),
+    localStorageKeys: localEntries.map(entry => entry.key),
+    verifiedAnalyses: verifiedAnalyses.length,
+    trainingGoalGameId: trainingGoal.gameId,
     indexedDb: snapshot.indexedDb.name,
     storeCounts: Object.fromEntries(snapshot.indexedDb.stores.map(store => [store.name, store.count])),
     profileIds: relationships.profileIds,

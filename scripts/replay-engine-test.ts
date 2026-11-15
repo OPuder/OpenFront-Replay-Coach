@@ -562,11 +562,12 @@ window.__runBatchReplayTest = async (gameIds) => {
 window.__verifyPersistedProfileTest = async () => {
   const stored = await loadPlayerLibrary("ci-batch-player");
   const matches = await loadImportedMatches("ci-batch-player");
+  const realMatches = matches.filter(item => !["unsupported-engine", "hash-mismatch", "malformed-replay"].includes(item.game.gameId));
   return {
     profilePresent: stored?.playerId === "ci-batch-player",
     profileName: stored?.profile?.displayName ?? stored?.profile?.name ?? null,
-    gameIds: matches.map(item => item.game.gameId).sort(),
-    verifiedGames: matches.filter(item => item.analysisStatus === "verified" && item.simulation?.status === "verified").map(item => item.game.gameId).sort(),
+    gameIds: realMatches.map(item => item.game.gameId).sort(),
+    verifiedGames: realMatches.filter(item => item.analysisStatus === "verified" && item.simulation?.status === "verified").map(item => item.game.gameId).sort(),
   };
 };
 

@@ -43,13 +43,20 @@ if [[ -z "$previous_apk" ]]; then
 fi
 
 export ANDROID_KEYSTORE_PATH="$keystore"
-current_apk="${OPENFRONT_CURRENT_APK:-android/app/build/outputs/apk/release/app-release.apk}"
+if [[ "${ANDROID_UPGRADE_TEST_BUILD:-0}" == "1" ]]; then
+  default_candidate_apk="android/app/build/outputs/apk/debug/app-debug.apk"
+  build_task="assembleDebug"
+else
+  default_candidate_apk="android/app/build/outputs/apk/release/app-release.apk"
+  build_task="assembleRelease"
+fi
+current_apk="${OPENFRONT_CURRENT_APK:-$default_candidate_apk}"
 if [[ "${ANDROID_SIGNING_VERIFY_ONLY:-0}" != "1" ]]; then
   node scripts/configure-android-signing.mjs
   (
     cd android
-    timeout 600s ./gradlew --no-daemon assembleRelease
-  ) || { echo "::error::A release APK could not be built with the permanent signing key."; exit 1; }
+    timeout 600s ./gradlew --no-daemon "$build_task"
+  ) || { echo "::error::Android candidate APK could not be built with the permanent signing key."; exit 1; }
 fi
 test -s "$current_apk" || { echo "::error::Signed Android candidate APK is missing: $current_apk"; exit 1; }
 build_tools="$(find "$ANDROID_HOME/build-tools" -mindepth 1 -maxdepth 1 -type d | sort -V | tail -n 1)"

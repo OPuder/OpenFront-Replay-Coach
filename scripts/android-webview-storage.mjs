@@ -83,14 +83,14 @@ const expression = mode === "seed" ? `
 `;
 
 let socket = "";
-for (let attempt = 0; attempt < 30; attempt++) {
+for (let attempt = 0; attempt < 120; attempt++) {
   try {
     socket = adb("shell", "cat", "/proc/net/unix").split(/\r?\n/).map(line => line.match(/webview_devtools_remote_(\d+)/)?.[1]).filter(Boolean).at(-1) || "";
     if (socket) break;
   } catch {}
   await sleep(1000);
 }
-assert.ok(socket, "Debug WebView DevTools socket was not exposed; IndexedDB preservation cannot be verified.");
+assert.ok(socket, "Debug WebView DevTools socket was not exposed within 120 seconds; IndexedDB preservation cannot be verified.");
 try { adb("forward", "tcp:9222", `localabstract:${socket}`); } catch {}
 let target;
 for (let attempt = 0; attempt < 20; attempt++) {

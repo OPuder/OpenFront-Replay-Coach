@@ -82,3 +82,5 @@
 @media(max-width:560px){.replay-viz-legend span{min-width:100%}.replay-viz-engagements>span{font-size:10px}.replay-viz-seek-note{max-width:150px}}
 
 .replay-viz-front-change{display:block;margin-top:4px;color:#e8c77f;font-size:8px;font-weight:700}
+
+.replay-viz-phase-note{margin:7px 0 0;color:#7f98af;font-size:8px;line-height:1.45}

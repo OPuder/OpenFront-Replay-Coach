@@ -80,3 +80,5 @@
 .replay-viz-movement-count{margin-top:8px;color:#9fc6d8;font-size:8px}
 .replay-viz-seek-note{max-width:440px;text-align:center;line-height:1.4;color:#a0b3c4}
 @media(max-width:560px){.replay-viz-legend span{min-width:100%}.replay-viz-engagements>span{font-size:10px}.replay-viz-seek-note{max-width:150px}}
+
+.replay-viz-front-change{display:block;margin-top:4px;color:#e8c77f;font-size:8px;font-weight:700}

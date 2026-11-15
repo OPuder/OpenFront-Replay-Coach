@@ -102,6 +102,8 @@ assert.ok(androidUpdateRegression.includes("pidof"));
 assert.ok(androidUpdateRegression.includes("timeout 60s adb -s emulator-5554"));
 assert.ok(androidUpdateRegression.includes("dumpsys activity activities"));
 assert.ok(androidUpdateRegression.includes("FATAL EXCEPTION"));
+assert.ok(androidUpdateRegression.includes("sleep 300"));
+assert.ok(androidUpdateRegression.includes("five-minute idle soak"));
 assert.ok(read(".github/workflows/update-validation.yml").includes("timeout-minutes: 35"));
 assert.ok(read(".github/workflows/update-validation.yml").includes("emulator-boot-timeout: 1800"));
 assert.ok(replaySimulation.includes("export function getTotalRecordedFrames(record: unknown)"));

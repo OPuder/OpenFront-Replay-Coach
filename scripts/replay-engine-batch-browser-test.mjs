@@ -53,9 +53,10 @@ async function main() {
     { gameId: "dbuAxuNWHz", map: "Mars", commit: "bc3e3334c573c4959ec6a6745df6826d07233b4d", hashes: 947 },
     { gameId: "dLNCLHCvMK", map: "Levant", commit: "bc3e3334c573c4959ec6a6745df6826d07233b4d", hashes: 626 },
   ];
-  const publicRecords = await Promise.all(publicCohort.map(fixture =>
+  const publicRecords = await Promise.all(publicCohort.slice(0, -1).map(fixture =>
     loadReplay(fixture.gameId, fixture.commit, fixture.map, fixture.hashes, "Free For All", "Public"),
   ));
+  publicRecords.push(levant);
   const unsupported = { ...europe, gitCommit: "0000000000000000000000000000000000000000" };
 
   server = spawn("node", ["node_modules/vite/bin/vite.js", "--host", "127.0.0.1", "--port", String(VITE_PORT), "--strictPort"], {

@@ -199,3 +199,44 @@ test('malformed action records cannot crash recurring strength analysis',()=>{
   assert.equal(report.matchProgress[0].attackFollowThroughSamples,1);
   assert.equal(report.status,'insufficient-data');
 });
+
+
+
+test('training goals remain provisional until the comparable sample is large enough',()=>{
+  const report=buildLongitudinalCoachReport([match('a'),match('b')]);
+  const goal=report.trainingGoals.find(item=>item.id==='attack-follow-through');
+  assert.ok(goal);
+  assert.equal(goal.status,'provisional');
+  assert.equal(goal.occurrences,2);
+  assert.equal(goal.comparableMatches,2);
+  assert.equal(goal.reviewWindow,'Nächste 3 vergleichbare Partien');
+  assert.match(goal.target,/höchstens 1 der nächsten 3/);
+  assert.ok(goal.examples.length>0);
+});
+
+test('repeated evidence activates a training goal in a sufficiently large comparable cohort',()=>{
+  const report=buildLongitudinalCoachReport([match('a'),match('b'),match('c'),match('d')]);
+  const goal=report.trainingGoals.find(item=>item.id==='attack-follow-through');
+  assert.equal(goal?.status,'active');
+  assert.equal(goal?.occurrences,4);
+});
+
+test('training goals mark a repeated pattern as improving only after two clean recent matches',()=>{
+  const report=buildLongitudinalCoachReport([
+    match('a'),match('b'),
+    match('c',{simulation:makeSimulation({actionReviews:[]})}),
+    match('d',{simulation:makeSimulation({actionReviews:[]})}),
+  ]);
+  const goal=report.trainingGoals.find(item=>item.id==='attack-follow-through');
+  assert.equal(goal?.status,'improving');
+});
+
+test('training goals mark a repeated pattern as regressing only after two recent recurrences',()=>{
+  const clean=makeSimulation({actionReviews:[]});
+  const report=buildLongitudinalCoachReport([
+    match('a',{simulation:clean}),match('b',{simulation:clean}),
+    match('c'),match('d'),
+  ]);
+  const goal=report.trainingGoals.find(item=>item.id==='attack-follow-through');
+  assert.equal(goal?.status,'regressing');
+});

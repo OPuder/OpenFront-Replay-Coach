@@ -587,6 +587,15 @@ function App() {
               </div>
               {longitudinalReport.recurringFindings.length>0 ? <div className="longitudinal-findings"><span className="studio-eyebrow">WIEDERKEHRENDE MUSTER</span>{longitudinalReport.recurringFindings.map(finding=><article key={finding.id}><div><b>{finding.title}</b><small>{finding.occurrences}/{finding.comparableMatches} vergleichbare Partien · {Math.round(finding.frequency*100)} %</small></div><span className={`finding-priority ${finding.priority}`}>{finding.priority.toUpperCase()}</span><p>{finding.trainingRule}</p></article>)}</div> : <p className="longitudinal-coverage">Noch kein identisches Fehlermuster in mehreren Partien bestätigt.</p>}
               {longitudinalReport.recurringStrengths.length>0 && <div className="longitudinal-findings longitudinal-strengths"><span className="studio-eyebrow">WIEDERKEHRENDE STÄRKEN · DAS MACHST DU GUT</span>{longitudinalReport.recurringStrengths.map(finding=><article key={finding.id}><div><b>{finding.title}</b><small>{finding.occurrences}/{finding.comparableMatches} vergleichbare Partien · {Math.round(finding.frequency*100)} %</small></div><span className="finding-priority medium">STÄRKE</span><p>{finding.trainingRule}</p></article>)}</div>}
+              {longitudinalReport.trainingGoals.length>0 && <div className="adaptive-training-goals">
+                <div className="adaptive-training-heading"><span className="studio-eyebrow">ADAPTIVE TRAININGSZIELE</span><small>Aus wiederkehrenden, verifizierten Mustern</small></div>
+                {longitudinalReport.trainingGoals.map(goal=><article className={`adaptive-training-goal ${goal.status}`} key={goal.id}>
+                  <div className="adaptive-training-goal-top"><b>{goal.title}</b><span>{goal.status==='improving'?'Verbessert':goal.status==='regressing'?'Erneut aufgetreten':goal.status==='active'?'Aktives Ziel':'Vorläufig'}</span></div>
+                  <p>{goal.trainingRule}</p>
+                  <div className="adaptive-training-evidence"><small>{goal.occurrences}/{goal.comparableMatches} vergleichbare Partien · {Math.round(goal.frequency*100)} %</small><small>{goal.reviewWindow}</small></div>
+                  <small className="adaptive-training-target">{goal.target}</small>
+                </article>)}
+              </div>}
               <div className="longitudinal-training"><Brain size={18}/><div><span>NÄCHSTER TRAININGSFOKUS</span><b>{longitudinalReport.trainingFocus}</b></div></div>
             </> : <div className="longitudinal-empty"><Brain size={22}/><div><b>Langzeit-Coaching wartet auf verifizierte Partien</b><small>Importiere und analysiere mindestens zwei Partien desselben Modus und Spieltyps. Nicht verifizierte Daten werden nicht zusammengerechnet.</small></div><button className="studio-button primary" onClick={()=>navigateTo('games')}>Partien analysieren <ArrowRight size={15}/></button></div>}
           </section>

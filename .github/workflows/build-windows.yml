@@ -55,10 +55,24 @@ jobs:
       - name: Test pro coaching algorithm and phase analytics
         run: npm run test:coach
 
+      - name: Stage only the installer and portable distributables
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $installers = @(Get-ChildItem release -File -Filter '*.exe')
+          $portable = @(Get-ChildItem release -File -Filter '*.zip')
+          if ($installers.Count -ne 1 -or $portable.Count -ne 1) { throw "Expected exactly one installer and one portable ZIP; found $($installers.Count) EXE and $($portable.Count) ZIP." }
+          $staging = Join-Path (Resolve-Path release).Path 'packages'
+          if (Test-Path $staging) { Remove-Item $staging -Recurse -Force }
+          New-Item -ItemType Directory -Path $staging | Out-Null
+          Copy-Item $installers[0].FullName $staging
+          Copy-Item $portable[0].FullName $staging
+
       - name: Install and smoke-test Windows installer and portable edition
         timeout-minutes: 20
         env:
           OFRC_IDLE_SOAK_MS: "300000"
+          RELEASE_DIR: release/packages
         run: node scripts/verify-windows-distributions.mjs
 
       - name: Upload installer and portable ZIP
@@ -66,8 +80,8 @@ jobs:
         with:
           name: OpenFront-Replay-Coach-Windows
           path: |
-            release/*.exe
-            release/*.zip
+            release/packages/*.exe
+            release/packages/*.zip
           if-no-files-found: error
           retention-days: 14
 

@@ -35,7 +35,7 @@ timeout 30s adb devices -l || fail "Android Debug Bridge server did not respond.
 timeout 90s adb -s emulator-5554 wait-for-device || fail "Android emulator did not connect to ADB."
 booted=false
 for attempt in $(seq 1 60); do
-  state="$(timeout 15s adb -s emulator-5554 shell getprop sys.boot_completed 2>/dev/null | tr -d '\\r' || true)"
+  state="$(timeout 15s adb -s emulator-5554 shell getprop sys.boot_completed 2>/dev/null | tr -d '\r' || true)"
   if [[ "$state" == "1" ]]; then booted=true; break; fi
   sleep 3
 done
@@ -85,7 +85,7 @@ install_apk_with_retry "$current_apk" true
 
 installed="$(timeout 30s adb -s emulator-5554 shell dumpsys package "$package_id")" || fail "Could not inspect the upgraded Android package."
 grep -F "versionCode=$current_version_code" <<< "$installed" >/dev/null || fail "Installed package does not report release versionCode $current_version_code."
-launcher="$(timeout 30s adb -s emulator-5554 shell cmd package resolve-activity --brief -a android.intent.action.MAIN -c android.intent.category.LAUNCHER "$package_id" | tr -d '\\r' | tail -n 1)"
+launcher="$(timeout 30s adb -s emulator-5554 shell cmd package resolve-activity --brief -a android.intent.action.MAIN -c android.intent.category.LAUNCHER "$package_id" | tr -d '\r' | tail -n 1)"
 [[ "$launcher" == */* ]] || fail "Could not resolve the current release APK launcher activity."
 launch_output="$(timeout 90s adb -s emulator-5554 shell am start -W -n "$launcher" 2>&1)" || fail "Upgraded release APK could not be launched: $launch_output"
 grep -F "Status: ok" <<< "$launch_output" >/dev/null || fail "Android did not report a successful release-app launch: $launch_output"

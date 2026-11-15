@@ -128,8 +128,8 @@
 .replay-viz-coach-assessment>small{display:block;margin-top:3px;color:#c6b99f;font-size:8px;line-height:1.45}
 .replay-viz-engagement-note{color:#8fa8bd;font-size:8px;line-height:1.45}
 @media(max-width:720px){
-  .replay-viz-priority-findings{grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
-  .replay-viz-priority-card{min-height:124px;padding:8px 7px;gap:5px}
+  .replay-viz-priority-findings{grid-template-columns:1fr;gap:6px}
+  .replay-viz-priority-card{min-height:0;padding:9px 10px;gap:5px}
   .replay-viz-priority-card>span{font-size:7px;letter-spacing:0}
   .replay-viz-priority-card>b{font-size:9px}
   .replay-viz-priority-card>small,.replay-viz-priority-card>em{font-size:8px}

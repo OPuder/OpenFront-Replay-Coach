@@ -90,6 +90,7 @@ assert.match(androidUpdateRegression, /cmd package resolve-activity/);
 assert.match(androidUpdateRegression, /am start -W -n/);
 assert.match(androidUpdateRegression, /pidof/);
 assert.match(read(".github/workflows/update-validation.yml"), /Validate Android update smoke-test shell syntax[\\s\\S]*?bash -n scripts\\/test-android-in-place-update\\.sh/);
+assert.doesNotMatch(read(".github/workflows/update-validation.yml"), /disable-animations: true/, "avoid fragile post-boot ADB settings commands; the smoke test runs headless");
 assert.doesNotMatch(androidUpdateRegression, /seq -s 1 60/);
 
 

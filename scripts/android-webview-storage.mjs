@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
+import { parseExpectedWebViewPid, expectedWebViewSocketName, assertWebViewSocketPid, selectCoachWebViewTarget } from "./android-webview-target.mjs";
 
 const mode = process.argv[2];
 if (!["seed", "verify"].includes(mode)) throw new Error("Usage: node scripts/android-webview-storage.mjs <seed|verify>");
@@ -89,40 +90,46 @@ let socket = "";
 let target;
 let observedSockets = [];
 let observedTargets = [];
-const expectedPids = (process.env.ANDROID_WEBVIEW_PID ?? "").split(/\s+/).filter(Boolean);
-const expectedWebViewUrl = url => /^https?:\/\/localhost(?::\d+)?(?:\/|$)/i.test(url) || /^file:\/\/\/android_asset\//i.test(url);
+const expectedAppPid = parseExpectedWebViewPid(process.env.ANDROID_WEBVIEW_PID);
+const expectedSocketName = expectedWebViewSocketName(expectedAppPid);
 for (let attempt = 0; attempt < 120 && !target; attempt++) {
   try {
-    const sockets = [...new Set(adb("shell", "cat", "/proc/net/unix").split(/\r?\n/).map(line => line.match(/(webview_devtools_remote_\d+)/)?.[1]).filter(Boolean))];
+    const sockets = [...new Set(adb("shell", "cat", "/proc/net/unix").split(/\\r?\\n/).map(line => line.match(/(webview_devtools_remote_\\d+)/)?.[1]).filter(Boolean))];
     observedSockets = sockets;
-    const orderedSockets = [
-      ...sockets.filter(value => expectedPids.includes(value.slice("webview_devtools_remote_".length))),
-      ...sockets.filter(value => !expectedPids.includes(value.slice("webview_devtools_remote_".length))),
-    ];
-    for (const candidateSocket of orderedSockets) {
-      try { adb("forward", "--remove", "tcp:9222"); } catch {}
-      try { adb("forward", "tcp:9222", "localabstract:" + candidateSocket); }
-      catch { continue; }
-      for (const endpoint of ["/json/list", "/json"]) {
-        try {
-          const response = await fetch("http://127.0.0.1:9222" + endpoint, { signal: AbortSignal.timeout(3000) });
-          if (!response.ok) continue;
-          const targets = await response.json();
-          if (!Array.isArray(targets)) continue;
-          observedTargets = targets.map(item => ({ type: item.type, url: item.url, title: item.title }));
-          target = targets.find(item =>
-            item.type === "page" && item.webSocketDebuggerUrl &&
-            typeof item.url === "string" && expectedWebViewUrl(item.url)
-          );
-          if (target) { socket = candidateSocket; break; }
-        } catch {}
-      }
-      if (target) break;
+    // Fail closed: never forward or inspect a WebView belonging to another PID.
+    const candidateSocket = sockets.find(value => value === expectedSocketName);
+    if (!candidateSocket) {
+      await sleep(1000);
+      continue;
     }
-  } catch {}
+    const socketPid = assertWebViewSocketPid(candidateSocket, expectedAppPid);
+    try { adb("forward", "--remove", "tcp:9222"); } catch {}
+    adb("forward", "tcp:9222", "localabstract:" + candidateSocket);
+    for (const endpoint of ["/json/list", "/json"]) {
+      try {
+        const response = await fetch("http://127.0.0.1:9222" + endpoint, { signal: AbortSignal.timeout(3000) });
+        if (!response.ok) continue;
+        const targets = await response.json();
+        if (!Array.isArray(targets)) continue;
+        observedTargets = targets.map(item => ({ type: item.type, url: item.url, title: item.title }));
+        target = selectCoachWebViewTarget(targets, candidateSocket, expectedAppPid);
+        if (target) { socket = candidateSocket; break; }
+      } catch {}
+    }
+    if (target) {
+      assertWebViewSocketPid(socket, expectedAppPid);
+      if (socketPid !== expectedAppPid) throw new Error("CONTEXT_ERROR: WebView socket PID changed during target selection.");
+    }
+  } catch (error) {
+    if (String(error?.message ?? error).includes("CONTEXT_ERROR")) throw error;
+  }
   if (!target) await sleep(1000);
 }
-assert.ok(target, "CONTEXT_ERROR: Could not discover the initialized Coach WebView target. Forwarded full socket names=" + JSON.stringify(observedSockets) + "; DevTools targets=" + JSON.stringify(observedTargets));
+if (!target) {
+  throw new Error("CONTEXT_ERROR: No initialized Coach renderer was exposed by the exact foreground PID " + expectedAppPid +
+    ". Required socket=" + expectedSocketName + "; observed sockets=" + JSON.stringify(observedSockets) +
+    "; targets=" + JSON.stringify(observedTargets));
+}
 const ws = new WebSocket(target.webSocketDebuggerUrl);
 await new Promise((resolve, reject) => {
   ws.addEventListener("open", resolve, { once: true });
@@ -156,4 +163,4 @@ if (renderer?.title !== "OpenFront Replay Coach" || renderer.readyState !== "com
 }
 const result = await evaluate(expression);
 ws.close();
-console.log(JSON.stringify({ mode, socket, targetUrl: target.url, renderer, result }));
+console.log(JSON.stringify({ mode, expectedAppPid, socket, socketPid: assertWebViewSocketPid(socket, expectedAppPid), targetUrl: target.url, renderer, result }));

@@ -123,8 +123,13 @@ jobs:
       - name: Verify updater contract tests
         run: node --test scripts/updater-contract.test.mjs
 
-      - name: Validate signed Android release-upgrade script syntax
-        run: bash -n scripts/test-android-release-upgrade.sh
+      - name: Validate Android upgrade and signing shell scripts
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          bash -n scripts/test-android-release-upgrade.sh
+          bash -n scripts/test-android-in-place-update.sh
+          bash -n scripts/verify-android-release-signing.sh
 
       - name: Set up Java
         uses: actions/setup-java@v4

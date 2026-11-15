@@ -35,8 +35,45 @@ for attempt in $(seq 1 60); do
   sleep 3
 done
 [[ "$booted" == true ]] || fail "Android emulator did not finish booting within 3 minutes."
-log "Emulator booted; installing baseline APK."
-timeout 300s adb -s emulator-5554 install "$before_apk" || fail "Could not install baseline APK."
+wait_for_package_service() {
+  for attempt in $(seq 1 30); do
+    local output=""
+    if output="$(timeout 20s adb -s emulator-5554 shell cmd package list packages 2>&1)" &&
+       grep -q "^package:" <<< "$output"; then
+      log "Android Package Manager service is ready."
+      return 0
+    fi
+    log "Package Manager is not ready (attempt $attempt/30): ${output:-no response}"
+    sleep 5
+  done
+  fail "Android Package Manager did not become ready after emulator boot."
+}
+
+install_apk_with_retry() {
+  local apk="$1"
+  local replace="$2"
+  local output=""
+  for attempt in 1 2 3 4; do
+    wait_for_package_service
+    if [[ "$replace" == "true" ]]; then
+      if output="$(timeout 180s adb -s emulator-5554 install -r "$apk" 2>&1)"; then
+        log "$output"
+        return 0
+      fi
+    else
+      if output="$(timeout 180s adb -s emulator-5554 install "$apk" 2>&1)"; then
+        log "$output"
+        return 0
+      fi
+    fi
+    log "APK install attempt $attempt/4 failed: $output"
+    sleep 10
+  done
+  fail "Android Package Manager could not install $apk after retries: $output"
+}
+
+log "Emulator booted; waiting for Android Package Manager."
+install_apk_with_retry "$before_apk" false
 timeout 30s adb -s emulator-5554 shell "run-as $package_id sh -c 'mkdir -p files/update-regression && printf keep-this-data > files/update-regression/sentinel.txt'" || fail "Could not create app-data sentinel."
 
 current_version="$(node -p "require('./package.json').version")"
@@ -44,7 +81,7 @@ IFS='.' read -r major minor patch <<< "$current_version"
 next_version="$major.$minor.$((patch + 1))"
 test -s "$update_apk" || fail "Prebuilt higher-version APK is missing."
 log "Installing the prebuilt update APK for version $next_version."
-timeout 300s adb -s emulator-5554 install -r "$update_apk" || fail "Android rejected the in-place APK update."
+install_apk_with_retry "$update_apk" true
 saved="$(timeout 30s adb -s emulator-5554 shell "run-as $package_id cat files/update-regression/sentinel.txt" | tr -d '\r')" || fail "Could not read the preserved app-data sentinel."
 [[ "$saved" == "keep-this-data" ]] || fail "App data was not preserved after adb -s emulator-5554 install -r."
 

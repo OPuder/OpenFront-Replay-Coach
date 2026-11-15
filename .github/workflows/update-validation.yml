@@ -284,3 +284,17 @@ jobs:
             release/release-manifest.json
           if-no-files-found: error
           retention-days: 14
+
+      - name: Download the audited bundle again
+        uses: actions/download-artifact@v4
+        with:
+          name: release-integrity-audit
+          path: release-roundtrip
+
+      - name: Re-verify downloaded manifest and checksums
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          export RELEASE_VERSION="$(node -p "require('./package.json').version")"
+          export RELEASE_DIR=release-roundtrip
+          node scripts/verify-release-artifacts.mjs verify

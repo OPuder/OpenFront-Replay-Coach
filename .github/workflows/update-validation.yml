@@ -150,49 +150,63 @@ jobs:
       - name: Set Android version from package.json
         run: node scripts/set-android-version.mjs "$(node -p 'require("./package.json").version')"
 
-      - name: Build debug APK for package validation
-        run: |
-          cd android
-          ./gradlew --no-daemon assembleDebug
+      - name: Download and verify exact public v2.2.51 Android baseline
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: bash scripts/download-android-release-baseline.sh
 
-      - name: Parse and validate APK metadata
-        id: parse_apk
+      - name: Build higher-version candidate with the permanent release key
+        id: release_candidate
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          ANDROID_BASELINE_TAG: v2.2.51
+          PREVIOUS_APK: ${{ runner.temp }}/ofrc-android-baseline/OpenFront-Replay-Coach-2.2.51-Android.apk
+          GH_TOKEN: ${{ github.token }}
+        run: bash scripts/verify-android-release-signing.sh
+
+      - name: Verify baseline and candidate package metadata, version and hashes
         shell: bash
         run: |
           set -Eeuo pipefail
-          APK="android/app/build/outputs/apk/debug/app-debug.apk"
-          test -s "$APK"
-          BT="$(find "$ANDROID_HOME/build-tools" -mindepth 1 -maxdepth 1 -type d | sort -V | tail -n 1)"
-          "$BT/apksigner" verify --verbose "$APK"
-          "$BT/aapt" dump badging "$APK" | tee /tmp/apk-badging.txt
-          grep -F "package: name='de.openfront.replaycoach'" /tmp/apk-badging.txt
-          grep -F "versionName='"$(node -p "require('./package.json').version")"'" /tmp/apk-badging.txt
-          sha256sum "$APK"
-
-      - name: Build higher-version APK before emulator startup
-        shell: bash
-        run: |
-          set -euo pipefail
-          apk="android/app/build/outputs/apk/debug/app-debug.apk"
-          baseline="$RUNNER_TEMP/openfront-coach-before-update.apk"
-          updated="$RUNNER_TEMP/openfront-coach-update.apk"
-          test -s "$apk"
-          cp "$apk" "$baseline"
+          baseline="$PREVIOUS_APK"
+          candidate="android/app/build/outputs/apk/release/app-release.apk"
+          test -s "$baseline"
+          test -s "$candidate"
+          build_tools="$(find "$ANDROID_HOME/build-tools" -mindepth 1 -maxdepth 1 -type d | sort -V | tail -n 1)"
+          "$build_tools/apksigner" verify --verbose "$baseline" >/dev/null
+          "$build_tools/apksigner" verify --verbose "$candidate" >/dev/null
           current_version="$(node -p "require('./package.json').version")"
           IFS='.' read -r major minor patch <<< "$current_version"
-          next_version="$major.$minor.$((patch + 1))"
-          node scripts/set-android-version.mjs "$next_version"
-          (cd android && timeout 600s ./gradlew --no-daemon assembleDebug)
-          test -s "$apk"
-          cp "$apk" "$updated"
-          cp "$baseline" "$apk"
-          test -s "$updated"
-          echo "OPENFRONT_UPDATE_APK=$updated" >> "$GITHUB_ENV"
+          expected_version_code="$((major * 1000000 + minor * 1000 + patch))"
+          baseline_badging="$("$build_tools/aapt" dump badging "$baseline" | sed -n '1p')"
+          candidate_badging="$("$build_tools/aapt" dump badging "$candidate" | sed -n '1p')"
+          grep -F "package: name='de.openfront.replaycoach'" <<< "$baseline_badging" >/dev/null
+          grep -F "versionName='2.2.51'" <<< "$baseline_badging" >/dev/null
+          grep -F "versionCode='2002051'" <<< "$baseline_badging" >/dev/null
+          grep -F "package: name='de.openfront.replaycoach'" <<< "$candidate_badging" >/dev/null
+          grep -F "versionName='$current_version'" <<< "$candidate_badging" >/dev/null
+          grep -F "versionCode='$expected_version_code'" <<< "$candidate_badging" >/dev/null
+          baseline_code="$(sed -E "s/.*versionCode='([0-9]+)'.*/\1/" <<< "$baseline_badging")"
+          candidate_code="$(sed -E "s/.*versionCode='([0-9]+)'.*/\1/" <<< "$candidate_badging")"
+          (( candidate_code > baseline_code )) || { echo "Candidate versionCode is not newer than baseline." >&2; exit 1; }
+          baseline_sha="$(sha256sum "$baseline" | awk '{print $1}')"
+          candidate_sha="$(sha256sum "$candidate" | awk '{print $1}')"
+          echo "Verified baseline SHA-256: $baseline_sha"
+          echo "Verified signed candidate SHA-256: $candidate_sha"
+          echo "RELEASE_VERSION=$current_version" >> "$GITHUB_ENV"
+          echo "OPENFRONT_CURRENT_APK=$candidate" >> "$GITHUB_ENV"
 
-      - name: Test in-place Android update and preserve app data
-        if: always() && steps.parse_apk.outcome == 'success'
+      - name: Test genuine published-APK in-place upgrade on Android emulator
+        if: success()
         timeout-minutes: 35
         uses: reactivecircus/android-emulator-runner@v2
+        env:
+          PREVIOUS_APK: ${{ runner.temp }}/ofrc-android-baseline/OpenFront-Replay-Coach-2.2.51-Android.apk
+          RELEASE_VERSION: ${{ env.RELEASE_VERSION }}
+          OPENFRONT_CURRENT_APK: android/app/build/outputs/apk/release/app-release.apk
         with:
           api-level: 34
           target: google_apis
@@ -202,7 +216,7 @@ jobs:
           emulator-boot-timeout: 1800
           emulator-options: -no-window -no-audio -no-boot-anim -no-snapshot -no-metrics -gpu swiftshader_indirect -memory 4096 -partition-size 4096
           disable-animations: true
-          script: bash scripts/test-android-in-place-update.sh
+          script: bash scripts/test-android-release-upgrade.sh
 
       - name: Verify permanent Android release signing key and continuity
         if: always() && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
@@ -211,6 +225,10 @@ jobs:
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          ANDROID_BASELINE_TAG: v2.2.51
+          PREVIOUS_APK: ${{ runner.temp }}/ofrc-android-baseline/OpenFront-Replay-Coach-2.2.51-Android.apk
+          OPENFRONT_CURRENT_APK: android/app/build/outputs/apk/release/app-release.apk
+          ANDROID_SIGNING_VERIFY_ONLY: "1"
           GH_TOKEN: ${{ github.token }}
         run: bash scripts/verify-android-release-signing.sh
 
@@ -218,6 +236,6 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: updater-validation-android
-          path: android/app/build/outputs/apk/debug/app-debug.apk
+          path: android/app/build/outputs/apk/release/app-release.apk
           if-no-files-found: error
           retention-days: 7

@@ -134,3 +134,14 @@ assert.match(appRenderer, /controller\.signal/);
 assert.match(appRenderer, /page !== 'analysis'[\s\S]*?setApiResult\(null\)[\s\S]*?setSimulationResult\(null\)/);
 
 assert.match(appRenderer, /function navigateTo\([\s\S]*?engineReviewRunId\.current\+\+[\s\S]*?setSimulationProgress\(null\)/, "Navigation must clear stale progress after aborting an engine review.");
+
+const engineCacheWorkflows = [
+  read(".github/workflows/build-windows.yml"),
+  read(".github/workflows/replay-compatibility.yml"),
+  read(".github/workflows/validate-engine.yml"),
+  read(".github/workflows/update-validation.yml"),
+  read(".github/workflows/release-on-main.yml"),
+];
+for (const workflow of engineCacheWorkflows) {
+  assert.match(workflow, /Restore exact historical engine Git objects[\s\S]*?actions\/cache@v4[\s\S]*?path: \.git\/modules[\s\S]*?github\.job/);
+}

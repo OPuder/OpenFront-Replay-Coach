@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { decodeTileOwners, encodeTileOwners, selectTerritorySample, tileCoordinates } from "../src/renderer/ReplayTerritory.ts";
+import { decodeTileOwners, encodeTileOwners, isValidTerritorySnapshot, selectTerritorySample, tileCoordinates } from "../src/renderer/ReplayTerritory.ts";
 
 test("encodes exact owner IDs while ignoring fallout and defense flag bits", () => {
   const input = new Uint16Array([1, 1 | 8192, 2 | 16384, 2, 0, 0]);
@@ -18,6 +18,7 @@ test("rejects malformed or incomplete run data instead of drawing false territor
   assert.equal(decodeTileOwners({ width: 2, height: 2, ownerRuns: [1, 5] }), null);
   assert.equal(decodeTileOwners({ width: 2, height: 2, ownerRuns: [1] }), null);
   assert.equal(decodeTileOwners({ width: 2, height: 2, ownerRuns: [4096, 4] }), null);
+  assert.equal(isValidTerritorySnapshot({ width: 2, height: 2, ownerRuns: [1, 3] }), false);
 });
 
 test("selects the latest actual snapshot at or before the requested replay time", () => {
@@ -31,6 +32,8 @@ test("selects the latest actual snapshot at or before the requested replay time"
   assert.equal(selectTerritorySample(samples, 5)?.tick, 0, "Use the real initial snapshot when it precedes the selected time");
   assert.equal(selectTerritorySample(samples.slice(1), 5), null, "Do not leak a future snapshot into an earlier moment");
   assert.equal(selectTerritorySample(samples, 30)?.tick, 100);
+  const malformed = { tick: 250, territory: { width: 1, height: 1, ownerRuns: [1, 2] } };
+  assert.equal(selectTerritorySample([...samples, malformed], 30)?.tick, 100, "Skip malformed snapshots and retain the latest valid earlier state");
 });
 
 test("converts only valid map tile references to exact grid coordinates", () => {

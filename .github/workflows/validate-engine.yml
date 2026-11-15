@@ -12,6 +12,7 @@ on:
   push:
     branches: [main, feature/release-update-system]
     paths:
+      - "package.json"
       - ".gitmodules"
       - "vendor/**"
       - ".github/workflows/validate-engine.yml"

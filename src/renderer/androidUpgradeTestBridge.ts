@@ -126,7 +126,7 @@ export async function installAndroidUpgradeTestBridge(): Promise<void> {
         const item = value as Record<string, unknown>;
         return `${String(item.playerId ?? "")}:${String(item.gameId ?? "")}`;
       }));
-      const matchKeys = matches.map(value => {
+      const matchKeys = matches.filter(value => Boolean((value as Record<string, any>).result)).map(value => {
         const item = value as Record<string, any>;
         return `${String(item.playerId ?? "")}:${String(item.game?.gameId ?? "")}`;
       });

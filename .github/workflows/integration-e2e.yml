@@ -1,0 +1,42 @@
+name: Integration E2E contracts
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "docs/INTEGRATION_E2E.md"
+      - "scripts/integration-e2e-contract.test.mjs"
+      - "package.json"
+      - "src/**"
+      - ".github/workflows/integration-e2e.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: integration-e2e-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  integration-contracts:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+          cache: npm
+      - run: npm ci
+      - name: Prepare exact historical replay engines
+        run: npm run prepare:engines
+      - name: Validate pinned engine catalog
+        run: npm run validate:engine-pin
+      - name: Run cross-module integration contracts
+        run: npm run test:integration-e2e
+      - name: Run replay, coaching, storage, and updater regression suites
+        run: npm run test:coach
+      - name: Typecheck and production build
+        run: npm run build

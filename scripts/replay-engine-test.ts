@@ -9,6 +9,17 @@ import { selectPrimaryCoachInsights } from "../src/main/decoder/CoachInsightSele
 import { buildReplayTimeline } from "../src/main/decoder/CoachTimeline";
 import { buildLongitudinalCoachReport } from "../src/main/decoder/LongitudinalCoach";
 
+const expect = {
+  ok(condition: unknown, message = "Expected condition to be truthy"): void {
+    if (!condition) throw new Error(message);
+  },
+  equal(actual: unknown, expected: unknown, message = "Values differ"): void {
+    if (!Object.is(actual, expected)) {
+      throw new Error(`${message}: expected ${String(expected)}, received ${String(actual)}`);
+    }
+  },
+};
+
 const batchTestRecords = new Map<string, any>();
 
 declare global {
@@ -186,28 +197,28 @@ window.__runBatchReplayTest = async (gameIds) => {
       }
       for (const action of simulation.actionReviews) {
         const sourceIntents = intents.get(action.frame) ?? [];
-        assert.ok(sourceIntents.some((intent: any) => String(intent?.type ?? "unknown") === action.type),
+        expect.ok(sourceIntents.some((intent: any) => String(intent?.type ?? "unknown") === action.type),
           `Coach action ${action.type} at frame ${action.frame} has no matching original replay intent in ${item.gameId}`);
-        assert.equal(action.turn, action.frame, `Replay timeline turn differs from source turn in ${item.gameId}`);
-        assert.equal(action.seconds, Number(sourceIntents.length >= 0 ? action.turn : NaN) / 10,
+        expect.equal(action.turn, action.frame, `Replay timeline turn differs from source turn in ${item.gameId}`);
+        expect.equal(action.seconds, Number(sourceIntents.length >= 0 ? action.turn : NaN) / 10,
           `Replay action seconds do not match original turnNumber / 10 in ${item.gameId}`);
       }
       for (const entry of timeline) {
         if (entry.id.startsWith("event-") && entry.turn !== null) {
-          assert.equal(entry.time, entry.turn / 10);
-          assert.ok(intents.has(entry.turn), `Timeline event ${entry.turn} has no source replay turn in ${item.gameId}`);
+          expect.equal(entry.time, entry.turn / 10);
+          expect.ok(intents.has(entry.turn), `Timeline event ${entry.turn} has no source replay turn in ${item.gameId}`);
         }
         if (entry.id.startsWith("coach-")) {
-          assert.ok(entry.insight?.evidence?.trim(), `Coach evidence missing in ${item.gameId}`);
-          assert.ok(entry.insight?.nextStep?.trim(), `Coach alternative missing in ${item.gameId}`);
-          assert.ok(entry.insight?.limitation?.trim(), `Coach limitation missing in ${item.gameId}`);
-          assert.ok(Number.isFinite(entry.time) && entry.time >= 0 && entry.time <= simulation.totalTicks / 10);
+          expect.ok(entry.insight?.evidence?.trim(), `Coach evidence missing in ${item.gameId}`);
+          expect.ok(entry.insight?.nextStep?.trim(), `Coach alternative missing in ${item.gameId}`);
+          expect.ok(entry.insight?.limitation?.trim(), `Coach limitation missing in ${item.gameId}`);
+          expect.ok(Number.isFinite(entry.time) && entry.time >= 0 && entry.time <= simulation.totalTicks / 10);
           const secondsFrame = entry.time * 10;
-          assert.ok(Number.isInteger(secondsFrame), `Timed coach marker is not aligned to an original 100ms game tick in ${item.gameId}`);
-          assert.ok(simulation.actionReviews.some((action: any) => action.frame === secondsFrame),
+          expect.ok(Number.isInteger(secondsFrame), `Timed coach marker is not aligned to an original 100ms game tick in ${item.gameId}`);
+          expect.ok(simulation.actionReviews.some((action: any) => action.frame === secondsFrame),
             `Timed coach marker at ${entry.time}s has no matching reconstructed selected-player action in ${item.gameId}`);
           const sourceActions = intents.get(secondsFrame) ?? [];
-          assert.ok(sourceActions.length > 0,
+          expect.ok(sourceActions.length > 0,
             `Timed coach marker at ${entry.time}s has no source replay intent for the selected player in ${item.gameId}`);
         }
       }

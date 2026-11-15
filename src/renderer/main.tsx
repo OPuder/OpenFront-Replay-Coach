@@ -904,7 +904,7 @@ function CoachPanel({apiResult,preferredPlayerPublicId,decodedActions,simulation
     ? toReplayCoachFindings(proCoachReport.findings, apiResult.gameId, selectedClientId, selectedActionReviews, simulationResult.samples)
     : [];
   const replayTimeline = [...buildReplayTimeline(timeline, primaryEngineInsights), ...proCoachFindings.flatMap(finding =>
-    finding.timestampSeconds === null ? [] : [{ id: 'pro-' + finding.id, time: finding.timestampSeconds, title: finding.title, detail: finding.consequence, kind: 'Strategisches Coaching', turn: null }],
+    finding.timestampSeconds === null ? [] : [{ id: 'pro-' + finding.id, time: finding.timestampSeconds, title: finding.title, detail: finding.consequence, kind: 'Strategisches Coaching', turn: null, insight: undefined }],
   )].sort((a,b)=>a.time-b.time);
   const selectedTimelineEntry = replayTimeline.find(event => event.id === selectedTimelineId) ?? replayTimeline[0] ?? null;
   React.useEffect(()=>{setSelectedTimelineId(null);},[apiResult.gameId]);

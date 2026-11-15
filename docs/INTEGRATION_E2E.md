@@ -51,3 +51,21 @@ when integration tests are extended.
 Do not mark a platform end-to-end pass based only on a source-contract test:
 the platform workflows must also pass their packaged installer/portable and
 emulator upgrade launches.
+
+
+## Nested upstream submodule decision
+
+The Coach consumes the historical OpenFront engine as a client-side simulation
+source. The replay engine build uses the pinned engine workspaces and their
+client/engine packages; it does not start the OpenFront server or import
+`src/server/Gatekeeper.ts`. The nested `src/server/gatekeeper` gitlink is
+therefore outside the runtime/build dependency graph used by Replay Coach.
+
+The root checkout must not recursively initialize upstream submodules. The
+`prepare:engines` script explicitly initializes the ten top-level engine
+sources listed in `engine-build/engines.json` (including the exact Levant and
+Europe revisions), without recursion, verifies each checked-out commit, and
+installs dependencies from each pinned engine lockfile. This retains all
+required engine files and exact commit identities while avoiding the unrelated,
+unavailable server-only gatekeeper repository. Do not change engine pins or
+replace the explicit engine preparation step with a blanket submodule disable.

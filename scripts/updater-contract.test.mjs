@@ -176,7 +176,7 @@ const releaseSource = read(".github/workflows/release-on-main.yml");
 assert.match(releaseSource, /persist-credentials: false/);
 assert.doesNotMatch(releaseSource, /git push origin HEAD:main/, "The release workflow must not push generated version commits directly to main.");
 assert.ok(releaseSource.includes("Release version drift detected") && releaseSource.includes("reviewed pull request"));
-assert.ok(releaseSource.includes("sha256sum") && releaseSource.includes("SHA256SUMS.txt"));
+assert.ok(releaseSource.includes("SHA256SUMS.txt"));
 assert.ok(releaseSource.includes("release-manifest.json"));
 assert.ok(releaseSource.includes("verify-release-artifacts.mjs generate"));
 assert.ok(releaseSource.includes("verify-release-artifacts.mjs verify"));

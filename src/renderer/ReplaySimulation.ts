@@ -328,6 +328,7 @@ export async function simulateReplay(
     const territory = tileState ? encodeTileOwners(tileState, mapWidth, mapHeight) : null;
     const unitMovements = [...state.units.values()].flatMap((unit: any) => {
       const fromTile = Number(unit.pos);
+      if (unit.targetTile === null || unit.targetTile === undefined) return [];
       const targetTile = Number(unit.targetTile);
       if (!unit.isActive || !Number.isInteger(fromTile) || !Number.isInteger(targetTile) ||
           fromTile < 0 || targetTile < 0 || fromTile === targetTile ||

@@ -125,6 +125,9 @@ jobs:
       - name: Verify updater contract tests
         run: node --test scripts/updater-contract.test.mjs
 
+      - name: Validate signed Android release-upgrade script syntax
+        run: bash -n scripts/test-android-release-upgrade.sh
+
       - name: Set up Java
         uses: actions/setup-java@v4
         with:

@@ -56,10 +56,14 @@ async function main(){
   assert.equal(selected.selectedTime,'00:15','Selecting a timeline marker must update the coaching time');
   assert.equal(selected.selectedFrame,'Engine-Frame 150','Selecting a later timeline marker must advance the rendered map snapshot');
   assert.equal(selected.buttons.filter(button=>button.pressed==='true').length,1,'Exactly one timeline marker must be selected');
+  window.setFocusable(true);
   window.show();
   window.focus();
-  await new Promise(resolve=>setTimeout(resolve,100));
-  await window.webContents.executeJavaScript("document.body.setAttribute('tabindex','-1'); document.body.focus()");
+  window.webContents.focus();
+  await window.webContents.executeJavaScript("window.focus(); document.body.setAttribute('tabindex','-1'); document.body.focus()");
+  await new Promise(resolve=>setTimeout(resolve,200));
+  const keyboardReady=await window.webContents.executeJavaScript("document.hasFocus() && document.activeElement===document.body");
+  assert.equal(keyboardReady,true,'Electron window and document must own focus before dispatching Tab');
   await window.webContents.sendInputEvent({type:'keyDown',keyCode:'TAB'});
   await window.webContents.sendInputEvent({type:'keyUp',keyCode:'TAB'});
   const focus=await window.webContents.executeJavaScript("({tag:document.activeElement?.tagName,role:document.activeElement?.getAttribute('role'),label:document.activeElement?.getAttribute('aria-label')||document.activeElement?.textContent?.trim()})");

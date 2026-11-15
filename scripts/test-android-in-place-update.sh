@@ -171,3 +171,20 @@ launch_app "$seed_package_id"
 seed_pid="$(adb -s emulator-5554 shell pidof "$seed_package_id" | tr -d '\r')"
 ANDROID_WEBVIEW_PID="$seed_pid" node scripts/android-webview-storage.mjs verify || { diagnostics "$seed_package_id"; fail "Production update did not preserve IndexedDB profile, replay, analysis and local settings."; }
 log "PASS: production v2.2.51 -> candidate permanent-key update preserved IndexedDB and Local Storage data; profile, replay, analysis and settings read back after update."
+
+log "Testing Android's real incompatible-signature rejection without uninstalling the installed app."
+wrong_keystore="$RUNNER_TEMP/ofrc-incompatible-signature-test.jks"
+wrong_signed_apk="$RUNNER_TEMP/openfront-coach-wrong-signature.apk"
+keytool -genkeypair -noprompt -keystore "$wrong_keystore" -storetype JKS -storepass "temporary-test-store-password" -keypass "temporary-test-key-password" -alias mismatch -dname "CN=OpenFront Replay Coach Negative Test" -keyalg RSA -keysize 2048 -validity 2 >/dev/null 2>&1 || fail "Could not create isolated negative-test signing key."
+"$apksigner" sign --ks "$wrong_keystore" --ks-type JKS --ks-key-alias mismatch --ks-pass pass:temporary-test-store-password --key-pass pass:temporary-test-key-password --out "$wrong_signed_apk" "$current_release_apk" || fail "Could not create the deliberately incompatible test APK."
+"$apksigner" verify --verbose "$wrong_signed_apk" >/dev/null || fail "The incompatible-signature test APK is not a valid signed APK."
+wrong_cert_output="$("$apksigner" verify --print-certs "$wrong_signed_apk" 2>&1)" || fail "Could not inspect the negative-test APK certificate."
+wrong_cert="$(certificate_sha256 "$wrong_cert_output")"
+[[ -n "$wrong_cert" && "$wrong_cert" != "$current_cert" ]] || fail "Negative-test APK unexpectedly uses the production signing certificate."
+negative_status=0
+negative_output="$(timeout --signal=INT --kill-after=15s 120s adb -s emulator-5554 install --no-streaming -r "$wrong_signed_apk" 2>&1)" || negative_status=$?
+[[ "$negative_status" -ne 0 ]] || fail "Android unexpectedly accepted an APK signed with an incompatible certificate."
+grep -F "INSTALL_FAILED_UPDATE_INCOMPATIBLE" <<< "$negative_output" >/dev/null || { printf '%s\\n' "$negative_output"; fail "Android rejected the incompatible APK for an unexpected reason."; }
+still_installed="$(timeout 30s adb -s emulator-5554 shell dumpsys package "$package_id")" || fail "Could not inspect the installed package after rejecting the incompatible APK."
+grep -F "versionCode=$current_release_code" <<< "$still_installed" >/dev/null || fail "Rejected incompatible update damaged or replaced the installed production package."
+log "PASS: Android rejected the mismatched signing certificate with INSTALL_FAILED_UPDATE_INCOMPATIBLE and kept the valid production version installed."

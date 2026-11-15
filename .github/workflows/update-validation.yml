@@ -91,7 +91,7 @@ jobs:
     # Keep emulator integration tests on the stable LTS runner; ubuntu-latest
     # moved to 26.04 and the Android 34 emulator repeatedly went offline there.
     runs-on: ubuntu-22.04
-    timeout-minutes: 75
+    timeout-minutes: 90
     steps:
       - name: Check out source
         uses: actions/checkout@v4
@@ -216,7 +216,7 @@ jobs:
 
       - name: Test genuine published-APK in-place upgrade on Android emulator
         if: success()
-        timeout-minutes: 35
+        timeout-minutes: 60
         uses: reactivecircus/android-emulator-runner@v2
         env:
           PREVIOUS_APK: ${{ runner.temp }}/ofrc-android-baseline/OpenFront-Replay-Coach-2.2.51-Android.apk

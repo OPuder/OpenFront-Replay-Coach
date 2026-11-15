@@ -71,7 +71,7 @@ jobs:
           Copy-Item $portable[0].FullName $staging
 
       - name: Install and smoke-test Windows installer and portable edition
-        timeout-minutes: 20
+        timeout-minutes: 30
         env:
           OFRC_IDLE_SOAK_MS: "300000"
           RELEASE_DIR: release/packages

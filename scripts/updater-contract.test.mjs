@@ -233,3 +233,10 @@ assert.match(windowsWorkflow, /verify-windows-distributions\.mjs/);
 const releaseWorkflowUpdated = read(".github/workflows/release-on-main.yml");
 assert.match(releaseWorkflowUpdated, /Download published release and verify every byte/);
 assert.match(releaseWorkflowUpdated, /verify-release-artifacts\.mjs verify/);
+
+const androidVersionScript = read("scripts/set-android-version.mjs");
+const androidVersionTests = read("scripts/set-android-version.test.mjs");
+assert.match(androidVersionScript, /Rewrite only the app version fields/);
+assert.match(androidVersionScript, /versionCode/);
+assert.match(androidVersionTests, /preserves compileSdk and permanent signing configuration/);
+assert.match(androidVersionTests, /signingConfig signingConfigs\\.release/);

@@ -218,6 +218,8 @@ const validationWorkflow = read(".github/workflows/update-validation.yml");
 assert.match(validationWorkflow, /release-artifact-download-audit/);
 assert.match(validationWorkflow, /actions\/download-artifact@v4/);
 assert.match(validationWorkflow, /verify-release-artifacts\.mjs generate/);
+assert.match(validationWorkflow, /Download the audited bundle again/);
+assert.match(validationWorkflow, /Re-verify downloaded manifest and checksums/);
 assert.match(validationWorkflow, /verify-windows-distributions\.mjs/);
 assert.match(validationWorkflow, /Test debug data preservation and real published-APK update/);
 assert.match(validationWorkflow, /verify-android-release-signing\.sh/);

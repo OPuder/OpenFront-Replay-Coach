@@ -418,19 +418,25 @@ window.__runBatchReplayTest = async (gameIds) => {
           : 0,
         error: error ? String(error?.stack ?? error?.message ?? error) : null,
       });
-      // The unsupported-engine fixture is a deliberately mutated copy of the
-      // Europe replay, not a third match. Persisting it under an alias would
-      // hide a duplicate-key overwrite and would falsely inflate match counts.
-      if (!["unsupported-engine", "hash-mismatch", "malformed-replay"].includes(item.gameId)
-        && (status === "verified" || status === "unverified" || status === "failed")) {
+      // The three negative fixtures are mutated copies of Europe. Give each
+      // a unique synthetic replay ID before persistence so IndexedDB can retain
+      // failed/unsupported diagnostics without overwriting the real match.
+      const syntheticFixture = ["unsupported-engine", "hash-mismatch", "malformed-replay"].includes(item.gameId);
+      const persistedGameId = syntheticFixture
+        ? item.gameId
+        : String(item.record?.info?.gameID ?? item.record?.gameId ?? item.gameId);
+      const persistedRecord = syntheticFixture
+        ? { ...item.record, info: { ...(item.record?.info ?? {}), gameID: persistedGameId } }
+        : item.record;
+      if (status === "verified" || status === "unverified" || status === "unsupported" || status === "failed") {
         await saveImportedMatch("ci-batch-player", {
           game: {
-            gameId: String(item.record?.info?.gameID ?? item.record?.gameId ?? item.gameId),
+            gameId: persistedGameId,
             map: item.record?.info?.config?.gameMap ?? "Unknown",
             mode: item.record?.info?.config?.gameMode ?? "Free For All",
             type: item.record?.info?.config?.gameType ?? "Private",
           } as any,
-          result: { record: item.record } as any,
+          result: { record: persistedRecord } as any,
           status: status === "unsupported" ? "engine-mismatch" : "loaded",
           analysisStatus: status,
           simulation: result as any,

@@ -618,6 +618,32 @@ window.__verifyBatchStoreTest = async () => {
         }))
       : [];
     const recordGameId = String(record?.info?.gameID ?? record?.game?.info?.gameID ?? "");
+    const syntheticStatuses: Record<string, { status: string; analysisStatus: string }> = {
+      "unsupported-engine": { status: "engine-mismatch", analysisStatus: "unsupported" },
+      "hash-mismatch": { status: "loaded", analysisStatus: "failed" },
+      "malformed-replay": { status: "loaded", analysisStatus: "failed" },
+    };
+    const syntheticStatus = syntheticStatuses[item.game.gameId];
+    if (syntheticStatus) {
+      const raw = recordGameId ? resolveReplayJsonExport(recordGameId, undefined, record, 750 * 1024 * 1024) : "";
+      const restored = raw ? JSON.parse(raw) : null;
+      const jsonExportRestored = String(restored?.info?.gameID ?? restored?.game?.info?.gameID ?? "") === recordGameId;
+      if (recordGameId !== item.game.gameId || item.status !== syntheticStatus.status
+        || item.analysisStatus !== syntheticStatus.analysisStatus || !jsonExportRestored) {
+        throw new Error("Persisted synthetic replay diagnostic mismatch after renderer reload: " + JSON.stringify({
+          gameId: item.game.gameId, recordGameId, status: item.status,
+          analysisStatus: item.analysisStatus, expected: syntheticStatus, jsonExportRestored,
+        }));
+      }
+      return {
+        gameId: item.game.gameId, matchId: recordGameId,
+        engineId: String(record?.gitCommit ?? "unknown"),
+        status: item.status, analysisStatus: item.analysisStatus,
+        simulationStatus: simulation?.status, sampleCount: simulation?.samples?.length ?? 0,
+        actionCount: simulation?.actionReviews?.length ?? 0, clientId: "",
+        findingCount: 0, findings: [], engineInsights: [], timeline: [], jsonExportRestored,
+      };
+    }
     const expectedIdentity: Record<string, { engineId: string; clientId: string }> = {
       "c2R2JHZgUi": { engineId: "8b5d071eed95f07c701b32e4c64e95b03f8577c1", clientId: "BKujk1rv" },
       "dLNCLHCvMK": { engineId: "bc3e3334c573c4959ec6a6745df6826d07233b4d", clientId: "WcBMSBYj" },

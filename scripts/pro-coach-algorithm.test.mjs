@@ -392,5 +392,5 @@ test('one already active own attack is sufficient evidence of a parallel-front d
  const report=buildProCoachReport(samples,actions,'p1',500);
  const finding=report.allFindings?.find(item=>item.id==='front-load');
  assert.ok(finding);
- assert.match(finding.decision,/eigene Zielbindungen/);
+ assert.match(finding.decision,/eigene aktive Zielbindung/);
 });

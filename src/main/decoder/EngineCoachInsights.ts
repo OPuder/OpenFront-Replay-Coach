@@ -249,18 +249,37 @@ export function buildEngineCoachInsights(
   if (attacks.length > 0) {
     const territoryAt10s = attacks.filter((action) => action.delta10s!.tiles > 0).length;
     const territoryAt30s = attacks.filter((action) => action.delta30s!.tiles > 0).length;
-    const troopDownNoTerritory = attacks.filter((action) => action.delta30s!.troops < 0 && action.delta30s!.tiles <= 0);
+    const troopDownNoTerritory = attacks.filter((action) => {
+      const ownLoss = Math.max(0, -action.delta30s!.troops);
+      const targetLoss = Math.max(0, -(action.targetDelta30s?.troops ?? 0));
+      return ownLoss > targetLoss && action.delta30s!.tiles <= 0 &&
+        (action.targetDelta30s?.tiles ?? 0) >= 0 && action.targetDelta30s !== null;
+    });
+    const favorableTroopTrades = attacks.filter((action) => {
+      const ownLoss = Math.max(0, -action.delta30s!.troops);
+      const targetLoss = Math.max(0, -(action.targetDelta30s?.troops ?? 0));
+      return ownLoss > 0 && targetLoss > ownLoss && action.delta30s!.tiles <= 0 &&
+        (action.targetDelta30s?.tiles ?? 0) >= 0 && action.targetDelta30s !== null;
+    });
+    const evenTroopTrades = attacks.filter((action) => {
+      const ownLoss = Math.max(0, -action.delta30s!.troops);
+      const targetLoss = Math.max(0, -(action.targetDelta30s?.troops ?? 0));
+      return ownLoss > 0 && targetLoss === ownLoss && action.delta30s!.tiles <= 0 &&
+        (action.targetDelta30s?.tiles ?? 0) >= 0 && action.targetDelta30s !== null;
+    });
+    const tradeEvidence = [...troopDownNoTerritory, ...favorableTroopTrades, ...evenTroopTrades];
     findings.push({
       id: "attack-response-windows",
       kind: troopDownNoTerritory.length > 0 ? "review" : "observation",
-      title: "Was nach deinen Angriffsbefehlen sichtbar wurde",
-      summary: `Bei ${territoryAt10s} von ${attacks.length} Angriffen stieg dein Gebiet im 10-Sekunden-Fenster; nach 30 Sekunden war das bei ${territoryAt30s} Angriffen der Fall. Bei ${troopDownNoTerritory.length} Fenstern sanken die eigenen Truppen, ohne dass im selben Zeitraum eigener Gebietszuwachs sichtbar wurde.`,
-      evidence: troopDownNoTerritory.slice(0, 4).map((action) =>
-        `${clock(action.seconds)} · Gebiet ${action.delta30s!.tiles > 0 ? "+" : ""}${action.delta30s!.tiles.toLocaleString("de-DE")} · Truppen ${action.delta30s!.troops > 0 ? "+" : ""}${action.delta30s!.troops.toLocaleString("de-DE")}`
-      ).join(" · ") || "Kein Angriff mit gleichzeitigem Truppenrückgang und ausbleibendem Gebietszuwachs im 30-Sekunden-Fenster erfasst.",
-      nextStep: "Öffne zuerst die markierten Angriffe. Prüfe Zielverteidigung, Marsch-/Transportzeit und ob ein anderer Frontabschnitt im selben Zeitraum eigene Gebiete verändert hat.",
-      seconds: troopDownNoTerritory[0]?.seconds ?? null,
-      limitation: "Das sind Netto-Veränderungen bis 10 bzw. 30 Sekunden nach dem Befehl. Andere zeitgleiche Ereignisse wirken mit; ein Angriff kann später eintreffen und wird hier nicht automatisch als erfolgreich oder gescheitert bewertet.",
+      title: troopDownNoTerritory.length > 0 ? "Angriffe mit ungünstigem Truppenverhältnis prüfen" :
+        favorableTroopTrades.length > 0 ? "Günstige Truppentausche nach Angriffen beobachtet" : "Was nach deinen Angriffsbefehlen sichtbar wurde",
+      summary: `Bei ${territoryAt10s} von ${attacks.length} Angriffen stieg dein Gebiet im 10-Sekunden-Fenster; nach 30 Sekunden war das bei ${territoryAt30s} Angriffen der Fall. Ohne Gebietsreaktion: ${favorableTroopTrades.length} günstige Truppentausche, ${evenTroopTrades.length} ausgeglichene und ${troopDownNoTerritory.length} ungünstige beobachtete Truppenverhältnisse.`,
+      evidence: tradeEvidence.slice(0, 4).map((action) =>
+        `${clock(action.seconds)} · eigenes Gebiet ${action.delta30s!.tiles} · eigene Truppen ${action.delta30s!.troops} · Zielgebiet ${action.targetDelta30s?.tiles ?? "n/v"} · Zieltruppen ${action.targetDelta30s?.troops ?? "n/v"}`
+      ).join(" · ") || "Keine auswertbaren Truppenverhältnisse ohne Gebietsreaktion erfasst.",
+      nextStep: "Öffne die markierten Angriffe und vergleiche beide Truppenänderungen. Prüfe zusätzlich Zielverteidigung, Reisezeit und parallele Fronten, bevor du den Tausch als gut oder schlecht bewertest.",
+      seconds: tradeEvidence[0]?.seconds ?? null,
+      limitation: "Das sind Netto-Veränderungen bis 10 bzw. 30 Sekunden nach dem Befehl. Andere zeitgleiche Ereignisse wirken mit; Truppenverluste beim Ziel können durch andere Angreifer entstehen und beweisen keinen eigenen Kampferfolg.",
     });
   }
 

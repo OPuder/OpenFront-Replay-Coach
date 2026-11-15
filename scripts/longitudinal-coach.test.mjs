@@ -141,6 +141,7 @@ test('attack follow-through keeps own territory gains when target observation is
   assert.equal(report.matchProgress[0].attackFollowThroughPercent, 100);
 });
 
+
 test('recurring strengths are surfaced across multiple verified comparable matches',()=>{
   const strengthSimulation=makeSimulation({
     playerReview:{
@@ -164,6 +165,7 @@ test('recurring strengths are surfaced across multiple verified comparable match
   assert.equal(strength.comparableMatches,2);
 });
 
+
 test('malformed action records are excluded instead of being fabricated at time zero',()=>{
   const simulation=makeSimulation({actionReviews:[
     ...makeSimulation().actionReviews,
@@ -175,6 +177,7 @@ test('malformed action records are excluded instead of being fabricated at time 
   const report=buildLongitudinalCoachReport([match('malformed-a',{simulation})]);
   assert.equal(report.matchProgress[0].attackFollowThroughSamples,6);
 });
+
 
 test('malformed action records cannot crash recurring strength analysis',()=>{
   const simulation=makeSimulation({
@@ -196,6 +199,8 @@ test('malformed action records cannot crash recurring strength analysis',()=>{
   assert.equal(report.matchProgress[0].attackFollowThroughSamples,1);
   assert.equal(report.status,'insufficient-data');
 });
+
+
 
 test('training goals remain provisional until the comparable sample is large enough',()=>{
   const report=buildLongitudinalCoachReport([match('a'),match('b')]);
@@ -237,12 +242,7 @@ test('training goals mark a repeated pattern as regressing only after two recent
 });
 
 test('duplicate game IDs cannot inflate cohort confidence or recurring pattern counts',()=>{
-  const report=buildLongitudinalCoachReport([
-    match('same'),
-    match('same'),
-    match('same'),
-    match('other'),
-  ]);
+  const report=buildLongitudinalCoachReport([match('same'),match('same'),match('same'),match('other')]);
   assert.equal(report.importedMatches,2);
   assert.equal(report.verifiedMatches,2);
   assert.equal(report.comparableMatches,2);
@@ -253,10 +253,7 @@ test('duplicate game IDs cannot inflate cohort confidence or recurring pattern c
 test('training status does not oscillate from a single recurrence in a three-match window',()=>{
   const clean=makeSimulation({actionReviews:[]});
   const report=buildLongitudinalCoachReport([
-    match('a'),match('b'),match('c'),
-    match('d',{simulation:clean}),
-    match('e'),
-    match('f',{simulation:clean}),
+    match('a'),match('b'),match('c'),match('d',{simulation:clean}),match('e'),match('f',{simulation:clean}),
   ]);
   const goal=report.trainingGoals.find(item=>item.id==='attack-follow-through');
   assert.notEqual(goal?.status,'regressing');

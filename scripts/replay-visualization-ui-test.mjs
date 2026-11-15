@@ -31,6 +31,8 @@ async function main(){
     assert.ok(state.hasTerritoryTransfer,'Actual owner transfer summary missing at '+width+'px');
     assert.ok(state.hasPriorityCards,'Prioritized coaching card missing at '+width+'px');
     assert.ok(state.hasConsequence,'Priority card must explain the consequence at '+width+'px');
+    assert.ok(state.hasAlternative,'Priority card must show a better alternative at '+width+'px');
+    assert.ok(state.hasAffectedPlayers,'Priority card must identify resolved affected players at '+width+'px');
     assert.ok(state.hasAffectedOverlay,'Affected-territory overlay missing at '+width+'px');
     assert.ok(state.buttons.every(button=>button.name.length>0),'Unlabelled button at '+width+'px');
     results.push({width,scrollWidth:state.scrollWidth,buttons:state.buttons.length,territory:state.hasTerritory,movement:state.hasMovement,territoryChanges:state.hasTerritoryChanges});

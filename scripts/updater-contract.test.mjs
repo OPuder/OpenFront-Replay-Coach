@@ -3,6 +3,16 @@ import { readFileSync } from "node:fs";
 const read = path => readFileSync(new URL("../" + path, import.meta.url), "utf8");
 const updater = read("src/main/updater.ts");
 const android = read("android-updater-template/ApkUpdaterPlugin.java");
+
+assert.ok(android.includes("inspectApkContainer(apk)"), "APK diagnostics must inspect the downloaded container.");
+assert.match(android, /ZIP-Header:/);
+assert.match(android, /Manifest-und-DEX-vorhanden/);
+assert.match(android, /Android kann die geprüfte APK nicht als Installationspaket lesen/);
+const enginePreparation = read("scripts/prepare-engines.mjs");
+assert.match(enginePreparation, /encoding: "utf8"/);
+assert.match(enginePreparation, /maxBuffer: 32 \\* 1024 \\* 1024/);
+assert.match(enginePreparation, /Dependency installation failed for lockfile group/);
+
 const installer = read("scripts/install-android-updater-plugin.mjs");
 const renderer = read("src/renderer/UpdateCenter.tsx");
 const versionScript = read("scripts/set-release-version.mjs");
@@ -132,11 +142,14 @@ assert.match(appRenderer, /function navigateTo\([\s\S]*?engineReviewRunId\.curre
 
 const releaseUpgradeWorkflow = read(".github/workflows/release-on-main.yml");
 const releaseUpgradeScript = read("scripts/test-android-release-upgrade.sh");
-assert.match(releaseUpgradeWorkflow, /Install previous published APK and upgrade to exact signed release APK[\\s\\S]*?reactivecircus\\/android-emulator-runner@v2[\\s\\S]*?script: bash scripts\\/test-android-release-upgrade.sh/);
-assert.match(releaseUpgradeWorkflow, /Validate signed Android release-upgrade script syntax[\\s\\S]*?bash -n scripts\\/test-android-release-upgrade.sh/);
-assert.match(releaseUpgradeWorkflow, /timeout-minutes: 15[\\s\\S]*?emulator-boot-timeout: 600/);
+assert.ok(releaseUpgradeWorkflow.includes("Install previous published APK and upgrade to exact signed release APK"), "Release workflow must contain the signed previous-to-current APK upgrade job.");
+assert.ok(releaseUpgradeWorkflow.includes("uses: reactivecircus/android-emulator-runner@v2"), "The signed APK upgrade must run on the Android emulator.");
+assert.ok(releaseUpgradeWorkflow.includes("script: bash scripts/test-android-release-upgrade.sh"), "The release workflow must execute the signed APK upgrade script.");
+assert.ok(releaseUpgradeWorkflow.includes("Validate signed Android release-upgrade script syntax"), "The release workflow must validate the upgrade script syntax.");
+assert.ok(releaseUpgradeWorkflow.includes("bash -n scripts/test-android-release-upgrade.sh"), "The release workflow must run bash syntax validation.");
+assert.ok(releaseUpgradeWorkflow.includes("timeout-minutes: 15") && releaseUpgradeWorkflow.includes("emulator-boot-timeout: 600"), "The signed upgrade emulator must have bounded execution and boot time.");
 assert.match(releaseUpgradeScript, /previous-release/);
-assert.match(releaseUpgradeScript, /function install_apk|install_apk\(\)\\s\\*\\{/);
+assert.ok(releaseUpgradeScript.includes("install_apk() {"), "The signed upgrade script must define its APK installer.");
 assert.match(releaseUpgradeScript, /adb -s emulator-5554 install -r/);
 assert.match(releaseUpgradeScript, /versionCode/);
 assert.match(releaseUpgradeScript, /cmd package resolve-activity/);

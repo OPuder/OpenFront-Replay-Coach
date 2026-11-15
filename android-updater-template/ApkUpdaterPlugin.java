@@ -16,6 +16,8 @@ import com.getcapacitor.annotation.CapacitorPlugin;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.InputStream;
+import java.io.FileInputStream;
+import java.io.IOException;
 import java.util.Arrays;
 import java.net.HttpURLConnection;
 import java.net.URL;
@@ -94,9 +96,16 @@ public class ApkUpdaterPlugin extends Plugin {
         PackageManager manager = getContext().getPackageManager();
         int signatureFlags = Build.VERSION.SDK_INT >= Build.VERSION_CODES.P
                 ? PackageManager.GET_SIGNING_CERTIFICATES : PackageManager.GET_SIGNATURES;
+        ApkContainerDiagnostics container = inspectApkContainer(apk);
         PackageInfo incoming = manager.getPackageArchiveInfo(apk.getAbsolutePath(), signatureFlags);
         if (incoming == null || incoming.packageName == null) {
-            throw new IllegalStateException("Android kann die heruntergeladene APK nicht als gültiges Installationspaket lesen. Die Datei wurde nicht installiert.");
+            throw new IllegalStateException(
+                    "Android kann die geprüfte APK nicht als Installationspaket lesen. " +
+                    "Datei: " + apk.getName() + ", Größe: " + container.length + " Bytes, " +
+                    "ZIP-Header: " + container.zipHeader + ", ZIP-Struktur: " + container.zipStatus + ". " +
+                    "Die Datei wurde nicht installiert. Bitte Update erneut laden; falls der Fehler bleibt, " +
+                    "diese Diagnose mit der Android-Version an den Support geben."
+            );
         }
         String installedPackage = getContext().getPackageName();
         if (!installedPackage.equals(incoming.packageName)) {
@@ -119,6 +128,38 @@ public class ApkUpdaterPlugin extends Plugin {
                 !Arrays.equals(incomingSignatures, installedSignatures)) {
             throw new SecurityException("Die APK wurde mit einem anderen Signaturschlüssel erstellt. Android kann sie nicht über die bestehende Installation aktualisieren. Die installierte App bleibt erhalten; installiere nur eine APK mit dem ursprünglichen Projektschlüssel.");
         }
+    }
+
+    private static final class ApkContainerDiagnostics {
+        final long length;
+        final String zipHeader;
+        final String zipStatus;
+        ApkContainerDiagnostics(long length, String zipHeader, String zipStatus) {
+            this.length = length;
+            this.zipHeader = zipHeader;
+            this.zipStatus = zipStatus;
+        }
+    }
+
+    private ApkContainerDiagnostics inspectApkContainer(File apk) {
+        String header = "unbekannt";
+        try (InputStream input = new FileInputStream(apk)) {
+            byte[] magic = new byte[4];
+            int count = input.read(magic);
+            if (count == 4) header = String.format("%02x%02x%02x%02x", magic[0] & 0xff, magic[1] & 0xff, magic[2] & 0xff, magic[3] & 0xff);
+            else header = "Datei-kürzer-als-4-Bytes";
+        } catch (IOException error) {
+            header = "Lesefehler:" + error.getClass().getSimpleName();
+        }
+        String zipStatus = "unbekannt";
+        try (java.util.zip.ZipFile zip = new java.util.zip.ZipFile(apk)) {
+            boolean manifest = zip.getEntry("AndroidManifest.xml") != null;
+            boolean dex = zip.getEntry("classes.dex") != null;
+            zipStatus = manifest && dex ? "Manifest-und-DEX-vorhanden" : manifest ? "Manifest-vorhanden-DEX-fehlt" : dex ? "DEX-vorhanden-Manifest-fehlt" : "Manifest-und-DEX-fehlen";
+        } catch (IOException error) {
+            zipStatus = "ZIP-Fehler:" + error.getClass().getSimpleName();
+        }
+        return new ApkContainerDiagnostics(apk.length(), header, zipStatus);
     }
 
     @SuppressWarnings("deprecation")

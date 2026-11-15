@@ -39,7 +39,7 @@ function updateBuildType(source, type, { signWithRelease, debuggable }) {
   if (!match) throw new Error("Could not locate the " + type + " build type.");
   const open = source.indexOf("{", match.index + match[0].lastIndexOf(type));
   const close = findClosingBrace(source, open, type);
-  let block = source.slice(open + 1, close);
+  let block = source.slice(open + 1, close).trimEnd();
   if (signWithRelease) {
     if (/signingConfig\s+signingConfigs\.[A-Za-z0-9_]+/.test(block)) {
       block = block.replace(/signingConfig\s+signingConfigs\.[A-Za-z0-9_]+/, "signingConfig signingConfigs.release");
@@ -54,6 +54,7 @@ function updateBuildType(source, type, { signWithRelease, debuggable }) {
       block += "\n            debuggable " + debuggable;
     }
   }
+  block += "\n        ";
   return source.slice(0, open + 1) + block + source.slice(close);
 }
 
@@ -67,9 +68,10 @@ if (upgradeTestBuild) {
     if (!buildTypesMatch) throw new Error("Could not locate buildTypes to add the isolated test variant.");
     const buildTypesOpen = gradle.indexOf("{", buildTypesMatch.index);
     const buildTypesClose = findClosingBrace(gradle, buildTypesOpen, "buildTypes");
-    gradle = gradle.slice(0, buildTypesClose)
-      + "\n        debug {\n            signingConfig signingConfigs.release\n            debuggable true\n        }\n"
-      + gradle.slice(buildTypesClose);
+    const closingLineStart = gradle.lastIndexOf("\n", buildTypesClose) + 1;
+    gradle = gradle.slice(0, closingLineStart)
+      + "        debug {\n            signingConfig signingConfigs.release\n            debuggable true\n        }\n"
+      + gradle.slice(closingLineStart);
   }
   // The test variant is debuggable for WebView inspection but uses the exact
   // same permanent signing key as the non-debuggable production release.

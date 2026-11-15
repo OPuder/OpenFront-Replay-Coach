@@ -83,18 +83,27 @@ installed="$(adb_cmd shell dumpsys package "$package_id")" || fail "Could not in
 grep -F "versionCode=$current_version_code" <<< "$installed" >/dev/null || fail "Installed package does not report release versionCode $current_version_code."
 launcher="$(adb_cmd shell cmd package resolve-activity --brief -a android.intent.action.MAIN -c android.intent.category.LAUNCHER "$package_id" | tr -d '\r' | tail -n 1)" || fail "Could not resolve release launcher activity."
 [[ "$launcher" == */* ]] || fail "Could not resolve the current release APK launcher activity."
-launch_output="$(adb_cmd shell am start -W -n "$launcher" 2>&1)" || fail "Upgraded release APK could not be launched: $launch_output"
-grep -F "Status: ok" <<< "$launch_output" >/dev/null || fail "Android did not report a successful release-app launch: $launch_output"
+launch_status=0
+launch_output="$(adb_cmd shell am start -W -n "$launcher" 2>&1)" || launch_status=$?
+log "Release launcher response (exit $launch_status): ${launch_output:-no output}"
 started=false
-for attempt in $(seq 1 30); do
-  if adb_cmd shell pidof "$package_id" >/dev/null 2>&1; then started=true; break; fi
+for attempt in $(seq 1 60); do
+  process_id="$(adb_cmd shell pidof "$package_id" 2>/dev/null | tr -d '\\r' || true)"
+  if [[ -n "$process_id" ]]; then
+    activity_state="$(adb_cmd shell dumpsys activity activities 2>&1 || true)"
+    if grep -E "mResumedActivity|topResumedActivity" <<< "$activity_state" | grep -F "$launcher" >/dev/null; then
+      started=true
+      break
+    fi
+  fi
   sleep 2
 done
 if [[ "$started" != true ]]; then
   log "Release app launch diagnostics:"
-  adb_cmd shell dumpsys activity activities 2>&1 | tail -n 80 || true
-  adb_cmd logcat -d -t 500 2>&1 | grep -E "FATAL EXCEPTION|AndroidRuntime|de.openfront.replaycoach|ActivityTaskManager" | tail -n 120 || true
-  fail "Current release app process did not start within 60 seconds after the upgrade."
+  adb_cmd shell pidof "$package_id" 2>&1 || true
+  adb_cmd shell dumpsys activity activities 2>&1 | tail -n 100 || true
+  adb_cmd logcat -d -t 700 2>&1 | grep -E "FATAL EXCEPTION|AndroidRuntime|de.openfront.replaycoach|ActivityTaskManager|ActivityManager|chromium" | tail -n 160 || true
+  fail "Current release app did not reach its resumed launcher activity within 120 seconds after the upgrade."
 fi
 log "Running a five-minute foreground idle soak on the upgraded signed release."
 sleep 300

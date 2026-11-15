@@ -64,6 +64,11 @@ function App() {
   const [apiResult, setApiResult] = useState<ApiImportSummary | null>(null);
   const [selectedGameIds, setSelectedGameIds] = useState<string[]>([]);
   const [batchMatches, setBatchMatches] = useState<BatchMatchItem[]>([]);
+  function withoutReplayRecord(item: BatchMatchItem): BatchMatchItem {
+    if (!item.result?.record) return item;
+    const { record: _record, ...result } = item.result;
+    return { ...item, result };
+  }
   const [batchAnalysisBusy, setBatchAnalysisBusy] = useState(false);
   const [batchAnalysisProgress, setBatchAnalysisProgress] = useState<{done:number;total:number;gameId:string;percent:number;phase:string;active:number;elapsedMs:number;estimatedRemainingMs:number|null}|null>(null);
   const batchAnalysisRunId = React.useRef(0);

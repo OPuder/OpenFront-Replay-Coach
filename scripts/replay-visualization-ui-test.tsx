@@ -13,14 +13,21 @@ const sample: ReplayStateSample = {
   ],
   totalUnits:2,falloutTiles:0,
 };
+const previousSample: ReplayStateSample = {
+  ...sample,
+  tick: 50,
+  frame: 50,
+  territory: { width: 4, height: 3, ownerRuns: [1,5,2,3,0,4] },
+};
 const events=[{id:'coach-1',title:'Expansion verzögert',kind:'Coach',detail:'Ein belegter Test-Hinweis.',time:10,isCoach:true},{id:'event-2',title:'Angriff gestartet',kind:'Angriff',detail:'Engine-Ereignis.',time:15,isCoach:false}];
-function TestApp(){const [selected,setSelected]=React.useState('coach-1');return <ReplayVisualization mapName="Testmap" durationSeconds={30} events={events} samples={[sample]} selectedEventId={selected} onSelectEvent={setSelected} onOpenReplay={()=>{}}/>;}
+function TestApp(){const [selected,setSelected]=React.useState('coach-1');return <ReplayVisualization mapName="Testmap" durationSeconds={30} events={events} samples={[previousSample,sample]} selectedEventId={selected} onSelectEvent={setSelected} onOpenReplay={()=>{}}/>;}
 createRoot(document.getElementById('root')!).render(<TestApp/>);
 (window as any).__uiTest=()=>({
   width:window.innerWidth,
   scrollWidth:document.documentElement.scrollWidth,
   buttons:[...document.querySelectorAll('button')].map(button=>({name:button.getAttribute('aria-label')||button.textContent?.trim()||'',pressed:button.getAttribute('aria-pressed')})),
   hasTerritory:!!document.querySelector('canvas.replay-viz-territory'),
+  hasTerritoryChanges:!!document.querySelector('canvas.replay-viz-territory-changes'),
   hasMovement:!!document.querySelector('.replay-viz-movements line'),
   selectedTime:document.querySelector('.replay-viz-focus-head b')?.textContent,
 });

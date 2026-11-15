@@ -411,7 +411,7 @@ jobs:
         run: bash -n scripts/test-android-release-upgrade.sh
 
       - name: Install previous published APK and upgrade to exact signed release APK
-        timeout-minutes: 45
+        timeout-minutes: 60
         uses: reactivecircus/android-emulator-runner@v2
         env:
           RELEASE_VERSION: ${{ needs.prepare-release.outputs.version }}

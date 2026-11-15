@@ -113,7 +113,7 @@ assert.ok(releaseWorkflow.includes("names.some(name => /-Android\\.apk$/i.test(n
 
 const matchStore = read("src/renderer/matchStore.ts");
 const appRenderer = read("src/renderer/main.tsx");
-assert.match(matchStore, /const DB_VERSION = 2/);
+assert.match(matchStore, /const DB_VERSION = 3/);
 assert.match(matchStore, /const REPLAY_STORE = "replay-records"/);
 assert.match(matchStore, /event\.oldVersion < 2[\s\S]*?replays\.put[\s\S]*?cursor\.update/);
 assert.match(matchStore, /export async function loadImportedMatch\(/);
@@ -127,7 +127,8 @@ assert.match(startupUpdater, /Installation wartet auf Bestätigung im Update Cen
 assert.doesNotMatch(startupUpdater, /scheduleWindowsInstall\(/);
 
 const replaySimulation = read("src/renderer/ReplaySimulation.ts");
-assert.match(replaySimulation, /export function getTotalRecordedFrames\(record: unknown\)/);\nassert.match(replaySimulation, /const totalRecordedFrames = getTotalRecordedFrames\(record\);/);
+assert.match(replaySimulation, /export function getTotalRecordedFrames\(record: unknown\)/);
+assert.match(replaySimulation, /const totalRecordedFrames = getTotalRecordedFrames\(record\);/);
 assert.doesNotMatch(replaySimulation, /\.\.\.turns\.map/);
 assert.match(appRenderer, /engineReviewAbort\.current\?\.abort\(\)/);
 assert.match(appRenderer, /controller\.signal/);

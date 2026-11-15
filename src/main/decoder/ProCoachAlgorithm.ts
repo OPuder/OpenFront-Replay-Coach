@@ -74,6 +74,8 @@ export interface ProCoachReport {
   phases: ProCoachPhase[];
   opening: ProCoachOpening;
   findings: ProCoachFinding[];
+  /** Complete ranked set for longitudinal recurrence; the UI should render only findings. */
+  allFindings?: ProCoachFinding[];
   metrics: Array<{ label: string; value: string; note: string; confidence: ProCoachConfidence }>;
   trainingRule: string;
   dataCoverage: { samples: number; actions: number; durationMinutes: number };
@@ -105,10 +107,13 @@ export function buildProCoachReport(
     {id:'mid' as const,label:'Mid Game',from:.3,to:.7},
     {id:'late' as const,label:'Late Game',from:.7,to:1},
   ];
-  const endSeconds = first && last ? Math.min(safeDuration,Math.max(0,(last.sample.tick-first.sample.tick)/10)) : safeDuration;
+  const timelineStartTick=ordered[0]?.tick??first?.sample.tick??0;
+  const timelineStartSeconds=timelineStartTick/10;
+  const playerObservedSeconds=first&&last?Math.max(0,(last.sample.tick-first.sample.tick)/10):0;
+  const phaseDurationSeconds=safeDuration;
   const phasesBase = phaseDefs.map(def=>{
-    const start=def.from*endSeconds, end=def.to*endSeconds;
-    const subset=alive.filter(x=>{const sec=(x.sample.tick-(first?.sample.tick??0))/10;return sec>=start && sec<=end;});
+    const start=timelineStartSeconds+def.from*phaseDurationSeconds, end=timelineStartSeconds+def.to*phaseDurationSeconds;
+    const subset=alive.filter(x=>{const sec=x.sample.tick/10;return sec>=start && sec<end;});
     const a=subset[0],b=subset.at(-1);
     // Use the interval actually covered by observations, not the nominal phase length.
     const observedMinutes=a&&b?Math.max(0,(b.sample.tick-a.sample.tick)/600):0;
@@ -120,9 +125,19 @@ export function buildProCoachReport(
     const attacks=actions.filter(x=>x.type==='attack'&&x.seconds>=start&&x.seconds<end).length;
     return {id:def.id,label:def.label,fromSeconds:start,toSeconds:end,minutes,territoryPerMinute,incomePerMinute,troopChangePerMinute,attacks,activeSamples:subset.length,momentumIndex:null as number|null};
   });
-  const phaseMomentum=phasesBase.map(p=>p.territoryPerMinute===null?null:Math.max(0,p.territoryPerMinute)+Math.max(0,p.incomePerMinute??0)/1000).filter((x):x is number=>x!==null);
-  const peak=Math.max(0,...phaseMomentum);
-  const phases=phasesBase.map(p=>({...p,momentumIndex:p.territoryPerMinute===null||peak<=0?null:Math.round(clamp((Math.max(0,p.territoryPerMinute)+Math.max(0,p.incomePerMinute??0)/1000)/peak*100))}));
+  // Normalize territory and gross-income rates separately before combining them;
+  // tiles/minute and gold/minute are different units and must never be added raw.
+  const peakTerritory=Math.max(0,...phasesBase.map(p=>p.territoryPerMinute??0));
+  const peakIncome=Math.max(0,...phasesBase.map(p=>p.incomePerMinute??0));
+  const phaseScore=(p:typeof phasesBase[number]):number|null=>{
+    const territory=p.territoryPerMinute===null||peakTerritory<=0?null:Math.max(0,p.territoryPerMinute)/peakTerritory;
+    const income=p.incomePerMinute===null||peakIncome<=0?null:Math.max(0,p.incomePerMinute)/peakIncome;
+    if(territory===null&&income===null)return null;
+    if(territory===null)return income;
+    if(income===null)return territory;
+    return territory*.7+income*.3;
+  };
+  const phases=phasesBase.map(p=>{const score=phaseScore(p);return {...p,momentumIndex:score===null?null:Math.round(clamp(score*100))};});
   const findings:ProCoachFinding[]=[];
   const openingSamples=alive.filter(x=>(x.sample.tick-(first?.sample.tick??0))/10<=180);
   const openingFirst=openingSamples[0], openingLast=openingSamples.at(-1);

@@ -79,6 +79,8 @@ async function main() {
   assert.equal(result.verifiedHashes, recordedHashes, "Every recorded replay hash must be verified");
   assert.ok(result.totalTicks > 0, "Replay must produce reconstructed frames");
   assert.ok(result.samples > 0, "Replay must produce player state samples");
+  assert.ok(result.territorySnapshots > 0, "Replay must produce actual tile ownership snapshots");
+  assert.ok(result.territoryTileCount > 0, "Tile ownership snapshot must decode to the recorded map dimensions");
   assert.ok(result.playerReview, "Selected player's state review must be reconstructed");
   const abortResult = await window.webContents.executeJavaScript(
     `window.__testAbort(${JSON.stringify(record)})`,

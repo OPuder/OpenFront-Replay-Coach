@@ -43,7 +43,10 @@ async function main() {
   const firstCheckpoint = hashMismatch.turns.find(turn => turn?.hash !== null && turn?.hash !== undefined);
   assert.ok(firstCheckpoint, "Europe fixture must contain a checkpoint to corrupt");
   firstCheckpoint.hash = Number(firstCheckpoint.hash) ^ 1;
-  const malformedReplay = { ...europe, turns: null };
+  const malformedReplay = {
+    ...europe,
+    info: { ...europe.info, config: { ...europe.info.config, gameMap: "../invalid-map" } },
+  };
 
   server = spawn("node", ["node_modules/vite/bin/vite.js", "--host", "127.0.0.1", "--port", String(VITE_PORT), "--strictPort"], {
     stdio: ["ignore", "pipe", "pipe"],
@@ -116,6 +119,7 @@ async function main() {
   assert.equal(hashMismatchResult?.status, "failed");
   assert.match(hashMismatchResult?.error ?? "", /Replay-Hash-Abweichung/);
   assert.equal(malformedResult?.status, "failed");
+  assert.match(malformedResult?.error ?? "", /Karten-ID/);
   assert.equal(levantResult?.status, "verified");
   assert.equal(levantResult?.recordedHashes, 626);
   assert.equal(levantResult?.verifiedHashes, 626);

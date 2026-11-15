@@ -183,3 +183,17 @@ test('early, mid and late phases stay on the full replay timeline after player e
  assert.equal(report.phases[2].activeSamples,0);
  assert.equal(report.phases[2].territoryPerMinute,null);
 });
+
+test('match development score uses the arithmetic median for an even number of valid phases',()=>{
+ const samples=[
+  sample(0,{tiles:100,goldEarned:0}),
+  sample(900,{tiles:145,goldEarned:0}),
+  sample(1800,{tiles:190,goldEarned:0}),
+  sample(4200,{tiles:190,goldEarned:0}),
+  sample(5100,{tiles:197,goldEarned:0}),
+  sample(6000,{tiles:205,goldEarned:0}),
+ ];
+ const report=buildProCoachReport(samples,[],'p1',600);
+ assert.equal(report.phases.filter(phase=>phase.momentumIndex!==null&&phase.activeSamples>=3).length,2);
+ assert.equal(report.matchScore,71,'two valid phase indexes should use their arithmetic median, not the larger value');
+});

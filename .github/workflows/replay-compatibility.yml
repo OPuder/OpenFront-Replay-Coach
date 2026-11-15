@@ -10,9 +10,6 @@ on:
 permissions:
   contents: read
 
-concurrency:
-  group: replay-compatibility-${{ github.ref }}
-  cancel-in-progress: true
 
 jobs:
   replay-compatibility:

@@ -199,3 +199,24 @@ test('malformed action records cannot crash recurring strength analysis',()=>{
   assert.equal(report.matchProgress[0].attackFollowThroughSamples,1);
   assert.equal(report.status,'insufficient-data');
 });
+
+
+test('longitudinal opening reports reuse separately persisted exact-engine spawn metrics',()=>{
+ const spawnPositions=[{
+  id:1,clientID:'p1',name:'Player',startTiles:12,centerX:24,centerY:31,
+  spawnTile:1824,spawnX:24,spawnY:30,nearestSpawnDistance:18,
+  spawnZoneLandTiles:42,spawnZoneTotalTiles:49,nearbyNeutralLandTiles:380,
+  nearbyCoastalLandTiles:90,nearbyPlainsTiles:120,nearbyImpassableTiles:14,
+  nearbyHighlandTiles:70,nearbyMountainTiles:180,mapEdgeDistance:24,
+  adjacentRivals:[2],rivalBorderContacts:4,nearestRivalDistance:5.2,classification:'contested'
+ }];
+ const simulation=makeSimulation({spawnPositions});
+ const report=buildLongitudinalCoachReport([
+  match('spawn-a',{simulation}),
+  match('spawn-b',{simulation}),
+ ]);
+ const finding=report.recurringFindings.find(item=>item.id==='spawn-position-review');
+ assert.ok(finding,'spawn evidence should contribute to verified longitudinal coaching');
+ assert.equal(finding.occurrences,2);
+ assert.match(finding.examples[0].evidence,/Startfelder/);
+});

@@ -45,8 +45,8 @@ jobs:
       - name: Install Coach dependencies once
         run: npm ci
 
-      - name: Verify updater contract tests
-        run: node --test scripts/updater-contract.test.mjs
+      - name: Verify updater contract tests and syntax
+        run: node --check scripts/verify-windows-in-place-updates.mjs && node --check scripts/windows-webview-storage.mjs && node --test scripts/updater-contract.test.mjs
 
       - name: Run full coaching and replay regression suite
         run: npm run test:coach
@@ -150,6 +150,7 @@ jobs:
           set -Eeuo pipefail
           bash -n scripts/test-android-release-upgrade.sh
           bash -n scripts/test-android-in-place-update.sh
+          bash -n scripts/build-android-seed-apk.sh
           bash -n scripts/verify-android-release-signing.sh
           node --test scripts/set-android-version.test.mjs
 
@@ -266,7 +267,7 @@ jobs:
 
       - name: Test debug data preservation and real published-APK update
         if: steps.parse_apk.outcome == 'success'
-        timeout-minutes: 35
+        timeout-minutes: 60
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 34

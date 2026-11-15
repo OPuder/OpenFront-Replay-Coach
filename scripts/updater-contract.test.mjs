@@ -77,16 +77,19 @@ assert.match(androidSigningGate, /ANDROID_KEYSTORE_PATH/);
 assert.match(androidSigningGate, /Android signing certificate does not match/);
 assert.match(androidSigningGate, /apksigner.*verify/);
 const androidUpdateRegression = read("scripts/test-android-in-place-update.sh");
-assert.ok(androidUpdateRegression.includes("adb install --no-streaming"));
+assert.ok(androidUpdateRegression.includes("adb -s emulator-5554 install --no-streaming -r"));
 assert.ok(androidUpdateRegression.includes("timeout --signal=INT --kill-after=15s 240s"));
-assert.ok(androidUpdateRegression.includes("Package Manager readiness"));
-assert.ok(androidUpdateRegression.includes("mResumedActivity|topResumedActivity"));
+assert.ok(androidUpdateRegression.includes("Waiting up to 90 seconds for Package Manager."));
+assert.match(androidUpdateRegression, /adb_cmd\(\).*timeout 60s adb -s emulator-5554/);
 assert.ok(read(".github/workflows/update-validation.yml").includes("Validate Android update smoke-test shell syntax"));
-assert.ok(androidUpdateRegression.includes('timeout 30s adb -s emulator-5554 shell "run-as $package_id sh -c'));
-assert.ok(androidUpdateRegression.includes('timeout 30s adb -s emulator-5554 shell "run-as $package_id cat files/update-regression/sentinel.txt"'));
-assert.match(androidUpdateRegression, /install_apk\(\)\s*\{|adb -s emulator-5554 install -r/);
+assert.ok(androidUpdateRegression.includes('adb_cmd shell "run-as $package_id sh -c'));
+assert.ok(androidUpdateRegression.includes('adb_cmd shell "run-as $package_id cat files/update-regression/sentinel.txt"'));
+assert.match(androidUpdateRegression, /install_apk\(\)\s*\{[\s\S]*?install --no-streaming -r/);
 assert.match(androidUpdateRegression, /keep-this-data/);
 assert.match(androidUpdateRegression, /versionCode=\$expected_version_code/);
+assert.ok(androidUpdateRegression.includes('adb_cmd shell am start -W -n "$launcher_activity"'));
+assert.ok(androidUpdateRegression.includes('grep -E "mResumedActivity|topResumedActivity"'));
+assert.ok(androidUpdateRegression.includes("sleep 300"));
 assert.ok(androidUpdateRegression.includes('timeout 30s adb -s emulator-5554 shell monkey -p "$package_id" 1'));
 // This smoke script launches with monkey; process survival is covered by the newer bounded emulator regression.
 

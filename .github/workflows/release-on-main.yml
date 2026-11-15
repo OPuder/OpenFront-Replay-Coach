@@ -468,7 +468,7 @@ jobs:
             [[ "$size" -gt 1000000 ]] || { echo "::error::Artifact too small: $file ($size bytes)"; exit 1; }
           done
           (cd release && sha256sum "${installers[0]}" "${portable[0]}" "${apks[0]}" > SHA256SUMS.txt)
-          node --input-type=module -e '
+          INSTALLER="${installers[0]}" PORTABLE="${portable[0]}" APK="${apks[0]}" node --input-type=module -e '
             import fs from "node:fs";
             import crypto from "node:crypto";
             const dir = "release";
@@ -479,11 +479,6 @@ jobs:
             });
             fs.writeFileSync(`${dir}/release-manifest.json`, JSON.stringify({ schemaVersion: 1, version: process.env.RELEASE_VERSION, artifacts }, null, 2) + "\n");
           '
-        env:
-          RELEASE_VERSION: ${{ needs.prepare-release.outputs.version }}
-          INSTALLER: ${{ '' }}
-          PORTABLE: ${{ '' }}
-          APK: ${{ '' }}
 
       - name: Create one release with all three downloads and integrity manifest
         uses: softprops/action-gh-release@v2
@@ -508,6 +503,8 @@ jobs:
             release/*.exe
             release/*.zip
             release/*-Android.apk
+            release/SHA256SUMS.txt
+            release/release-manifest.json
 
       - name: Verify published release contains exactly three usable artifacts
         env:
@@ -522,12 +519,15 @@ jobs:
             process.stdin.on("end", () => {
               const assets = JSON.parse(input).assets;
               const names = assets.map(asset => asset.name);
+              const distributables = assets.filter(asset => /(?:\\.Setup\\.| Setup )[0-9.]+\\.exe$/i.test(asset.name) || /-win\\.zip$/i.test(asset.name) || /-Android\\.apk$/i.test(asset.name));
               const checks = [
-                names.length === 3,
-                names.some(name => /(?:\.Setup\.| Setup )[0-9.]+\.exe$/i.test(name)),
-                names.some(name => /-win\.zip$/i.test(name)),
-                names.some(name => /-Android\.apk$/i.test(name)),
-                assets.every(asset => asset.size > 1000000),
+                distributables.length === 3,
+                names.some(name => /(?:\\.Setup\\.| Setup )[0-9.]+\\.exe$/i.test(name)),
+                names.some(name => /-win\\.zip$/i.test(name)),
+                names.some(name => /-Android\\.apk$/i.test(name)),
+                assets.filter(asset => asset.name !== "SHA256SUMS.txt" && asset.name !== "release-manifest.json").every(asset => asset.size > 1000000),
+                names.includes("SHA256SUMS.txt"),
+                names.includes("release-manifest.json"),
                 !names.some(name => /pwa|service.?worker|web.?zip/i.test(name))
               ];
               if (checks.some(ok => !ok)) {

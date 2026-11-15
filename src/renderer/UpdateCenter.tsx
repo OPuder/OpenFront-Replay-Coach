@@ -2,6 +2,7 @@ import React from 'react';
 import { Capacitor, registerPlugin } from '@capacitor/core';
 import { CheckCircle2, RefreshCw, Smartphone, MonitorDown, AlertCircle } from 'lucide-react';
 import './UpdateCenter.css';
+import { readAutoUpdateEnabled, readLastSuccessfulUpdateCheck, writeAutoUpdateEnabled, writeLastSuccessfulUpdateCheck } from './updatePreferences';
 
 declare const __APP_VERSION__: string;
 
@@ -24,7 +25,11 @@ function findAsset(assets: ReleaseAsset[], pattern: RegExp): ReleaseAsset | unde
 export function UpdateCenter() {
   const [release, setRelease] = React.useState<LatestRelease | null>(null);
   const [checking, setChecking] = React.useState(false);
-  const [checkedAt, setCheckedAt] = React.useState<Date | null>(null);
+  const [autoUpdateEnabled, setAutoUpdateEnabled] = React.useState(() => readAutoUpdateEnabled());
+  const [checkedAt, setCheckedAt] = React.useState<Date | null>(() => {
+    const saved = readLastSuccessfulUpdateCheck();
+    return saved ? new Date(saved) : null;
+  });
   const [error, setError] = React.useState('');
   const [installing, setInstalling] = React.useState(false);
   const [installProgress, setInstallProgress] = React.useState<{ phase: string; percent: number } | null>(null);
@@ -45,17 +50,29 @@ export function UpdateCenter() {
       if (!response.ok) throw new Error(response.status === 403 ? 'GitHub begrenzt gerade Update-Abfragen. Bitte später erneut versuchen.' : `Update-Server antwortet mit HTTP ${response.status}.`);
       const data = await response.json() as LatestRelease;
       if (!data.tag_name || !Array.isArray(data.assets)) throw new Error('Die Release-Antwort ist unvollständig.');
-      setRelease(data); setCheckedAt(new Date());
+      const successfulAt = new Date();
+      setRelease(data);
+      setCheckedAt(successfulAt);
+      writeLastSuccessfulUpdateCheck(successfulAt);
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : 'Update-Prüfung fehlgeschlagen.');
     } finally { setChecking(false); }
   }, [checking]);
 
   React.useEffect(() => {
+    if (!autoUpdateEnabled) return;
     void checkForUpdates();
     const interval = window.setInterval(() => void checkForUpdates(), 6 * 60 * 60 * 1000);
     return () => window.clearInterval(interval);
-  }, []);
+  }, [autoUpdateEnabled]);
+
+  function changeAutoUpdateEnabled(enabled: boolean) {
+    if (!writeAutoUpdateEnabled(enabled)) {
+      setError('Die Update-Einstellung konnte nicht dauerhaft gespeichert werden.');
+      return;
+    }
+    setAutoUpdateEnabled(enabled);
+  }
 
   React.useEffect(() => {
     if (!isDesktop || !window.replayAPI?.onUpdateProgress) return;
@@ -114,7 +131,8 @@ export function UpdateCenter() {
         {isAndroid && !apk && <p className="update-center-message is-error">Für diese Release-Version wurde keine Android-APK veröffentlicht. Bitte später erneut prüfen.</p>}
         <a className="update-center-release-link" href={release?.html_url} target="_blank" rel="noreferrer">Release-Notizen ansehen</a>
       </div> : isCurrent ? <p className="update-center-message is-current"><CheckCircle2 size={15}/>Du verwendest die aktuelle Version {currentVersion}.</p> : <p className="update-center-message">Noch keine veröffentlichte stabile Version gefunden.</p>}
-      <small className="update-center-checked">{checkedAt ? `Zuletzt geprüft: ${checkedAt.toLocaleTimeString('de-DE', {hour:'2-digit',minute:'2-digit'})}` : 'Prüfung erfolgt automatisch beim Start und alle 6 Stunden.'}</small>
+      <label className="update-center-auto-check"><input type="checkbox" checked={autoUpdateEnabled} onChange={event => changeAutoUpdateEnabled(event.target.checked)}/> Automatische Update-Prüfung</label>
+      <small className="update-center-checked">{checkedAt ? `Zuletzt erfolgreich geprüft: ${checkedAt.toLocaleString('de-DE', {dateStyle:'short',timeStyle:'short'})}` : 'Noch keine erfolgreiche Update-Prüfung gespeichert.'}</small>
     </div>
   </div>;
 }

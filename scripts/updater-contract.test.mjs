@@ -182,3 +182,47 @@ assert.ok(releaseSource.includes("release-manifest.json"));
 assert.ok(releaseSource.includes("distributables.length === 3"));
 assert.ok(releaseSource.includes('names.includes("SHA256SUMS.txt")'));
 assert.ok(releaseSource.includes('names.includes("release-manifest.json")'));
+
+
+const artifactVerifier = read("scripts/verify-release-artifacts.mjs");
+const artifactVerifierTests = read("scripts/verify-release-artifacts.test.mjs");
+const windowsDistributionVerifier = read("scripts/verify-windows-distributions.mjs");
+assert.match(artifactVerifier, /SHA256SUMS\\.txt/);
+assert.match(artifactVerifier, /release-manifest\\.json/);
+assert.match(artifactVerifier, /exactly the three correctly named distributables/);
+assert.match(artifactVerifier, /Manifest SHA-256 mismatch/);
+assert.match(artifactVerifier, /Manifest byte size mismatch/);
+assert.match(artifactVerifier, /Release directory contains missing, unexpected or incorrectly named files/);
+assert.match(artifactVerifierTests, /rejects unexpected additional files/);
+assert.match(artifactVerifierTests, /rejects malformed package names/);
+assert.match(artifactVerifierTests, /modified package after metadata generation/);
+assert.match(windowsDistributionVerifier, /Installing the NSIS distribution/);
+assert.match(windowsDistributionVerifier, /Extracting the independent portable ZIP/);
+assert.match(windowsDistributionVerifier, /installed NSIS/);
+assert.match(windowsDistributionVerifier, /portable ZIP/);
+assert.match(windowsDistributionVerifier, /resources.*app\\.asar/);
+
+const androidReleaseUpgrade = read("scripts/test-android-in-place-update.sh");
+assert.match(androidReleaseUpgrade, /keep-this-data/);
+assert.match(androidReleaseUpgrade, /PREVIOUS_PUBLISHED_APK/);
+assert.match(androidReleaseUpgrade, /CURRENT_RELEASE_APK/);
+assert.match(androidReleaseUpgrade, /Published APK and current release APK do not have the same signing certificate/);
+assert.match(androidReleaseUpgrade, /install --no-streaming -r "\\$current_release_apk"/);
+assert.match(androidReleaseUpgrade, /actual published APK versionCode/);
+const signingScript = read("scripts/verify-android-release-signing.sh");
+assert.match(signingScript, /Expected exactly one Android APK in previous release/);
+assert.match(signingScript, /PREVIOUS_PUBLISHED_APK=/);
+assert.match(signingScript, /CURRENT_RELEASE_APK=/);
+
+const validationWorkflow = read(".github/workflows/update-validation.yml");
+assert.match(validationWorkflow, /release-artifact-download-audit/);
+assert.match(validationWorkflow, /actions\\/download-artifact@v4/);
+assert.match(validationWorkflow, /verify-release-artifacts\\.mjs generate/);
+assert.match(validationWorkflow, /verify-windows-distributions\\.mjs/);
+assert.match(validationWorkflow, /Test debug data preservation and real published-APK update/);
+assert.match(validationWorkflow, /verify-android-release-signing\\.sh/);
+const windowsWorkflow = read(".github/workflows/build-windows.yml");
+assert.match(windowsWorkflow, /verify-windows-distributions\\.mjs/);
+const releaseWorkflowUpdated = read(".github/workflows/release-on-main.yml");
+assert.match(releaseWorkflowUpdated, /Download published release and verify every byte/);
+assert.match(releaseWorkflowUpdated, /verify-release-artifacts\\.mjs verify/);

@@ -519,6 +519,19 @@ test('undated or tied recent matches cannot mark a training goal improving or re
   }
 });
 
+test('longitudinal attack follow-through does not count favorable troop loss when own territory was lost',()=>{
+  const actionReviews=[
+    {seconds:30,type:'attack',delta30s:{tiles:-2,gold:-10,troops:-80},targetDelta30s:{tiles:0,gold:0,troops:-120}},
+    {seconds:70,type:'attack',delta30s:{tiles:0,gold:-10,troops:-80},targetDelta30s:{tiles:0,gold:0,troops:0}},
+    {seconds:110,type:'attack',delta30s:{tiles:0,gold:-10,troops:-80},targetDelta30s:{tiles:0,gold:0,troops:0}},
+  ];
+  const report=buildLongitudinalCoachReport([
+    match('mixed-trade',{simulation:makeSimulation({actionReviews})}),
+  ]);
+  assert.equal(report.matchProgress[0].attackFollowThroughSamples,3);
+  assert.equal(report.matchProgress[0].attackFollowThroughPercent,0);
+});
+
 test('longitudinal attack follow-through counts favorable relative troop trades',()=>{
  const simulation=makeSimulation({actionReviews:Array.from({length:6},(_,i)=>({
    seconds:30+i*40,type:'attack',label:'Attack',targetName:'Target',

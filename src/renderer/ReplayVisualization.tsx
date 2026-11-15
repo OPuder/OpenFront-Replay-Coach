@@ -41,6 +41,18 @@ export function ReplayVisualization({
   const sample = useMemo(() => selectTerritorySample(samples, currentTime), [samples, currentTime]);
   const territoryCanvas = useRef<HTMLCanvasElement>(null);
   const territory = sample?.territory ?? null;
+  const previousSample = sample ? samples.reduce<ReplayStateSample | null>((previous, candidate) =>
+    candidate.territory && candidate.tick < sample.tick && (!previous || candidate.tick > previous.tick) ? candidate : previous, null) : null;
+  const changedTerritoryTiles = useMemo(() => {
+    if (!territory || !previousSample?.territory ||
+        territory.width !== previousSample.territory.width || territory.height !== previousSample.territory.height) return null;
+    const currentOwners = decodeTileOwners(territory);
+    const previousOwners = decodeTileOwners(previousSample.territory);
+    if (!currentOwners || !previousOwners || currentOwners.length !== previousOwners.length) return null;
+    let changed = 0;
+    for (let index = 0; index < currentOwners.length; index++) if (currentOwners[index] !== previousOwners[index]) changed++;
+    return changed;
+  }, [territory, previousSample?.territory]);
   useEffect(() => {
     const canvas = territoryCanvas.current;
     const context = canvas?.getContext('2d');
@@ -114,7 +126,7 @@ export function ReplayVisualization({
           {!territory && <div className="replay-viz-map-label"><MapIcon size={24}/><b>Kein Territoriums-Snapshot verfügbar</b><small>{samples.length ? 'Für diesen Zeitpunkt ist kein passender Engine-Zustand gespeichert.' : 'Die Partie wurde noch nicht mit der Original-Engine rekonstruiert.'}</small></div>}
           {territory && <div className="replay-viz-map-overlay"><span><Crosshair size={12}/> TERRITORIUM · {territory.width}×{territory.height}</span><b>{formatTime(currentTime)}</b></div>}
         </div>
-        <div className="replay-viz-map-note"><ShieldAlert size={13}/>{territory ? 'Besitzfarben: Replay-TileState (Owner-ID). Pfeile: aktive Einheiten mit explizitem Engine-Ziel.' : 'Besitzstände und Bewegungen werden nur bei vorhandenem Engine-Snapshot angezeigt.'}</div>
+        <div className="replay-viz-map-note"><ShieldAlert size={13}/>{territory ? <>Besitzfarben: Replay-TileState (Owner-ID). Pfeile: aktive Einheiten mit explizitem Engine-Ziel.{changedTerritoryTiles !== null && <b className="replay-viz-front-change">{changedTerritoryTiles.toLocaleString('de-DE')} Tiles mit Besitzerwechsel seit letztem Snapshot</b>}</> : 'Besitzstände und Bewegungen werden nur bei vorhandenem Engine-Snapshot angezeigt.'}</div>
         {sample && <div className="replay-viz-legend" aria-label="Spielerlegende">{sample.players.filter(player=>player.tiles>0).sort((a,b)=>b.tiles-a.tiles).slice(0,8).map(player=><span key={player.id}><i style={{background:playerColor(player.id,sample.players)}}/><b>{player.name}</b><small>{player.tiles.toLocaleString('de-DE')} Tiles</small></span>)}</div>}
       </div>
       <div className="replay-viz-focus">

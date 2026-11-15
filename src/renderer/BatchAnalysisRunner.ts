@@ -64,11 +64,12 @@ export async function runConcurrentBatchAnalysis<
   const uniqueItems: TItem[] = [];
   const seenIds = new Set<string>();
   for (const item of items) {
-    const id = getId(item).trim();
-    if (!id || !seenIds.has(id)) {
-      uniqueItems.push(item);
-      if (id) seenIds.add(id);
-    }
+    const id = String(getId(item) ?? "").trim();
+    // A missing identity cannot be resumed, deduplicated or persisted safely.
+    // Skip it rather than running multiple anonymous workers under the same key.
+    if (!id || seenIds.has(id)) continue;
+    uniqueItems.push(item);
+    seenIds.add(id);
   }
 
   const summary: BatchAnalysisSummary = {

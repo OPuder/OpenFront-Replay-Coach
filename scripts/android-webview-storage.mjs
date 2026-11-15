@@ -84,7 +84,7 @@ const expression = mode === "seed" ? `
 let socket = "";
 for (let attempt = 0; attempt < 30; attempt++) {
   try {
-    socket = adb("shell", "cat", "/proc/net/unix").split("\\n").map(line => line.match(/(webview_devtools_remote_\\d+)/)?.[1]).filter(Boolean).at(-1) || "";
+    socket = adb("shell", "cat", "/proc/net/unix").split(/\r?\n/).map(line => line.match(/webview_devtools_remote_(\d+)/)?.[1]).filter(Boolean).at(-1) || "";
     if (socket) break;
   } catch {}
   await sleep(1000);

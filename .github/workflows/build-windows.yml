@@ -55,9 +55,11 @@ jobs:
       - name: Test pro coaching algorithm and phase analytics
         run: npm run test:coach
 
-      - name: Smoke-test packaged Windows renderer and five-minute idle stability
-        timeout-minutes: 10
-        run: node scripts/smoke-test-windows.mjs
+      - name: Install and smoke-test Windows installer and portable edition
+        timeout-minutes: 20
+        env:
+          OFRC_IDLE_SOAK_MS: "300000"
+        run: node scripts/verify-windows-distributions.mjs
 
       - name: Upload installer and portable ZIP
         uses: actions/upload-artifact@v4

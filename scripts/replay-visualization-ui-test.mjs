@@ -40,11 +40,13 @@ async function main(){
   await window.webContents.executeJavaScript("document.querySelector('.replay-viz-priority-card').click()");
   const coached=await window.webContents.executeJavaScript('window.__uiTest()');
   assert.equal(coached.selectedTime,'00:10','Selecting a prioritized finding must synchronize the map/timeline playhead');
+  assert.equal(coached.selectedFrame,'Engine-Frame 100','Selecting a finding must show the engine map snapshot at that finding time');
   assert.ok(coached.hasDecision,'Selected finding must expose its decision context');
   assert.ok(coached.hasEvidenceSeparation,'Replay evidence and coach assessment must be visibly distinguished');
   await window.webContents.executeJavaScript("document.querySelector('.replay-viz-marker[aria-label^="00:15"]').click()");
   const selected=await window.webContents.executeJavaScript("window.__uiTest()");
   assert.equal(selected.selectedTime,'00:15','Selecting a timeline marker must update the coaching time');
+  assert.equal(selected.selectedFrame,'Engine-Frame 150','Selecting a later timeline marker must advance the rendered map snapshot');
   assert.equal(selected.buttons.filter(button=>button.pressed==='true').length,1,'Exactly one timeline marker must be selected');
   window.show();
   window.focus();

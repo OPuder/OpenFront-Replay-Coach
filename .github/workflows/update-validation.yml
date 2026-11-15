@@ -196,6 +196,10 @@ jobs:
           updated="$RUNNER_TEMP/openfront-coach-update.apk"
           test -s "$apk"
           cp "$apk" "$baseline"
+          # Do not carry the permanent release signing config into the debug upgrade build.
+          rm -f android/app/build.gradle
+          npx cap sync android
+          node scripts/install-android-updater-plugin.mjs
           current_version="$(node -p "require('./package.json').version")"
           IFS='.' read -r major minor patch <<< "$current_version"
           next_version="$major.$minor.$((patch + 1))"

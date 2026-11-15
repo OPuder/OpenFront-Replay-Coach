@@ -167,6 +167,9 @@ jobs:
           grep -F "versionName='"$(node -p "require('./package.json').version")"'" /tmp/apk-badging.txt
           sha256sum "$APK"
 
+      - name: Validate signed Android release-upgrade script syntax
+        run: bash -n scripts/test-android-release-upgrade.sh
+
       - name: Build higher-version APK before emulator startup
         shell: bash
         run: |

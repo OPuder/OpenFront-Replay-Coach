@@ -206,10 +206,6 @@ jobs:
         if: steps.parse_apk.outcome == 'success'
         timeout-minutes: 35
         uses: reactivecircus/android-emulator-runner@v2
-        env:
-          RELEASE_VERSION: ${{ env.RELEASE_VERSION }}
-          PREVIOUS_PUBLISHED_APK: ${{ env.PREVIOUS_PUBLISHED_APK }}
-          CURRENT_RELEASE_APK: ${{ env.CURRENT_RELEASE_APK }}
         with:
           api-level: 34
           target: google_apis

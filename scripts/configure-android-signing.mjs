@@ -12,9 +12,8 @@ if (!keystorePath || !storePassword || !keyAlias || !keyPassword) {
 
 const gradlePath = "android/app/build.gradle";
 let gradle = readFileSync(gradlePath, "utf8");
-
-if (!/android\\s*\\{/.test(gradle) || !/buildTypes\\s*\\{\\s*release\\s*\\{/.test(gradle)) {
-  throw new Error("Could not locate android { ... } and buildTypes { release { ... } } in generated app/build.gradle.");
+if (!/android\\s*\\{/.test(gradle) || !/buildTypes\\s*\\{/.test(gradle)) {
+  throw new Error("Could not locate android { ... } and buildTypes { ... } in generated app/build.gradle.");
 }
 
 if (!/signingConfigs\\s*\\{[\\s\\S]*?release\\s*\\{/.test(gradle)) {
@@ -33,37 +32,46 @@ if (!/signingConfigs\\s*\\{[\\s\\S]*?release\\s*\\{/.test(gradle)) {
   );
 }
 
-const releaseMatch = /buildTypes\\s*\\{\\s*release\\s*\\{/.exec(gradle);
-if (!releaseMatch) throw new Error("Could not locate the release build type.");
-const releaseOpen = gradle.indexOf("{", releaseMatch.index);
-let depth = 0;
-let releaseClose = -1;
-for (let index = releaseOpen; index < gradle.length; index += 1) {
-  if (gradle[index] === "{") depth += 1;
-  else if (gradle[index] === "}") {
-    depth -= 1;
-    if (depth === 0) {
-      releaseClose = index;
-      break;
+function updateBuildType(source, type, { signWithRelease, debuggable }) {
+  const match = new RegExp(`buildTypes\\\\s*\\\\{[\\\\s\\\\S]*?\\\\b${type}\\\\s*\\\\{`).exec(source);
+  if (!match) throw new Error(`Could not locate the ${type} build type.`);
+  const open = source.indexOf("{", match.index + match[0].lastIndexOf(type));
+  let depth = 0;
+  let close = -1;
+  for (let index = open; index < source.length; index += 1) {
+    if (source[index] === "{") depth += 1;
+    else if (source[index] === "}") {
+      depth -= 1;
+      if (depth === 0) { close = index; break; }
     }
   }
+  if (close < 0) throw new Error(`Could not locate the end of the ${type} build type.`);
+  let block = source.slice(open + 1, close);
+  if (signWithRelease) {
+    if (/signingConfig\\s+signingConfigs\\.release/.test(block)) {
+      // Keep the permanent signing assignment.
+    } else {
+      block += "\\n            signingConfig signingConfigs.release";
+    }
+  }
+  if (debuggable !== undefined) {
+    if (/debuggable\\s+(?:true|false)/.test(block)) {
+      block = block.replace(/debuggable\\s+(?:true|false)/, `debuggable ${debuggable}`);
+    } else {
+      block += `\\n            debuggable ${debuggable}`;
+    }
+  }
+  return source.slice(0, open + 1) + block + source.slice(close);
 }
-if (releaseClose < 0) throw new Error("Could not locate the end of the release build type.");
 
-let releaseBlock = gradle.slice(releaseOpen + 1, releaseClose);
-if (/signingConfig\\s+signingConfigs\\.release/.test(releaseBlock)) {
-  // Keep the existing permanent signing assignment.
-} else {
-  releaseBlock += "\\n            signingConfig signingConfigs.release";
+gradle = updateBuildType(gradle, "release", { signWithRelease: true, debuggable: "false" });
+if (upgradeTestBuild) {
+  // BuildConfig.DEBUG and Android's debuggable manifest flag are enabled only
+  // in the test variant; it is signed by the same permanent release key.
+  gradle = updateBuildType(gradle, "debug", { signWithRelease: true, debuggable: "true" });
 }
-if (/debuggable\\s+(?:true|false)/.test(releaseBlock)) {
-  releaseBlock = releaseBlock.replace(/debuggable\\s+(?:true|false)/, `debuggable ${upgradeTestBuild ? "true" : "false"}`);
-} else {
-  releaseBlock += `\\n            debuggable ${upgradeTestBuild ? "true" : "false"}`;
-}
-gradle = gradle.slice(0, releaseOpen + 1) + releaseBlock + gradle.slice(releaseClose);
 
 writeFileSync(gradlePath, gradle);
 console.log(upgradeTestBuild
-  ? "Configured permanent signing and debuggable mode for the isolated Android upgrade-test APK."
-  : "Configured permanent signing and non-debuggable mode for the production Android APK.");
+  ? "Configured permanent-key debug test APK; production release remains non-debuggable."
+  : "Configured permanent-key non-debuggable production APK.");

@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { buildLongitudinalCoachReport } from '../src/main/decoder/LongitudinalCoach.ts';
+import { buildProCoachReport } from '../src/main/decoder/ProCoachAlgorithm.ts';
 
 const makeSimulation = (overrides = {}) => ({
   status: 'verified',
@@ -65,6 +66,55 @@ test('recurring findings use only fully verified matches in the same mode and ty
   assert.equal(report.comparableGroup, 'Free For All · Private');
   assert.ok(report.recurringFindings.some(finding => finding.id === 'attack-follow-through'));
   assert.equal(report.recurringFindings.find(finding => finding.id === 'attack-follow-through')?.occurrences, 2);
+});
+
+test('longitudinal recurrence sees evidence-ranked findings below the per-match Top 3',()=>{
+  const ticks=[0,500,1000,1500,2000,5000,5500,6000,6500,7000];
+  const samples=ticks.map((tick,index)=>({
+    tick,frame:tick,
+    spawnPositions:tick===0?[{
+      clientID:'p1',name:'Player',startTiles:100,centerX:1,centerY:1,
+      adjacentRivals:[2],rivalBorderContacts:2,nearestRivalDistance:2,classification:'contested',
+    }]:[],
+    players:[{
+      clientID:'p1',alive:true,tiles:tick<=1500?100:tick<=2000?100:100+(index-4)*10,
+      gold:500,goldEarned:100+index*10,troops:10000,
+      outgoingAttackDetails:[],incomingAttackDetails:[],allies:0,betrayals:0,unitCounts:{City:2},
+    }],
+  }));
+  const actions=[
+    ...[30,70].map(seconds=>({
+      seconds,type:'attack',label:'Attack',targetName:'Target',
+      delta10s:{tiles:0,gold:-10,troops:-5},delta30s:{tiles:0,gold:-20,troops:-20},
+      targetDelta30s:{tiles:-1,gold:0,troops:-10},
+      ownFrontContextBefore:{activeTargetCount:2,outgoingAttackCount:2,outgoingAttackTroops:100,incomingAttackCount:0,incomingAttackTroops:0},
+      targetPressureBefore:null,
+    })),
+    ...[250,350,450].map(seconds=>({
+      seconds,type:'attack',label:'Attack',targetName:'Target',
+      delta10s:{tiles:0,gold:-10,troops:-5},delta30s:{tiles:0,gold:-20,troops:-20},
+      targetDelta30s:{tiles:-1,gold:0,troops:-10},ownFrontContextBefore:null,targetPressureBefore:null,
+    })),
+    {
+      seconds:600,type:'attack',label:'Attack',targetName:'Target',
+      delta10s:{tiles:0,gold:-10,troops:-5},delta30s:{tiles:0,gold:-20,troops:-80},
+      targetDelta30s:{tiles:0,gold:0,troops:0},ownFrontContextBefore:null,targetPressureBefore:null,
+    },
+  ];
+  const simulation=makeSimulation({samples,actionReviews:actions});
+  const single=buildProCoachReport(samples,actions,'p1',700);
+  assert.equal(single.findings.length,3);
+  assert.ok(!single.findings.some(item=>item.id==='attack-follow-through'));
+  assert.ok(single.allFindings?.some(item=>item.id==='attack-follow-through'));
+
+  const report=buildLongitudinalCoachReport([
+    match('cohort-a',{playedAt:'2026-01-01T00:00:00Z',simulation}),
+    match('cohort-b',{playedAt:'2026-01-02T00:00:00Z',simulation}),
+    match('cohort-c',{playedAt:'2026-01-03T00:00:00Z',simulation}),
+  ]);
+  const recurring=report.recurringFindings.find(item=>item.id==='attack-follow-through');
+  assert.ok(recurring,'A repeated pattern below the individual Top 3 must remain visible longitudinally');
+  assert.equal(recurring.occurrences,3);
 });
 
 test('one verified match never becomes a recurring coaching claim', () => {

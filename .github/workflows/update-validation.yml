@@ -57,24 +57,11 @@ jobs:
       - name: Package Windows installer and portable edition
         run: npx electron-builder --win nsis zip --publish never
 
-      - name: Verify Windows release packages
-        shell: pwsh
-        run: |
-          $ErrorActionPreference = 'Stop'
-          $installer = Get-ChildItem release -Filter '*.exe' -File | Select-Object -First 1
-          $portable = Get-ChildItem release -Filter '*.zip' -File | Select-Object -First 1
-          if (-not $installer -or $installer.Length -lt 1MB) { throw 'Windows installer missing or implausibly small.' }
-          if (-not $portable -or $portable.Length -lt 1MB) { throw 'Windows portable ZIP missing or implausibly small.' }
-          $archive = Join-Path $env:TEMP 'ofrc-portable-validation'
-          Expand-Archive -LiteralPath $portable.FullName -DestinationPath $archive -Force
-          $appAsar = Get-ChildItem $archive -Filter 'app.asar' -File -Recurse | Select-Object -First 1
-          if (-not $appAsar -or $appAsar.Length -lt 1KB) { throw 'Portable ZIP does not contain a valid packaged app.asar.' }
-          Write-Host "Installer: $($installer.Name) ($($installer.Length) bytes)"
-          Write-Host "Portable: $($portable.Name) ($($portable.Length) bytes)"
-          Write-Host "Packaged app.asar: $($appAsar.Length) bytes"
-
-      - name: Launch packaged Windows app and verify renderer
-        run: node scripts/smoke-test-windows.mjs
+      - name: Install and smoke-test Windows installer and portable edition
+        timeout-minutes: 20
+        env:
+          OFRC_IDLE_SOAK_MS: "300000"
+        run: node scripts/verify-windows-distributions.mjs
 
       - name: Upload verified Windows packages
         uses: actions/upload-artifact@v4
@@ -146,7 +133,11 @@ jobs:
           node scripts/install-android-updater-plugin.mjs
 
       - name: Set Android version from package.json
-        run: node scripts/set-android-version.mjs "$(node -p 'require("./package.json").version')"
+        shell: bash
+        run: |
+          version="$(node -p 'require("./package.json").version')"
+          node scripts/set-android-version.mjs "$version"
+          echo "RELEASE_VERSION=$version" >> "$GITHUB_ENV"
 
       - name: Build debug APK for package validation
         run: |
@@ -187,10 +178,24 @@ jobs:
           test -s "$updated"
           echo "OPENFRONT_UPDATE_APK=$updated" >> "$GITHUB_ENV"
 
-      - name: Test in-place Android update and preserve app data
-        if: always() && steps.parse_apk.outcome == 'success'
+      - name: Verify permanent Android release signing key and continuity
+        if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          GH_TOKEN: ${{ github.token }}
+        run: bash scripts/verify-android-release-signing.sh
+
+      - name: Test debug data preservation and real published-APK update
+        if: steps.parse_apk.outcome == 'success'
         timeout-minutes: 35
         uses: reactivecircus/android-emulator-runner@v2
+        env:
+          RELEASE_VERSION: ${{ env.RELEASE_VERSION }}
+          PREVIOUS_PUBLISHED_APK: ${{ env.PREVIOUS_PUBLISHED_APK }}
+          CURRENT_RELEASE_APK: ${{ env.CURRENT_RELEASE_APK }}
         with:
           api-level: 34
           target: google_apis
@@ -202,20 +207,66 @@ jobs:
           disable-animations: true
           script: bash scripts/test-android-in-place-update.sh
 
-      - name: Verify permanent Android release signing key and continuity
-        if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
-        env:
-          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
-          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
-          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
-          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
-          GH_TOKEN: ${{ github.token }}
-        run: bash scripts/verify-android-release-signing.sh
+      - name: Stage the permanently signed APK for artifact audit
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          version="$(node -p "require('./package.json').version")"
+          mkdir -p release
+          cp android/app/build/outputs/apk/release/app-release.apk "release/OpenFront-Replay-Coach-$version-Android.apk"
+          test -s "release/OpenFront-Replay-Coach-$version-Android.apk"
 
-      - name: Upload validated APK
+      - name: Upload validated permanent-key APK
         uses: actions/upload-artifact@v4
         with:
           name: updater-validation-android
-          path: android/app/build/outputs/apk/debug/app-debug.apk
+          path: release/*-Android.apk
           if-no-files-found: error
           retention-days: 7
+
+  release-artifact-download-audit:
+    name: Download and verify release manifest and SHA-256 files
+    needs: [updater-contract-and-build, android-apk-validation]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check out verifier
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24.15.0"
+
+      - name: Download Windows installer and portable ZIP artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: updater-validation-windows
+          path: release
+
+      - name: Download permanently signed Android APK artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: updater-validation-android
+          path: release
+
+      - name: Generate and verify manifest/checksums from downloaded artifacts
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          export RELEASE_VERSION="$(node -p "require('./package.json').version")"
+          export RELEASE_DIR=release
+          node scripts/verify-release-artifacts.mjs generate
+
+      - name: Upload audited release bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-integrity-audit
+          path: |
+            release/*.exe
+            release/*.zip
+            release/*-Android.apk
+            release/SHA256SUMS.txt
+            release/release-manifest.json
+          if-no-files-found: error
+          retention-days: 14

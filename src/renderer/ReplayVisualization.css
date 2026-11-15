@@ -65,6 +65,7 @@
 .replay-viz-map-canvas>img{position:absolute;inset:0;width:100%;height:100%;object-fit:fill}
 .replay-viz-territory,.replay-viz-movements{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
 .replay-viz-territory{image-rendering:pixelated;mix-blend-mode:screen}
+.replay-viz-territory-changes{image-rendering:pixelated;mix-blend-mode:screen}
 .replay-viz-movements{overflow:visible}
 .replay-viz-legend{display:flex;flex-wrap:wrap;gap:7px;padding:10px 11px;border-top:1px solid #21384d}
 .replay-viz-legend span{display:grid;grid-template-columns:8px auto;column-gap:5px;align-items:center;min-width:calc(50% - 4px)}

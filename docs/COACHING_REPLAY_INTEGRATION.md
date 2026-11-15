@@ -98,3 +98,30 @@ OpenFront `ReplayProcessor` emits one encoded frame after each executed game tic
 The conversion is performed once when replay action reviews are built. Action evidence exposes the zero-based engine frame; the displayed timestamp continues to use the recorded one-based tick. The sampler stores the exact action frame as well as the immediate before/after frames and delayed outcome windows (+50/+100/+300 frames). A `Set` deduplicates overlaps with the regular cadence and neighboring actions; the additional work is limited to distinct requested frames within the replay's frame range.
 
 The real Europe/Levant regression requires a `ReplayReader` sample for every action-review frame and every in-range before/after/delayed observation frame. It checks each sample's own `tick === frame + 1`, each action's `frame === turnNumber - 1`, and each action timestamp's `seconds === turnNumber / 10`. Missing samples fail the regression; no optional sample lookup or synthetic frame fixture is accepted.
+
+## Phase boundaries and external viewer limitation
+
+The current Early/Mid/Late labels use a **relative 30/40/30 split** of the
+selected player's observed active replay interval. This is a coarse comparison
+heuristic, not a detection of actual strategic phase transitions. It must not
+be interpreted as a verified point at which the match changed from expansion
+to front management or from front management to endgame.
+
+**Follow-up improvement (not implemented in this PR):** derive phase boundaries
+from actual replay state transitions when the available data supports them.
+Candidate evidence may include the selected player's expansion saturation,
+economy and troop trajectories, first sustained player-to-player contact,
+active attack/front pressure, elimination events, and late-game objective or
+victory-state transitions. A boundary should be emitted only when multiple
+relevant signals are present and temporally supported; otherwise retain the
+relative heuristic, label it explicitly as approximate, and expose insufficient
+coverage rather than manufacturing a phase change. Validate the detector
+against multiple hash-verified matches and preserve an explicit unknown/
+low-confidence state.
+
+The external OpenFront replay viewer still has no supported seek interface in
+the current bridge: it exposes only `openOfficialReplay(gameId)`, without a
+seek parameter, viewer handle, or supported postMessage contract. The in-app
+map and timeline can seek their own reconstructed state, but the external
+viewer cannot be synchronized to that selected timestamp. Do not emulate seek
+through guessed URL parameters or keyboard automation.

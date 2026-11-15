@@ -16,6 +16,9 @@ restore_apk() {
 }
 trap restore_apk EXIT
 
+log "Checking and starting the Android Debug Bridge server."
+timeout 30s adb start-server || fail "Android Debug Bridge server could not be started."
+timeout 30s adb devices -l || fail "Android Debug Bridge server did not respond to device enumeration."
 log "Waiting for emulator connection."
 timeout 90s adb -s emulator-5554 wait-for-device || fail "Android emulator did not connect to ADB within 90 seconds."
 online=false

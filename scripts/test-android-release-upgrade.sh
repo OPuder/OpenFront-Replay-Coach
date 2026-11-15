@@ -3,6 +3,7 @@ set -Eeuo pipefail
 
 package_id="de.openfront.replaycoach"
 version="${RELEASE_VERSION:?RELEASE_VERSION is required}"
+repository="${GITHUB_REPOSITORY:?GITHUB_REPOSITORY is required}"
 current_apk="release/OpenFront-Replay-Coach-${version}-Android.apk"
 previous_dir="${RUNNER_TEMP:?RUNNER_TEMP is required}/previous-release"
 previous_apk="$(find "$previous_dir" -type f -name '*-Android.apk' -print -quit)"

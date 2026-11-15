@@ -1,5 +1,5 @@
-declare const __APP_VERSION__: string;
 declare global {
+  const __APP_VERSION__: string;
   interface Window {
     replayAPI: {
       openReplay: () => Promise<ReplaySummary | null>;

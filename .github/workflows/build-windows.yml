@@ -55,7 +55,8 @@ jobs:
       - name: Test pro coaching algorithm and phase analytics
         run: npm run test:coach
 
-      - name: Smoke-test packaged Windows renderer
+      - name: Smoke-test packaged Windows renderer and five-minute idle stability
+        timeout-minutes: 10
         run: node scripts/smoke-test-windows.mjs
 
       - name: Upload installer and portable ZIP

@@ -215,3 +215,80 @@ test('desktop analysis concurrency scales conservatively with CPU and memory', (
   assert.equal(chooseBatchAnalysisConcurrency(false, 16, 8), 4, 'high-core desktop with ample reported memory uses four workers');
   assert.equal(chooseBatchAnalysisConcurrency(false, undefined, undefined), 2, 'unknown hardware uses safe default');
 });
+
+
+test('automatic import repairs partial stored rows after restart',()=>{
+ const games=[{gameId:'partial-loaded'},{gameId:'partial-running'},{gameId:'complete'},{gameId:'failed'}];
+ const stored=[
+  {game:{gameId:'partial-loaded'},status:'loaded'},
+  {game:{gameId:'partial-running'},status:'running'},
+  {game:{gameId:'complete'},status:'loaded',result:{gameId:'complete'}},
+  {game:{gameId:'failed'},status:'failed'},
+ ];
+ assert.deepEqual(selectGamesToImport(games,stored).map(x=>x.gameId),['partial-loaded','partial-running','failed']);
+});
+
+test('a complete duplicate row prevents unnecessary re-import of a partial duplicate',()=>{
+ const games=[{gameId:'same'}];
+ const stored=[
+  {game:{gameId:'same'},status:'loaded'},
+  {game:{gameId:'same'},status:'loaded',result:{gameId:'same'}},
+ ];
+ assert.deepEqual(selectGamesToImport(games,stored),[]);
+});
+
+test('automatic import ignores empty or whitespace-only game identifiers',()=>{
+ const games=[{gameId:''},{gameId:'   '},{gameId:'valid'}];
+ assert.deepEqual(selectGamesToImport(games,[]).map(x=>x.gameId),['valid']);
+});
+
+
+test('batch analysis skips entries without a stable replay identity', async () => {
+  const controller = new AbortController();
+  const started = [];
+  const summary = await runSequentialBatchAnalysis(
+    [{ id: '' }, { id: '   ' }, { id: undefined }, { id: null }, { id: 'valid' }],
+    {
+      signal: controller.signal,
+      getId: item => item.id,
+      isCompatible: () => true,
+      analyze: async item => {
+        started.push(item.id);
+        return { status: 'verified' };
+      },
+      onStatus: () => undefined,
+      onProgress: () => undefined,
+    },
+  );
+  assert.deepEqual(started, ['valid']);
+  assert.equal(summary.total, 1);
+  assert.equal(summary.completed, 1);
+});
+
+
+test('parallel ETA accounts for partially completed active workers before the first match finishes', async () => {
+  const controller = new AbortController();
+  const progress = [];
+  const summary = await runConcurrentBatchAnalysis(
+    ['a', 'b', 'c', 'd'].map(id => ({ id })),
+    {
+      signal: controller.signal,
+      concurrency: 2,
+      getId: item => item.id,
+      isCompatible: () => true,
+      analyze: async (item, onProgress) => {
+        await delay(5);
+        onProgress(item.id === 'a' ? 20 : 80, 'halfway');
+        await delay(35);
+        return { status: 'verified' };
+      },
+      onStatus: () => undefined,
+      onProgress: value => progress.push(value),
+    },
+  );
+  const inFlight = progress.find(value => value.done === 0 && value.active === 2 && value.percent === 50);
+  assert.ok(inFlight, 'both workers should report in-flight progress');
+  assert.equal(inFlight.percent, 50, 'progress is averaged across active workers, not summed');
+  assert.ok(inFlight.estimatedRemainingMs > 0, 'ETA should be available before the first replay completes');
+  assert.equal(summary.completed, 4);
+});

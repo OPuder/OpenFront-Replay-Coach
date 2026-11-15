@@ -1,16 +1,24 @@
 import { spawn, execFileSync } from "node:child_process";
 import path from "node:path";
+import fs from "node:fs";
 import { setTimeout as delay } from "node:timers/promises";
 
 const executable = path.resolve("release/win-unpacked/OpenFront Replay Coach.exe");
 const port = 9222;
+if (!fs.existsSync(executable)) {
+  throw new Error("Packaged Windows executable is missing: " + executable);
+}
 const child = spawn(executable, [
   "--no-sandbox",
   "--disable-gpu",
   "--remote-debugging-port=" + port,
   "--remote-allow-origins=*",
-], { stdio: "ignore", windowsHide: true });
+], { stdio: ["ignore", "pipe", "pipe"], windowsHide: true });
 
+const childOutput = [];
+child.stdout?.on("data", chunk => childOutput.push(String(chunk)));
+child.stderr?.on("data", chunk => childOutput.push(String(chunk)));
+child.on("error", error => childOutput.push("spawn error: " + String(error)));
 let socket;
 const diagnostics = [];
 try {
@@ -136,7 +144,42 @@ try {
   if (!/OpenFront Replay Coach/i.test(state.title)) {
     throw new Error("Unerwarteter Fenstertitel: " + state.title);
   }
+  const idleSoakMs = 5 * 60 * 1000;
+  const idleDeadline = Date.now() + idleSoakMs;
+  let idleState = state;
+  while (Date.now() < idleDeadline) {
+    await delay(Math.min(30000, idleDeadline - Date.now()));
+    if (child.exitCode !== null) {
+      throw new Error("App-Prozess wurde während des fünfminütigen Idle-Tests beendet: " + child.exitCode +
+        ". Renderer-Diagnose: " + diagnostics.slice(-20).join(" | "));
+    }
+    let result;
+    try {
+      result = await command(
+        "Runtime.evaluate",
+        {
+          expression: "({title:document.title,readyState:document.readyState,rootChildren:document.querySelector('#root')?.childElementCount ?? 0})",
+          returnByValue: true,
+          awaitPromise: true,
+        },
+        30000,
+      );
+    } catch (error) {
+      throw new Error("Renderer wurde während des Idle-Tests unerreichbar: " +
+        (error instanceof Error ? error.message : String(error)) +
+        ". Renderer-Diagnose: " + diagnostics.slice(-20).join(" | "));
+    }
+    idleState = result?.result?.value ?? null;
+    if (!idleState || idleState.rootChildren < 1 || idleState.readyState !== "complete") {
+      throw new Error("Renderer blieb während des Idle-Tests nicht erreichbar: " + JSON.stringify(idleState));
+    }
+  }
+  console.log("WINDOWS_IDLE_SOAK_OK", JSON.stringify({ durationMs: idleSoakMs, state: idleState }));
   console.log("WINDOWS_SMOKE_TEST_OK", JSON.stringify(state));
+} catch (error) {
+  console.error("WINDOWS_SMOKE_TEST_FAILED", error instanceof Error ? error.stack : String(error));
+  if (childOutput.length) console.error("WINDOWS_APP_OUTPUT", childOutput.join("").slice(-12000));
+  throw error;
 } finally {
   try { socket?.close(); } catch {}
   try {

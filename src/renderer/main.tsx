@@ -1239,20 +1239,20 @@ function CoachPanel({apiResult,preferredPlayerPublicId,decodedActions,simulation
       </div>
       <div className="replay-timeline-panel"><div className="overview-heading"><div><span className="eyebrow">MATCH-TIMELINE</span><h3>Wichtige Momente deiner Partie</h3></div><span className="source-label">{primaryEngineInsights.length} priorisierte Coach-Marker</span></div>
           <ReplayVisualization
-            mapName={apiResult.mapName}
-            mapPreview={apiResult.previewUrl}
-            durationSeconds={apiResult.durationSeconds ?? 0}
-            events={replayTimeline.map(event => ({
-              id: event.id,
-              title: event.title,
-              kind: event.kind,
-              detail: event.detail,
-              time: event.time,
-              isCoach: Boolean(event.insight),
-            }))}
-            selectedEventId={selectedTimelineEntry?.id ?? null}
-            onSelectEvent={setSelectedTimelineId}
-            onOpenReplay={onOpenReplay}
+          mapName={apiResult.mapName}
+          mapPreview={apiResult.previewUrl}
+          durationSeconds={apiResult.durationSeconds ?? 0}
+          events={replayTimeline.map(event => ({
+            id: event.id,
+            title: event.title,
+            kind: event.kind,
+            detail: event.detail,
+            time: event.time,
+            isCoach: Boolean(event.insight),
+          }))}
+          selectedEventId={selectedTimelineEntry?.id ?? null}
+          onSelectEvent={setSelectedTimelineId}
+          onOpenReplay={onOpenReplay}
           />
 
         {replayTimeline.length ? <div className="event-timeline">{replayTimeline.map((event,i)=><button type="button" aria-pressed={selectedTimelineEntry?.id===event.id} className={`event-item replay-event-button ${selectedTimelineEntry?.id===event.id?'is-selected':''} ${event.insight?'is-coach-event':''}`} key={event.id} onClick={()=>setSelectedTimelineId(event.id)}><span className="event-marker"><span>{String(i+1).padStart(2,'0')}</span></span><span className="event-copy"><span><b>{event.title}</b><span className="event-type">{event.kind}</span></span><span>{event.detail}</span></span><time>{clock(event.time)}</time></button>)}</div> : <p className="empty-note">Für diese Partie wurden keine markierbaren Ereignisse gefunden.</p>}

@@ -37,12 +37,12 @@ done
 # installs on a cold emulator. Probe Package Manager explicitly before sending
 # the APK so a slow first boot is not mistaken for an APK/signature failure.
 package_manager_ready=false
-for attempt in $(seq 1 60); do
-  if timeout 15s adb -s emulator-5554 shell cmd package list packages >/dev/null 2>&1; then
+for attempt in $(seq 1 30); do
+  if timeout 10s adb -s emulator-5554 shell cmd package list packages >/dev/null 2>&1; then
     package_manager_ready=true
     break
   fi
-  sleep 3
+  sleep 2
 done
 if [[ "$package_manager_ready" != true ]]; then
   adb -s emulator-5554 shell getprop sys.boot_completed || true

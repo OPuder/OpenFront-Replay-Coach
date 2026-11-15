@@ -69,7 +69,7 @@ test('phase momentum normalizes territory and gross income separately',()=>{
  const samples=Array.from({length:12},(_,i)=>sample(i*500,{tiles:100+i*10,goldEarned:100+i*20}));
  const report=buildProCoachReport(samples,[],'p1',600);
  assert.ok(report.phases.every(phase=>phase.momentumIndex===null||phase.momentumIndex>=0&&phase.momentumIndex<=100));
- assert.match(report.scoreExplanation,/70 %/);
+ assert.match(report.scoreExplanation,/70\/30/);
  assert.ok(report.allFindings?.some(item=>item.id==='phase-focus'));
  assert.ok(!report.findings.some(item=>item.id==='phase-focus'),'Phase summaries must not displace decision-level Top-3 findings');
 });
@@ -267,7 +267,7 @@ test('troop attrition against the target is not mislabeled as a failed territori
  const report=buildProCoachReport(samples,actions,'p1',700);
  const finding=report.findings.find(item=>item.id==='attack-follow-through');
  assert.ok(finding);
- assert.match(finding.consequence,/3 weitere einen höheren beobachteten Truppenverlust beim Ziel als bei dir/);
+ assert.match(finding.consequence,/3 weitere einen höheren beobachteten Truppenverlust beim Ziel ohne eigenen Gebietsverlust/);
  assert.match(finding.evidence,/beobachtete Verluste: du 80, Ziel 120/);
  assert.match(finding.title,/überwiegend günstig/);
  assert.equal(report.metrics.find(item=>item.label==='Angriffs-Folgefenster')?.value,'100 %');

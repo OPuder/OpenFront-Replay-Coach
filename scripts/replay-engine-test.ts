@@ -3,6 +3,8 @@ import { loadImportedMatch, loadImportedMatches, saveImportedMatch } from "../sr
 import { runSequentialBatchAnalysis } from "../src/renderer/BatchAnalysisRunner";
 import { assessReplayCompatibility } from "../src/main/decoder/ReplayCompatibility";
 import { buildProCoachReport } from "../src/main/decoder/ProCoachAlgorithm";
+import { buildEngineCoachInsights } from "../src/main/decoder/EngineCoachInsights";
+import { selectPrimaryCoachInsights } from "../src/main/decoder/CoachInsightSelection";
 import { buildLongitudinalCoachReport } from "../src/main/decoder/LongitudinalCoach";
 import { resolveReplayJsonExport } from "../src/main/decoder/ReplayJsonExport";
 
@@ -149,9 +151,26 @@ window.__runBatchReplayTest = async (gameIds) => {
       if (status === "verified" && result?.playerReview?.clientID) {
         const report = buildProCoachReport(result.samples, result.actionReviews, result.playerReview.clientID, result.totalTicks / 10);
         const repeated = buildProCoachReport(result.samples, result.actionReviews, result.playerReview.clientID, result.totalTicks / 10);
+        const engineInsights = buildEngineCoachInsights(result.playerReview, result.actionReviews, result.samples);
+        const enginePrimary = selectPrimaryCoachInsights(engineInsights).primary;
+        const diplomacyActions = result.actionReviews.filter(action => ["allianceRequest", "allianceExtension", "breakAlliance", "allianceReject"].includes(action.type));
+        const diplomacyObservation = engineInsights.find(item => item.id === "diplomacy-activity") ?? null;
         const rank = { high: 3, medium: 2, low: 1 };
         if (report.findings.length > 3 || (["Europe", "dLNCLHCvMK"].includes(item.gameId) && report.findings.length === 0)) {
           throw new Error(`${item.gameId}: expected at most three prioritized findings and at least one for each required replay`);
+        }
+        if (enginePrimary.length > 3 || (["Europe", "dLNCLHCvMK"].includes(item.gameId) && enginePrimary.length === 0)) {
+          throw new Error(`${item.gameId}: expected one to three actual engine-backed primary coaching insights`);
+        }
+        enginePrimary.forEach(insight => {
+          if (insight.seconds === null || !Number.isFinite(insight.seconds) || insight.seconds < 0 ||
+              !insight.evidence.trim() || !insight.decision?.trim() || !insight.alternative?.trim() ||
+              !insight.nextStep.trim() || !insight.limitation.trim()) {
+            throw new Error(`${item.gameId}/${insight.id}: incomplete actual primary engine insight`);
+          }
+        });
+        if (diplomacyActions.length > 0 && !diplomacyObservation) {
+          throw new Error(`${item.gameId}: recorded alliance intents were not surfaced as diplomacy evidence`);
         }
         report.findings.forEach((finding, index) => {
           if (finding.priority === "low" || !Number.isFinite(finding.seconds) || finding.seconds < 0 ||
@@ -174,6 +193,11 @@ window.__runBatchReplayTest = async (gameIds) => {
           detectedFindingCount: report.allFindings?.length ?? report.findings.length,
           findings: report.findings.map(({ id, priority, confidence, title, decision, consequence, alternative, trainingRule, evidence, seconds, caveat }) =>
             ({ id, priority, confidence, title, decision, consequence, alternative, trainingRule, evidence, seconds, caveat })),
+          engineTop3: enginePrimary.map(({ id, kind, priority, confidence, title, summary, decision, evidence, alternative, nextStep, seconds, limitation }) =>
+            ({ id, kind, priority, confidence, title, summary, decision, evidence, alternative, nextStep, seconds, limitation })),
+          engineInsightCount: engineInsights.length,
+          diplomacyActionCount: diplomacyActions.length,
+          diplomacyObservation: diplomacyObservation ? ({ title: diplomacyObservation.title, summary: diplomacyObservation.summary, evidence: diplomacyObservation.evidence, nextStep: diplomacyObservation.nextStep, seconds: diplomacyObservation.seconds, limitation: diplomacyObservation.limitation }) : null,
           phases: report.phases.map(({ id, fromSeconds, toSeconds, activeSamples, territoryPerMinute, incomePerMinute, momentumIndex }) =>
             ({ id, fromSeconds, toSeconds, activeSamples, territoryPerMinute, incomePerMinute, momentumIndex })),
         });

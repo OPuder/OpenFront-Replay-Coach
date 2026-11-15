@@ -15,7 +15,7 @@ import { assessReplayCompatibility, isReplayCompatibilityCurrent } from '../main
 import type { ReplaySimulationResult } from './ReplaySimulation';
 import { selectPlayerSurvivalWindow } from './phaseSurvival';
 import { installBrowserReplayAPI } from './platform/BrowserReplayAPI';
-import { loadImportedMatch, loadImportedMatches, loadPlayerLibrary, saveImportedMatch, savePlayerLibrary, type StoredAnalysisStatus, type StoredMatchEntry } from './matchStore';
+import { loadImportedMatches, loadPlayerLibrary, saveImportedMatch, savePlayerLibrary, type StoredAnalysisStatus, type StoredMatchEntry } from './matchStore';
 import { UpdateCenter } from './UpdateCenter';
 import { StrategyPlaybook } from './StrategyPlaybook';
 import { selectGamesToAnalyze, selectGamesToImport } from './AutoLibrarySync';
@@ -35,18 +35,6 @@ function App() {
   const [activePage, setActivePage] = useState<'dashboard'|'games'|'analysis'>('dashboard');
   const [mapRefreshKey, setMapRefreshKey] = useState(0);
   function navigateTo(page: 'dashboard'|'games'|'analysis') {
-    engineReviewAbort.current?.abort(); engineReviewAbort.current=null; engineReviewRunId.current++;
-    // The aborted run's finally block is intentionally stale and cannot clear UI state.
-    // Clear its progress synchronously so navigation never leaves a phantom spinner.
-    setSimulationProgress(null);
-    if (page !== 'analysis') {
-      // Release the active raw GameRecord and sampled states when returning to
-      // the library/dashboard; they can be hydrated again from IndexedDB.
-      setApiResult(null);
-      setSimulationResult(null);
-      setDecodedActions([]);
-      setReplay(null);
-    }
     setActivePage(page);
     setMapRefreshKey(key => key + 1);
   }
@@ -54,7 +42,6 @@ function App() {
   const [simulationProgress, setSimulationProgress] = useState<{percent:number;phase:string}|null>(null);
   const [simulationResult, setSimulationResult] = useState<ReplaySimulationResult|null>(null);
   const engineReviewRunId = React.useRef(0);
-  const engineReviewAbort = React.useRef<AbortController|null>(null);
   const batchRunId = React.useRef(0);
   const isDesktopShell = /Electron/i.test(navigator.userAgent);
   const isMobileDevice = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
@@ -71,11 +58,6 @@ function App() {
   const autoImportAttempted = React.useRef(new Set<string>());
   const autoAnalysisAttempted = React.useRef(new Set<string>());
   const [batchBusy, setBatchBusy] = useState(false);
-  function withoutReplayRecord(item: BatchMatchItem): BatchMatchItem {
-    if (!item.result?.record) return item;
-    const { record: _record, ...result } = item.result;
-    return { ...item, result };
-  }
   function refreshStoredMatch(item: StoredMatchEntry): BatchMatchItem {
     if(!item.result?.record) return item;
     if(isReplayCompatibilityCurrent(item.result.record,item.result.engineCompatibility)) return item;
@@ -190,7 +172,7 @@ function App() {
           const status: 'engine-mismatch' | 'loaded'=imported.engineCompatibility?.engineVersionCompatible===false ? 'engine-mismatch' : 'loaded';
           const entry:BatchMatchItem={game,result:imported,status,analysisStatus:status==='engine-mismatch'?'unsupported':'pending'};
           existingIds.add(game.gameId);
-          setBatchMatches(current=>[...current.filter(item=>item.game.gameId!==game.gameId),withoutReplayRecord(entry)]);
+          setBatchMatches(current=>[...current.filter(item=>item.game.gameId!==game.gameId),entry]);
           try { await persistBatchItem(entry); } catch(storageError) { console.warn('[ReplayCoach] Replay wurde geladen, konnte aber nicht lokal gesichert werden:',storageError); setError(`Partie ${game.gameId} geladen, aber lokale Speicherung fehlgeschlagen: ${storageError instanceof Error?storageError.message:String(storageError)}`); }
         } catch (e) {
           if(runId!==batchRunId.current) return;
@@ -243,29 +225,24 @@ function App() {
   const lastBatchProgressUpdate=React.useRef({at:0,done:-1,active:-1});
   async function analyzeSelectedGames(gameIds=selectedGameIds) {
     if(!playerPage||batchBusy||batchAnalysisBusy||batchAnalysisAbort.current||gameIds.length===0) return;
-    const selected=gameIds.map(id=>batchMatches.find(item=>item.game.gameId===id)).filter((item):item is BatchMatchItem=>Boolean(item?.result));
-    if(!selected.length) return;
+    const candidates=gameIds.map(id=>batchMatches.find(item=>item.game.gameId===id)).filter((item):item is BatchMatchItem=>Boolean(item?.result));
+    if(!candidates.length) return;
     const runId=++batchAnalysisRunId.current;
     const controller=new AbortController();
     batchAnalysisAbort.current=controller;
     setBatchAnalysisBusy(true); setError('');
-    setBatchAnalysisProgress({done:0,total:selected.length,gameId:'',percent:0,phase:'Analyse wird vorbereitet',active:0,elapsedMs:0,estimatedRemainingMs:null});
+    setBatchAnalysisProgress({done:0,total:candidates.length,gameId:'',percent:0,phase:'Analyse wird vorbereitet',active:0,elapsedMs:0,estimatedRemainingMs:null});
     try {
-      // Keep the entire queue lightweight. Each worker hydrates only its
-      // current raw GameRecord, then releases it when that replay is finished.
-      const candidates=selected;
       const {simulateReplay,buildReplayEngineAssets}=await import('./ReplaySimulation');
       if(runId!==batchAnalysisRunId.current||controller.signal.aborted) return;
       await runConcurrentBatchAnalysis<BatchMatchItem,ReplaySimulationResult>(candidates,{
-        // Mobile stays sequential to cap peak WebView memory use.
+        // Scale only when both CPU and memory headroom are known; mobile stays sequential.
         concurrency:chooseBatchAnalysisConcurrency(isMobileDevice,navigator.hardwareConcurrency,(navigator as Navigator & {deviceMemory?:number}).deviceMemory),
         signal:controller.signal,
         getId:item=>item.game.gameId,
-        isCompatible:item=>Boolean(item.result&&item.result.engineCompatibility?.engineVersionCompatible===true),
+        isCompatible:item=>Boolean(item.result?.record&&item.result.engineCompatibility?.engineVersionCompatible===true),
         analyze:async(item,onProgress,signal)=>{
-          const hydrated=await loadImportedMatch(playerPage.playerId,item.game.gameId);
-          const result=hydrated?.result;
-          if(!result?.record) throw new Error('Die gespeicherten Replay-Daten fehlen. Bitte importiere diese Partie erneut.');
+          const result=item.result!;
           const preferredClientId=resolveProfileClientId(result);
           if(!preferredClientId) throw new Error('Das OpenFront-Profil konnte keinem Spieler dieser Partie eindeutig zugeordnet werden.');
           const assets=buildReplayEngineAssets(result.record);
@@ -283,7 +260,7 @@ function App() {
             simulation:status==='verified'||status==='unverified'?simulation:status==='unsupported'?undefined:item.simulation,
             analysisError,
           };
-          setBatchMatches(current=>current.map(entry=>entry.game.gameId===item.game.gameId?withoutReplayRecord(updated):entry));
+          setBatchMatches(current=>current.map(entry=>entry.game.gameId===item.game.gameId?updated:entry));
           if(status==='verified'||status==='unverified'||status==='unsupported'||status==='failed') {
             try { await persistBatchItem(updated); }
             catch(storageError) { console.warn('[ReplayCoach] Analyseergebnis konnte nicht lokal gesichert werden:',storageError); }
@@ -321,18 +298,15 @@ function App() {
     if(pending.length){ pending.forEach(item=>autoAnalysisAttempted.current.add(item.game.gameId)); void analyzeSelectedGames(pending.map(item=>item.game.gameId)); }
   },[autoSyncEnabled,playerPage,batchMatches,playerBusy,batchBusy,batchAnalysisBusy]);
 
-  async function openBatchMatch(gameId:string) {
+  function openBatchMatch(gameId:string) {
     cancelBatchAnalysis();
     const item=batchMatches.find(entry=>entry.game.gameId===gameId);
     if (!item?.result) return;
-    const hydrated=playerPage?await loadImportedMatch(playerPage.playerId,gameId):null;
-    const result=hydrated?.result??item.result;
-    if(!result.record){setError('Die Replay-Daten dieser Partie fehlen im lokalen Speicher. Bitte importiere sie erneut.');return;}
-    engineReviewAbort.current?.abort(); engineReviewAbort.current=null; engineReviewRunId.current++;
+    engineReviewRunId.current++;
     setSimulationProgress(null); setSimulationResult(item.simulation??null);
-    setApiResult(result); setDecodedActions(result.decodedActions??[]); setReplay(null);
+    setApiResult(item.result); setDecodedActions(item.result.decodedActions??[]); setReplay(null);
     setUrl(`https://openfront.io/w5/game/${gameId}`); setMapRefreshKey(key=>key+1); setActivePage('analysis');
-    if(!item.simulation) void runEngineReview(result,undefined,item.game);
+    if(!item.simulation) void runEngineReview(item.result,undefined,item.game);
   }
   async function choosePlayerGame(gameId: string) {
     cancelBatchAnalysis();
@@ -343,9 +317,8 @@ function App() {
     try {
       const selectedGame = playerPage?.games.find(game => game.gameId === gameId);
       const cachedItem = batchMatches.find(item=>item.game.gameId===gameId && item.result);
-      const hydratedCached=cachedItem&&playerPage?await loadImportedMatch(playerPage.playerId,gameId):null;
-      const cached = hydratedCached?.result??cachedItem?.result;
-      const imported = cached?.record ? cached : await window.replayAPI.importReplayUrl(`https://openfront.io/w5/game/${gameId}`);
+      const cached = cachedItem?.result;
+      const imported = cached ?? await window.replayAPI.importReplayUrl(`https://openfront.io/w5/game/${gameId}`);
       if (!('canceled' in imported)) {
         const result = imported;
         const normalizeMap = (value: unknown) => String(value ?? '').trim().toLowerCase().replace(/[\\s.()_-]+/g, '');
@@ -368,7 +341,7 @@ function App() {
           }
         }
         const entry:BatchMatchItem={...(cachedItem??{}),game:selectedGame??{gameId},result,status:result.engineCompatibility?.engineVersionCompatible===false?'engine-mismatch':'loaded',analysisStatus:cachedItem?.analysisStatus??(result.engineCompatibility?.engineVersionCompatible===false?'unsupported':'pending')};
-        setBatchMatches(current=>[...current.filter(item=>item.game.gameId!==gameId),withoutReplayRecord(entry)]);
+        setBatchMatches(current=>[...current.filter(item=>item.game.gameId!==gameId),entry]);
         if(playerPage) void persistBatchItem(entry).catch(storageError=>console.warn('[ReplayCoach] Replay konnte nicht lokal gespeichert werden:',storageError));
         setApiResult(result);
         setDecodedActions(result.decodedActions ?? []);
@@ -384,9 +357,6 @@ function App() {
     }
   }
   async function runEngineReview(result: ApiImportSummary, selectedClientId?: string | null, libraryGame?: PlayerGame) {
-    engineReviewAbort.current?.abort();
-    const controller = new AbortController();
-    engineReviewAbort.current = controller;
     const requestId = ++engineReviewRunId.current;
     setSimulationResult(null);
     const persist = async (patch: Partial<BatchMatchItem>) => {
@@ -398,7 +368,7 @@ function App() {
         result,
         ...patch,
       };
-      setBatchMatches(current=>[...current.filter(entry=>entry.game.gameId!==result.gameId),withoutReplayRecord(item)]);
+      setBatchMatches(current=>[...current.filter(entry=>entry.game.gameId!==result.gameId),item]);
       try { await persistBatchItem(item); }
       catch(storageError) { console.warn('[ReplayCoach] Engine-Ergebnis konnte nicht lokal gesichert werden:',storageError); }
     };
@@ -429,7 +399,6 @@ function App() {
         },
         50,
         preferredClientId,
-        controller.signal,
       );
       if (requestId === engineReviewRunId.current) {
         setSimulationResult(simulated);
@@ -447,7 +416,6 @@ function App() {
       }
     } finally {
       if (requestId === engineReviewRunId.current) setSimulationProgress(null);
-      if (engineReviewAbort.current === controller) engineReviewAbort.current = null;
     }
   }
   async function importUrl() { cancelBatchAnalysis(); engineReviewRunId.current++; setSimulationProgress(null); setBusy(true); setError(''); setApiResult(null); setSimulationResult(null); try { const result = await window.replayAPI.importReplayUrl(url); if ('canceled' in result) { setError('Speichern abgebrochen. Die API-Antwort wurde nicht lokal abgelegt.'); } else { setApiResult(result); setDecodedActions(result.decodedActions ?? []); setReplay(null); setActivePage('analysis'); await runEngineReview(result); } } catch (e) { setError(e instanceof Error ? e.message : String(e)); } finally { setBusy(false); } }
@@ -492,7 +460,7 @@ function App() {
   const avgDuration = loadedGames.filter(g => Number.isFinite(g.durationSeconds) && (g.durationSeconds ?? 0) > 0).reduce((sum,g)=>sum+(g.durationSeconds ?? 0),0) / Math.max(1, loadedGames.filter(g => (g.durationSeconds ?? 0) > 0).length);
   const modeStats = Object.entries(loadedGames.reduce((acc:Record<string,number>,g)=>{const key=g.mode ?? 'Unbekannt';acc[key]=(acc[key]??0)+1;return acc;},{})).sort((a,b)=>b[1]-a[1]).slice(0,5);
   const importedBatchMatches=batchMatches.filter(item=>Boolean(item.result));
-  const engineCoverage=buildReplayEngineCoverageReport(importedBatchMatches.map(item=>({gameId:item.game.gameId,gitCommit:item.result?.engineCompatibility?.replayCommit})));
+  const engineCoverage=buildReplayEngineCoverageReport(importedBatchMatches.map(item=>({gameId:item.game.gameId,gitCommit:item.result?.record?.gitCommit})));
   const engineUnavailableCount=importedBatchMatches.filter(item=>item.status==='engine-mismatch'||item.analysisStatus==='unsupported').length;
   const verifiedReplayCount=importedBatchMatches.filter(item=>item.analysisStatus==='verified'&&item.simulation?.status==='verified').length;
   const pendingReplayCount=importedBatchMatches.filter(item=>item.status==='loaded'&&(!item.analysisStatus||item.analysisStatus==='pending')).length;
@@ -525,7 +493,7 @@ function App() {
       <button className={`studio-nav ${activePage==='dashboard'?'active':''}`} onClick={()=>navigateTo('dashboard')}><LayoutDashboard size={17}/>Dashboard</button>
       <button className={`studio-nav ${activePage==='games'?'active':''}`} onClick={()=>navigateTo('games')}><ListChecks size={17}/>Meine Partien</button>
       <button className={`studio-nav ${activePage==='analysis'?'active':''}`} onClick={()=>navigateTo('analysis')} disabled={!apiResult && !replay}><Brain size={17}/>Coach & Replay</button>
-      <div className="studio-sidebar-bottom"><span><ShieldCheck size={14}/>{isDesktopShell ? 'Lokal auf diesem PC' : isMobileDevice ? 'Mobil im Browser' : 'Im Browser geöffnet'}</span><small>OpenFront Replay Coach · 2.2.50</small></div>
+      <div className="studio-sidebar-bottom"><span><ShieldCheck size={14}/>{isDesktopShell ? 'Lokal auf diesem PC' : isMobileDevice ? 'Mobil im Browser' : 'Im Browser geöffnet'}</span><small>OpenFront Replay Coach · 2.2.47</small></div>
     </aside>
     <nav className="studio-mobile-nav" aria-label="Hauptnavigation">
       <button className={activePage==='dashboard'?'active':''} onClick={()=>navigateTo('dashboard')}><LayoutDashboard/><span>Dashboard</span></button>
@@ -880,7 +848,7 @@ function CoachPanel({apiResult,preferredPlayerPublicId,decodedActions,simulation
     ? buildEngineCoachInsights(selectedPlayerReview, selectedActionReviews, simulationResult.samples)
     : [];
   const proCoachReport = simulationResult?.status === 'verified' && selectedClientId
-    ? buildProCoachReport(simulationResult.samples, selectedActionReviews, selectedClientId, apiResult.durationSeconds ?? 0)
+    ? buildProCoachReport(simulationResult.samples, selectedActionReviews, selectedClientId, apiResult.durationSeconds ?? 0, simulationResult.spawnPositions ?? [])
     : null;
 
   const { ordered: orderedEngineInsights, primary: primaryEngineInsights, supporting: supportingEngineInsights } = selectPrimaryCoachInsights(engineInsights);

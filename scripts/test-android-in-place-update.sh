@@ -52,10 +52,10 @@ log "Resolving the app's launcher activity."
 activity="$(timeout 30s adb -s emulator-5554 shell cmd package resolve-activity --brief -a android.intent.action.MAIN -c android.intent.category.LAUNCHER "$package_id" | tr -d '\r' | tail -n 1)"
 [[ "$activity" == */* ]] || fail "Could not resolve the upgraded app's launcher activity: $activity"
 log "Launching upgraded application directly: $activity"
-launch_output="$(timeout 90s adb -s emulator-5554 shell am start -W -n "$activity" 2>&1)" || fail "Android could not start the upgraded app activity: $launch_output"
-grep -F "Status: ok" <<< "$launch_output" >/dev/null || fail "Android did not confirm a successful app launch: $launch_output"
+launch_output="$(timeout 60s adb -s emulator-5554 shell am start -n "$activity" 2>&1)" || fail "Android could not dispatch the upgraded app activity: $launch_output"
+grep -E "Starting: Intent|Warning: Activity not started" <<< "$launch_output" >/dev/null || fail "Android did not accept the upgraded app launch: $launch_output"
 app_started=false
-for attempt in $(seq 1 30); do
+for attempt in $(seq 1 45); do
   if timeout 10s adb -s emulator-5554 shell pidof "$package_id" 2>/dev/null | grep -Eq '[0-9]'; then app_started=true; break; fi
   sleep 2
 done

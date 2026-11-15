@@ -168,31 +168,40 @@ test("timeline uses source event seconds and omits untimed coaching observations
   }
 });
 
-test("longitudinal production analysis excludes non-verified matches and exposes current duplicate-ID boundary", () => {
+test("longitudinal production analysis consumes verified match data and excludes incomplete evidence", () => {
   const verifiedA = makeVerifiedMatch("real-a");
   const verifiedB = makeVerifiedMatch("real-b", 10);
   const unverified = makeVerifiedMatch("unverified");
   unverified.analysisStatus = "unverified";
   unverified.simulation.status = "unverified";
-  const report = buildLongitudinalCoachReport([
-    verifiedA, verifiedA, verifiedB, unverified,
-  ]);
-  // The current base implementation counts the duplicate as a verified row
-  // and keeps it in matchProgress. PR #147 adds the stronger ID-dedup contract.
-  assert.equal(report.importedMatches, 4);
-  assert.equal(report.verifiedMatches, 3);
-  assert.equal(report.comparableMatches, 3);
-  // The current base implementation still carries the duplicate in its per-match
-  // progress rows. PR #147 adds the match-ID deduplication contract; this branch
-  // explicitly does not claim that unintegrated change.
-  assert.equal(report.matchProgress.filter(match => match.gameId === "real-a").length, 2);
-  assert.equal(report.matchProgress.filter(match => match.gameId === "real-b").length, 1);
+
+  const report = buildLongitudinalCoachReport([verifiedA, verifiedB, unverified]);
+  assert.equal(report.importedMatches, 3);
+  assert.equal(report.verifiedMatches, 2);
+  assert.equal(report.excludedMatches, 1);
+  assert.equal(report.comparableMatches, 2);
   assert.equal(report.status, "ready");
+  assert.deepEqual(report.matchProgress.map(match => match.gameId), ["real-a", "real-b"]);
+  assert.ok(report.phaseSummaries.every(phase => Number.isInteger(phase.matchesWithData)));
+  assert.ok(report.metricTrends.every(trend => trend.observations >= 0));
+
+  const missingTime = makeVerifiedMatch("missing-time");
+  missingTime.playedAt = "not-a-date";
+  missingTime.simulation.actionReviews = [
+    { type: "attack", seconds: 10, delta30s: { tiles: 0, gold: 0, troops: -20 }, targetDelta30s: null },
+    { type: "attack", seconds: Number.NaN, delta30s: { tiles: 99 }, targetDelta30s: { tiles: -99 } },
+    { type: "attack", delta30s: { tiles: 99 }, targetDelta30s: { tiles: -99 } },
+    null,
+  ];
+  const incomplete = buildLongitudinalCoachReport([missingTime]);
+  assert.equal(incomplete.verifiedMatches, 1);
+  assert.equal(incomplete.matchProgress[0].attackFollowThroughSamples, 0);
+  assert.equal(incomplete.metricTrends.find(item => item.id === "territory")?.direction, "insufficient-data");
+
   const ignored = buildLongitudinalCoachReport([unverified]);
   assert.equal(ignored.comparableMatches, 0);
   assert.equal(ignored.status, "insufficient-data");
 });
-
 test("automatic history sync imports missing matches and schedules pending analysis", () => {
   const games = [{ gameId: "new-game" }, { gameId: "existing-game" }];
   const existing = [{ game: { gameId: "existing-game" }, result: { record: {} }, status: "loaded" }];

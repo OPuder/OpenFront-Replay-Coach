@@ -5,7 +5,7 @@ import { app, BrowserWindow } from "electron";
 const VITE_PORT = 5179;
 let server;
 
-async function loadReplay(gameId, expectedCommit, expectedMap, expectedHashes) {
+async function loadReplay(gameId, expectedCommit, expectedMap, expectedHashes, expectedMode, expectedType) {
   const response = await fetch(`https://api.openfront.io/public/game/${encodeURIComponent(gameId)}`, {
     headers: { Accept: "application/json", "User-Agent": "OpenFront-Replay-Coach-CI/1.0" },
     signal: AbortSignal.timeout(30000),
@@ -17,6 +17,13 @@ async function loadReplay(gameId, expectedCommit, expectedMap, expectedHashes) {
   assert.equal(record.gitCommit, expectedCommit);
   assert.equal(record.info?.config?.gameMap, expectedMap);
   assert.equal(hashes, expectedHashes);
+  if (expectedMode) assert.equal(record.info?.config?.gameMode, expectedMode);
+  if (expectedType) assert.equal(record.info?.config?.gameType, expectedType);
+  assert.ok(Number.isFinite(record.info?.start), `${gameId} must include the recorded start timestamp`);
+  const profilePlayer = record.info?.players?.find(player =>
+    /oligenole/i.test(String(player?.displayName ?? player?.name ?? player?.username ?? "")),
+  );
+  assert.ok(profilePlayer?.clientID, `${gameId} must include the OligenOle profile`);
   return record;
 }
 
@@ -36,8 +43,8 @@ async function main() {
   app.commandLine.appendSwitch("disable-gpu");
   await app.whenReady();
 
-  const europe = await loadReplay("c2R2JHZgUi", "8b5d071eed95f07c701b32e4c64e95b03f8577c1", "Europe", 1006);
-  const levant = await loadReplay("dLNCLHCvMK", "bc3e3334c573c4959ec6a6745df6826d07233b4d", "Levant", 626);
+  const europe = await loadReplay("c2R2JHZgUi", "8b5d071eed95f07c701b32e4c64e95b03f8577c1", "Europe", 1006, "Free For All", "Private");
+  const levant = await loadReplay("dLNCLHCvMK", "bc3e3334c573c4959ec6a6745df6826d07233b4d", "Levant", 626, "Free For All", "Public");
   const unsupported = { ...europe, gitCommit: "0000000000000000000000000000000000000000" };
 
   server = spawn("node", ["node_modules/vite/bin/vite.js", "--host", "127.0.0.1", "--port", String(VITE_PORT), "--strictPort"], {

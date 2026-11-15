@@ -161,10 +161,28 @@ async function main() {
       assert.equal(action.time, action.turn / 10);
     }
   }
-  assert.equal(batch.longitudinal.importedMatches, 2);
-  assert.equal(batch.longitudinal.verifiedMatches, 2);
-  assert.equal(batch.longitudinal.comparableMatches, 2);
+  assert.equal(batch.longitudinal.importedMatches, 2,
+    "Longitudinal analysis must receive both real replay inputs");
+  assert.equal(batch.longitudinal.verifiedMatches, 2,
+    "Both real simulations must be included in longitudinal analysis");
+  assert.equal(batch.longitudinal.excludedMatches, 0,
+    "Neither real replay may be dropped from longitudinal analysis");
+  // Europe is Private while Levant is Public. The longitudinal engine correctly
+  // compares only within a shared mode + game-type cohort, so these two inputs
+  // remain imported/verified but form separate one-match cohorts.
+  assert.equal(batch.longitudinal.comparableMatches, 1,
+    "Only one match belongs to the selected shared mode/type comparison cohort");
+  assert.equal(batch.longitudinal.comparableGroup, "Free For All · Private");
+  assert.deepEqual(batch.longitudinal.matchProgressIds, ["c2R2JHZgUi"]);
   assert.equal(batch.longitudinal.status, "ready");
+  assert.deepEqual(batch.bridgeDiagnostics.reportIdentities.map(item => ({
+    gameId: item.gameId, sourceMatchId: item.sourceMatchId, reportMatchId: item.reportMatchId,
+    mode: item.mode, type: item.type,
+  })), [
+    { gameId: "Europe", sourceMatchId: "c2R2JHZgUi", reportMatchId: "c2R2JHZgUi", mode: "Free For All", type: "Private" },
+    { gameId: "Levant", sourceMatchId: "dLNCLHCvMK", reportMatchId: "dLNCLHCvMK", mode: "Free For All", type: "Public" },
+  ]);
+  console.log("Longitudinal cohort diagnostics:", JSON.stringify(batch.bridgeDiagnostics.longitudinal));
   const europeResult = batch.outcomes.find(item => item.gameId === "Europe");
   const unsupportedResult = batch.outcomes.find(item => item.gameId === "unsupported-engine");
   const levantResult = batch.outcomes.find(item => item.gameId === "Levant");
@@ -200,14 +218,29 @@ async function main() {
     "IndexedDB keys must be the original replay match IDs, not fixture labels");
   for (const gameId of Object.values(replayIds)) {
     const item = persisted.find(entry => entry.gameId === gameId);
+    const report = batch.coaching.find(entry => entry.matchId === gameId);
+    assert.ok(report, `${gameId} coaching report must be available for post-reload comparison`);
     assert.equal(item?.analysisStatus, "verified");
     assert.equal(item?.simulationStatus, "verified");
     assert.ok(item?.sampleCount > 0);
+    assert.ok(item?.actionCount > 0);
+    assert.equal(item?.clientId, report.clientId, `${gameId} player identity must survive reload`);
+    assert.equal(item?.playerName, "OligenOle");
+    assert.equal(item?.verifiedHashes, report.verifiedHashes);
+    assert.equal(item?.findingCount, report.proReport.findings.length);
+    assert.deepEqual(item?.findings, report.proReport.findings,
+      `${gameId} coaching findings and evidence must rebuild identically after reload`);
+    assert.deepEqual(item?.engineInsights, report.engineInsights,
+      `${gameId} engine coaching evidence must rebuild identically after reload`);
+    assert.deepEqual(item?.timeline, report.timeline.map(entry => ({
+      id: entry.id, time: entry.time, title: entry.title, kind: entry.kind,
+      turn: entry.turn, evidence: entry.insight?.evidence ?? null,
+    })), `${gameId} timeline markers and timestamps must survive reload`);
     assert.equal(item?.jsonExportRestored, true, `${gameId} must export its persisted original JSON after renderer reload`);
   }
   assert.equal(persisted.some(entry => entry.gameId === "unsupported-engine"), false,
     "The unsupported duplicate fixture must never be persisted as a third match");
-  console.log("Multi-match IndexedDB persistence after refresh:", JSON.stringify(persisted));
+  console.log("Multi-match IndexedDB persistence and rebuilt coaching after refresh:", JSON.stringify(persisted));
 
   const profile = await window.webContents.executeJavaScript("window.__verifyPersistedProfileTest()", true);
   assert.equal(profile.profilePresent, true, "Player profile must survive renderer restart");

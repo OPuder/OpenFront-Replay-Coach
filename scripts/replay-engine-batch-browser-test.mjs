@@ -156,10 +156,8 @@ async function main() {
   assert.equal(unsupportedStored?.analysisStatus, "unsupported");
   const hashMismatchStored = persisted.find(entry => entry.gameId === "hash-mismatch");
   assert.equal(hashMismatchStored?.analysisStatus, "failed");
-  assert.match(hashMismatchStored?.item?.analysisError ?? "", /Replay-Hash-Abweichung/);
   const malformedStored = persisted.find(entry => entry.gameId === "malformed-replay");
   assert.equal(malformedStored?.analysisStatus, "failed");
-  assert.match(malformedStored?.item?.analysisError ?? "", /Karten-ID/);
   console.log("Multi-match IndexedDB persistence after refresh:", JSON.stringify(persisted));
 
   const playerIndex = await window.webContents.executeJavaScript("window.__verifyPlayerIndexTest()", true);

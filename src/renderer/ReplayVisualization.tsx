@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useEffect, useMemo, useRef } from 'react';
 import { ArrowUpRight, Crosshair, Map as MapIcon, Play, ShieldAlert, Swords } from 'lucide-react';
+import type { ReplayStateSample } from './ReplaySimulation';
 import './ReplayVisualization.css';
 
 export type ReplayVisualizationEvent = {
@@ -16,6 +17,7 @@ type Props = {
   mapPreview?: string | null;
   durationSeconds: number;
   events: ReplayVisualizationEvent[];
+  samples: ReplayStateSample[];
   selectedEventId: string | null;
   onSelectEvent: (id: string) => void;
   onOpenReplay: () => void;
@@ -26,13 +28,72 @@ const formatTime = (seconds: number) => {
   const safe = Math.max(0, Math.floor(Number.isFinite(seconds) ? seconds : 0));
   return `${Math.floor(safe / 60).toString().padStart(2, '0')}:${(safe % 60).toString().padStart(2, '0')}`;
 };
+const playerColor = (id: number, players: ReplayStateSample['players']) =>
+  players.find(player => player.id === id)?.color ?? `hsl(${(id * 137.508) % 360} 68% 58%)`;
 
 export function ReplayVisualization({
-  mapName, mapPreview, durationSeconds, events, selectedEventId, onSelectEvent, onOpenReplay,
+  mapName, mapPreview, durationSeconds, events, samples, selectedEventId, onSelectEvent, onOpenReplay,
 }: Props) {
   const selected = events.find(event => event.id === selectedEventId) ?? events[0] ?? null;
   const duration = Math.max(1, durationSeconds);
   const currentTime = selected ? clamp(selected.time, 0, duration) : 0;
+  const currentTick = currentTime * 10;
+  const sample = useMemo(() => {
+    let nearest: ReplayStateSample | null = null;
+    for (const candidate of samples) {
+      if (candidate.tick <= currentTick && (!nearest || candidate.tick > nearest.tick)) nearest = candidate;
+    }
+    return nearest ?? samples[0] ?? null;
+  }, [samples, currentTick]);
+  const territoryCanvas = useRef<HTMLCanvasElement>(null);
+  const territory = sample?.territory ?? null;
+  useEffect(() => {
+    const canvas = territoryCanvas.current;
+    const context = canvas?.getContext('2d');
+    if (!canvas || !context || !territory) return;
+    canvas.width = territory.width;
+    canvas.height = territory.height;
+    const image = context.createImageData(territory.width, territory.height);
+    let offset = 0;
+    for (let index = 0; index + 1 < territory.ownerRuns.length; index += 2) {
+      const owner = territory.ownerRuns[index];
+      const length = territory.ownerRuns[index + 1];
+      const color = owner ? playerColor(owner, sample?.players ?? []) : null;
+      let red = 0, green = 0, blue = 0;
+      if (color?.startsWith('#')) {
+        red = parseInt(color.slice(1, 3), 16);
+        green = parseInt(color.slice(3, 5), 16);
+        blue = parseInt(color.slice(5, 7), 16);
+      } else if (color) {
+        const hue = Number(color.match(/[0-9.]+/)?.[0] ?? 0) / 60;
+        const chroma = .68 * .58;
+        const x = chroma * (1 - Math.abs(hue % 2 - 1));
+        const rgb = hue < 1 ? [chroma, x, 0] : hue < 2 ? [x, chroma, 0] : hue < 3 ? [0, chroma, x] : hue < 4 ? [0, x, chroma] : hue < 5 ? [x, 0, chroma] : [chroma, 0, x];
+        const match = .58 - chroma / 2;
+        [red, green, blue] = rgb.map(value => Math.round((value + match) * 255));
+      }
+      const end = Math.min(offset + length, territory.width * territory.height);
+      for (let tile = offset; tile < end; tile++) {
+        const pixel = tile * 4;
+        image.data[pixel] = red;
+        image.data[pixel + 1] = green;
+        image.data[pixel + 2] = blue;
+        image.data[pixel + 3] = owner ? 150 : 0;
+      }
+      offset = end;
+    }
+    context.putImageData(image, 0, 0);
+  }, [territory, sample?.players]);
+
+  const movements = sample?.unitMovements ?? [];
+  const playerNames = new Map((sample?.players ?? []).map(player => [player.id, player.name]));
+  const attackLinks = (sample?.players ?? []).flatMap(player => player.outgoingAttackDetails.map(attack => ({
+    id: player.id + ':' + attack.id,
+    attacker: player.name,
+    target: playerNames.get(attack.targetID) ?? `Spieler ${attack.targetID}`,
+    troops: attack.troops,
+    retreating: attack.retreating,
+  })));
   const phases = [
     { label: 'EARLY', start: 0, end: .3, note: 'Start & Expansion', tone: 'early' },
     { label: 'MID', start: .3, end: .7, note: 'Fronten & Druck', tone: 'mid' },
@@ -41,26 +102,38 @@ export function ReplayVisualization({
 
   return <section className="replay-viz" aria-label="Interaktive Replay-Übersicht">
     <div className="replay-viz-top">
-      <div><span className="studio-eyebrow">TACTICAL OVERVIEW</span><h3>Schlachtfeld & Zeitachse</h3><p>Wähle einen belegten Moment, um Kontext und Coaching-Hinweise direkt daneben zu sehen.</p></div>
+      <div><span className="studio-eyebrow">TACTICAL OVERVIEW</span><h3>Schlachtfeld & Zeitachse</h3><p>Territorien und Einheitenziele stammen aus dem rekonstruierten Original-Engine-Zustand.</p></div>
       <div className="replay-viz-status"><span className="replay-viz-live-dot"/>{events.length} Ereignisse · {formatTime(durationSeconds)} Gesamt</div>
     </div>
     <div className="replay-viz-grid">
       <div className="replay-viz-map">
-        <div className="replay-viz-map-head"><span><MapIcon size={14}/> {mapName || 'Unbekannte Karte'}</span><span>Replay-Referenz</span></div>
-        <div className="replay-viz-map-canvas">
-          {mapPreview ? <img src={mapPreview} alt={`Vorschau der Karte ${mapName}`} loading="lazy"/> : <div className="replay-viz-map-placeholder"><div className="replay-viz-continent continent-a"/><div className="replay-viz-continent continent-b"/><div className="replay-viz-map-label"><MapIcon size={24}/><b>Keine Karten-Vorschau verfügbar</b><small>Die Karte wird nicht künstlich rekonstruiert.</small></div></div>}
-          <div className="replay-viz-map-overlay"><span><Crosshair size={12}/> MAP PREVIEW</span><b>{mapName || 'OpenFront Map'}</b></div>
+        <div className="replay-viz-map-head"><span><MapIcon size={14}/> {mapName || 'Unbekannte Karte'}</span><span>{sample ? `Engine-Frame ${sample.frame}` : 'Kein Engine-Snapshot'}</span></div>
+        <div className="replay-viz-map-canvas" style={{aspectRatio: territory ? `${territory.width} / ${territory.height}` : '16 / 9'}}>
+          {mapPreview && <img src={mapPreview} alt={`Kartenbasis ${mapName}`} loading="lazy"/>}
+          {territory && <canvas ref={territoryCanvas} className="replay-viz-territory" aria-label="Territoriumsbesitz aus Replay-Engine-Snapshot"/>}
+          {territory && <svg className="replay-viz-movements" viewBox={`0 0 ${territory.width} ${territory.height}`} preserveAspectRatio="none" aria-label="Aktive Einheitenziele aus Replay-Engine-Frame">
+            <defs><marker id="replay-viz-arrow" markerWidth="5" markerHeight="5" refX="4" refY="2.5" orient="auto"><path d="M0,0 L5,2.5 L0,5" fill="#fff2a8"/></marker></defs>
+            {movements.slice(0, 180).map((movement,index)=>{
+              const x1=movement.fromTile%territory.width, y1=Math.floor(movement.fromTile/territory.width);
+              const x2=movement.targetTile%territory.width, y2=Math.floor(movement.targetTile/territory.width);
+              return <line key={index} x1={x1} y1={y1} x2={x2} y2={y2} stroke={playerColor(movement.ownerID,sample?.players??[])} strokeWidth={Math.max(.7,territory.width/700)} opacity=".88" markerEnd="url(#replay-viz-arrow)"><title>{`${playerNames.get(movement.ownerID)??'Spieler'} · ${movement.unitType} · ${movement.troops} Truppen`}</title></line>;
+            })}
+          </svg>}
+          {!territory && <div className="replay-viz-map-label"><MapIcon size={24}/><b>Kein Territoriums-Snapshot verfügbar</b><small>{samples.length ? 'Für diesen Zeitpunkt ist kein passender Engine-Zustand gespeichert.' : 'Die Partie wurde noch nicht mit der Original-Engine rekonstruiert.'}</small></div>}
+          {territory && <div className="replay-viz-map-overlay"><span><Crosshair size={12}/> TERRITORIUM · {territory.width}×{territory.height}</span><b>{formatTime(currentTime)}</b></div>}
         </div>
-        <div className="replay-viz-map-note"><ShieldAlert size={13}/> Die Vorschau zeigt das Kartenbild, keine erfundenen Besitzstände oder Angriffsvektoren.</div>
+        <div className="replay-viz-map-note"><ShieldAlert size={13}/>{territory ? 'Besitzfarben: Replay-TileState (Owner-ID). Pfeile: aktive Einheiten mit explizitem Engine-Ziel.' : 'Besitzstände und Bewegungen werden nur bei vorhandenem Engine-Snapshot angezeigt.'}</div>
+        {sample && <div className="replay-viz-legend" aria-label="Spielerlegende">{sample.players.filter(player=>player.tiles>0).sort((a,b)=>b.tiles-a.tiles).slice(0,8).map(player=><span key={player.id}><i style={{background:playerColor(player.id,sample.players)}}/><b>{player.name}</b><small>{player.tiles.toLocaleString('de-DE')} Tiles</small></span>)}</div>}
       </div>
       <div className="replay-viz-focus">
         <div className="replay-viz-focus-head"><span>SELECTED MOMENT</span><b>{selected ? formatTime(selected.time) : '—'}</b></div>
         {selected ? <>
           <span className={`replay-viz-event-tag ${selected.isCoach ? 'coach' : 'event'}`}>{selected.isCoach ? <Swords size={12}/> : <Crosshair size={12}/>} {selected.isCoach ? 'COACH INSIGHT' : selected.kind}</span>
-          <h4>{selected.title}</h4>
-          <p>{selected.detail}</p>
-          <div className="replay-viz-focus-foot"><small>{selected.isCoach ? 'Priorisierter Coaching-Moment' : 'Protokolliertes Replay-Ereignis'}</small><button type="button" onClick={onOpenReplay}>Original-Replay <ArrowUpRight size={14}/></button></div>
+          <h4>{selected.title}</h4><p>{selected.detail}</p>
+          <div className="replay-viz-focus-foot"><small>{selected.isCoach ? 'Mit Replay-Zeitpunkt verknüpft' : 'Protokolliertes Replay-Ereignis'}</small><button type="button" onClick={onOpenReplay}>Original-Replay öffnen <ArrowUpRight size={14}/></button></div>
         </> : <div className="replay-viz-no-event"><Crosshair size={22}/><b>Noch keine Ereignisse markiert</b><small>Für diese Partie enthält die Timeline keine verwertbaren Marker.</small></div>}
+        <div className="replay-viz-engagements"><b>Aktive Angriffe · Engine-State</b>{attackLinks.length ? attackLinks.slice(0,8).map(link=><span key={link.id}><Swords size={12}/>{link.attacker} → {link.target}<small>{link.troops.toLocaleString('de-DE')} Truppen{link.retreating?' · Rückzug':''}</small></span>) : <small>Keine aktiven Angriffsbeziehungen in diesem Snapshot.</small>}</div>
+        {movements.length>0 && <small className="replay-viz-movement-count">{movements.length} aktive Einheitenziele im ausgewählten Snapshot</small>}
       </div>
     </div>
     <div className="replay-viz-timeline">
@@ -71,12 +144,11 @@ export function ReplayVisualization({
       </div>
       <div className="replay-viz-event-track" role="group" aria-label="Replay-Ereignisse auswählen">
         {events.map((event,index)=>{
-          const position=clamp(event.time/duration*100,0,100);
-          const active=selected?.id===event.id;
+          const position=clamp(event.time/duration*100,0,100), active=selected?.id===event.id;
           return <button key={event.id} type="button" className={`replay-viz-marker ${event.isCoach?'coach':''} ${active?'active':''}`} style={{left:`${position}%`}} onClick={()=>onSelectEvent(event.id)} aria-label={`${formatTime(event.time)}: ${event.title}`} aria-pressed={active} title={`${formatTime(event.time)} · ${event.title}`}><span>{index+1}</span></button>;
         })}
       </div>
-      <div className="replay-viz-timeline-footer"><span>00:00 · START</span><button type="button" className="replay-viz-open" onClick={onOpenReplay}><Play size={13}/> Im Original-Viewer öffnen</button><span>{formatTime(durationSeconds)} · ENDE</span></div>
+      <div className="replay-viz-timeline-footer"><span>00:00 · START</span><span className="replay-viz-seek-note">Auswahl aktualisiert Karte & Coaching-Kontext. Der externe OpenFront-Viewer bietet keine Seek-Schnittstelle.</span><span>{formatTime(durationSeconds)} · ENDE</span></div>
       {!events.length && <p className="replay-viz-empty">Noch keine Timeline-Ereignisse vorhanden. Es werden keine Marker aus geschätzten oder fehlenden Daten erzeugt.</p>}
     </div>
   </section>;

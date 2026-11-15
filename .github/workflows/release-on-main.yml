@@ -265,7 +265,8 @@ jobs:
     name: Build installable Android APK
     needs: prepare-release
     if: needs.prepare-release.outputs.skip != 'true'
-    runs-on: ubuntu-latest
+    # Keep Android emulator upgrade tests on the stable LTS runner (ubuntu-latest is 26.04).
+    runs-on: ubuntu-22.04
     timeout-minutes: 90
     outputs:
       signing_mode: ${{ steps.apk.outputs.signing_mode }}

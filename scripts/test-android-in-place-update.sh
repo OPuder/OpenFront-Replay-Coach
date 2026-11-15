@@ -43,7 +43,7 @@ install_apk_with_retry() {
   local apk_path="$1"
   local description="$2"
   for attempt in 1 2 3; do
-    if timeout 120s adb -s emulator-5554 install "$@" >/dev/null 2>&1; then
+    if timeout 120s adb -s emulator-5554 install "$apk_path" >/dev/null 2>&1; then
       log "$description installed (attempt $attempt)."
       return 0
     fi

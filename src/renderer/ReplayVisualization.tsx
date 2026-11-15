@@ -38,7 +38,6 @@ export function ReplayVisualization({
   const selected = events.find(event => event.id === selectedEventId) ?? events[0] ?? null;
   const duration = Math.max(1, durationSeconds);
   const currentTime = selected ? clamp(selected.time, 0, duration) : 0;
-  const currentTick = currentTime * 10;
   const sample = useMemo(() => selectTerritorySample(samples, currentTime), [samples, currentTime]);
   const territoryCanvas = useRef<HTMLCanvasElement>(null);
   const territory = sample?.territory ?? null;

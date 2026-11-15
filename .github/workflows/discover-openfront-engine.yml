@@ -67,16 +67,20 @@ jobs:
         if: steps.discovery.outputs.changed == 'true'
         run: npm run test:coach
 
-      - name: Create a candidate engine pull request
+      - name: Publish validated engine candidate branch
         if: steps.discovery.outputs.changed == 'true'
-        uses: peter-evans/create-pull-request@v6
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          branch: automation/openfront-engine-latest
-          delete-branch: true
-          commit-message: "build(engine): add latest exact OpenFront revision"
-          title: "build(engine): add latest OpenFront engine revision"
-          body: |
-            Automated candidate generated from the latest upstream OpenFront main commit.
-
-            The candidate is pinned to an exact immutable Git SHA; every registered replay worker is built from its exact source, and the Coach's own TypeScript and replay tests are validated. This does not by itself claim that a replay has been hash-verified on this revision. A real replay recorded by this commit must pass the replay hash regression before the candidate can be described as fully replay-verified.
+        run: |
+          set -Eeuo pipefail
+          bundle_id="$(node --input-type=module -e 'import { readFileSync } from "node:fs"; const engines = JSON.parse(readFileSync("engine-build/engines.json", "utf8")); console.log(engines.at(-1).bundleId);')"
+          branch="automation/openfront-engine-${bundle_id}"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git diff --cached --check
+          if git diff --cached --quiet; then
+            echo "::error::Engine discovery reported changes but produced no commit."
+            exit 1
+          fi
+          git commit -m "build(engine): add latest exact OpenFront revision"
+          git push origin "HEAD:refs/heads/${branch}"
+          echo "::notice::Validated engine candidate published on ${branch}. It still requires a review PR and real replay hash verification.";

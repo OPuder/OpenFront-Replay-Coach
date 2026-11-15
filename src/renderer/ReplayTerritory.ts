@@ -24,9 +24,23 @@ export function encodeTileOwners(tileState: Uint16Array, width: number, height: 
   return { width, height, ownerRuns };
 }
 
+export function isValidTerritorySnapshot(snapshot: EncodedTerritory | null | undefined): snapshot is EncodedTerritory {
+  if (!snapshot || !Number.isInteger(snapshot.width) || !Number.isInteger(snapshot.height) ||
+      snapshot.width < 1 || snapshot.height < 1 || !Array.isArray(snapshot.ownerRuns) ||
+      snapshot.ownerRuns.length % 2 !== 0) return false;
+  const expected = snapshot.width * snapshot.height;
+  let offset = 0;
+  for (let index = 0; index < snapshot.ownerRuns.length; index += 2) {
+    const owner = snapshot.ownerRuns[index], count = snapshot.ownerRuns[index + 1];
+    if (!Number.isInteger(owner) || owner < 0 || owner > 0x0fff ||
+        !Number.isInteger(count) || count < 1 || offset + count > expected) return false;
+    offset += count;
+  }
+  return offset === expected;
+}
+
 export function decodeTileOwners(snapshot: EncodedTerritory): Uint16Array | null {
-  if (!Number.isInteger(snapshot.width) || !Number.isInteger(snapshot.height) ||
-      snapshot.width < 1 || snapshot.height < 1 || snapshot.ownerRuns.length % 2 !== 0) return null;
+  if (!isValidTerritorySnapshot(snapshot)) return null;
   const owners = new Uint16Array(snapshot.width * snapshot.height);
   let offset = 0;
   for (let index = 0; index < snapshot.ownerRuns.length; index += 2) {
@@ -47,7 +61,7 @@ export function selectTerritorySample<T extends { tick: number; territory?: Enco
   const targetTick = Math.max(0, seconds) * ticksPerSecond;
   let selected: T | null = null;
   for (const sample of samples) {
-    if (sample.tick <= targetTick && sample.territory && (!selected || sample.tick > selected.tick)) selected = sample;
+    if (sample.tick <= targetTick && isValidTerritorySnapshot(sample.territory) && (!selected || sample.tick > selected.tick)) selected = sample;
   }
   return selected;
 }

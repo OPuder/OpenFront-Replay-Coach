@@ -157,7 +157,7 @@ assert.ok(releaseUpgradeScript.includes("FATAL EXCEPTION"));
 assert.ok(releaseUpgradeScript.includes("sleep 300"));
 assert.ok(releaseUpgradeScript.includes("five-minute idle soak"));
 const androidValidationWorkflow = read(".github/workflows/update-validation.yml");
-assert.ok(androidValidationWorkflow.includes("bash -n scripts/test-android-release-upgrade.sh"));
+assert.match(androidValidationWorkflow, /bash -n scripts\/test-android-release-upgrade\.sh[\s\S]*?bash -n scripts\/test-android-in-place-update\.sh[\s\S]*?bash -n scripts\/verify-android-release-signing\.sh/);
 
 
 const engineCacheWorkflows = [

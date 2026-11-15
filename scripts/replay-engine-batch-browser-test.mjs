@@ -138,6 +138,14 @@ async function main() {
   assert.equal(unsupportedStored?.analysisStatus, "unsupported");
   console.log("Multi-match IndexedDB persistence after refresh:", JSON.stringify(persisted));
 
+  const playerIndex = await window.webContents.executeJavaScript("window.__verifyPlayerIndexTest()", true);
+  assert.deepEqual(playerIndex, {
+    indexPresent: true,
+    playerAMatches: ["index-a-1", "index-a-2"],
+    playerBMatches: ["index-b-1"],
+  }, "Player library reads must use the player index and never leak other profiles' matches");
+  console.log("Indexed per-player match library:", JSON.stringify(playerIndex));
+
   window.destroy();
   await app.quit();
 }

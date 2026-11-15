@@ -1,6 +1,25 @@
 import { unwrapGameRecord } from "../main/decoder/GameRecordShape";
 import { resolveSupportedEngineCommit } from "../main/decoder/ReplayEngineCatalog";
 import { loadReplayEngineModule } from "./engineRegistry";
+/** Compute the replay frame count in one pass without spreading huge arrays. */
+export function getTotalRecordedFrames(record: unknown): number {
+  const source = record && typeof record === "object"
+    ? record as { info?: { num_turns?: unknown }; turns?: unknown }
+    : {};
+  const declared = source.info?.num_turns;
+  let total = typeof declared === "number" && Number.isFinite(declared)
+    ? Math.max(0, Math.floor(declared))
+    : 0;
+  if (!Array.isArray(source.turns)) return total;
+  for (const turn of source.turns) {
+    if (!turn || typeof turn !== "object") continue;
+    const rawFrame = (turn as { turnNumber?: unknown }).turnNumber;
+    if (typeof rawFrame !== "number" || !Number.isInteger(rawFrame) || rawFrame < 0) continue;
+    total = Math.max(total, rawFrame + 1);
+  }
+  return total;
+}
+
 import {
   analyzeAlternativeSpawnPositions,
   analyzeSpawnPositions,
@@ -256,10 +275,7 @@ export async function simulateReplay(
   // turn, so frame index equals the original turnNumber (not array position).
   // Do not spread a potentially huge turn array into Math.max: long replays
   // can exceed the engine's argument limit and allocate another large array.
-  const totalRecordedFrames = turns.reduce(
-    (maximum: number, turn: any) => Math.max(maximum, Number(turn?.turnNumber ?? -1) + 1),
-    Math.max(0, Number(record?.info?.num_turns ?? 0)),
-  );
+  const totalRecordedFrames = getTotalRecordedFrames(record);
   for (let frame = 0; frame < totalRecordedFrames; frame += cadence) sampleFrames.add(frame);
   if (selectedClientId) {
     turns.forEach((turn: any) => {

@@ -109,7 +109,7 @@ jobs:
     needs: prepare-release
     if: needs.prepare-release.outputs.skip != 'true'
     runs-on: ubuntu-latest
-    timeout-minutes: 90
+    timeout-minutes: 60
     steps:
       - name: Check out the release source
         uses: actions/checkout@v4

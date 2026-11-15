@@ -7,6 +7,9 @@ const appVersion = JSON.parse(readFileSync(new URL('./package.json', import.meta
 export default defineConfig({
   plugins: [react()],
   base: './',
-  define: { __APP_VERSION__: JSON.stringify(appVersion) },
+  define: {
+    __APP_VERSION__: JSON.stringify(appVersion),
+    __ANDROID_UPGRADE_TEST__: JSON.stringify(process.env.VITE_ANDROID_UPGRADE_TEST === '1'),
+  },
   server: { port: 5173, strictPort: true },
 });

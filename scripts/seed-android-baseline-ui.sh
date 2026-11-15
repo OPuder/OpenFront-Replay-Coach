@@ -17,9 +17,11 @@ dump_ui() {
 find_bounds() {
   local needle="$1"
   local mode="$2"
-  python3 - "$ui_xml" "$needle" "$mode" <<'PY'
+  local occurrence="${3:-1}"
+  python3 - "$ui_xml" "$needle" "$mode" "$occurrence" <<'PY'
 import sys, xml.etree.ElementTree as ET
-path, needle, mode = sys.argv[1:]
+path, needle, mode, occurrence = sys.argv[1:]
+occurrence = max(1, int(occurrence))
 root = ET.parse(path).getroot()
 matches = []
 for node in root.iter("node"):
@@ -38,19 +40,21 @@ for node in root.iter("node"):
     except Exception:
         continue
     area = (x2 - x1) * (y2 - y1)
-    matches.append((area, (x1+x2)//2, (y1+y2)//2, text))
+    matches.append((area, len(matches), (x1+x2)//2, (y1+y2)//2, text))
 if matches:
-    _, x, y, _ = min(matches)
+    matches.sort(key=lambda item: (item[0], item[1]))
+    _, _, x, y, _ = matches[min(occurrence - 1, len(matches) - 1)]
     print(f"{x} {y}")
 PY
 }
 
 tap_text() {
   local needle="$1"
+  local occurrence="${2:-1}"
   local coords=""
   for attempt in $(seq 1 20); do
     dump_ui || true
-    coords="$(find_bounds "$needle" text || true)"
+    coords="$(find_bounds "$needle" text "$occurrence" || true)"
     if [[ -n "$coords" ]]; then
       read -r x y <<< "$coords"
       adb -s emulator-5554 shell input tap "$x" "$y"
@@ -125,7 +129,7 @@ done
 [[ "$verified_count" =~ ^[0-9]+$ ]] && (( verified_count >= 1 )) || fail "No hash-verified replay analysis became visible in the real app UI."
 
 log "Opening a real match from the UI and saving its evidence-backed training goal."
-tap_text "Coach öffnen"
+tap_text "Coach öffnen" 2
 training_goal=false
 for attempt in $(seq 1 600); do
   dump_ui || true

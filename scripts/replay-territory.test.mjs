@@ -28,6 +28,7 @@ test("selects the latest actual snapshot at or before the requested replay time"
   ];
   assert.equal(selectTerritorySample(samples, 15)?.tick, 100);
   assert.equal(selectTerritorySample(samples, 0)?.tick, 0);
+  assert.equal(selectTerritorySample(samples, 5), null, "Do not leak a future snapshot into an earlier moment");
   assert.equal(selectTerritorySample(samples, 30)?.tick, 100);
 });
 

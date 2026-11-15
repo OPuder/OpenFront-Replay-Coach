@@ -82,34 +82,48 @@ assert.ok(androidUpdateRegression.includes('timeout 30s adb -s emulator-5554 she
 assert.match(androidUpdateRegression, /install_apk\(\)\s*\{|adb -s emulator-5554 install -r/);
 assert.match(androidUpdateRegression, /keep-this-data/);
 assert.match(androidUpdateRegression, /versionCode=\$expected_version_code/);
-assert.ok(androidUpdateRegression.includes('timeout 30s adb -s emulator-5554 shell monkey -p "$package_id" 1'));
+assert.match(androidUpdateRegression, /launch_app "\$package_id"/);
+assert.match(androidUpdateRegression, /am start -W -n/);
+assert.match(androidUpdateRegression, /dumpsys activity activities/);
+assert.match(androidUpdateRegression, /logcat -d -t 700/);
 // This smoke script launches with monkey; process survival is covered by the newer bounded emulator regression.
 
 
-assert.match(releaseWorkflow, /Verify published release contains exactly three usable artifacts/);
-assert.match(releaseWorkflow, /names\.length === 3/);
-assert.match(releaseWorkflow, /-Android\.apk/);
+assert.match(releaseWorkflow, /Download published release and verify every byte/);
+assert.match(releaseWorkflow, /verify-release-artifacts\.mjs verify/);
 
 const updateValidationWorkflow = read(".github/workflows/update-validation.yml");
-assert.match(updateValidationWorkflow, /Build higher-version APK before emulator startup[\s\S]*?assembleDebug[\s\S]*?Test in-place Android update and preserve app data/);
+assert.match(updateValidationWorkflow, /Recreate an unsigned Android project for isolated debug upgrade tests[\s\S]*?rm -rf android[\s\S]*?npx cap add android[\s\S]*?assembleDebug[\s\S]*?Test debug data preservation and real published-APK update/);
+assert.match(updateValidationWorkflow, /Preserve the permanently signed APK outside the generated Android project[\s\S]*?CURRENT_RELEASE_APK=/);
+assert.doesNotMatch(updateValidationWorkflow, /rm -f android\/app\/build\.gradle/);
+const androidWebViewStorageTest = read("scripts/android-webview-storage.mjs");
+assert.match(androidWebViewStorageTest, /openfront-replay-coach/);
+assert.match(androidWebViewStorageTest, /upgrade-regression-player/);
+assert.match(androidWebViewStorageTest, /replay-records/);
+assert.match(androidWebViewStorageTest, /analysisStatus !== "verified"/);
+assert.match(androidWebViewStorageTest, /openfront-coach-training-goal/);
+assert.match(androidWebViewStorageTest, /openfront-replay-coach\.phase-history\.v1/);
+assert.doesNotMatch(androidWebViewStorageTest, /ofrc:update-regression-settings/);
+assert.match(androidWebViewStorageTest, /gameId \+ ":7"/);
+assert.doesNotMatch(androidWebViewStorageTest, /`\$\{gameId\}:7`/);
 assert.match(androidUpdateRegression, /OPENFRONT_UPDATE_APK/);
 assert.doesNotMatch(androidUpdateRegression, /gradlew|assembleDebug/);
-assert.match(updateValidationWorkflow, /Test in-place Android update and preserve app data[\s\S]*?if: always\(\) && steps\.parse_apk\.outcome == 'success'/);
+assert.match(updateValidationWorkflow, /Test debug data preservation and real published-APK update[\s\S]*?if: steps\.parse_apk\.outcome == 'success'/);
 
 assert.ok(
-  updateValidationWorkflow.indexOf("Test in-place Android update and preserve app data") <
-    updateValidationWorkflow.indexOf("Verify permanent Android release signing key and continuity"),
-  "The debug emulator update test must run before the signing gate modifies generated Gradle configuration."
+  updateValidationWorkflow.indexOf("Verify permanent Android release signing key and continuity") <
+    updateValidationWorkflow.indexOf("Test debug data preservation and real published-APK update"),
+  "The permanent release APK and previous published APK must be prepared before the combined emulator test."
 );
 
-assert.ok(releaseWorkflow.includes("names.some(name => /(?:\\.Setup\\.| Setup )[0-9.]+\\.exe$/i.test(name))"), "Release verification must match both legacy dotted and actual spaced NSIS installer filenames.");
+assert.match(read("scripts/verify-release-artifacts.mjs"), /OpenFront Replay Coach Setup/);
 assert.ok(updater.includes(String.raw`/(?:\.Setup\.| Setup )[\d.]+\.exe$/i`), "The main-process updater must recognize the current and legacy installer names.");
 assert.ok(renderer.includes(String.raw`/(?:\.Setup\.| Setup )[\d.]+\.exe$/i`), "The Update Center must recognize the current and legacy installer names.");
 const installerAssetMatcher = /(?:\.Setup\.| Setup )[\d.]+\.exe$/i;
 assert.match("OpenFront Replay Coach Setup 2.2.45.exe", installerAssetMatcher, "The current electron-builder NSIS filename must be detected.");
 assert.match("OpenFront.Replay.Coach.Setup.2.2.44.exe", installerAssetMatcher, "Legacy published installer filenames must remain supported.");
-assert.ok(releaseWorkflow.includes("names.some(name => /-win\\.zip$/i.test(name))"), "Release verification must match the actual Windows portable ZIP filename.");
-assert.ok(releaseWorkflow.includes("names.some(name => /-Android\\.apk$/i.test(name))"), "Release verification must match the actual Android APK filename.");
+assert.match(read("scripts/verify-release-artifacts.mjs"), /OpenFront Replay Coach-.*-win\.zip/);
+assert.match(read("scripts/verify-release-artifacts.mjs"), /OpenFront-Replay-Coach-.*-Android\.apk/);
 
 
 const matchStore = read("src/renderer/matchStore.ts");
@@ -158,7 +172,7 @@ assert.ok(releaseUpgradeScript.includes("FATAL EXCEPTION"));
 assert.ok(releaseUpgradeScript.includes("sleep 300"));
 assert.ok(releaseUpgradeScript.includes("five-minute idle soak"));
 const androidValidationWorkflow = read(".github/workflows/update-validation.yml");
-assert.ok(androidValidationWorkflow.includes("bash -n scripts/test-android-release-upgrade.sh"));
+assert.match(androidValidationWorkflow, /bash -n scripts\/test-android-release-upgrade\.sh[\s\S]*?bash -n scripts\/test-android-in-place-update\.sh[\s\S]*?bash -n scripts\/verify-android-release-signing\.sh/);
 
 
 const engineCacheWorkflows = [
@@ -171,3 +185,107 @@ const engineCacheWorkflows = [
 for (const workflow of engineCacheWorkflows) {
   assert.match(workflow, /Restore exact historical engine Git objects[\s\S]*?actions\/cache@v4[\s\S]*?path: \.git\/modules[\s\S]*?github\.job/);
 }
+
+
+const releaseSource = read(".github/workflows/release-on-main.yml");
+assert.match(releaseSource, /persist-credentials: false/);
+assert.doesNotMatch(releaseSource, /git push origin HEAD:main/, "The release workflow must not push generated version commits directly to main.");
+assert.ok(releaseSource.includes("Release version drift detected") && releaseSource.includes("reviewed pull request"));
+assert.ok(releaseSource.includes("SHA256SUMS.txt"));
+assert.ok(releaseSource.includes("release-manifest.json"));
+assert.ok(releaseSource.includes("verify-release-artifacts.mjs generate"));
+assert.ok(releaseSource.includes("verify-release-artifacts.mjs verify"));
+assert.match(read("scripts/verify-release-artifacts.mjs"), /SHA256SUMS\.txt/);
+assert.match(read("scripts/verify-release-artifacts.mjs"), /release-manifest\.json/);
+
+
+const artifactVerifier = read("scripts/verify-release-artifacts.mjs");
+const artifactVerifierTests = read("scripts/verify-release-artifacts.test.mjs");
+const windowsDistributionVerifier = read("scripts/verify-windows-distributions.mjs");
+assert.match(artifactVerifier, /SHA256SUMS\.txt/);
+assert.match(artifactVerifier, /release-manifest\.json/);
+assert.match(artifactVerifier, /exactly the three correctly named distributables/);
+assert.match(artifactVerifier, /Manifest SHA-256 mismatch/);
+assert.match(artifactVerifier, /Manifest byte size mismatch/);
+assert.match(artifactVerifier, /Release directory contains missing, unexpected or incorrectly named files/);
+assert.match(artifactVerifierTests, /rejects unexpected additional files/);
+assert.match(artifactVerifierTests, /rejects malformed package names/);
+assert.match(artifactVerifierTests, /modified package after metadata generation/);
+assert.match(windowsDistributionVerifier, /NSIS_INSTALL_ATTEMPT_START/);
+assert.match(windowsDistributionVerifier, /Extracting the independent portable ZIP/);
+assert.match(windowsDistributionVerifier, /installed NSIS/);
+assert.match(windowsDistributionVerifier, /portable ZIP/);
+assert.match(windowsDistributionVerifier, /resources.*app\.asar/);
+
+const androidReleaseUpgrade = read("scripts/test-android-in-place-update.sh");
+assert.match(androidReleaseUpgrade, /keep-this-data/);
+assert.match(androidReleaseUpgrade, /PREVIOUS_PUBLISHED_APK/);
+assert.match(androidReleaseUpgrade, /CURRENT_RELEASE_APK/);
+assert.match(androidReleaseUpgrade, /Published APK and current release APK do not have the same signing certificate/);
+assert.match(androidReleaseUpgrade, /install --no-streaming -r "\$current_release_apk"/);
+assert.match(androidReleaseUpgrade, /copy_webview_storage "\$seed_package_id" "\$package_id"/);
+assert.match(androidReleaseUpgrade, /copy_webview_storage "\$package_id" "\$seed_package_id"/);
+assert.match(androidReleaseUpgrade, /Production update did not preserve IndexedDB/);
+assert.match(androidReleaseUpgrade, /INSTALL_FAILED_UPDATE_INCOMPATIBLE/);
+assert.match(androidReleaseUpgrade, /incompatible-signature-test\.jks/);
+assert.match(androidReleaseUpgrade, /Android rejected the incompatible APK for an unexpected reason/);
+assert.match(androidReleaseUpgrade, /PREVIOUS_RELEASE_TAG/);
+assert.match(androidReleaseUpgrade, /previous_release_name/);
+const signingScript = read("scripts/verify-android-release-signing.sh");
+assert.match(signingScript, /Expected exactly one Android APK in previous release/);
+assert.match(signingScript, /PREVIOUS_PUBLISHED_APK=/);
+assert.match(signingScript, /expected_previous_apk/);
+assert.match(signingScript, /sha256sum "\$previous_apk"/);
+assert.match(signingScript, /CURRENT_RELEASE_APK=/);
+
+const validationWorkflow = read(".github/workflows/update-validation.yml");
+assert.match(validationWorkflow, /release-artifact-download-audit/);
+assert.match(validationWorkflow, /actions\/download-artifact@v4/);
+assert.match(validationWorkflow, /verify-release-artifacts\.mjs generate/);
+assert.match(validationWorkflow, /Download the audited bundle again/);
+assert.match(validationWorkflow, /Re-verify downloaded manifest and checksums/);
+assert.match(validationWorkflow, /verify-windows-distributions\.mjs/);
+assert.match(validationWorkflow, /Test debug data preservation and real published-APK update/);
+assert.match(validationWorkflow, /verify-android-release-signing\.sh/);
+const windowsWorkflow = read(".github/workflows/build-windows.yml");
+assert.match(windowsWorkflow, /verify-windows-distributions\.mjs/);
+const releaseWorkflowUpdated = read(".github/workflows/release-on-main.yml");
+assert.match(releaseWorkflowUpdated, /Download published release and verify every byte/);
+assert.match(releaseWorkflowUpdated, /verify-release-artifacts\.mjs verify/);
+
+const androidVersionScript = read("scripts/set-android-version.mjs");
+const androidVersionTests = read("scripts/set-android-version.test.mjs");
+assert.match(androidVersionScript, /Rewrite only the app version fields/);
+assert.match(androidVersionScript, /versionCode/);
+assert.match(androidVersionTests, /preserves compileSdk and permanent signing configuration/);
+assert.match(androidVersionTests, /signingConfig signingConfigs\\.release/);
+
+const windowsInPlace = read("scripts/verify-windows-in-place-updates.mjs");
+const windowsStorage = read("scripts/windows-webview-storage.mjs");
+assert.match(windowsInPlace, /OpenFront\.Replay\.Coach\.Setup\.2\.2\.51\.exe/);
+assert.match(windowsInPlace, /OpenFront\.Replay\.Coach-2\.2\.51-win\.zip/);
+assert.match(windowsInPlace, /WINDOWS_IN_PLACE_UPGRADE_OK/);
+assert.match(windowsInPlace, /--user-data-dir=/);
+assert.match(windowsStorage, /openfront-replay-coach/);
+assert.match(windowsStorage, /replay-records/);
+assert.match(windowsStorage, /upgrade-regression-analysis/);
+assert.match(windowsStorage, /last-player-id/);
+assert.match(windowsStorage, /openfront-coach-training-goal/);
+assert.match(windowsStorage, /openfront-replay-coach\.phase-history\.v1/);
+assert.doesNotMatch(windowsStorage, /ofrc:update-regression-settings/);
+assert.match(windowsInPlace, /writeFileSync/);
+
+
+assert.match(windowsDistributionVerifier, /signature\.equals\(Buffer\.from\(\[0x50, 0x45, 0x00, 0x00\]\)\)/);
+assert.match(windowsDistributionVerifier, /OFRC_INSTALLER_ATTEMPTS/);
+assert.match(windowsDistributionVerifier, /NSIS_INSTALL_ATTEMPT_START/);
+assert.match(windowsDistributionVerifier, /NSIS_INSTALL_ATTEMPT_FAILED/);
+assert.match(windowsDistributionVerifier, /NSIS_INSTALL_ATTEMPT_OK/);
+assert.match(windowsDistributionVerifier, /successfulInstallerAttempts: installerAttempts/);
+assert.match(windowsDistributionVerifier, /no installer or portable failure was ignored/);
+
+assert.match(windowsDistributionVerifier, /Unsupported NSIS bootstrapper architecture/);
+assert.match(windowsDistributionVerifier, /const installedPe = inspectPe\(installedExe\)/);
+assert.match(windowsDistributionVerifier, /installedPe\.architecture !== "x64"/);
+assert.match(windowsDistributionVerifier, /const portablePe = inspectPe\(portableExe\)/);
+assert.match(windowsDistributionVerifier, /portablePe\.architecture !== "x64"/);

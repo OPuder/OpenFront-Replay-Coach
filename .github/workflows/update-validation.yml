@@ -9,9 +9,6 @@ on:
 permissions:
   contents: read
 
-concurrency:
-  group: update-validation-${{ github.ref }}
-  cancel-in-progress: true
 
 jobs:
   updater-contract-and-build:
@@ -45,8 +42,8 @@ jobs:
       - name: Install Coach dependencies once
         run: npm ci
 
-      - name: Verify updater contract tests
-        run: node --test scripts/updater-contract.test.mjs
+      - name: Verify updater contract tests and syntax
+        run: node --check scripts/verify-windows-in-place-updates.mjs && node --check scripts/windows-webview-storage.mjs && node --test scripts/updater-contract.test.mjs && node --import ./vendor/OpenFrontIO/node_modules/tsx/dist/loader.mjs --test scripts/update-preferences.test.mjs
 
       - name: Run full coaching and replay regression suite
         run: npm run test:coach
@@ -57,41 +54,63 @@ jobs:
       - name: Package Windows installer and portable edition
         run: npx electron-builder --win nsis zip --publish never
 
-      - name: Verify Windows release packages
+      - name: Stage only the installer and portable distributables
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
-          $installer = Get-ChildItem release -Filter '*.exe' -File | Select-Object -First 1
-          $portable = Get-ChildItem release -Filter '*.zip' -File | Select-Object -First 1
-          if (-not $installer -or $installer.Length -lt 1MB) { throw 'Windows installer missing or implausibly small.' }
-          if (-not $portable -or $portable.Length -lt 1MB) { throw 'Windows portable ZIP missing or implausibly small.' }
-          $archive = Join-Path $env:TEMP 'ofrc-portable-validation'
-          Expand-Archive -LiteralPath $portable.FullName -DestinationPath $archive -Force
-          $appAsar = Get-ChildItem $archive -Filter 'app.asar' -File -Recurse | Select-Object -First 1
-          if (-not $appAsar -or $appAsar.Length -lt 1KB) { throw 'Portable ZIP does not contain a valid packaged app.asar.' }
-          Write-Host "Installer: $($installer.Name) ($($installer.Length) bytes)"
-          Write-Host "Portable: $($portable.Name) ($($portable.Length) bytes)"
-          Write-Host "Packaged app.asar: $($appAsar.Length) bytes"
+          $installers = @(Get-ChildItem release -File -Filter '*.exe')
+          $portable = @(Get-ChildItem release -File -Filter '*.zip')
+          if ($installers.Count -ne 1 -or $portable.Count -ne 1) { throw "Expected exactly one installer and one portable ZIP; found $($installers.Count) EXE and $($portable.Count) ZIP." }
+          $staging = Join-Path (Resolve-Path release).Path 'packages'
+          if (Test-Path $staging) { Remove-Item $staging -Recurse -Force }
+          New-Item -ItemType Directory -Path $staging | Out-Null
+          Copy-Item $installers[0].FullName $staging
+          Copy-Item $portable[0].FullName $staging
 
-      - name: Launch packaged Windows app and verify renderer
-        run: node scripts/smoke-test-windows.mjs
+      - name: Install and smoke-test Windows installer and portable edition
+        timeout-minutes: 30
+        env:
+          OFRC_IDLE_SOAK_MS: "300000"
+          RELEASE_DIR: release/packages
+        run: node scripts/verify-windows-distributions.mjs
+
+      - name: Download actual published Windows v2.2.51 packages
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $previous = Join-Path $env:RUNNER_TEMP 'previous-windows-release'
+          New-Item -ItemType Directory -Path $previous -Force | Out-Null
+          gh release download v2.2.51 --repo $env:GITHUB_REPOSITORY --pattern 'OpenFront.Replay.Coach.Setup.2.2.51.exe' --pattern 'OpenFront.Replay.Coach-2.2.51-win.zip' --dir $previous
+          if (-not (Test-Path (Join-Path $previous 'OpenFront.Replay.Coach.Setup.2.2.51.exe'))) { throw 'Published v2.2.51 installer missing.' }
+          if (-not (Test-Path (Join-Path $previous 'OpenFront.Replay.Coach-2.2.51-win.zip'))) { throw 'Published v2.2.51 portable ZIP missing.' }
+
+      - name: Test Windows in-place upgrades and user data retention
+        timeout-minutes: 25
+        env:
+          PREVIOUS_RELEASE_DIR: ${{ runner.temp }}\previous-windows-release
+          CURRENT_RELEASE_DIR: release/packages
+        run: node scripts/verify-windows-in-place-updates.mjs
 
       - name: Upload verified Windows packages
         uses: actions/upload-artifact@v4
         with:
           name: updater-validation-windows
           path: |
-            release/*.exe
-            release/*.zip
+            release/packages/*.exe
+            release/packages/*.zip
           if-no-files-found: error
           retention-days: 7
 
   android-apk-validation:
     name: Android APK parse, identity, version and signature validation
+    outputs:
+      release_apk_ready: ${{ steps.release_apk.outputs.ready }}
     # Keep emulator integration tests on the stable LTS runner; ubuntu-latest
     # moved to 26.04 and the Android 34 emulator repeatedly went offline there.
     runs-on: ubuntu-22.04
-    timeout-minutes: 45
+    timeout-minutes: 90
     steps:
       - name: Check out source
         uses: actions/checkout@v4
@@ -122,8 +141,15 @@ jobs:
       - name: Verify updater contract tests
         run: node --test scripts/updater-contract.test.mjs
 
-      - name: Validate signed Android release-upgrade script syntax
-        run: bash -n scripts/test-android-release-upgrade.sh
+      - name: Validate Android upgrade and signing shell scripts
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          bash -n scripts/test-android-release-upgrade.sh
+          bash -n scripts/test-android-in-place-update.sh
+          bash -n scripts/build-android-seed-apk.sh
+          bash -n scripts/verify-android-release-signing.sh
+          node --test scripts/set-android-version.test.mjs
 
       - name: Set up Java
         uses: actions/setup-java@v4
@@ -146,7 +172,11 @@ jobs:
           node scripts/install-android-updater-plugin.mjs
 
       - name: Set Android version from package.json
-        run: node scripts/set-android-version.mjs "$(node -p 'require("./package.json").version')"
+        shell: bash
+        run: |
+          version="$(node -p 'require("./package.json").version')"
+          node scripts/set-android-version.mjs "$version"
+          echo "RELEASE_VERSION=$version" >> "$GITHUB_ENV"
 
       - name: Build debug APK for package validation
         run: |
@@ -167,41 +197,6 @@ jobs:
           grep -F "versionName='"$(node -p "require('./package.json').version")"'" /tmp/apk-badging.txt
           sha256sum "$APK"
 
-      - name: Build higher-version APK before emulator startup
-        shell: bash
-        run: |
-          set -euo pipefail
-          apk="android/app/build/outputs/apk/debug/app-debug.apk"
-          baseline="$RUNNER_TEMP/openfront-coach-before-update.apk"
-          updated="$RUNNER_TEMP/openfront-coach-update.apk"
-          test -s "$apk"
-          cp "$apk" "$baseline"
-          current_version="$(node -p "require('./package.json').version")"
-          IFS='.' read -r major minor patch <<< "$current_version"
-          next_version="$major.$minor.$((patch + 1))"
-          node scripts/set-android-version.mjs "$next_version"
-          (cd android && timeout 600s ./gradlew --no-daemon assembleDebug)
-          test -s "$apk"
-          cp "$apk" "$updated"
-          cp "$baseline" "$apk"
-          test -s "$updated"
-          echo "OPENFRONT_UPDATE_APK=$updated" >> "$GITHUB_ENV"
-
-      - name: Test in-place Android update and preserve app data
-        if: always() && steps.parse_apk.outcome == 'success'
-        timeout-minutes: 35
-        uses: reactivecircus/android-emulator-runner@v2
-        with:
-          api-level: 34
-          target: google_apis
-          arch: x86_64
-          profile: pixel_2
-          cores: 4
-          emulator-boot-timeout: 1800
-          emulator-options: -no-window -no-audio -no-boot-anim -no-snapshot -no-metrics -gpu swiftshader_indirect -memory 4096 -partition-size 4096
-          disable-animations: true
-          script: bash scripts/test-android-in-place-update.sh
-
       - name: Verify permanent Android release signing key and continuity
         if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
         env:
@@ -212,10 +207,135 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: bash scripts/verify-android-release-signing.sh
 
-      - name: Upload validated APK
+      - name: Preserve the permanently signed APK outside the generated Android project
+        id: release_apk
+        if: steps.parse_apk.outcome == 'success'
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          signed_apk="$RUNNER_TEMP/openfront-coach-permanent-key-release.apk"
+          test -s android/app/build/outputs/apk/release/app-release.apk
+          cp android/app/build/outputs/apk/release/app-release.apk "$signed_apk"
+          echo "CURRENT_RELEASE_APK=$signed_apk" >> "$GITHUB_ENV"
+          echo "ready=true" >> "$GITHUB_OUTPUT"
+          version="$(node -p "require('./package.json').version")"
+          mkdir -p release
+          cp "$signed_apk" "release/OpenFront-Replay-Coach-$version-Android.apk"
+          test -s "release/OpenFront-Replay-Coach-$version-Android.apk"
+
+      - name: Upload signed APK before emulator regression
+        if: steps.release_apk.outputs.ready == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: updater-validation-android
-          path: android/app/build/outputs/apk/debug/app-debug.apk
+          path: release/*-Android.apk
           if-no-files-found: error
           retention-days: 7
+
+
+      - name: Recreate an unsigned Android project for isolated debug upgrade tests
+        if: steps.parse_apk.outcome == 'success'
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          apk="android/app/build/outputs/apk/debug/app-debug.apk"
+          baseline="$RUNNER_TEMP/openfront-coach-before-update.apk"
+          updated="$RUNNER_TEMP/openfront-coach-update.apk"
+          test -s "$apk"
+          cp "$apk" "$baseline"
+          # Never edit or strip the release signing configuration. Discard the
+          # generated project and create a fresh, default unsigned debug project.
+          rm -rf android
+          npx cap add android
+          npx cap sync android
+          node scripts/install-android-updater-plugin.mjs
+          current_version="$(node -p "require('./package.json').version")"
+          IFS='.' read -r major minor patch <<< "$current_version"
+          next_version="$major.$minor.$((patch + 1))"
+          node scripts/set-android-version.mjs "$next_version"
+          (cd android && timeout 600s ./gradlew --no-daemon assembleDebug)
+          test -s "$apk"
+          cp "$apk" "$updated"
+          cp "$baseline" "$apk"
+          test -s "$updated"
+          seed="$RUNNER_TEMP/openfront-coach-seed.apk"
+          bash scripts/build-android-seed-apk.sh "$seed" "$baseline"
+          echo "OPENFRONT_UPDATE_APK=$updated" >> "$GITHUB_ENV"
+          echo "OPENFRONT_SEED_APK=$seed" >> "$GITHUB_ENV"
+
+      - name: Test debug data preservation and real published-APK update
+        if: steps.parse_apk.outcome == 'success'
+        timeout-minutes: 60
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          target: google_apis
+          arch: x86_64
+          profile: pixel_2
+          cores: 2
+          emulator-boot-timeout: 1800
+          emulator-options: -no-window -no-audio -no-boot-anim -no-metrics -gpu swiftshader -memory 3072 -partition-size 4096
+          disable-animations: true
+          script: bash scripts/test-android-in-place-update.sh
+
+  release-artifact-download-audit:
+    name: Download and verify release manifest and SHA-256 files
+    needs: [updater-contract-and-build, android-apk-validation]
+    if: always() && needs.updater-contract-and-build.result == 'success' && needs.android-apk-validation.outputs.release_apk_ready == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Check out verifier
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24.15.0"
+
+      - name: Download Windows installer and portable ZIP artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: updater-validation-windows
+          path: release
+
+      - name: Download permanently signed Android APK artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: updater-validation-android
+          path: release
+
+      - name: Generate and verify manifest/checksums from downloaded artifacts
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          export RELEASE_VERSION="$(node -p "require('./package.json').version")"
+          export RELEASE_DIR=release
+          node scripts/verify-release-artifacts.mjs generate
+
+      - name: Upload audited release bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-integrity-audit
+          path: |
+            release/*.exe
+            release/*.zip
+            release/*-Android.apk
+            release/SHA256SUMS.txt
+            release/release-manifest.json
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Download the audited bundle again
+        uses: actions/download-artifact@v4
+        with:
+          name: release-integrity-audit
+          path: release-roundtrip
+
+      - name: Re-verify downloaded manifest and checksums
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          export RELEASE_VERSION="$(node -p "require('./package.json').version")"
+          export RELEASE_DIR=release-roundtrip
+          node scripts/verify-release-artifacts.mjs verify

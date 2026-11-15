@@ -3,7 +3,7 @@ import path from "node:path";
 import fs from "node:fs";
 import { setTimeout as delay } from "node:timers/promises";
 
-const executable = path.resolve("release/win-unpacked/OpenFront Replay Coach.exe");
+const executable = path.resolve(process.argv[2] ?? "release/win-unpacked/OpenFront Replay Coach.exe");
 const port = 9222;
 if (!fs.existsSync(executable)) {
   throw new Error("Packaged Windows executable is missing: " + executable);
@@ -144,7 +144,7 @@ try {
   if (!/OpenFront Replay Coach/i.test(state.title)) {
     throw new Error("Unerwarteter Fenstertitel: " + state.title);
   }
-  const idleSoakMs = 5 * 60 * 1000;
+  const idleSoakMs = Number(process.env.OFRC_IDLE_SOAK_MS ?? 5 * 60 * 1000);
   const idleDeadline = Date.now() + idleSoakMs;
   let idleState = state;
   while (Date.now() < idleDeadline) {

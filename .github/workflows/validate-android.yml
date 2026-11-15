@@ -10,9 +10,6 @@ on:
 permissions:
   contents: read
 
-concurrency:
-  group: openfront-replay-coach-android-${{ github.ref }}
-  cancel-in-progress: true
 
 jobs:
   build-android:

@@ -87,7 +87,7 @@ assert.ok(androidUpdateRegression.includes('timeout 30s adb -s emulator-5554 she
 
 
 assert.match(releaseWorkflow, /Verify published release contains exactly three usable artifacts/);
-assert.match(releaseWorkflow, /names\.length === 3/);
+assert.match(releaseWorkflow, /distributables\.length === 3/);
 assert.match(releaseWorkflow, /-Android\.apk/);
 
 const updateValidationWorkflow = read(".github/workflows/update-validation.yml");

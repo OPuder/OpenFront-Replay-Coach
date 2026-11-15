@@ -66,6 +66,7 @@ timeout 120s adb -s emulator-5554 install "$before_apk" || fail "Could not insta
 timeout 30s adb -s emulator-5554 shell "run-as $package_id sh -c 'mkdir -p files/update-regression && printf keep-this-data > files/update-regression/sentinel.txt'" || fail "Could not create app-data sentinel."
 launch_app "$package_id"
 node scripts/android-webview-storage.mjs seed || fail "Could not seed real WebView profile, replay, analysis and settings records."
+node scripts/android-webview-storage.mjs verify || fail "Seeded debug profile/replay/analysis/settings data could not be read before update."
 
 current_version="$(node -p "require('./package.json').version")"
 IFS='.' read -r major minor patch <<< "$current_version"
@@ -81,7 +82,7 @@ expected_version_code="$((major * 1000000 + minor * 1000 + patch + 1))"
 installed_package="$(timeout 30s adb -s emulator-5554 shell dumpsys package "$package_id")" || fail "Could not inspect installed package metadata."
 grep -F "versionCode=$expected_version_code" <<< "$installed_package" >/dev/null || fail "Installed package does not have expected versionCode $expected_version_code."
 log "Launching upgraded application."
-timeout 30s adb -s emulator-5554 shell monkey -p "$package_id" 1 >/dev/null || fail "Upgraded application could not be launched."
+launch_app "$package_id"
 log "PASS: $current_version -> $next_version; package identity, signature, versionCode and app data preserved."
 
 log "PASS: debug APK update preserved private app data and advanced the installed version."

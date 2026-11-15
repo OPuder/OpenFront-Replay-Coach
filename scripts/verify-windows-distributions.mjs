@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
 import { spawnSync } from "node:child_process";
 import { existsSync, lstatSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync } from "node:fs";
 import os from "node:os";
@@ -33,10 +34,50 @@ rmSync(portableDir, { recursive: true, force: true });
 mkdirSync(installDir, { recursive: true });
 mkdirSync(portableDir, { recursive: true });
 
+const installerBytes = readFileSync(installer);
+const peOffset = installerBytes.readUInt32LE(0x3c);
+assert.equal(installerBytes.toString("ascii", peOffset, peOffset + 4), "PE\\0\\0", "Installer has no valid PE header.");
+const machine = installerBytes.readUInt16LE(peOffset + 4);
+const architecture = ({ 0x014c: "x86", 0x8664: "x64", 0xaa64: "arm64" })[machine] ?? `unknown (0x${machine.toString(16)})`;
+const installerSha256 = createHash("sha256").update(installerBytes).digest("hex");
+console.log(JSON.stringify({
+  installer: {
+    path: installer, bytes: installerBytes.length, sha256: installerSha256,
+    peArchitecture: architecture, peMachine: `0x${machine.toString(16).padStart(4, "0")}`,
+    runnerArchitecture: process.arch, runnerPlatform: process.platform,
+  },
+  invocation: { executable: installer, arguments: ["/S", `/D=${installDir}`], cwd: root, timeoutMs: 180_000 },
+}, null, 2));
+
+const dumpDir = path.join(temp, "ofrc-nsis-crash-dumps");
+mkdirSync(dumpDir, { recursive: true });
+const werKey = "HKCU\\Software\\Microsoft\\Windows\\Windows Error Reporting\\LocalDumps\\OpenFront Replay Coach Setup 2.2.52.exe";
+const werSetup = spawnSync("reg.exe", ["add", werKey, "/v", "DumpFolder", "/t", "REG_EXPAND_SZ", "/d", dumpDir, "/f"], { encoding: "utf8", windowsHide: true });
+if (werSetup.status === 0) {
+  spawnSync("reg.exe", ["add", werKey, "/v", "DumpType", "/t", "REG_DWORD", "/d", "2", "/f"], { encoding: "utf8", windowsHide: true });
+  spawnSync("reg.exe", ["add", werKey, "/v", "DumpCount", "/t", "REG_DWORD", "/d", "5", "/f"], { encoding: "utf8", windowsHide: true });
+}
+const crashWindowStart = new Date(Date.now() - 30_000).toISOString();
 console.log("Installing the NSIS distribution silently into an isolated directory.");
 const install = spawnSync(installer, ["/S", `/D=${installDir}`], { encoding: "utf8", windowsHide: true, timeout: 180_000 });
 if (install.error || install.status !== 0) {
-  throw new Error(`NSIS installer failed (status ${install.status}): ${install.error ?? install.stderr ?? install.stdout}`);
+  const exitCode = install.status == null ? null : install.status >>> 0;
+  const exitHex = exitCode == null ? null : `0x${exitCode.toString(16).padStart(8, "0").toUpperCase()}`;
+  const metadata = spawnSync("powershell.exe", ["-NoProfile", "-NonInteractive", "-Command",
+    "$p=$env:OFRC_INSTALLER; $i=Get-Item -LiteralPath $p; $s=Get-AuthenticodeSignature -LiteralPath $p; [pscustomobject]@{FullName=$i.FullName;Length=$i.Length;FileVersion=$i.VersionInfo.FileVersion;ProductVersion=$i.VersionInfo.ProductVersion;CompanyName=$i.VersionInfo.CompanyName;SignatureStatus=[string]$s.Status;Signer=$s.SignerCertificate.Subject;LastWriteTimeUtc=$i.LastWriteTimeUtc} | ConvertTo-Json -Compress"
+  ], { encoding: "utf8", windowsHide: true, env: { ...process.env, OFRC_INSTALLER: installer } });
+  const events = spawnSync("powershell.exe", ["-NoProfile", "-NonInteractive", "-Command",
+    "$since=[datetime]::Parse($env:OFRC_CRASH_WINDOW); Get-WinEvent -FilterHashtable @{LogName='Application';StartTime=$since} -ErrorAction SilentlyContinue | Where-Object {$_.Id -in 1000,1001,1026 -or $_.Message -match 'NSIS|OpenFront Replay Coach Setup'} | Select-Object -First 20 TimeCreated,Id,ProviderName,LevelDisplayName,Message | ConvertTo-Json -Depth 4 -Compress"
+  ], { encoding: "utf8", windowsHide: true, env: { ...process.env, OFRC_CRASH_WINDOW: crashWindowStart } });
+  const dumps = readdirSync(dumpDir).map(name => ({ name, bytes: statSync(path.join(dumpDir, name)).size }));
+  console.error(JSON.stringify({
+    installerFailure: { status: install.status, exitCode, exitHex, signal: install.signal, error: install.error?.message, stdout: install.stdout, stderr: install.stderr },
+    installerMetadata: metadata.stdout?.trim(), metadataError: metadata.stderr?.trim(),
+    applicationCrashEvents: events.stdout?.trim(), eventQueryError: events.stderr?.trim(),
+    werDumpDirectory: dumpDir, werDumps: dumps,
+    werRegistrySetupExitCode: werSetup.status, werRegistrySetupError: werSetup.stderr?.trim(),
+  }, null, 2));
+  throw new Error(`NSIS installer failed (status ${install.status}, ${exitHex ?? "no exit code"}); see PE metadata, Windows Application crash events and WER dump diagnostics above.`);
 }
 const installedExe = path.join(installDir, "OpenFront Replay Coach.exe");
 const installedAsar = path.join(installDir, "resources", "app.asar");

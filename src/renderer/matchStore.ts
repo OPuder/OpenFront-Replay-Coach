@@ -18,10 +18,11 @@ type StoredMatch = StoredMatchEntry & {
 };
 
 const DB_NAME = "openfront-replay-coach";
-const DB_VERSION = 2;
+const DB_VERSION = 3;
 const MATCH_STORE = "matches";
 const PROFILE_STORE = "profiles";
 const REPLAY_STORE = "replay-records";
+const MATCH_PLAYER_INDEX = "by-player-id";
 
 function openStore(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
@@ -36,6 +37,12 @@ function openStore(): Promise<IDBDatabase> {
       if (!db.objectStoreNames.contains(MATCH_STORE)) db.createObjectStore(MATCH_STORE, { keyPath: ["playerId", "game.gameId"] });
       if (!db.objectStoreNames.contains(PROFILE_STORE)) db.createObjectStore(PROFILE_STORE, { keyPath: "playerId" });
       if (!db.objectStoreNames.contains(REPLAY_STORE)) db.createObjectStore(REPLAY_STORE, { keyPath: ["playerId", "gameId"] });
+
+      // Query a single player's library without loading every other profile's matches.
+      const matches = transaction?.objectStore(MATCH_STORE);
+      if (matches && !matches.indexNames.contains(MATCH_PLAYER_INDEX)) {
+        matches.createIndex(MATCH_PLAYER_INDEX, "playerId", { unique: false });
+      }
 
       // Move large raw replay payloads out of the eagerly loaded match index.
       // Keep existing users' data intact during the v1 -> v2 upgrade.
@@ -118,10 +125,20 @@ export async function saveImportedMatch(playerId: string, item: StoredMatchEntry
 }
 
 export async function loadImportedMatches(playerId: string): Promise<StoredMatchEntry[]> {
-  const matches = await readAll<StoredMatch>(MATCH_STORE);
-  return matches.filter(item => item.playerId === playerId)
-    .sort((a,b) => b.updatedAt - a.updatedAt)
-    .map(({game,result,status,error,simulation,analysisStatus,analysisError}) => ({game,result,status,error,simulation,analysisStatus,analysisError}));
+  const db = await openStore();
+  const matches = await new Promise<StoredMatch[]>((resolve, reject) => {
+    const tx = db.transaction(MATCH_STORE, "readonly");
+    const request = tx.objectStore(MATCH_STORE).index(MATCH_PLAYER_INDEX).getAll(playerId);
+    request.onsuccess = () => resolve(request.result as StoredMatch[]);
+    request.onerror = () => reject(request.error ?? new Error("Partien des Spielerprofils konnten nicht gelesen werden."));
+    tx.onabort = () => reject(tx.error ?? new Error("Laden der Spielerpartien wurde abgebrochen."));
+  });
+  db.close();
+  return matches
+    .sort((a, b) => b.updatedAt - a.updatedAt)
+    .map(({ game, result, status, error, simulation, analysisStatus, analysisError }) => ({
+      game, result, status, error, simulation, analysisStatus, analysisError,
+    }));
 }
 
 /** Hydrate only the one large replay payload currently being analyzed or opened. */

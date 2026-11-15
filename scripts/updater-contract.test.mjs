@@ -118,5 +118,5 @@ const engineCacheWorkflows = [
   read(".github/workflows/release-on-main.yml"),
 ];
 for (const workflow of engineCacheWorkflows) {
-  assert.match(workflow, /Restore exact historical engine Git objects[\\s\\S]*?actions\\/cache@v4[\\s\\S]*?path: \.git\\/modules[\\s\\S]*?github\.job/);
+  assert.match(workflow, /Restore exact historical engine Git objects[\s\S]*?actions\/cache@v4[\s\S]*?path: \.git\/modules[\s\S]*?github\.job/);
 }

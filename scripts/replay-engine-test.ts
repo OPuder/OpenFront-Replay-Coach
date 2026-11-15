@@ -391,7 +391,9 @@ window.__runBatchReplayTest = async (gameIds) => {
   } as any);
   const coachingResults = [...coaching.entries()].map(([gameId, value]) => ({ gameId, ...value }));
   const longitudinal = buildLongitudinalCoachReport(coachingResults.map(item => item.longitudinalInput));
-  return { summary, outcomes: [...outcomes.values()], coaching: coachingResults, longitudinal };
+  // Keep the full simulation in the renderer for longitudinal analysis, but do not serialize it a second time across Electron's test bridge.
+  const coachingForAssertion = coachingResults.map(({ longitudinalInput: _longitudinalInput, ...report }) => report);
+  return { summary, outcomes: [...outcomes.values()], coaching: coachingForAssertion, longitudinal };
 };
 
 window.__verifyPersistedProfileTest = async () => {

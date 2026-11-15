@@ -145,7 +145,22 @@ async function main() {
     assert.ok(report.sampleCount > 0);
     assert.equal(report.proReport.phases.length, 3);
     assert.ok(report.proReport.dataCoverage.samples > 0);
+    assert.ok(report.proReport.findings.length > 0,
+      `${gameId} must produce evidence-backed findings from its real simulation`);
+    for (const finding of report.proReport.findings) {
+      assert.ok(finding.decision?.trim());
+      assert.ok(finding.consequence?.trim());
+      assert.ok(finding.alternative?.trim());
+      assert.ok(finding.trainingRule?.trim());
+      assert.ok(finding.evidence?.trim());
+      assert.ok(finding.seconds === null || (Number.isFinite(finding.seconds) && finding.seconds >= 0));
+    }
     assert.ok(report.engineInsights.length > 0);
+    for (const insight of report.engineInsights) {
+      assert.ok(insight.evidence?.trim());
+      assert.ok(insight.nextStep?.trim());
+      assert.ok(insight.limitation?.trim());
+    }
     assert.ok(report.timeline.length > 0);
     assert.ok(report.selection.primary.length <= 3);
     for (const entry of report.timeline) {

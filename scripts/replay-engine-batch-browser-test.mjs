@@ -91,7 +91,7 @@ async function main() {
   const fixtures = [
     ["Europe", europe],
     ["unsupported-engine", unsupported],
-    ["Levant", levant],
+    ...publicCohort.map((fixture, index) => [fixture.gameId, publicRecords[index]]),
   ];
   for (const [gameId, record] of fixtures) {
     const input = JSON.stringify(record).replaceAll("<", "\\u003c");
@@ -101,23 +101,33 @@ async function main() {
     );
   }
 
+  const batchIds = fixtures.map(([gameId]) => gameId);
   const batch = await window.webContents.executeJavaScript(
-    `window.__runBatchReplayTest(["Europe", "unsupported-engine", "Levant"])`,
+    `window.__runBatchReplayTest(${JSON.stringify(batchIds)})`,
     true,
   );
   assert.deepEqual(batch.summary, {
-    total: 3,
-    completed: 3,
-    verified: 2,
+    total: 8,
+    completed: 8,
+    verified: 7,
     unverified: 0,
     unsupported: 1,
     failed: 0,
     cancelled: false,
   }, "One unsupported engine must not block other selected matches");
 
+  const expectedCoachingIds = ["Europe", ...publicCohort.map(fixture => fixture.gameId)].sort();
+  assert.deepEqual(batch.coaching.map(item => item.gameId).sort(), expectedCoachingIds,
+    "Europe plus all six comparable Public FFA matches must produce profile-specific coaching reviews");
+  for (const gameId of expectedCoachingIds) {
+    const outcome = batch.outcomes.find(item => item.gameId === gameId);
+    assert.equal(outcome?.status, "verified", gameId + " must pass exact-engine replay verification");
+    assert.equal(outcome?.verifiedHashes, outcome?.recordedHashes, gameId + " must verify every recorded hash");
+  }
+
   const europeResult = batch.outcomes.find(item => item.gameId === "Europe");
   const unsupportedResult = batch.outcomes.find(item => item.gameId === "unsupported-engine");
-  const levantResult = batch.outcomes.find(item => item.gameId === "Levant");
+  const levantResult = batch.outcomes.find(item => item.gameId === "dLNCLHCvMK");
   assert.equal(europeResult?.status, "verified");
   assert.equal(europeResult?.recordedHashes, 1006);
   assert.equal(europeResult?.verifiedHashes, 1006);
@@ -125,10 +135,24 @@ async function main() {
   assert.equal(levantResult?.status, "verified");
   assert.equal(levantResult?.recordedHashes, 626);
   assert.equal(levantResult?.verifiedHashes, 626);
-  assert.deepEqual(batch.coaching.map(item => item.gameId).sort(), ["Europe", "Levant"],
-    "Both real replays must produce a profile-specific coaching review after exact-engine verification");
+
+  const longitudinal = batch.longitudinal;
+  assert.equal(longitudinal?.status, "ready");
+  assert.equal(longitudinal?.comparableMatches, 6);
+  assert.equal(longitudinal?.comparableGroup, "Free For All · Public");
+  assert.deepEqual(longitudinal?.matchProgress.map(item => item.gameId),
+    ["cHFTSJS4hT", "c4DBD1VsyU", "c5gCRN1cHU", "dzXSbgxQUe", "dbuAxuNWHz", "dLNCLHCvMK"],
+    "The six Public FFA matches must be compared in recorded chronological order");
+  assert.ok(longitudinal.metricTrends.some(trend => trend.direction !== "insufficient-data"),
+    "At least one longitudinal metric must have six complete comparable observations");
+  for (const trend of longitudinal.metricTrends.filter(item => item.direction !== "insufficient-data")) {
+    assert.equal(trend.previousExamples.length, 3, trend.id + " must use a complete previous three-match window");
+    assert.equal(trend.latestExamples.length, 3, trend.id + " must use a complete latest three-match window");
+  }
   console.log("Mixed-engine multi-match batch:", JSON.stringify({ summary: batch.summary, outcomes: batch.outcomes }));
-  console.log("Profile-specific Europe/Levant coaching ranking:", JSON.stringify(batch.coaching));
+  console.log("Profile-specific Europe/Levant and Public FFA coaching Top-3:", JSON.stringify(batch.coaching));
+  console.log("Real six-match Public FFA longitudinal analysis:", JSON.stringify(longitudinal));
+
 
   const abortResult = await window.webContents.executeJavaScript(
     'window.__testAbortBatchReplay("Europe")',

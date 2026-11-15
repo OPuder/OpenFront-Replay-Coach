@@ -172,8 +172,8 @@ async function main() {
     await new Promise(resolve => setTimeout(resolve, 250));
   }
   const persisted = await window.webContents.executeJavaScript("window.__verifyBatchStoreTest()", true);
-  assert.equal(persisted.length, 3, "All selected match records must survive refresh");
-  for (const gameId of ["Europe", "Levant"]) {
+  assert.equal(persisted.length, 8, "All selected match records must survive refresh");
+  for (const gameId of expectedCoachingIds) {
     const item = persisted.find(entry => entry.gameId === gameId);
     assert.equal(item?.analysisStatus, "verified");
     assert.equal(item?.simulationStatus, "verified");

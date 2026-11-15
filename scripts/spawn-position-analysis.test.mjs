@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { analyzeAlternativeSpawnPositions, analyzeSpawnPositions } from '../src/renderer/SpawnPositionAnalysis.ts';
+import { analyzeAlternativeSpawnPositions, analyzeSpawnPositions, projectSpawnMapPoint } from '../src/renderer/SpawnPositionAnalysis.ts';
 
 const makeFixture = () => {
   const width = 30;
@@ -116,7 +116,6 @@ test('does not invent alternative spawn coordinates without a valid map grid', (
 
 
 test('spawn map projection places tile centers accurately and rejects invalid map coordinates',()=>{
- const { projectSpawnMapPoint } = require('../src/renderer/SpawnPositionAnalysis.ts');
  assert.deepEqual(projectSpawnMapPoint(0,0,100,50),{left:0.5,top:1});
  assert.deepEqual(projectSpawnMapPoint(99,49,100,50),{left:99.5,top:99});
  assert.equal(projectSpawnMapPoint(100,0,100,50),null);

@@ -54,3 +54,23 @@ test('does not invent a simulation summary for imported but unanalyzed matches',
   assert.equal(compact.simulation, undefined);
   assert.equal(compact.analysisStatus, 'pending');
 });
+
+test('uses replay player count when match history incorrectly reports zero', async () => {
+  const { mergeReplayPlayerCounts, preferReplayPlayerCount } = await import('../src/renderer/AutoLibrarySync.ts');
+  const page = {
+    games: [
+      { gameId: 'manifest-incomplete', totalPlayers: 0, result: 'incomplete' },
+      { gameId: 'normal-match', totalPlayers: 4, result: 'victory' },
+    ],
+  };
+  const entries = [
+    { game: { gameId: 'manifest-incomplete', totalPlayers: 0 }, result: { playerCount: 1 } },
+    { game: { gameId: 'normal-match', totalPlayers: 4 }, result: { playerCount: 0 } },
+  ];
+  const normalized = mergeReplayPlayerCounts(page, entries);
+  assert.equal(normalized.games[0].totalPlayers, 1);
+  assert.equal(normalized.games[0].result, 'incomplete');
+  assert.equal(normalized.games[1].totalPlayers, 4);
+  assert.equal(page.games[0].totalPlayers, 0);
+  assert.equal(preferReplayPlayerCount(page.games[0], 0), page.games[0]);
+});

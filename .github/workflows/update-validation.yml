@@ -208,6 +208,7 @@ jobs:
           grep -F "package: name='de.openfront.replaycoach'" <<< "$candidate_badging" >/dev/null
           grep -F "versionName='$current_version'" <<< "$candidate_badging" >/dev/null
           grep -F "versionCode='$expected_version_code'" <<< "$candidate_badging" >/dev/null
+          grep -F "application-debuggable" <<< "$("$build_tools/aapt" dump badging "$candidate")" >/dev/null || { echo "Test candidate is not debuggable; WebView storage inspection would be unavailable." >&2; exit 1; }
           baseline_code="$(sed -E "s/.*versionCode='([0-9]+)'.*/\1/" <<< "$baseline_badging")"
           candidate_code="$(sed -E "s/.*versionCode='([0-9]+)'.*/\1/" <<< "$candidate_badging")"
           (( candidate_code > baseline_code )) || { echo "Candidate versionCode is not newer than baseline." >&2; exit 1; }
@@ -258,6 +259,11 @@ jobs:
           "$build_tools/apksigner" verify --verbose "$production_apk"
           badging="$("$build_tools/aapt" dump badging "$production_apk")"
           grep -F "package: name='de.openfront.replaycoach'" <<< "$badging" >/dev/null
+          production_version="$(node -p "require('./package.json').version")"
+          IFS='.' read -r production_major production_minor production_patch <<< "$production_version"
+          production_version_code="$((production_major * 1000000 + production_minor * 1000 + production_patch))"
+          grep -F "versionName='$production_version'" <<< "$badging" >/dev/null
+          grep -F "versionCode='$production_version_code'" <<< "$badging" >/dev/null
           if grep -F "application-debuggable" <<< "$badging" >/dev/null; then
             echo "Production APK unexpectedly contains the debuggable flag." >&2
             exit 1
@@ -267,6 +273,8 @@ jobs:
             exit 1
           fi
           production_sha256="$(sha256sum "$production_apk" | awk '{print $1}')"
+          test_sha256="$(sha256sum "$RUNNER_TEMP/openfront-coach-android-upgrade-test.apk" | awk '{print $1}')"
+          [[ "$production_sha256" != "$test_sha256" ]] || { echo "Production APK unexpectedly matches the test APK byte-for-byte." >&2; exit 1; }
           echo "Production APK SHA-256: $production_sha256"
           echo "OPENFRONT_PRODUCTION_SHA256=$production_sha256" >> "$GITHUB_ENV"
 

@@ -37,7 +37,7 @@ async function main(){
   window.show();
   window.focus();
   await new Promise(resolve=>setTimeout(resolve,100));
-  await window.webContents.executeJavaScript('document.body.setAttribute('tabindex','-1'); document.body.focus()');
+  await window.webContents.executeJavaScript("document.body.setAttribute('tabindex','-1'); document.body.focus()");
   await window.webContents.sendInputEvent({type:'keyDown',keyCode:'TAB'});
   await window.webContents.sendInputEvent({type:'keyUp',keyCode:'TAB'});
   const focus=await window.webContents.executeJavaScript("({tag:document.activeElement?.tagName,role:document.activeElement?.getAttribute('role'),label:document.activeElement?.getAttribute('aria-label')||document.activeElement?.textContent?.trim()})");

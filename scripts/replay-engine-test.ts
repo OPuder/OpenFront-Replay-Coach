@@ -16,6 +16,8 @@ const batchTestRecords = new Map<string, any>();
 function verifyRecordedActionFrameConvention(gameId: string, result: any) {
   const samplesByFrame = new Map<number, any>();
   for (const sample of result.samples) {
+    if (!Number.isInteger(sample.frame) || sample.frame < 0 || sample.frame >= result.totalTicks)
+      throw new Error(gameId + ": sampled engine frame is outside the actual ReplayReader range: " + sample.frame);
     if (samplesByFrame.has(sample.frame))
       throw new Error(gameId + ": duplicate ReplayReader sample for engine frame " + sample.frame);
     samplesByFrame.set(sample.frame, sample);
@@ -68,6 +70,8 @@ function verifyRecordedActionFrameConvention(gameId: string, result: any) {
     requiredUniqueSamples: observations.length,
     actionSamples: [...requiredObservations.entries()].filter(([,reasons]) => reasons.has("action")).length,
     beforeAfterAndDelayedSamples: observations.length - [...requiredObservations.entries()].filter(([,reasons]) => reasons.has("action")).length,
+    totalReaderSamples: result.samples.length,
+    maximumPossibleUniqueSamples: result.totalTicks,
     convention: "turnNumber=tick (1-based); ReplayReader frame=turnNumber-1 (0-based)",
   };
 }

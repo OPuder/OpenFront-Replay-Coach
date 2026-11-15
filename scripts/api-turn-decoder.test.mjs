@@ -44,14 +44,17 @@ test('decoder ignores malformed intents but retains unknown well-formed intent t
   assert.equal(decoded.actions[0].seconds, 1);
 });
 
-test('decoder keeps real Europe and Levant turn/event timelines finite and ordered', async () => {
+test('decoder keeps supplied Europe and Levant replay timelines finite and ordered', {
+  skip: !process.env.OPENFRONT_REPLAY_FIXTURE_DIR,
+}, async () => {
   const { readFileSync, readdirSync } = await import('node:fs');
   const { join } = await import('node:path');
-  const candidates = readdirSync('/tmp/openfront-replay-fixtures').filter(name =>
+  const fixtureDir = process.env.OPENFRONT_REPLAY_FIXTURE_DIR;
+  const candidates = readdirSync(fixtureDir).filter(name =>
     name.includes('c2R2JHZgUi') || name.includes('dLNCLHCvMK'));
   assert.equal(candidates.length, 2, 'both supplied real replay fixtures must be present');
   for (const name of candidates) {
-    const replay = JSON.parse(readFileSync(join('/tmp/openfront-replay-fixtures', name), 'utf8'));
+    const replay = JSON.parse(readFileSync(join(fixtureDir, name), 'utf8'));
     const decoded = decodeApiGameRecord(replay);
     assert.ok(decoded.turnCount > 0);
     assert.ok(decoded.actionCount > 0);

@@ -77,12 +77,19 @@ assert.match(androidSigningGate, /ANDROID_KEYSTORE_PATH/);
 assert.match(androidSigningGate, /Android signing certificate does not match/);
 assert.match(androidSigningGate, /apksigner.*verify/);
 const androidUpdateRegression = read("scripts/test-android-in-place-update.sh");
-assert.ok(androidUpdateRegression.includes('adb -s emulator-5554 shell "run-as $package_id sh -c'), "Android test must quote the remote run-as shell command as one argument.");
-assert.ok(androidUpdateRegression.includes('adb -s emulator-5554 shell "run-as $package_id cat files/update-regression/sentinel.txt"'), "Android test must read the app-data sentinel through run-as.");
-assert.match(androidUpdateRegression, /adb -s emulator-5554 install -r/);
+assert.match(androidUpdateRegression, /adb_cmd shell "run-as \$package_id sh -c/);
+assert.match(androidUpdateRegression, /adb_cmd shell "run-as \$package_id cat files\/update-regression\/sentinel\.txt"/);
+assert.match(androidUpdateRegression, /adb -s emulator-5554 install -r|install_apk "replace"/);
 assert.match(androidUpdateRegression, /keep-this-data/);
 assert.match(androidUpdateRegression, /versionCode=\$expected_version_code/);
-assert.match(androidUpdateRegression, /adb -s emulator-5554 shell monkey/);
+assert.match(androidUpdateRegression, /adb start-server/);
+assert.match(androidUpdateRegression, /sys\.boot_completed=1 within 150 seconds/);
+assert.match(androidUpdateRegression, /Package Manager did not become ready within 90 seconds/);
+assert.match(androidUpdateRegression, /install_apk\(\)\s*\{/);
+assert.match(androidUpdateRegression, /cmd package resolve-activity/);
+assert.match(androidUpdateRegression, /am start -W -n/);
+assert.match(androidUpdateRegression, /pidof/);
+assert.doesNotMatch(androidUpdateRegression, /seq -s 1 60/);
 
 
 assert.match(releaseWorkflow, /Verify published release contains exactly three usable artifacts/);
@@ -113,21 +120,21 @@ assert.ok(releaseWorkflow.includes("names.some(name => /-Android\\.apk$/i.test(n
 
 const matchStore = read("src/renderer/matchStore.ts");
 const appRenderer = read("src/renderer/main.tsx");
-assert.match(matchStore, /const DB_VERSION = 3/);
+assert.match(matchStore, /const DB_VERSION = 2/);
 assert.match(matchStore, /const REPLAY_STORE = "replay-records"/);
 assert.match(matchStore, /event\.oldVersion < 2[\s\S]*?replays\.put[\s\S]*?cursor\.update/);
 assert.match(matchStore, /export async function loadImportedMatch\(/);
-assert.match(appRenderer, /withoutReplayRecord\(updated\)/);
-assert.match(appRenderer, /const candidates=selected/);
-assert.match(appRenderer, /await loadImportedMatch\(playerPage\.playerId,item\.game\.gameId\)/);
-assert.match(appRenderer, /Keep the entire queue lightweight/);
+assert.match(appRenderer, /const hydrated=await loadImportedMatch\(playerPage\.playerId,item\.game\.gameId\)/);
+assert.match(appRenderer, /const worker=async\(\)=>\{/);
+assert.match(appRenderer, /existingIds\.add\(game\.gameId\)/);
 assert.doesNotMatch(read("src/main/main.ts"), /importedReplayJson/);
 const startupUpdater = updater.slice(updater.indexOf("export async function autoUpdateOnStartup"));
 assert.match(startupUpdater, /Installation wartet auf Bestätigung im Update Center/);
 assert.doesNotMatch(startupUpdater, /scheduleWindowsInstall\(/);
 
 const replaySimulation = read("src/renderer/ReplaySimulation.ts");
-assert.match(replaySimulation, /const totalRecordedFrames = turns\.reduce\(/);
+assert.match(replaySimulation, /export function getTotalRecordedFrames\(record: unknown\)/);
+assert.match(replaySimulation, /const totalRecordedFrames = getTotalRecordedFrames\(record\);/);
 assert.doesNotMatch(replaySimulation, /\.\.\.turns\.map/);
 assert.match(appRenderer, /engineReviewAbort\.current\?\.abort\(\)/);
 assert.match(appRenderer, /controller\.signal/);

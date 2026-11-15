@@ -143,6 +143,8 @@ assert.match(releaseUpgradeWorkflow, /build-android:[\s\S]*?runs-on: ubuntu-22\.
 assert.match(releaseUpgradeWorkflow, /api-level: 34[\s\S]*?cores: 2[\s\S]*?-memory 2048 -partition-size 4096/);
 assert.match(releaseUpgradeWorkflow, /Validate Android release-upgrade test script syntax[\s\S]*?bash -n scripts\/test-android-release-upgrade.sh/);
 assert.match(releaseUpgradeScript, /previous-release/);
+assert.match(releaseUpgradeScript, /function wait_for_package_service/);
+assert.match(releaseUpgradeScript, /function install_apk_with_retry/);
 assert.match(releaseUpgradeScript, /adb -s emulator-5554 install -r/);
 assert.match(releaseUpgradeScript, /versionCode/);
 assert.match(releaseUpgradeScript, /cmd package resolve-activity/);

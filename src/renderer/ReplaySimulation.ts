@@ -1,6 +1,13 @@
 import { unwrapGameRecord } from "../main/decoder/GameRecordShape";
 import { resolveSupportedEngineCommit } from "../main/decoder/ReplayEngineCatalog";
 import { loadReplayEngineModule } from "./engineRegistry";
+import {
+  analyzeAlternativeSpawnPositions,
+  analyzeSpawnPositions,
+  type SpawnAlternativeMetric,
+  type SpawnPositionMetric,
+} from "./SpawnPositionAnalysis";
+
 /** Compute the replay frame count in one pass without spreading huge arrays. */
 export function getTotalRecordedFrames(record: unknown): number {
   const source = record && typeof record === "object"
@@ -19,13 +26,6 @@ export function getTotalRecordedFrames(record: unknown): number {
   }
   return total;
 }
-
-import {
-  analyzeAlternativeSpawnPositions,
-  analyzeSpawnPositions,
-  type SpawnAlternativeMetric,
-  type SpawnPositionMetric,
-} from "./SpawnPositionAnalysis";
 
 export interface ReplayStateDelta {
   tiles: number;

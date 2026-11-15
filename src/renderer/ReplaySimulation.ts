@@ -24,12 +24,30 @@ export interface ReplayActiveAttackSummary {
   retreatingCount: number;
 }
 
+export interface ReplayTerritorySnapshot {
+  width: number;
+  height: number;
+  /** Run-length encoded owner IDs: [ownerId, runLength, ...]. */
+  ownerRuns: number[];
+}
+
+export interface ReplayUnitMovement {
+  ownerID: number;
+  fromTile: number;
+  targetTile: number;
+  troops: number;
+  unitType: string;
+}
+
 export interface ReplayStateSample {
   tick: number;
   frame: number;
+  territory: ReplayTerritorySnapshot | null;
+  unitMovements: ReplayUnitMovement[];
   players: Array<{
     id: number;
     name: string;
+    color: string | null;
     clientID: string | null;
     /** Exact OpenFront PlayerState.spawnTile selected during the spawn phase. */
     spawnTile: number | null;
@@ -303,6 +321,40 @@ export async function simulateReplay(
       }
     }
     const playerMeta = new Map(reader.header.players.map((p: any) => [p.smallID, p]));
+    const mapWidth = Number(reader.header.mapWidth ?? 0);
+    const mapHeight = Number(reader.header.mapHeight ?? 0);
+    const tileState = state.tileState as Uint16Array | undefined;
+    let territory: ReplayStateSample["territory"] = null;
+    if (tileState && mapWidth > 0 && mapHeight > 0 && tileState.length === mapWidth * mapHeight) {
+      const ownerRuns: number[] = [];
+      let previousOwner = tileState[0] & 0x0fff;
+      let runLength = 0;
+      for (let index = 0; index < tileState.length; index++) {
+        const owner = tileState[index] & 0x0fff;
+        if (owner === previousOwner && runLength < 0x7fffffff) runLength++;
+        else {
+          ownerRuns.push(previousOwner, runLength);
+          previousOwner = owner;
+          runLength = 1;
+        }
+      }
+      if (runLength) ownerRuns.push(previousOwner, runLength);
+      territory = { width: mapWidth, height: mapHeight, ownerRuns };
+    }
+    const unitMovements = [...state.units.values()].flatMap((unit: any) => {
+      const fromTile = Number(unit.pos);
+      const targetTile = Number(unit.targetTile);
+      if (!unit.isActive || !Number.isInteger(fromTile) || !Number.isInteger(targetTile) ||
+          fromTile < 0 || targetTile < 0 || fromTile === targetTile ||
+          targetTile >= mapWidth * mapHeight) return [];
+      return [{
+        ownerID: Number(unit.ownerID),
+        fromTile,
+        targetTile,
+        troops: Number(unit.troops ?? 0),
+        unitType: String(unit.unitType ?? "unknown"),
+      }];
+    });
     const players = [...state.players.entries()].map(([id, p]: [number, any]) => {
       const meta: any = playerMeta.get(id) ?? {};
       const outgoingAttacks = Array.isArray(p.outgoingAttacks) ? p.outgoingAttacks : [];
@@ -310,6 +362,7 @@ export async function simulateReplay(
       return {
         id,
         name: String(meta.displayName ?? meta.name ?? meta.username ?? `Spieler ${id}`),
+        color: typeof meta.color === "string" && /^#[0-9a-f]{6}$/i.test(meta.color) ? meta.color : null,
         clientID: meta.clientID == null ? null : String(meta.clientID),
         spawnTile: Number.isInteger(p.spawnTile) ? Number(p.spawnTile) : null,
         alive: Boolean(p.isAlive),
@@ -351,6 +404,8 @@ export async function simulateReplay(
     return {
       tick: state.tick,
       frame,
+      territory,
+      unitMovements,
       players,
       totalUnits: state.units.size,
       falloutTiles: state.falloutTiles,

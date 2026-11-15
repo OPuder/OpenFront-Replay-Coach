@@ -35,12 +35,25 @@ for (const [lockHash, group] of dependencyGroups) {
   const representative = group[0];
   const representativePath = path.resolve(representative.source);
   console.log(`Installing shared dependencies for ${group.length} exact engines (lock ${lockHash.slice(0, 12)})`);
-  const install = spawnSync(process.platform === "win32" ? "npm.cmd" : "npm", ["ci", "--ignore-scripts"], {
+  const install = spawnSync(process.platform === "win32" ? "npm.cmd" : "npm", ["ci", "--ignore-scripts", "--no-audit", "--no-fund"], {
     cwd: representativePath,
-    stdio: "inherit",
+    encoding: "utf8",
+    maxBuffer: 32 * 1024 * 1024,
     shell: process.platform === "win32",
   });
-  if (install.status !== 0) throw new Error(`Dependency installation failed for lockfile group ${lockHash}`);
+  if (install.stdout) process.stdout.write(install.stdout);
+  if (install.stderr) process.stderr.write(install.stderr);
+  if (install.status !== 0) {
+    console.error(JSON.stringify({
+      engineLockGroup: lockHash,
+      representativeEngine: representative.commit,
+      platform: process.platform,
+      exitCode: install.status,
+      signal: install.signal,
+      error: install.error?.message ?? null,
+    }, null, 2));
+    throw new Error(`Dependency installation failed for lockfile group ${lockHash} (exit ${install.status ?? "null"}, signal ${install.signal ?? "none"}).`);
+  }
 
   for (const engine of group.slice(1)) {
     const target = path.join(path.resolve(engine.source), "node_modules");

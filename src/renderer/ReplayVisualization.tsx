@@ -38,7 +38,7 @@ export function ReplayVisualization({
   mapName, mapPreview, durationSeconds, events, findings = [], samples, selectedEventId, onSelectEvent, onOpenReplay,
 }: Props) {
   const selected = events.find(event => event.id === selectedEventId) ?? events[0] ?? null;
-  const selectedFinding = findings.find(finding => finding.id === selected?.id) ?? null;
+  const selectedFinding = findings.find(finding => 'pro-' + finding.id === selected?.id) ?? null;
   const duration = Math.max(1, durationSeconds);
   const currentTime = selected ? clamp(selected.time, 0, duration) : 0;
   const sample = useMemo(() => selectTerritorySample(samples, currentTime), [samples, currentTime]);
@@ -155,7 +155,7 @@ export function ReplayVisualization({
       <div className="replay-viz-status"><span className="replay-viz-live-dot"/>{events.length} Ereignisse · {formatTime(durationSeconds)} Gesamt</div>
     </div>
     {findings.length > 0 && <div className="replay-viz-priority-findings" aria-label="Drei wichtigste strategische Erkenntnisse">
-      {findings.slice(0, 3).map((finding,index)=><button type="button" key={finding.id} disabled={finding.timestampSeconds === null} onClick={()=>onSelectEvent(finding.id)} className={'replay-viz-priority-card priority-'+finding.priority+(selectedFinding?.id===finding.id?' selected':'')} aria-pressed={selectedFinding?.id===finding.id}>
+      {findings.slice(0, 3).map((finding,index)=><button type="button" key={finding.id} disabled={finding.timestampSeconds === null} onClick={()=>onSelectEvent('pro-'+finding.id)} className={'replay-viz-priority-card priority-'+finding.priority+(selectedFinding?.id===finding.id?' selected':'')} aria-pressed={selectedFinding?.id===finding.id}>
         <span>{String(index+1).padStart(2,'0')} · {finding.priority === 'high' ? 'HOHE WIRKUNG' : finding.priority === 'medium' ? 'WICHTIG' : 'HINWEIS'}</span><b>{finding.title}</b><small>{finding.timestampSeconds === null ? 'Kein genauer Replay-Zeitpunkt' : formatTime(finding.timestampSeconds)} · Sicherheit {finding.confidence === 'unknown' ? 'nicht angegeben' : finding.confidence}</small>
       </button>)}
     </div>}

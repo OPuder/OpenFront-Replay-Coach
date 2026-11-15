@@ -52,8 +52,8 @@ export function UpdateCenter() {
       if (!data.tag_name || !Array.isArray(data.assets)) throw new Error('Die Release-Antwort ist unvollständig.');
       const successfulAt = new Date();
       setRelease(data);
-      setCheckedAt(successfulAt);
-      writeLastSuccessfulUpdateCheck(successfulAt);
+      if (writeLastSuccessfulUpdateCheck(successfulAt)) setCheckedAt(successfulAt);
+      else setError('Die erfolgreiche Update-Prüfung konnte nicht dauerhaft gespeichert werden.');
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : 'Update-Prüfung fehlgeschlagen.');
     } finally { setChecking(false); }

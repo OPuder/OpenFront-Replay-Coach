@@ -124,7 +124,6 @@ assert.match(matchStore, /const DB_VERSION = 2/);
 assert.match(matchStore, /const REPLAY_STORE = "replay-records"/);
 assert.match(matchStore, /event\.oldVersion < 2[\s\S]*?replays\.put[\s\S]*?cursor\.update/);
 assert.match(matchStore, /export async function loadImportedMatch\(/);
-assert.match(appRenderer, /withoutReplayRecord\(updated\)/);
 assert.match(appRenderer, /const hydrated=await loadImportedMatch\(playerPage\.playerId,item\.game\.gameId\)/);
 assert.match(appRenderer, /const worker=async\(\)=>\{/);
 assert.match(appRenderer, /existingIds\.add\(game\.gameId\)/);

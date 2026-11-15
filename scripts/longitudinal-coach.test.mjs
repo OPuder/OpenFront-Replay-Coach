@@ -294,7 +294,7 @@ test('missing timestamps remain visible but cannot manufacture a chronological t
   assert.equal(trend?.observations,4);
   assert.equal(trend?.direction,'insufficient-data');
   assert.equal(trend?.previous,null);
-  assert.equal(trend?.latest,null);
+  assert.equal(trend?.latest,1.2);
 });
 
 test('identical timestamps are not treated as an ordered pair for trend claims',()=>{

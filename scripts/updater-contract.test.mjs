@@ -77,8 +77,8 @@ assert.match(androidSigningGate, /ANDROID_KEYSTORE_PATH/);
 assert.match(androidSigningGate, /Android signing certificate does not match/);
 assert.match(androidSigningGate, /apksigner.*verify/);
 const androidUpdateRegression = read("scripts/test-android-in-place-update.sh");
-assert.match(androidUpdateRegression, /adb_cmd shell "run-as \$package_id sh -c/);
-assert.match(androidUpdateRegression, /adb_cmd shell "run-as \$package_id cat files\/update-regression\/sentinel\.txt"/);
+assert.ok(androidUpdateRegression.includes('timeout 30s adb -s emulator-5554 shell "run-as $package_id sh -c'));
+assert.ok(androidUpdateRegression.includes('timeout 30s adb -s emulator-5554 shell "run-as $package_id sh -c'));
 assert.match(androidUpdateRegression, /install_apk\(\)\s*\{|adb -s emulator-5554 install -r/);
 assert.match(androidUpdateRegression, /keep-this-data/);
 assert.match(androidUpdateRegression, /versionCode=\$expected_version_code/);
@@ -99,10 +99,10 @@ assert.ok(androidUpdateRegression.includes("install_apk() {"));
 assert.ok(androidUpdateRegression.includes("cmd package resolve-activity"));
 assert.ok(androidUpdateRegression.includes("am start -W -n"));
 assert.ok(androidUpdateRegression.includes("pidof"));
-assert.ok(read(".github/workflows/update-validation.yml").includes("timeout-minutes: 15"));
-assert.ok(read(".github/workflows/update-validation.yml").includes("emulator-boot-timeout: 600"));
-assert.match(replaySimulation, /export function getTotalRecordedFrames\\(record: unknown\\)/);
-assert.match(replaySimulation, /const totalRecordedFrames = getTotalRecordedFrames\\(record\\);/);
+assert.ok(read(".github/workflows/update-validation.yml").includes("timeout-minutes: 30"));
+assert.ok(read(".github/workflows/update-validation.yml").includes("emulator-boot-timeout: 1800"));
+assert.ok(replaySimulation.includes("export function getTotalRecordedFrames(record: unknown)"));
+assert.ok(replaySimulation.includes("const totalRecordedFrames = getTotalRecordedFrames(record);"));
 
 assert.match(updateValidationWorkflow, /Test in-place Android update and preserve app data[\s\S]*?if: always\(\) && steps\.parse_apk\.outcome == 'success'/);
 

@@ -1,5 +1,5 @@
 import { buildReplayEngineAssets, simulateReplay } from "../src/renderer/ReplaySimulation";
-import { loadImportedMatch, loadImportedMatches, saveImportedMatch } from "../src/renderer/matchStore";
+import { loadImportedMatch, loadImportedMatches, loadPlayerLibrary, saveImportedMatch, savePlayerLibrary } from "../src/renderer/matchStore";
 import { runSequentialBatchAnalysis } from "../src/renderer/BatchAnalysisRunner";
 import { assessReplayCompatibility } from "../src/main/decoder/ReplayCompatibility";
 import { resolveReplayJsonExport } from "../src/main/decoder/ReplayJsonExport";
@@ -16,6 +16,7 @@ declare global {
     __setBatchReplay?: (gameId: string, record: unknown) => void;
     __runBatchReplayTest?: (gameIds: string[]) => Promise<{ summary: unknown; outcomes: Array<any>; coaching: Array<any>; longitudinal: any }>;
     __verifyBatchStoreTest?: () => Promise<Array<any>>;
+    __verifyPersistedProfileTest?: () => Promise<any>;
     __prepareLegacyMatchStore?: () => Promise<void>;
     __verifyPlayerIndexTest?: () => Promise<{ indexPresent: boolean; playerAMatches: string[]; playerBMatches: string[]; legacyMatches: string[] }>;
     __testAbortBatchReplay?: (gameId: string) => Promise<{ aborted: boolean }>;
@@ -140,6 +141,11 @@ window.__runBatchReplayTest = async (gameIds) => {
       const simulation = await simulateReplay(record, buildReplayEngineAssets(record), onProgress, 50, clientId, signal);
       if (simulation.status !== "verified") throw new Error(`Fixture ${item.gameId} has no hash-verified simulation`);
       if (simulation.playerReview?.clientID !== clientId) throw new Error(`Simulation selected a different player for ${item.gameId}`);
+      if (!simulation.playerReview?.clientID) throw new Error(`No reconstructed player review for ${item.gameId}`);
+      if (!/oligenole/i.test(String(simulation.playerReview.playerName ?? ""))) {
+        throw new Error(`Original engine player review is not OligenOle for ${item.gameId}: ${simulation.playerReview.playerName}`);
+      }
+
 
       const samples = simulation.samples.map((sample: any) => ({
         tick: sample.tick, frame: sample.frame, spawnPositions: (sample as any).spawnPositions,
@@ -164,8 +170,19 @@ window.__runBatchReplayTest = async (gameIds) => {
         time: action.seconds, title: action.label, detail: action.details, kind: action.type, turn: action.turn,
       }));
       const timeline = buildReplayTimeline(recordedEvents, engineInsights);
+      const intents = new Map<number, any[]>();
+      for (const turn of Array.isArray(record.turns) ? record.turns : []) {
+        const frame = Number(turn?.turnNumber);
+        const playerIntents = (turn?.intents ?? []).filter((intent: any) => String(intent?.clientID ?? "") === clientId);
+        intents.set(frame, playerIntents);
+      }
       for (const action of simulation.actionReviews) {
-        assert.equal(action.seconds, action.frame / 10, `Replay action timestamp does not match source turn in ${item.gameId}`);
+        const sourceIntents = intents.get(action.frame) ?? [];
+        assert.ok(sourceIntents.some((intent: any) => String(intent?.type ?? "unknown") === action.type),
+          `Coach action ${action.type} at frame ${action.frame} has no matching original replay intent in ${item.gameId}`);
+        assert.equal(action.turn, action.frame, `Replay timeline turn differs from source turn in ${item.gameId}`);
+        assert.equal(action.seconds, Number(sourceIntents.length >= 0 ? action.turn : NaN) / 10,
+          `Replay action seconds do not match original turnNumber / 10 in ${item.gameId}`);
       }
       for (const entry of timeline) {
         if (entry.id.startsWith("event-") && entry.turn !== null) assert.equal(entry.time, entry.turn / 10);
@@ -186,7 +203,7 @@ window.__runBatchReplayTest = async (gameIds) => {
         analysisStatus: "verified", simulation,
       };
       coaching.set(item.gameId, {
-        selectedPlayer: selected.displayName ?? selected.name ?? selected.username, clientId,
+        selectedPlayer: simulation.playerReview.playerName, selectedClientId: simulation.playerReview.clientID, clientId,
         verifiedHashes: simulation.verifiedHashes, totalTicks: simulation.totalTicks,
         sampleCount: simulation.samples.length, actionCount: simulation.actionReviews.length,
         proReport, engineInsights, selection, timeline, longitudinalInput,
@@ -221,9 +238,26 @@ window.__runBatchReplayTest = async (gameIds) => {
     },
     onProgress: () => undefined,
   });
+
+  await savePlayerLibrary({
+    playerId: "ci-batch-player",
+    playerName: "OligenOle",
+    games: [],
+  } as any);
   const coachingResults = [...coaching.entries()].map(([gameId, value]) => ({ gameId, ...value }));
   const longitudinal = buildLongitudinalCoachReport(coachingResults.map(item => item.longitudinalInput));
   return { summary, outcomes: [...outcomes.values()], coaching: coachingResults, longitudinal };
+};
+
+window.__verifyPersistedProfileTest = async () => {
+  const stored = await loadPlayerLibrary("ci-batch-player");
+  const matches = await loadImportedMatches("ci-batch-player");
+  return {
+    profilePresent: stored?.playerId === "ci-batch-player",
+    profileName: stored?.playerName ?? stored?.name ?? null,
+    gameIds: matches.map(item => item.game.gameId).sort(),
+    verifiedGames: matches.filter(item => item.analysisStatus === "verified" && item.simulation?.status === "verified").map(item => item.game.gameId).sort(),
+  };
 };
 
 window.__verifyBatchStoreTest = async () => {

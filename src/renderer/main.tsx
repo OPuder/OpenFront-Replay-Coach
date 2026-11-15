@@ -18,7 +18,7 @@ import { installBrowserReplayAPI } from './platform/BrowserReplayAPI';
 import { loadImportedMatch, loadImportedMatches, loadPlayerLibrary, saveImportedMatch, savePlayerLibrary, type StoredAnalysisStatus, type StoredMatchEntry } from './matchStore';
 import { UpdateCenter } from './UpdateCenter';
 import { StrategyPlaybook } from './StrategyPlaybook';
-import { compactBatchMatchForUi, selectGamesToAnalyze, selectGamesToImport } from './AutoLibrarySync';
+import { compactBatchMatchForUi, mergeReplayPlayerCounts, preferReplayPlayerCount, selectGamesToAnalyze, selectGamesToImport } from './AutoLibrarySync';
 import { getReplayDisplayState } from './replayPresentation';
 import { buildReplayEngineCoverageReport } from './ReplayEngineCoverage';
 
@@ -72,15 +72,17 @@ function App() {
   const autoAnalysisAttempted = React.useRef(new Set<string>());
   const [batchBusy, setBatchBusy] = useState(false);
   function refreshStoredMatch(item: StoredMatchEntry): BatchMatchItem {
-    if(!item.result?.record) return item;
-    if(isReplayCompatibilityCurrent(item.result.record,item.result.engineCompatibility)) return item;
+    const game=preferReplayPlayerCount(item.game,item.result?.playerCount);
+    const normalized=game===item.game?item:{...item,game};
+    if(!item.result?.record) return normalized;
+    if(isReplayCompatibilityCurrent(item.result.record,item.result.engineCompatibility)) return normalized;
     const compatibility=assessReplayCompatibility(item.result.record);
     const wasUnsupported=item.analysisStatus==='unsupported'||item.status==='engine-mismatch';
     const analysisStatus:StoredAnalysisStatus=compatibility.engineVersionCompatible
       ? item.simulation?.status==='verified'?'verified':wasUnsupported?'pending':item.analysisStatus??'pending'
       : 'unsupported';
     return {
-      ...item,
+      ...normalized,
       result:{...item.result,engineCompatibility:compatibility},
       status:compatibility.engineVersionCompatible?'loaded':'engine-mismatch',
       analysisStatus,
@@ -152,7 +154,7 @@ function App() {
     void restore();
     return ()=>{active=false;};
   }, []);
-  async function loadPlayer() { setAutoSyncEnabled(true); autoImportAttempted.current.clear(); autoAnalysisAttempted.current.clear(); cancelBatchAnalysis(); cancelBatchImport(); setPlayerBusy(true); setError(''); setPlayerProgress({loaded:0,pages:0,status:'Profil wird geladen …'}); try { const page = await window.replayAPI.loadPlayer(playerId, progress => setPlayerProgress(progress)); setPlayerPage(page); setSelectedGameIds([]); setLibraryPage(0); const matches=await loadImportedMatches(page.playerId); const refreshed=await refreshStoredMatches(page.playerId,matches); setBatchMatches(refreshed.map(compactBatchMatchForUi)); await savePlayerLibrary(page); window.localStorage.setItem('ofrc:last-player-id',page.playerId); } catch(e) { setError(e instanceof Error ? e.message : String(e)); } finally { setPlayerBusy(false); } }
+  async function loadPlayer() { setAutoSyncEnabled(true); autoImportAttempted.current.clear(); autoAnalysisAttempted.current.clear(); cancelBatchAnalysis(); cancelBatchImport(); setPlayerBusy(true); setError(''); setPlayerProgress({loaded:0,pages:0,status:'Profil wird geladen …'}); try { const page = await window.replayAPI.loadPlayer(playerId, progress => setPlayerProgress(progress)); setSelectedGameIds([]); setLibraryPage(0); const matches=await loadImportedMatches(page.playerId); const refreshed=await refreshStoredMatches(page.playerId,matches); const pageWithReplayCounts=mergeReplayPlayerCounts(page,refreshed); setPlayerPage(pageWithReplayCounts); setBatchMatches(refreshed.map(compactBatchMatchForUi)); await savePlayerLibrary(pageWithReplayCounts); window.localStorage.setItem('ofrc:last-player-id',page.playerId); } catch(e) { setError(e instanceof Error ? e.message : String(e)); } finally { setPlayerBusy(false); } }
   function toggleGameSelection(gameId:string) { setSelectedGameIds(current => current.includes(gameId) ? current.filter(id=>id!==gameId) : [...current,gameId]); }
   function selectFilteredGames() { const ids=filteredGames.map(game=>game.gameId); setSelectedGameIds(current=>ids.every(id=>current.includes(id)) ? current.filter(id=>!ids.includes(id)) : [...new Set([...current,...ids])]); }
   async function loadSelectedGames(gameIds=selectedGameIds) {
@@ -183,7 +185,9 @@ function App() {
           else if (selectedMap) { try { imported.previewUrl=(await window.replayAPI.resolveMapPreview(selectedMap)).imageUrl; } catch { imported.previewUrl=null; } }
           if(runId!==batchRunId.current) return;
           const status: 'engine-mismatch' | 'loaded'=imported.engineCompatibility?.engineVersionCompatible===false ? 'engine-mismatch' : 'loaded';
-          const entry:BatchMatchItem={game,result:imported,status,analysisStatus:status==='engine-mismatch'?'unsupported':'pending'};
+          const normalizedGame=preferReplayPlayerCount(game,imported.playerCount);
+           const entry:BatchMatchItem={game:normalizedGame,result:imported,status,analysisStatus:status==='engine-mismatch'?'unsupported':'pending'};
+           setPlayerPage(current=>current?mergeReplayPlayerCounts(current,[entry]):current);
           existingIds.add(game.gameId);
           setBatchMatches(current=>[...current.filter(item=>item.game.gameId!==game.gameId),compactBatchMatchForUi(entry)]);
           try { await persistBatchItem(entry); } catch(storageError) { console.warn('[ReplayCoach] Replay wurde geladen, konnte aber nicht lokal gesichert werden:',storageError); setError(`Partie ${game.gameId} geladen, aber lokale Speicherung fehlgeschlagen: ${storageError instanceof Error?storageError.message:String(storageError)}`); }
@@ -363,7 +367,9 @@ function App() {
             result.previewUrl = null;
           }
         }
-        const entry:BatchMatchItem={...(cachedItem??{}),game:selectedGame??{gameId},result,simulation:hydratedCached?.simulation,status:result.engineCompatibility?.engineVersionCompatible===false?'engine-mismatch':'loaded',analysisStatus:cachedItem?.analysisStatus??(result.engineCompatibility?.engineVersionCompatible===false?'unsupported':'pending')};
+        const normalizedGame=preferReplayPlayerCount(selectedGame??{gameId},result.playerCount);
+        const entry:BatchMatchItem={...(cachedItem??{}),game:normalizedGame,result,simulation:hydratedCached?.simulation,status:result.engineCompatibility?.engineVersionCompatible===false?'engine-mismatch':'loaded',analysisStatus:cachedItem?.analysisStatus??(result.engineCompatibility?.engineVersionCompatible===false?'unsupported':'pending')};
+        setPlayerPage(current=>current?mergeReplayPlayerCounts(current,[entry]):current);
         setBatchMatches(current=>[...current.filter(item=>item.game.gameId!==gameId),withoutReplayRecord(entry)]);
         if(playerPage) void persistBatchItem(entry).catch(storageError=>console.warn('[ReplayCoach] Replay konnte nicht lokal gespeichert werden:',storageError));
         setApiResult(result);

@@ -253,34 +253,43 @@ async function main() {
     await new Promise(resolve => setTimeout(resolve, 250));
   }
   const persisted = await window.webContents.executeJavaScript("window.__verifyBatchStoreTest()", true);
-  assert.equal(persisted.length, 2, "Only the two real matches, not the mutated unsupported copy, must survive refresh");
-  assert.deepEqual(persisted.map(entry => entry.gameId).sort(), Object.values(replayIds).sort(),
-    "IndexedDB keys must be the original replay match IDs, not fixture labels");
+  assert.equal(persisted.length, 5, "Both real matches and all three isolated negative fixtures must survive refresh");
+  const realPersisted = persisted.filter(entry => Object.values(replayIds).includes(entry.gameId));
+  assert.equal(realPersisted.length, 2);
+  assert.deepEqual(realPersisted.map(entry => entry.gameId).sort(), Object.values(replayIds).sort(),
+    "Real IndexedDB keys must remain the original replay match IDs");
   for (const gameId of Object.values(replayIds)) {
-    const item = persisted.find(entry => entry.gameId === gameId);
+    const item = realPersisted.find(entry => entry.gameId === gameId);
     const report = batch.coaching.find(entry => entry.matchId === gameId);
-    assert.ok(report, `${gameId} coaching report must be available for post-reload comparison`);
+    assert.ok(report, gameId + " coaching report must be available for post-reload comparison");
     assert.equal(item?.analysisStatus, "verified");
     assert.equal(item?.simulationStatus, "verified");
     assert.ok(item?.sampleCount > 0);
     assert.ok(item?.actionCount > 0);
-    assert.equal(item?.clientId, report.clientId, `${gameId} player identity must survive reload`);
+    assert.equal(item?.clientId, report.clientId, gameId + " player identity must survive reload");
     assert.equal(item?.playerName, "OligenOle");
     assert.equal(item?.verifiedHashes, report.verifiedHashes);
     assert.equal(item?.findingCount, report.proReport.findings.length);
     assert.deepEqual(item?.findings, report.proReport.findings,
-      `${gameId} coaching findings and evidence must rebuild identically after reload`);
+      gameId + " coaching findings and evidence must rebuild identically after reload");
     assert.deepEqual(item?.engineInsights, report.engineInsights,
-      `${gameId} engine coaching evidence must rebuild identically after reload`);
+      gameId + " engine coaching evidence must rebuild identically after reload");
     assert.deepEqual(item?.timeline, report.timeline.map(entry => ({
       id: entry.id, time: entry.time, title: entry.title, kind: entry.kind,
       turn: entry.turn, evidence: entry.insight?.evidence ?? null,
-    })), `${gameId} timeline markers and timestamps must survive reload`);
-    assert.equal(item?.jsonExportRestored, true, `${gameId} must export its persisted original JSON after renderer reload`);
+    })), gameId + " timeline markers and timestamps must survive reload");
+    assert.equal(item?.jsonExportRestored, true, gameId + " must export its persisted original JSON after renderer reload");
   }
-  assert.equal(persisted.some(entry => entry.gameId === "unsupported-engine"), false,
-    "The unsupported duplicate fixture must never be persisted as a third match");
-  console.log("Multi-match IndexedDB persistence and rebuilt coaching after refresh:", JSON.stringify(persisted));
+  const unsupportedStored = persisted.find(entry => entry.gameId === "unsupported-engine");
+  assert.equal(unsupportedStored?.status, "engine-mismatch");
+  assert.equal(unsupportedStored?.analysisStatus, "unsupported");
+  const hashMismatchStored = persisted.find(entry => entry.gameId === "hash-mismatch");
+  assert.equal(hashMismatchStored?.analysisStatus, "failed");
+  const malformedStored = persisted.find(entry => entry.gameId === "malformed-replay");
+  assert.equal(malformedStored?.analysisStatus, "failed");
+  assert.equal(persisted.every(entry => entry.jsonExportRestored), true,
+    "Every persisted real and synthetic replay must preserve its full JSON export");
+  console.log("Multi-match IndexedDB persistence, failure diagnostics and rebuilt coaching after refresh:", JSON.stringify(persisted));
 
   const profile = await window.webContents.executeJavaScript("window.__verifyPersistedProfileTest()", true);
   assert.equal(profile.profilePresent, true, "Player profile must survive renderer restart");

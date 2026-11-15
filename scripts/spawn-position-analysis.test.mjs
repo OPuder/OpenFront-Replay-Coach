@@ -113,3 +113,12 @@ test('does not invent alternative spawn coordinates without a valid map grid', (
   const players = [{ id: 1, clientID: 'human-1', name: 'Player 1', spawnTile: 55 }];
   assert.deepEqual(analyzeAlternativeSpawnPositions(owner, width, height, players, terrain, 1), []);
 });
+
+
+test('spawn map projection places tile centers accurately and rejects invalid map coordinates',()=>{
+ const { projectSpawnMapPoint } = require('../src/renderer/SpawnPositionAnalysis.ts');
+ assert.deepEqual(projectSpawnMapPoint(0,0,100,50),{left:0.5,top:1});
+ assert.deepEqual(projectSpawnMapPoint(99,49,100,50),{left:99.5,top:99});
+ assert.equal(projectSpawnMapPoint(100,0,100,50),null);
+ assert.equal(projectSpawnMapPoint(0,0,0,50),null);
+});

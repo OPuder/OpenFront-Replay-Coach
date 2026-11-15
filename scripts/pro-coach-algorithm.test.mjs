@@ -373,3 +373,24 @@ test('missing target troop delta stays unknown in engine attack-response insight
  assert.match(attack.summary,/0 ungünstige beobachtete Truppenverhältnisse/);
  assert.doesNotMatch(attack.title,/ungünstigem Truppenverhältnis/);
 });
+
+
+test('incoming pressure alone never becomes a parallel offensive-front finding',()=>{
+ const samples=Array.from({length:10},(_,i)=>sample(i*500));
+ const actions=Array.from({length:4},(_,i)=>action(60+i*50,{
+  ownFrontContextBefore:{activeTargetCount:0,outgoingAttackCount:0,outgoingAttackTroops:0,incomingAttackCount:1,incomingAttackTroops:400}
+ }));
+ const report=buildProCoachReport(samples,actions,'p1',500);
+ assert.ok(!report.allFindings?.some(item=>item.id==='front-load'));
+});
+
+test('one already active own attack is sufficient evidence of a parallel-front decision',()=>{
+ const samples=Array.from({length:10},(_,i)=>sample(i*500));
+ const actions=Array.from({length:2},(_,i)=>action(60+i*50,{
+  ownFrontContextBefore:{activeTargetCount:0,outgoingAttackCount:1,outgoingAttackTroops:180,incomingAttackCount:0,incomingAttackTroops:0}
+ }));
+ const report=buildProCoachReport(samples,actions,'p1',500);
+ const finding=report.allFindings?.find(item=>item.id==='front-load');
+ assert.ok(finding);
+ assert.match(finding.decision,/eigene Zielbindungen/);
+});

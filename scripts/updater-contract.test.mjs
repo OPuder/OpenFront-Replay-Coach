@@ -83,7 +83,7 @@ assert.match(androidUpdateRegression, /install_apk\(\)\s*\{|adb -s emulator-5554
 assert.match(androidUpdateRegression, /keep-this-data/);
 assert.match(androidUpdateRegression, /versionCode=\$expected_version_code/);
 assert.match(androidUpdateRegression, /cmd package resolve-activity --brief/);
-assert.match(androidUpdateRegression, /am start -W -n "\$activity"/);
+assert.match(androidUpdateRegression, /am start -n "\$activity"/);
 assert.match(androidUpdateRegression, /pidof "\$package_id"/);
 assert.doesNotMatch(androidUpdateRegression, /shell monkey -p/);
 

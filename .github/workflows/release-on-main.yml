@@ -505,8 +505,6 @@ jobs:
             release/*-Android.apk
             release/SHA256SUMS.txt
             release/release-manifest.json
-            release/SHA256SUMS.txt
-            release/release-manifest.json
 
       - name: Verify published release contains exactly three usable artifacts
         env:

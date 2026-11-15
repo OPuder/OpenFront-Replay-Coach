@@ -138,6 +138,7 @@ assert.match(appRenderer, /function navigateTo\([\s\S]*?engineReviewRunId\.curre
 
 const releaseUpgradeWorkflow = read(".github/workflows/release-on-main.yml");
 assert.match(releaseUpgradeWorkflow, /pull_request:[\\s\\S]*?branches: \\[main\\]/);
+assert.match(releaseUpgradeWorkflow, /paths:[\\s\\S]*?android-updater-template/);
 assert.match(releaseUpgradeWorkflow, /github\\.event\\.pull_request\\.head\\.sha/);
 assert.match(releaseUpgradeWorkflow, /github\\.event\\.name != 'pull_request'[\\s\\S]*?publish-release/);
 assert.match(releaseUpgradeWorkflow, /no tag or release will be published/);

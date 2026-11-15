@@ -28,7 +28,13 @@ function stop(child) {
   if (child?.pid) try { execFileSync("taskkill", ["/PID", String(child.pid), "/T", "/F"], { stdio: "ignore" }); } catch {}
 }
 async function launch(file, dataDir, port, mode) {
-  const child = spawn(file, ["--user-data-dir=" + dataDir, "--remote-debugging-port=" + port, "--remote-allow-origins=*", "--no-first-run"], { stdio: "ignore", windowsHide: true });
+  const appData = path.join(dataDir, "appdata");
+  const localData = path.join(dataDir, "localdata");
+  const chromiumData = path.join(dataDir, "chromium");
+  const child = spawn(file, ["--user-data-dir=" + chromiumData, "--remote-debugging-port=" + port, "--remote-allow-origins=*", "--no-first-run"], {
+    stdio: "ignore", windowsHide: true,
+    env: { ...process.env, APPDATA: appData, LOCALAPPDATA: localData },
+  });
   try {
     run(process.execPath, [helper, mode, String(port)]);
     return child;
@@ -57,6 +63,11 @@ function extract(zip, directory) {
 async function verify(kind, baseline, update, dataDir, port) {
   rmSync(dataDir, { recursive: true, force: true });
   mkdirSync(dataDir, { recursive: true });
+  const appDataRoot = path.join(dataDir, "appdata", "OpenFront Replay Coach");
+  mkdirSync(appDataRoot, { recursive: true });
+  const playerHistory = path.join(appDataRoot, "player-history-upgrade-regression-player.json");
+  const historyFixture = { complete: true, games: [{ gameId: "upgrade-regression-game", result: "victory" }], mapPreviews: {}, updatedAt: "2026-11-15T00:00:00.000Z" };
+  writeFileSync(playerHistory, JSON.stringify(historyFixture), "utf8");
   const before = digest(baseline.archive);
   let child = await launch(baseline.executable, dataDir, port, "seed");
   stop(child);
@@ -65,7 +76,8 @@ async function verify(kind, baseline, update, dataDir, port) {
   assert.notEqual(digest(candidate.archive), before, kind + " did not replace application files.");
   child = await launch(candidate.executable, dataDir, port, "verify");
   stop(child);
-  console.log("WINDOWS_IN_PLACE_UPGRADE_OK", kind, "v2.2.51 -> v" + version, "profile/replay/analysis/settings retained");
+  assert.deepEqual(JSON.parse(readFileSync(playerHistory, "utf8")), historyFixture, kind + " overwrote or removed the app's persisted player-history cache.");
+  console.log("WINDOWS_IN_PLACE_UPGRADE_OK", kind, "v2.2.51 -> v" + version, "IndexedDB profile/replay/analysis, selected profile, settings marker and app-owned player-history cache retained");
 }
 const installerDir = path.join(temp, "ofrc-nsis-in-place");
 const installerData = path.join(temp, "ofrc-nsis-user-data");

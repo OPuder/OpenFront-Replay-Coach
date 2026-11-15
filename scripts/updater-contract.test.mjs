@@ -139,3 +139,5 @@ assert.match(appRenderer, /controller\.signal/);
 assert.match(appRenderer, /page !== 'analysis'[\s\S]*?setApiResult\(null\)[\s\S]*?setSimulationResult\(null\)/);
 
 assert.match(appRenderer, /function navigateTo\([\s\S]*?engineReviewRunId\.current\+\+[\s\S]*?setSimulationProgress\(null\)/, "Navigation must clear stale progress after aborting an engine review.");
+const androidValidationWorkflow = read(".github/workflows/update-validation.yml");
+assert.match(androidValidationWorkflow, /Validate Android update smoke-test shell syntax[\s\S]*?bash -n scripts\/test-android-in-place-update.sh/);

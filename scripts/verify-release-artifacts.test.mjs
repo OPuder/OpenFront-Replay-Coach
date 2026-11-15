@@ -104,7 +104,7 @@ test("rejects corrupted checksum files and truncated downloads", async () => {
     const checksumPath = path.join(directory, names.checksums);
     const original = await (await import("node:fs/promises")).readFile(checksumPath, "utf8");
     await writeFile(checksumPath, original.replace(/[a-f0-9]{64}/, "0".repeat(64)));
-    await assert.rejects(() => verifyReleaseArtifacts(directory, version), /SHA256SUMS\\.txt mismatch/);
+    await assert.rejects(() => verifyReleaseArtifacts(directory, version), /SHA256SUMS\.txt mismatch/);
     await writeFile(checksumPath, original);
     await writeFile(path.join(directory, names.portable), Buffer.alloc(512, 7));
     await assert.rejects(() => verifyReleaseArtifacts(directory, version), /Manifest byte size mismatch|implausibly small/);

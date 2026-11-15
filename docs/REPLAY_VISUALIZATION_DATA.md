@@ -12,7 +12,7 @@ OpenFront `PlayerState.outgoingAttacks` exposes attacker/target player IDs, troo
 
 OpenFront `UnitState` exposes `pos`, `targetTile` and `isActive`. When an active unit has a valid explicit target tile, the Coach draws the direction between those exact tile references and labels it as an engine-reported unit target. These lines are not relabelled as an attack path. The snapshot also shows the attack relationship list from the player state.
 
-Territory changes are visible by moving between recorded replay samples. Samples are taken at the existing simulation cadence and around player actions; the selected timeline moment uses the latest stored territory snapshot at or before that time. It does not interpolate ownership between snapshots.
+Territory changes are visible by moving between recorded replay samples. The map highlights the exact tiles whose owner ID changed between the selected snapshot and the immediately preceding stored snapshot; the count is shown alongside the map. Samples are taken at the existing simulation cadence and around player actions; the selected timeline moment uses the latest stored territory snapshot at or before that time. It does not interpolate ownership between snapshots.
 
 ## Original OpenFront viewer synchronization
 
@@ -25,7 +25,8 @@ The longitudinal report already excludes unverified/incomparable matches and gro
 ## Validation
 
 - `scripts/replay-territory.test.mjs`: owner-bit extraction, RLE round-trip, malformed snapshot rejection, time selection and tile-coordinate bounds.
-- `scripts/replay-visualization-ui-test.mjs`: Electron viewport checks at 320, 375, 768 and 1440 CSS pixels, territory/movement presence, labelled controls, and keyboard Tab focus.
+- `scripts/replay-visualization-ui-test.mjs`: Electron viewport checks at 320, 375, 768 and 1440 CSS pixels, territory, territory-change and movement overlays, labelled controls, timeline selection, and keyboard Tab focus.
+- `scripts/replay-engine-browser-test.mjs`: the pinned real Europe replay must produce actual ownership snapshots and active unit-target samples; the regression output records snapshot/tile/movement counts.
 - Existing replay compatibility workflow still runs the pinned Europe/Levant replay and regression suites.
 
 The official viewer seek remains a documented integration limitation, not a completed feature.

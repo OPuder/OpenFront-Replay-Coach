@@ -241,8 +241,11 @@ jobs:
       - name: Package the installer and portable ZIP
         run: npx electron-builder --win nsis zip --publish never
 
-      - name: Smoke-test the packaged Windows renderer
-        run: node scripts/smoke-test-windows.mjs
+      - name: Install and smoke-test Windows installer and portable edition
+        timeout-minutes: 20
+        env:
+          OFRC_IDLE_SOAK_MS: "300000"
+        run: node scripts/verify-windows-distributions.mjs
 
       - name: Test pro coaching analytics
         run: npm run test:coach
@@ -440,6 +443,17 @@ jobs:
     permissions:
       contents: write
     steps:
+      - name: Check out exact release source for integrity verification
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.prepare-release.outputs.release_sha }}
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24.15.0"
+
       - name: Download Windows installer and portable ZIP
         uses: actions/download-artifact@v4
         with:
@@ -452,33 +466,11 @@ jobs:
           name: release-android
           path: release
 
-      - name: Generate artifact manifest and SHA-256 checksums
-        shell: bash
+      - name: Generate and verify artifact manifest and SHA-256 checksums
         env:
           RELEASE_VERSION: ${{ needs.prepare-release.outputs.version }}
-        run: |
-          set -Eeuo pipefail
-          test -d release
-          mapfile -t installers < <(find release -maxdepth 1 -type f -name '*.exe' -printf '%f\n')
-          mapfile -t portable < <(find release -maxdepth 1 -type f -name '*.zip' -printf '%f\n')
-          mapfile -t apks < <(find release -maxdepth 1 -type f -name '*-Android.apk' -printf '%f\n')
-          [[ ${#installers[@]} -eq 1 && ${#portable[@]} -eq 1 && ${#apks[@]} -eq 1 ]] || { echo '::error::Release must contain one installer, one portable ZIP and one APK.'; exit 1; }
-          for file in "${installers[@]}" "${portable[@]}" "${apks[@]}"; do
-            size="$(stat -c%s "release/$file")"
-            [[ "$size" -gt 1000000 ]] || { echo "::error::Artifact too small: $file ($size bytes)"; exit 1; }
-          done
-          (cd release && sha256sum "${installers[0]}" "${portable[0]}" "${apks[0]}" > SHA256SUMS.txt)
-          INSTALLER="${installers[0]}" PORTABLE="${portable[0]}" APK="${apks[0]}" node --input-type=module -e '
-            import fs from "node:fs";
-            import crypto from "node:crypto";
-            const dir = "release";
-            const names = [process.env.INSTALLER, process.env.PORTABLE, process.env.APK];
-            const artifacts = names.map(name => {
-              const bytes = fs.readFileSync(`${dir}/${name}`);
-              return { name, size: bytes.length, sha256: crypto.createHash("sha256").update(bytes).digest("hex") };
-            });
-            fs.writeFileSync(`${dir}/release-manifest.json`, JSON.stringify({ schemaVersion: 1, version: process.env.RELEASE_VERSION, artifacts }, null, 2) + "\n");
-          '
+          RELEASE_DIR: release
+        run: node scripts/verify-release-artifacts.mjs generate
 
       - name: Create one release with all three downloads and integrity manifest
         uses: softprops/action-gh-release@v2
@@ -506,34 +498,14 @@ jobs:
             release/SHA256SUMS.txt
             release/release-manifest.json
 
-      - name: Verify published release contains exactly three usable artifacts
+      - name: Download published release and verify every byte
         env:
           GH_TOKEN: ${{ github.token }}
           RELEASE_TAG: ${{ needs.prepare-release.outputs.tag }}
+          RELEASE_VERSION: ${{ needs.prepare-release.outputs.version }}
+          RELEASE_DIR: ${{ runner.temp }}/published-release
         run: |
           set -Eeuo pipefail
-          gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --json assets | node -e '
-            let input = "";
-            process.stdin.setEncoding("utf8");
-            process.stdin.on("data", chunk => input += chunk);
-            process.stdin.on("end", () => {
-              const assets = JSON.parse(input).assets;
-              const names = assets.map(asset => asset.name);
-              const distributables = assets.filter(asset => /(?:\.Setup\.| Setup )[0-9.]+\.exe$/i.test(asset.name) || /-win\.zip$/i.test(asset.name) || /-Android\.apk$/i.test(asset.name));
-              const checks = [
-                distributables.length === 3,
-                names.some(name => /(?:\.Setup\.| Setup )[0-9.]+\.exe$/i.test(name)),
-                names.some(name => /-win\.zip$/i.test(name)),
-                names.some(name => /-Android\.apk$/i.test(name)),
-                assets.filter(asset => asset.name !== "SHA256SUMS.txt" && asset.name !== "release-manifest.json").every(asset => asset.size > 1000000),
-                names.includes("SHA256SUMS.txt"),
-                names.includes("release-manifest.json"),
-                !names.some(name => /pwa|service.?worker|web.?zip/i.test(name))
-              ];
-              if (checks.some(ok => !ok)) {
-                console.error("Published release asset verification failed:", JSON.stringify(assets));
-                process.exit(1);
-              }
-              console.log("Verified exactly three release artifacts:", names.join(", "));
-            });
-          '
+          mkdir -p "$RELEASE_DIR"
+          gh release download "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --dir "$RELEASE_DIR"
+          node scripts/verify-release-artifacts.mjs verify

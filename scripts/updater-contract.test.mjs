@@ -215,7 +215,7 @@ const signingScript = read("scripts/verify-android-release-signing.sh");
 assert.match(signingScript, /Expected exactly one Android APK in previous release/);
 assert.match(signingScript, /PREVIOUS_PUBLISHED_APK=/);
 assert.match(signingScript, /expected_previous_apk/);
-assert.match(signingScript, /sha256sum "\\$previous_apk"/);
+assert.match(signingScript, /sha256sum "\$previous_apk"/);
 assert.match(signingScript, /CURRENT_RELEASE_APK=/);
 
 const validationWorkflow = read(".github/workflows/update-validation.yml");

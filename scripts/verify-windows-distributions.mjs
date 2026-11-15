@@ -22,6 +22,8 @@ for (const file of [installer, portable]) {
   assert.ok(info.size > 1_000_000, `Windows package is implausibly small: ${path.basename(file)}`);
 }
 assert.equal(readFileSync(installer).subarray(0, 2).toString("ascii"), "MZ", "NSIS installer is not a Windows PE executable.");
+assert.equal(readFileSync(portable).subarray(0, 2).toString("ascii"), "PK", "Portable distribution is not a ZIP archive.");
+assert.notEqual(installerName, portableName, "Installer and portable distribution names must be distinct.");
 
 const temp = process.env.RUNNER_TEMP ?? os.tmpdir();
 const installDir = path.join(temp, `ofrc-installer-${version}`);

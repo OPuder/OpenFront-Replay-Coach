@@ -9,8 +9,10 @@ async function main(){
   app.commandLine.appendSwitch('no-sandbox');app.commandLine.appendSwitch('disable-gpu');await app.whenReady();
   server=spawn('node',['node_modules/vite/bin/vite.js','--host','127.0.0.1','--port',String(port),'--strictPort'],{stdio:'ignore'});
   await wait('http://127.0.0.1:'+port+'/scripts/replay-visualization-ui-test.html');
-  window=new BrowserWindow({show:false,width:375,height:900,webPreferences:{contextIsolation:true,nodeIntegration:false,sandbox:true}});
+  window=new BrowserWindow({show:true,width:375,height:900,webPreferences:{contextIsolation:true,nodeIntegration:false,sandbox:true}});
   await window.loadURL('http://127.0.0.1:'+port+'/scripts/replay-visualization-ui-test.html');
+  window.show();
+  window.focus();
   for(let i=0;i<80;i++){
     const ready=await window.webContents.executeJavaScript("typeof window.__uiTest==='function' && !!document.querySelector('canvas.replay-viz-territory')");
     if(ready)break;
@@ -32,6 +34,10 @@ async function main(){
   const selected=await window.webContents.executeJavaScript("window.__uiTest()");
   assert.equal(selected.selectedTime,'00:15','Selecting a timeline marker must update the coaching time');
   assert.equal(selected.buttons.filter(button=>button.pressed==='true').length,1,'Exactly one timeline marker must be selected');
+  window.show();
+  window.focus();
+  await new Promise(resolve=>setTimeout(resolve,100));
+  await window.webContents.executeJavaScript('document.body.focus()');
   await window.webContents.sendInputEvent({type:'keyDown',keyCode:'TAB'});
   await window.webContents.sendInputEvent({type:'keyUp',keyCode:'TAB'});
   const focus=await window.webContents.executeJavaScript("({tag:document.activeElement?.tagName,role:document.activeElement?.getAttribute('role'),label:document.activeElement?.getAttribute('aria-label')||document.activeElement?.textContent?.trim()})");

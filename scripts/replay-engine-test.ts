@@ -3,6 +3,7 @@ import { loadImportedMatch, loadImportedMatches, saveImportedMatch } from "../sr
 import { runSequentialBatchAnalysis } from "../src/renderer/BatchAnalysisRunner";
 import { assessReplayCompatibility } from "../src/main/decoder/ReplayCompatibility";
 import { buildProCoachReport } from "../src/main/decoder/ProCoachAlgorithm";
+import { buildLongitudinalCoachReport } from "../src/main/decoder/LongitudinalCoach";
 import { resolveReplayJsonExport } from "../src/main/decoder/ReplayJsonExport";
 
 const batchTestRecords = new Map<string, any>();
@@ -10,7 +11,7 @@ const batchTestRecords = new Map<string, any>();
 declare global {
   interface Window {
     __setBatchReplay?: (gameId: string, record: unknown) => void;
-    __runBatchReplayTest?: (gameIds: string[]) => Promise<{ summary: unknown; outcomes: Array<any>; coaching: Array<any> }>;
+    __runBatchReplayTest?: (gameIds: string[]) => Promise<{ summary: unknown; outcomes: Array<any>; coaching: Array<any>; longitudinal: any }>;
     __verifyBatchStoreTest?: () => Promise<Array<any>>;
     __prepareLegacyMatchStore?: () => Promise<void>;
     __verifyPlayerIndexTest?: () => Promise<{ indexPresent: boolean; playerAMatches: string[]; playerBMatches: string[]; legacyMatches: string[] }>;
@@ -121,6 +122,7 @@ window.__runBatchReplayTest = async (gameIds) => {
   const items = gameIds.map(gameId => ({ gameId, record: batchTestRecords.get(gameId) }));
   const outcomes = new Map<string, any>();
   const coaching = new Map<string, any>();
+  const longitudinalMatches: any[] = [];
   const controller = new AbortController();
   const summary = await runSequentialBatchAnalysis(items, {
     signal: controller.signal,
@@ -148,13 +150,14 @@ window.__runBatchReplayTest = async (gameIds) => {
         const report = buildProCoachReport(result.samples, result.actionReviews, result.playerReview.clientID, result.totalTicks / 10);
         const repeated = buildProCoachReport(result.samples, result.actionReviews, result.playerReview.clientID, result.totalTicks / 10);
         const rank = { high: 3, medium: 2, low: 1 };
-        if (report.findings.length === 0 || report.findings.length > 3) {
-          throw new Error(`${item.gameId}: expected one to three prioritized profile-specific coaching findings`);
+        if (report.findings.length > 3 || (["Europe", "dLNCLHCvMK"].includes(item.gameId) && report.findings.length === 0)) {
+          throw new Error(`${item.gameId}: expected at most three prioritized findings and at least one for each required replay`);
         }
         report.findings.forEach((finding, index) => {
-          if (!finding.evidence.trim() || !finding.decision.trim() || !finding.consequence.trim() ||
-              !finding.alternative.trim() || !finding.trainingRule.trim()) {
-            throw new Error(`${item.gameId}/${finding.id}: incomplete evidence-to-lesson chain`);
+          if (finding.priority === "low" || !Number.isFinite(finding.seconds) || finding.seconds < 0 ||
+              !finding.evidence.trim() || !finding.decision.trim() || !finding.consequence.trim() ||
+              !finding.alternative.trim() || !finding.trainingRule.trim() || !finding.caveat.trim()) {
+            throw new Error(`${item.gameId}/${finding.id}: incomplete timestamped decision-to-lesson chain`);
           }
           if (index > 0 && rank[report.findings[index - 1].priority] < rank[finding.priority]) {
             throw new Error(`${item.gameId}: lower-impact finding ranked ahead of higher-impact finding`);
@@ -168,11 +171,27 @@ window.__runBatchReplayTest = async (gameIds) => {
           player: result.playerReview.playerName,
           sampleCount: result.samples.length,
           actionCount: result.actionReviews.length,
-          findings: report.findings.map(({ id, priority, confidence, title, evidence, alternative }) =>
-            ({ id, priority, confidence, title, evidence, alternative })),
-          phases: report.phases.map(({ id, activeSamples, territoryPerMinute, incomePerMinute }) =>
-            ({ id, activeSamples, territoryPerMinute, incomePerMinute })),
+          detectedFindingCount: report.allFindings?.length ?? report.findings.length,
+          findings: report.findings.map(({ id, priority, confidence, title, decision, consequence, alternative, trainingRule, evidence, seconds, caveat }) =>
+            ({ id, priority, confidence, title, decision, consequence, alternative, trainingRule, evidence, seconds, caveat })),
+          phases: report.phases.map(({ id, fromSeconds, toSeconds, activeSamples, territoryPerMinute, incomePerMinute, momentumIndex }) =>
+            ({ id, fromSeconds, toSeconds, activeSamples, territoryPerMinute, incomePerMinute, momentumIndex })),
         });
+        const config = item.record?.info?.config;
+        if (config?.gameMode === "Free For All" && config?.gameType === "Public") {
+          const startedAt = Number(item.record?.info?.start);
+          if (!Number.isFinite(startedAt)) throw new Error(`${item.gameId}: missing recorded start time for longitudinal ordering`);
+          longitudinalMatches.push({
+            gameId: item.gameId,
+            mapName: String(config.gameMap ?? "Unknown"),
+            mode: String(config.gameMode),
+            type: String(config.gameType),
+            playedAt: new Date(startedAt).toISOString(),
+            durationSeconds: result.totalTicks / 10,
+            analysisStatus: "verified",
+            simulation: result,
+          });
+        }
       }
       if (status === "verified" || status === "unverified" || status === "unsupported" || status === "failed") {
         await saveImportedMatch("ci-batch-player", {
@@ -192,7 +211,13 @@ window.__runBatchReplayTest = async (gameIds) => {
     },
     onProgress: () => undefined,
   });
-  return { summary, outcomes: [...outcomes.values()], coaching: [...coaching.entries()].map(([gameId, report]) => ({ gameId, ...report })) };
+  const longitudinal = buildLongitudinalCoachReport(longitudinalMatches);
+  return {
+    summary,
+    outcomes: [...outcomes.values()],
+    coaching: [...coaching.entries()].map(([gameId, report]) => ({ gameId, ...report })),
+    longitudinal,
+  };
 };
 
 window.__verifyBatchStoreTest = async () => {

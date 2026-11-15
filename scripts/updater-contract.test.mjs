@@ -221,7 +221,7 @@ assert.match(androidReleaseUpgrade, /Published APK and current release APK do no
 assert.match(androidReleaseUpgrade, /install --no-streaming -r "\$current_release_apk"/);
 assert.match(androidReleaseUpgrade, /copy_webview_storage "\\$seed_package_id" "\\$package_id"/);
 assert.match(androidReleaseUpgrade, /copy_webview_storage "\\$package_id" "\\$seed_package_id"/);
-assert.match(androidReleaseUpgrade, /Production APK upgrade did not preserve IndexedDB/);
+assert.match(androidReleaseUpgrade, /Production update did not preserve IndexedDB/);
 assert.match(androidReleaseUpgrade, /PREVIOUS_RELEASE_TAG/);
 assert.match(androidReleaseUpgrade, /previous_release_name/);
 const signingScript = read("scripts/verify-android-release-signing.sh");

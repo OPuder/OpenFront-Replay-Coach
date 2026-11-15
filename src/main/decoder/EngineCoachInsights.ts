@@ -519,6 +519,7 @@ export function buildEngineCoachInsights(
       incomingTroops: number;
       territoryDelta: number;
       troopDelta: number;
+      troopLossShare: number;
     }> = [];
     let nextAllowedFrame = -1;
 
@@ -592,7 +593,7 @@ export function buildEngineCoachInsights(
 
       // Resilience is positive evidence only when own offense is inactive and
       // territory did not fall; multiple attackers alone do not imply overload.
-      if (territoryDelta >= 0) {
+      if (territoryDelta >= 0 && troopLossShare < 0.15) {
         defensiveWindows.push({
           seconds: beforeSample.frame / 10,
           durationSeconds: Math.round(durationFrames / 10),
@@ -600,25 +601,31 @@ export function buildEngineCoachInsights(
           incomingTroops,
           territoryDelta,
           troopDelta,
+          troopLossShare,
         });
         nextAllowedFrame = afterSample.frame;
       }
     }
 
     if (defensiveOverloadWindows.length > 0) {
-      const worst = [...defensiveOverloadWindows].sort((a, b) =>
+      const rankedOverloadWindows = [...defensiveOverloadWindows].sort((a, b) =>
         Math.max(b.pressureShare, b.troopLossShare, b.territoryLossShare) -
         Math.max(a.pressureShare, a.troopLossShare, a.territoryLossShare)
-      )[0];
-      const highPriority = worst.pressureShare >= 0.75 ||
-        worst.troopLossShare >= 0.25 || worst.territoryLossShare >= 0.1;
+      );
+      const worst = rankedOverloadWindows[0];
+      const peakPressureShare = Math.max(...defensiveOverloadWindows.map(window => window.pressureShare));
+      // A severe loss in any observed window must not be hidden by another
+      // window with a larger incoming-pressure ratio but smaller consequences.
+      const highPriority = defensiveOverloadWindows.some(window =>
+        window.pressureShare >= 0.75 || window.troopLossShare >= 0.25 || window.territoryLossShare >= 0.1
+      );
       findings.push({
         id: "defensive-overload",
         kind: "review",
         priority: highPriority ? "high" : "medium",
-        title: "Defensive Mehrfront-Belastung ohne eigene Angriffe",
-        summary: `In ${defensiveOverloadWindows.length} Zeitfenstern griffen mindestens zwei verschiedene Gegner gleichzeitig an, während keine eigenen aktiven Angriffe liefen. Der stärkste beobachtete Druck entsprach ${Math.round(worst.pressureShare * 100)} % deines eigenen Truppenbestands.`,
-        evidence: defensiveOverloadWindows.slice(0, 4).map(window =>
+        title: "Defensive Mehrgegner-Belastung ohne eigene Angriffe",
+        summary: `In ${defensiveOverloadWindows.length} Zeitfenstern griffen mindestens zwei verschiedene Gegner gleichzeitig an, während keine eigenen aktiven Angriffe liefen. Der höchste eingehende Druck entsprach ${Math.round(peakPressureShare * 100)} % deines eigenen Truppenbestands.`,
+        evidence: rankedOverloadWindows.slice(0, 4).map(window =>
           `${clock(window.seconds)} · ${window.attackerNames.length} gegnerische Spieler (${window.attackerNames.join(", ")}) · eingehend ${window.incomingTroops.toLocaleString("de-DE")} / eigene Truppen ${window.ownTroops.toLocaleString("de-DE")} (${Math.round(window.pressureShare * 100)} %) · nach ${window.durationSeconds} s: Gebiet ${window.territoryDelta > 0 ? "+" : ""}${window.territoryDelta.toLocaleString("de-DE")} · Truppen ${window.troopDelta > 0 ? "+" : ""}${window.troopDelta.toLocaleString("de-DE")} · eigene aktive Angriffe 0`
         ).join(" · "),
         decision: "Du hattest in diesen Momenten keine eigenen aktiven Angriffe; mindestens zwei verschiedene Gegner setzten gleichzeitig Truppen gegen dich ein.",
@@ -635,7 +642,7 @@ export function buildEngineCoachInsights(
         id: "defensive-resilience",
         kind: "strength",
         priority: "medium",
-        title: "Gebiet trotz eingehendem Angriffsdruck gehalten",
+        title: "Gebiet bei begrenzten eigenen Verlusten trotz Angriffsdruck gehalten",
         summary: `In ${defensiveWindows.length} überprüften Zeitfenstern blieb dein Gebietsbestand stabil oder stieg, während keine eigenen aktiven Angriffe liefen.`,
         evidence: defensiveWindows.slice(0, 4).map(window =>
           `${clock(window.seconds)} · ${window.attackerCount} gegnerische Spieler / ${window.incomingTroops.toLocaleString("de-DE")} Truppen · Gebiet ${window.territoryDelta > 0 ? "+" : ""}${window.territoryDelta.toLocaleString("de-DE")} · Truppen ${window.troopDelta > 0 ? "+" : ""}${window.troopDelta.toLocaleString("de-DE")}`
@@ -687,7 +694,7 @@ export function buildEngineCoachInsights(
         (front.incomingAttackTroops > 0 && reserveAfterCommand < front.incomingAttackTroops)
       );
     const heavyCommitment = projectedCommitment !== null && projectedCommitment >= 0.8;
-    const overloaded = splitCommitment || exposedReserve || heavyCommitment;
+    const overloaded = opensSecondOrLaterFront && (splitCommitment || exposedReserve || heavyCommitment);
 
     const pressure = action.targetPressureBefore;
     const own30 = action.delta30s;

@@ -386,15 +386,26 @@ test('incoming pressure alone never becomes a parallel offensive-front finding',
  assert.ok(!report.allFindings?.some(item=>item.id==='front-load'));
 });
 
-test('one already active own attack is sufficient evidence of a parallel-front decision',()=>{
+test('an active own attack plus incoming pressure and high commitment is offensive overextension evidence',()=>{
  const samples=Array.from({length:10},(_,i)=>sample(i*500));
  const actions=Array.from({length:2},(_,i)=>action(60+i*50,{
-  ownFrontContextBefore:{activeTargetCount:0,outgoingAttackCount:1,outgoingAttackTroops:180,incomingAttackCount:0,incomingAttackTroops:0}
+  ownFrontContextBefore:{activeTargetCount:1,outgoingAttackCount:1,outgoingAttackTroops:180,incomingAttackCount:1,incomingAttackTroops:100}
  }));
  const report=buildProCoachReport(samples,actions,'p1',500);
  const finding=report.allFindings?.find(item=>item.id==='front-load');
  assert.ok(finding);
  assert.match(finding.decision,/hohe bestehende Truppenbindung/);
+});
+
+test('a high-commitment second target with positive territory progress and no incoming pressure is not overextension',()=>{
+ const samples=Array.from({length:10},(_,i)=>sample(i*500,{troops:300}));
+ const actions=[action(60,{
+  ownFrontContextBefore:{activeTargetCount:1,outgoingAttackCount:1,outgoingAttackTroops:800,incomingAttackCount:0,incomingAttackTroops:0},
+  delta30s:{tiles:13205,gold:0,troops:3730776},
+  targetDelta30s:{tiles:-18959,gold:0,troops:77730},
+ })];
+ const report=buildProCoachReport(samples,actions,'p1',500);
+ assert.ok(!report.allFindings?.some(item=>item.id==='front-load'));
 });
 
 test('multiple distinct incoming attackers without own active attacks produce a defensive overload finding',()=>{
@@ -419,6 +430,43 @@ test('multiple distinct incoming attackers without own active attacks produce a 
  assert.match(overload.evidence,/0:00/);
  assert.match(overload.evidence,/Enemy A/);
  assert.match(overload.evidence,/Enemy B/);
+ assert.ok(!insights.some(item=>item.id==='defensive-resilience'));
+});
+
+test('a severe troop loss in any defensive window raises overload priority even if another window has higher pressure',()=>{
+ const a=enginePlayer({troops:1000,tiles:100,incomingAttackDetails:[
+  {id:'a1',attackerID:2,troops:150,retreating:false},
+  {id:'a2',attackerID:3,troops:150,retreating:false},
+ ]});
+ const afterA=enginePlayer({troops:900,tiles:100});
+ const b=enginePlayer({troops:1000,tiles:100,incomingAttackDetails:[
+  {id:'b1',attackerID:2,troops:50,retreating:false},
+  {id:'b2',attackerID:3,troops:50,retreating:false},
+ ]});
+ const afterB=enginePlayer({troops:700,tiles:100});
+ const enemyA=enginePlayer({id:2,name:'Enemy A',clientID:'p2'});
+ const enemyB=enginePlayer({id:3,name:'Enemy B',clientID:'p3'});
+ const insights=buildEngineCoachInsights(engineReview,[],[
+  {tick:0,frame:0,players:[a,enemyA,enemyB]},
+  {tick:150,frame:150,players:[afterA,enemyA,enemyB]},
+  {tick:300,frame:300,players:[b,enemyA,enemyB]},
+  {tick:450,frame:450,players:[afterB,enemyA,enemyB]},
+ ]);
+ const overload=insights.find(item=>item.id==='defensive-overload');
+ assert.ok(overload);
+ assert.equal(overload.priority,'high');
+ assert.match(overload.title,/Mehrgegner-Belastung/);
+ assert.ok(selectPrimaryCoachInsights(insights).primary.some(item=>item.id==='defensive-overload'));
+});
+
+test('stable territory with severe defensive troop attrition is not promoted as resilience',()=>{
+ const before=enginePlayer({incomingAttackDetails:[{id:'in-a',attackerID:2,troops:200,retreating:false}]});
+ const after=enginePlayer({troops:600,tiles:102});
+ const enemy=enginePlayer({id:2,name:'Enemy A',clientID:'p2'});
+ const insights=buildEngineCoachInsights(engineReview,[],[
+  {tick:0,frame:0,players:[before,enemy]},
+  {tick:150,frame:150,players:[after,enemy]},
+ ]);
  assert.ok(!insights.some(item=>item.id==='defensive-resilience'));
 });
 
@@ -453,19 +501,35 @@ test('multiple incoming attackers are not classified as defensive when own attac
  assert.ok(!insights.some(item=>item.id==='defensive-resilience'));
 });
 
-test('high offensive commitment still produces an offensive new-front review',()=>{
+test('high commitment on a second own front with additional incoming pressure remains offensive overextension',()=>{
  const actionReview={
-  frame:100,turn:100,seconds:10,type:'attack',commandTroops:50,label:'Attack',details:'',targetId:'2',targetName:'Rival',targetSmallID:2,
+  frame:100,turn:100,seconds:10,type:'attack',commandTroops:80,label:'Attack',details:'',targetId:'2',targetName:'Rival',targetSmallID:2,
   before:{tiles:100,gold:100,troops:100,goldEarned:100,tradeGold:0,trainGold:0,piracyGold:0},
   after:null,delta:null,delta5s:null,delta10s:null,delta30s:null,targetDelta10s:null,targetDelta30s:null,
   targetAliveBefore:true,targetAliveAt10s:null,targetAliveAt30s:null,
-  ownFrontContextBefore:{activeTargetCount:1,outgoingTargetIds:[1],outgoingAttackCount:1,outgoingAttackTroops:40,incomingAttackCount:0,incomingAttackTroops:0,incomingAttackerNames:[]},
+  ownFrontContextBefore:{activeTargetCount:1,outgoingTargetIds:[1],outgoingAttackCount:1,outgoingAttackTroops:40,incomingAttackCount:2,incomingAttackTroops:70,incomingAttackerNames:['Enemy A','Enemy B']},
   targetPressureBefore:null,activeAttack10s:null,activeAttack30s:null,
  };
  const insights=buildEngineCoachInsights(engineReview,[actionReview],[]);
  const overload=insights.find(item=>item.id.startsWith('decision-front-load-'));
  assert.ok(overload);
- assert.match(overload.summary,/64 % der Truppen gebunden/);
+ assert.equal(overload.priority,'high');
+ assert.match(overload.summary,/86 % der Truppen gebunden/);
+ assert.ok(!insights.some(item=>item.id==='defensive-overload'));
+});
+
+test('one incoming attack without any own active target is not an offensive multi-front warning',()=>{
+ const actionReview={
+  frame:100,turn:100,seconds:10,type:'attack',commandTroops:85,label:'Attack',details:'',targetId:'2',targetName:'Rival',targetSmallID:2,
+  before:{tiles:100,gold:100,troops:100,goldEarned:100,tradeGold:0,trainGold:0,piracyGold:0},
+  after:null,delta:null,delta5s:null,delta10s:null,delta30s:null,targetDelta10s:null,targetDelta30s:null,
+  targetAliveBefore:true,targetAliveAt10s:null,targetAliveAt30s:null,
+  ownFrontContextBefore:{activeTargetCount:0,outgoingTargetIds:[],outgoingAttackCount:0,outgoingAttackTroops:0,incomingAttackCount:1,incomingAttackTroops:20,incomingAttackerNames:['Enemy A']},
+  targetPressureBefore:null,activeAttack10s:null,activeAttack30s:null,
+ };
+ const insights=buildEngineCoachInsights(engineReview,[actionReview],[]);
+ assert.ok(!insights.some(item=>item.id.startsWith('decision-front-load-')));
+ assert.ok(!insights.some(item=>item.id==='defensive-overload'));
 });
 
 test('small own commitment on a second target is not mislabeled as offensive overextension',()=>{

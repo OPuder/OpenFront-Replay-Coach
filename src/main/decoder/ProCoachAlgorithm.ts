@@ -240,7 +240,6 @@ export function buildProCoachReport(
   });
   const riskyFrontReviews=frontReviews.filter(item=>
     item.severeOutcome||
-    (item.commitmentShare??0)>=.55||
     (item.ctx.incomingAttackCount>0&&(item.commitmentShare??0)>=.35)
   );
   if(riskyFrontReviews.length>0){

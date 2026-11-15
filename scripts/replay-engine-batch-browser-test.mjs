@@ -140,7 +140,7 @@ async function main() {
   for (const gameId of ["Europe", "dLNCLHCvMK"]) {
     const coaching = batch.coaching.find(item => item.gameId === gameId);
     assert.equal(coaching?.player, "OligenOle", gameId + " must be coached for OligenOle");
-    assert.equal(coaching?.engineTop3?.length, 3, gameId + " must produce exactly three prioritized engine insights");
+    assert.ok((coaching?.engineTop3?.length ?? 0) >= 1 && (coaching?.engineTop3?.length ?? 0) <= 3, gameId + " must produce one to three evidence-backed prioritized engine insights");
     assert.ok((coaching?.findings?.length ?? 0) <= 3, gameId + " must keep ProCoach findings to at most three");
     for (const insight of [...(coaching?.engineTop3 ?? []), ...(coaching?.findings ?? [])]) {
       assert.ok(Number.isFinite(insight.seconds), gameId + " insight " + insight.id + " must have an exact replay timestamp");

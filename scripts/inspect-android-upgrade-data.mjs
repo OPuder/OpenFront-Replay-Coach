@@ -64,10 +64,11 @@ try {
   const replays = stores["replay-records"]?.records ?? [];
   const profiles = stores.profiles?.records ?? [];
   const matchMetadata = matches.map(record => record.metadata ?? {});
+  const replayMetadata = replays.map(record => record.metadata ?? {});
   const verifiedAnalyses = matchMetadata.filter(item => item.analysisStatus === "verified"
     && item.simulationStatus === "verified" && Number(item.sampleCount) > 0 && Number(item.actionReviewCount) > 0);
   const matchIds = new Set(matchMetadata.map(item => String(item.gameId ?? "")));
-  if (!playerId) throw new Error("The actual UI-seeded player profile key is missing from LocalStorage.");
+  if (playerId !== "5SVg4WbI") throw new Error("The actual UI-seeded player profile key is missing or does not match the archived profile.");
   if (!snapshot.indexedDb.relationships.profileIds.includes(playerId)
     || !snapshot.indexedDb.relationships.matchProfileIds.includes(playerId)) {
     throw new Error("The actual UI profile ID is not consistently linked across LocalStorage and IndexedDB.");
@@ -76,6 +77,9 @@ try {
     throw new Error(`Expected a real profile and at least two persisted full replays; found profiles=${profiles.length}, matches=${matches.length}, replayRecords=${replays.length}.`);
   }
   if (!verifiedAnalyses.length) throw new Error("No verified replay analysis result survived in the match records.");
+  if (replayMetadata.some(item => !item.gameId || item.recordGameId !== item.gameId || !item.engineCommit)) {
+    throw new Error("One or more full replay records lost their game identity or exact engine commit metadata.");
+  }
   if (!trainingGoal || !matchIds.has(String(trainingGoal.gameId ?? ""))) {
     throw new Error("The actual UI-created training goal is missing or does not reference a persisted match.");
   }
@@ -89,6 +93,7 @@ try {
     appVersion: snapshot.appVersion,
     localStorageKeys: localEntries.map(entry => entry.key),
     verifiedAnalyses: verifiedAnalyses.length,
+    fullReplayIdentityCount: replayMetadata.length,
     trainingGoalGameId: trainingGoal.gameId,
     indexedDb: snapshot.indexedDb.name,
     storeCounts: Object.fromEntries(snapshot.indexedDb.stores.map(store => [store.name, store.count])),

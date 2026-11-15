@@ -525,7 +525,7 @@ function App() {
       <button className={`studio-nav ${activePage==='dashboard'?'active':''}`} onClick={()=>navigateTo('dashboard')}><LayoutDashboard size={17}/>Dashboard</button>
       <button className={`studio-nav ${activePage==='games'?'active':''}`} onClick={()=>navigateTo('games')}><ListChecks size={17}/>Meine Partien</button>
       <button className={`studio-nav ${activePage==='analysis'?'active':''}`} onClick={()=>navigateTo('analysis')} disabled={!apiResult && !replay}><Brain size={17}/>Coach & Replay</button>
-      <div className="studio-sidebar-bottom"><span><ShieldCheck size={14}/>{isDesktopShell ? 'Lokal auf diesem PC' : isMobileDevice ? 'Mobil im Browser' : 'Im Browser geöffnet'}</span><small>OpenFront Replay Coach · 2.2.51</small></div>
+      <div className="studio-sidebar-bottom"><span><ShieldCheck size={14}/>{isDesktopShell ? 'Lokal auf diesem PC' : isMobileDevice ? 'Mobil im Browser' : 'Im Browser geöffnet'}</span><small>OpenFront Replay Coach · {__APP_VERSION__}</small></div>
     </aside>
     <nav className="studio-mobile-nav" aria-label="Hauptnavigation">
       <button className={activePage==='dashboard'?'active':''} onClick={()=>navigateTo('dashboard')}><LayoutDashboard/><span>Dashboard</span></button>
@@ -880,7 +880,7 @@ function CoachPanel({apiResult,preferredPlayerPublicId,decodedActions,simulation
     ? buildEngineCoachInsights(selectedPlayerReview, selectedActionReviews, simulationResult.samples)
     : [];
   const proCoachReport = simulationResult?.status === 'verified' && selectedClientId
-    ? buildProCoachReport(simulationResult.samples, selectedActionReviews, selectedClientId, apiResult.durationSeconds ?? 0)
+    ? buildProCoachReport(simulationResult.samples, selectedActionReviews, selectedClientId, apiResult.durationSeconds ?? 0, simulationResult.spawnPositions ?? [])
     : null;
 
   const { ordered: orderedEngineInsights, primary: primaryEngineInsights, supporting: supportingEngineInsights } = selectPrimaryCoachInsights(engineInsights);

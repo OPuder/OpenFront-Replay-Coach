@@ -209,9 +209,13 @@ assert.match(androidReleaseUpgrade, /CURRENT_RELEASE_APK/);
 assert.match(androidReleaseUpgrade, /Published APK and current release APK do not have the same signing certificate/);
 assert.match(androidReleaseUpgrade, /install --no-streaming -r "\$current_release_apk"/);
 assert.match(androidReleaseUpgrade, /actual published APK versionCode/);
+assert.match(androidReleaseUpgrade, /PREVIOUS_RELEASE_TAG/);
+assert.match(androidReleaseUpgrade, /previous_release_name/);
 const signingScript = read("scripts/verify-android-release-signing.sh");
 assert.match(signingScript, /Expected exactly one Android APK in previous release/);
 assert.match(signingScript, /PREVIOUS_PUBLISHED_APK=/);
+assert.match(signingScript, /expected_previous_apk/);
+assert.match(signingScript, /sha256sum "\\$previous_apk"/);
 assert.match(signingScript, /CURRENT_RELEASE_APK=/);
 
 const validationWorkflow = read(".github/workflows/update-validation.yml");

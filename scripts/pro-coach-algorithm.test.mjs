@@ -16,7 +16,7 @@ test('does not invent a match score or tactical finding without verified samples
 });
 
 test('calculates per-phase territory and gross income rates from the selected player only',()=>{
- const samples=[sample(0,{tiles:100,goldEarned:100}),sample(1700,{tiles:160,goldEarned:700}),sample(3000,{tiles:180,goldEarned:900}),sample(4100,{tiles:220,goldEarned:1300}),sample(5000,{tiles:230,goldEarned:1500}),sample(5900,{tiles:250,goldEarned:1700})];
+ const samples=Array.from({length:12},(_,i)=>sample(i*500,{tiles:100+i*10,goldEarned:100+i*20}));
  const report=buildProCoachReport(samples,[],'p1',600);
  assert.equal(report.phases.length,3);
  assert.ok(report.phases[0].territoryPerMinute!==null);

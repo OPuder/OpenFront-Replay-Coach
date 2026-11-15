@@ -193,12 +193,22 @@ window.__runBatchReplayTest = async (gameIds) => {
           `Replay action seconds do not match original turnNumber / 10 in ${item.gameId}`);
       }
       for (const entry of timeline) {
-        if (entry.id.startsWith("event-") && entry.turn !== null) assert.equal(entry.time, entry.turn / 10);
+        if (entry.id.startsWith("event-") && entry.turn !== null) {
+          assert.equal(entry.time, entry.turn / 10);
+          assert.ok(intents.has(entry.turn), `Timeline event ${entry.turn} has no source replay turn in ${item.gameId}`);
+        }
         if (entry.id.startsWith("coach-")) {
           assert.ok(entry.insight?.evidence?.trim(), `Coach evidence missing in ${item.gameId}`);
           assert.ok(entry.insight?.nextStep?.trim(), `Coach alternative missing in ${item.gameId}`);
           assert.ok(entry.insight?.limitation?.trim(), `Coach limitation missing in ${item.gameId}`);
           assert.ok(Number.isFinite(entry.time) && entry.time >= 0 && entry.time <= simulation.totalTicks / 10);
+          const secondsFrame = entry.time * 10;
+          assert.ok(Number.isInteger(secondsFrame), `Timed coach marker is not aligned to an original 100ms game tick in ${item.gameId}`);
+          assert.ok(simulation.actionReviews.some((action: any) => action.frame === secondsFrame),
+            `Timed coach marker at ${entry.time}s has no matching reconstructed selected-player action in ${item.gameId}`);
+          const sourceActions = intents.get(secondsFrame) ?? [];
+          assert.ok(sourceActions.length > 0,
+            `Timed coach marker at ${entry.time}s has no source replay intent for the selected player in ${item.gameId}`);
         }
       }
       // Run the identical immutable replay twice and compare stable coaching outputs.

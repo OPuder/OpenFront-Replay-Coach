@@ -28,3 +28,22 @@ export function selectGamesToImport<TGame extends AutoSyncGame, TEntry extends A
 export function selectGamesToAnalyze<TEntry extends AutoSyncEntry>(entries: readonly TEntry[], attemptedIds: ReadonlySet<string> = new Set()): TEntry[] {
   return entries.filter(entry => Boolean(entry.result) && (entry.analysisStatus === undefined || entry.analysisStatus === "pending" || (entry.analysisStatus === "failed" && !attemptedIds.has(entry.game.gameId))));
 }
+
+/**
+ * Keep the library/dashboard React state lightweight. Full replay records,
+ * decoded action arrays, sampled engine states and per-action reviews stay in
+ * IndexedDB and are hydrated only when the user opens or analyzes one match.
+ */
+export function compactBatchMatchForUi<T extends object>(entry: T): T {
+  const value = entry as T & {
+    result?: { record?: unknown; decodedActions?: unknown };
+    simulation?: { samples?: unknown[]; actionReviews?: unknown[] };
+  };
+  const result = value.result
+    ? { ...value.result, record: undefined, decodedActions: undefined }
+    : value.result;
+  const simulation = value.simulation
+    ? { ...value.simulation, samples: [], actionReviews: [] }
+    : value.simulation;
+  return { ...value, result, simulation } as T;
+}

@@ -42,6 +42,18 @@ export interface LongitudinalFinding {
 
 export interface LongitudinalMatchProgress { gameId:string; mapName:string; playedAt:string|null; territoryPerMinute:number|null; incomePerMinute:number|null; attackFollowThroughPercent:number|null; attackFollowThroughSamples:number; phaseMomentum:{early:number|null;mid:number|null;late:number|null}; reviewedFindings:number; }
 export interface LongitudinalMetricTrend { id:"territory"|"income"|"attack-follow-through"; label:string; previous:number|null; latest:number|null; delta:number|null; observations:number; direction:"improved"|"declined"|"stable"|"insufficient-data"; unit:string; }
+export interface LongitudinalTrainingGoal {
+  id: string;
+  title: string;
+  status: "provisional" | "active" | "improving" | "regressing";
+  occurrences: number;
+  comparableMatches: number;
+  frequency: number;
+  trainingRule: string;
+  reviewWindow: string;
+  target: string;
+  examples: Array<{ gameId: string; mapName: string; evidence: string }>;
+}
 export interface LongitudinalCoachReport {
   status: "ready" | "insufficient-data";
   importedMatches: number;
@@ -53,6 +65,7 @@ export interface LongitudinalCoachReport {
   phaseSummaries: LongitudinalPhaseSummary[];
   recurringFindings: LongitudinalFinding[];
   recurringStrengths: LongitudinalFinding[];
+  trainingGoals: LongitudinalTrainingGoal[];
   matchProgress: LongitudinalMatchProgress[];
   metricTrends: LongitudinalMetricTrend[];
   weakestPhase: { id: "early" | "mid" | "late"; label: string; occurrences: number } | null;
@@ -234,6 +247,43 @@ export function buildLongitudinalCoachReport(
       }
     }
   }
+  const trainingGoals: LongitudinalTrainingGoal[] = [...findingGroups.entries()]
+    .filter(([, values]) => values.length >= 2)
+    .map(([id, values]) => {
+      const best = [...values].sort((a, b) => priorityRank(a.finding.priority) - priorityRank(b.finding.priority))[0].finding;
+      const frequency = values.length / Math.max(1, comparable.length);
+      const hasFinding = (entry: NormalizedMatch) => entry.report.findings.some(finding => finding.id === id);
+      const recent = chronological.slice(-2);
+      const previous = chronological.slice(-4, -2);
+      const recentOccurrences = recent.filter(hasFinding).length;
+      const previousOccurrences = previous.filter(hasFinding).length;
+      const improving = previous.length === 2 && previousOccurrences === 2 && recent.length === 2 && recentOccurrences === 0;
+      const regressing = previous.length === 2 && previousOccurrences === 0 && recent.length === 2 && recentOccurrences === 2;
+      const status: LongitudinalTrainingGoal["status"] = improving
+        ? "improving"
+        : regressing
+          ? "regressing"
+          : comparable.length >= 4 && frequency >= 0.4
+            ? "active"
+            : "provisional";
+      return {
+        id, title: best.title, status, occurrences: values.length,
+        comparableMatches: comparable.length, frequency,
+        trainingRule: best.trainingRule,
+        reviewWindow: "Nächste 3 vergleichbare Partien",
+        target: "Dieses Muster in höchstens 1 der nächsten 3 vergleichbaren Partien beobachten.",
+        examples: values.slice(0, 3).map(({ input, finding }) => ({
+          gameId: input.gameId, mapName: input.mapName, evidence: finding.evidence,
+        })),
+      };
+    })
+    .sort((a, b) => {
+      const rank = (status: LongitudinalTrainingGoal["status"]) =>
+        status === "regressing" ? 0 : status === "active" ? 1 : status === "provisional" ? 2 : 3;
+      return rank(a.status) - rank(b.status) || b.occurrences - a.occurrences;
+    })
+    .slice(0, 3);
+
   const recurringFindings: LongitudinalFinding[] = [...findingGroups.entries()]
     .filter(([, values]) => values.length >= 2)
     .map(([id, values]) => {
@@ -311,6 +361,7 @@ export function buildLongitudinalCoachReport(
     phaseSummaries,
     recurringFindings,
     recurringStrengths,
+    trainingGoals,
     matchProgress,
     metricTrends,
     weakestPhase: weakest ? { id: weakest.id, label: weakest.label, occurrences: weakest.weakestCount } : null,

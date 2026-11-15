@@ -77,6 +77,25 @@ jobs:
           RELEASE_DIR: release/packages
         run: node scripts/verify-windows-distributions.mjs
 
+      - name: Download actual published Windows v2.2.51 packages
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $previous = Join-Path $env:RUNNER_TEMP 'previous-windows-release'
+          New-Item -ItemType Directory -Path $previous -Force | Out-Null
+          gh release download v2.2.51 --repo $env:GITHUB_REPOSITORY --pattern 'OpenFront.Replay.Coach.Setup.2.2.51.exe' --pattern 'OpenFront.Replay.Coach-2.2.51-win.zip' --dir $previous
+          if (-not (Test-Path (Join-Path $previous 'OpenFront.Replay.Coach.Setup.2.2.51.exe'))) { throw 'Published v2.2.51 installer missing.' }
+          if (-not (Test-Path (Join-Path $previous 'OpenFront.Replay.Coach-2.2.51-win.zip'))) { throw 'Published v2.2.51 portable ZIP missing.' }
+
+      - name: Test Windows in-place upgrades and user data retention
+        timeout-minutes: 25
+        env:
+          PREVIOUS_RELEASE_DIR: ${{ runner.temp }}\previous-windows-release
+          CURRENT_RELEASE_DIR: release/packages
+        run: node scripts/verify-windows-in-place-updates.mjs
+
       - name: Upload verified Windows packages
         uses: actions/upload-artifact@v4
         with:

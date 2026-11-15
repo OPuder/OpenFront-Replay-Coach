@@ -373,6 +373,9 @@ jobs:
           "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --verbose "$apk"
           "$ANDROID_HOME/build-tools/36.0.0/aapt" dump badging "$apk" | grep -F "package: name='de.openfront.replaycoach'"
 
+      - name: Validate Android release-upgrade test script syntax
+        run: bash -n scripts/test-android-release-upgrade.sh
+
       - name: Install previous published APK and upgrade to the exact signed release APK
         timeout-minutes: 20
         uses: reactivecircus/android-emulator-runner@v2

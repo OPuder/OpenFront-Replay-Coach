@@ -231,7 +231,19 @@ jobs:
           cp "$apk" "$updated"
           cp "$baseline" "$apk"
           test -s "$updated"
+          seed="$RUNNER_TEMP/openfront-coach-seed.apk"
+          bash scripts/build-android-seed-apk.sh "$seed" "$baseline"
           echo "OPENFRONT_UPDATE_APK=$updated" >> "$GITHUB_ENV"
+          echo "OPENFRONT_SEED_APK=$seed" >> "$GITHUB_ENV"
+
+      - name: Upload signed APK before emulator regression
+        if: steps.release_apk.outputs.ready == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: updater-validation-android
+          path: release/*-Android.apk
+          if-no-files-found: error
+          retention-days: 7
 
       - name: Test debug data preservation and real published-APK update
         if: steps.parse_apk.outcome == 'success'

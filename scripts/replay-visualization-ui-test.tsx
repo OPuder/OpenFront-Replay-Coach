@@ -19,13 +19,19 @@ const previousSample: ReplayStateSample = {
   frame: 50,
   territory: { width: 4, height: 3, ownerRuns: [1,5,2,3,0,4] },
 };
+const laterSample: ReplayStateSample = {
+  ...sample,
+  tick: 150,
+  frame: 150,
+  territory: { width: 4, height: 3, ownerRuns: [1,3,2,5,0,4] },
+};
 const findings=[
   {id:'finding-1',matchId:'test-match',timestampSeconds:10,title:'Neue Front trotz Druck',priority:'high' as const,confidence:'medium' as const,decision:'Zweites Ziel eröffnet',context:'Eine Front war bereits aktiv.',consequence:'Truppen wurden parallel gebunden.',alternative:'Zuerst bestehende Front stabilisieren.',learningRule:'Reserve vor Folgeangriff prüfen.',evidence:[{kind:'action' as const,seconds:10,frame:100,label:'Angriff',detail:'10:00 · Ziel Bravo'}],affectedPlayers:[{name:'Alpha',ownerId:1,role:'self' as const},{name:'Bravo',ownerId:2,role:'target' as const}],affectedOwnerIds:[1,2],uncertainty:'Zielspieler wurde über eindeutigen Namen aufgelöst.'},
   {id:'finding-2',matchId:'test-match',timestampSeconds:20,title:'Reserve zu früh gebunden',priority:'medium' as const,confidence:'high' as const,decision:'Truppen vor gegnerischem Druck gebunden',context:'Zweiter Testkontext.',consequence:'Weniger Reserve für die Verteidigung.',alternative:'Reserve bis zur Klärung der Front halten.',learningRule:'Vor Folgeaktionen eingehenden Druck prüfen.',evidence:[{kind:'summary' as const,seconds:20,frame:null,label:'Zustandsvergleich',detail:'20-Sekunden-Fenster'}],affectedPlayers:[{name:'Alpha',ownerId:1,role:'self' as const}],affectedOwnerIds:[1],uncertainty:'Zeitbezogener Zustandsbeleg.'},
   {id:'finding-3',matchId:'test-match',timestampSeconds:25,title:'Expansion nicht abgesichert',priority:'medium' as const,confidence:'low' as const,decision:'Expansion an offener Grenze',context:'Dritter Testkontext.',consequence:'Grenze blieb verwundbar.',alternative:'Vor Expansion eine Reserve positionieren.',learningRule:'Grenzschutz vor weiterer Expansion prüfen.',evidence:[{kind:'summary' as const,seconds:25,frame:null,label:'Zustandsvergleich',detail:'25-Sekunden-Fenster'}],affectedPlayers:[{name:'Alpha',ownerId:1,role:'self' as const}],affectedOwnerIds:[1],uncertainty:'Geringe Belegsicherheit.'}
 ];
 const events=[{id:'pro-finding-1',title:'Neue Front trotz Druck',kind:'Strategisches Coaching',detail:'Truppen wurden parallel gebunden.',time:10,isCoach:true},{id:'coach-1',title:'Expansion verzögert',kind:'Coach',detail:'Ein belegter Test-Hinweis.',time:10,isCoach:true},{id:'event-2',title:'Angriff gestartet',kind:'Angriff',detail:'Engine-Ereignis.',time:15,isCoach:false},{id:'pro-finding-2',title:'Reserve zu früh gebunden',kind:'Strategisches Coaching',detail:'Weniger Reserve für die Verteidigung.',time:20,isCoach:true},{id:'pro-finding-3',title:'Expansion nicht abgesichert',kind:'Strategisches Coaching',detail:'Grenze blieb verwundbar.',time:25,isCoach:true}];
-function TestApp(){const [selected,setSelected]=React.useState('coach-1');return <ReplayVisualization mapName="Testmap" durationSeconds={30} events={events} findings={findings} samples={[previousSample,sample]} selectedEventId={selected} onSelectEvent={setSelected} onOpenReplay={()=>{}}/>;}
+function TestApp(){const [selected,setSelected]=React.useState('coach-1');return <ReplayVisualization mapName="Testmap" durationSeconds={30} events={events} findings={findings} samples={[previousSample,sample,laterSample]} selectedEventId={selected} onSelectEvent={setSelected} onOpenReplay={()=>{}}/>;}
 createRoot(document.getElementById('root')!).render(<TestApp/>);
 (window as any).__uiTest=()=>({
   width:window.innerWidth,
@@ -44,4 +50,5 @@ createRoot(document.getElementById('root')!).render(<TestApp/>);
   hasAffectedPlayers:document.querySelector('.replay-viz-priority-card')?.textContent?.includes('Alpha') && document.querySelector('.replay-viz-priority-card')?.textContent?.includes('Bravo'),
   hasMovement:!!document.querySelector('.replay-viz-movements line'),
   selectedTime:document.querySelector('.replay-viz-focus-head b')?.textContent,
+  selectedFrame:document.querySelector('.replay-viz-map-head span:last-child')?.textContent,
 });

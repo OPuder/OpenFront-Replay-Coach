@@ -88,4 +88,12 @@ if [[ "$started" != true ]]; then
   adb_cmd logcat -d -t 500 2>&1 | grep -E "FATAL EXCEPTION|AndroidRuntime|de.openfront.replaycoach|ActivityTaskManager" | tail -n 120 || true
   fail "Current release app process did not start within 60 seconds after the upgrade."
 fi
-log "PASS: previous published APK versionCode $previous_version_code upgraded to release $version (versionCode $current_version_code) and launched."
+log "Running a five-minute foreground idle soak on the upgraded signed release."
+sleep 300
+if ! adb_cmd shell pidof "$package_id" >/dev/null 2>&1; then
+  log "Release app exited during the five-minute idle soak; collecting diagnostics."
+  adb_cmd shell dumpsys activity activities 2>&1 | tail -n 80 || true
+  adb_cmd logcat -d -t 500 2>&1 | grep -E "FATAL EXCEPTION|AndroidRuntime|de.openfront.replaycoach|ActivityTaskManager" | tail -n 120 || true
+  fail "Upgraded signed release app exited during the five-minute idle soak."
+fi
+log "PASS: previous published APK versionCode $previous_version_code upgraded to release $version (versionCode $current_version_code), launched and survived five minutes idle."

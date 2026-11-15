@@ -258,26 +258,33 @@ export function buildEngineCoachInsights(
     const favorableTroopTrades = attacks.filter((action) => {
       const ownLoss = Math.max(0, -action.delta30s!.troops);
       const targetLoss = Math.max(0, -(action.targetDelta30s?.troops ?? 0));
-      return ownLoss > 0 && targetLoss > ownLoss && action.delta30s!.tiles <= 0 &&
+      return ownLoss > 0 && targetLoss > ownLoss && action.delta30s!.tiles >= 0 &&
         (action.targetDelta30s?.tiles ?? 0) >= 0 && action.targetDelta30s != null;
     });
     const evenTroopTrades = attacks.filter((action) => {
       const ownLoss = Math.max(0, -action.delta30s!.troops);
       const targetLoss = Math.max(0, -(action.targetDelta30s?.troops ?? 0));
-      return ownLoss > 0 && targetLoss === ownLoss && action.delta30s!.tiles <= 0 &&
+      return ownLoss > 0 && targetLoss === ownLoss && action.delta30s!.tiles >= 0 &&
         (action.targetDelta30s?.tiles ?? 0) >= 0 && action.targetDelta30s != null;
     });
-    const tradeEvidence = [...troopDownNoTerritory, ...favorableTroopTrades, ...evenTroopTrades];
+    const mixedTerritoryTrades = attacks.filter(action => {
+      if (!action.targetDelta30s) return false;
+      const ownLoss = Math.max(0, -action.delta30s!.troops);
+      const targetLoss = Math.max(0, -action.targetDelta30s.troops);
+      return ownLoss > 0 && targetLoss > ownLoss && action.delta30s!.tiles < 0 &&
+        action.targetDelta30s.tiles >= 0;
+    });
+    const tradeEvidence = [...troopDownNoTerritory, ...favorableTroopTrades, ...evenTroopTrades, ...mixedTerritoryTrades];
     findings.push({
       id: "attack-response-windows",
       kind: troopDownNoTerritory.length > 0 ? "review" : "observation",
       title: troopDownNoTerritory.length > 0 ? "Angriffe mit ungünstigem Truppenverhältnis prüfen" :
         favorableTroopTrades.length > 0 ? "Günstige Truppentausche nach Angriffen beobachtet" : "Was nach deinen Angriffsbefehlen sichtbar wurde",
-      summary: `Bei ${territoryAt10s} von ${attacks.length} Angriffen stieg dein Gebiet im 10-Sekunden-Fenster; nach 30 Sekunden war das bei ${territoryAt30s} Angriffen der Fall. Ohne Gebietsreaktion: ${favorableTroopTrades.length} günstige Truppentausche, ${evenTroopTrades.length} ausgeglichene und ${troopDownNoTerritory.length} ungünstige beobachtete Truppenverhältnisse.`,
+      summary: `Bei ${territoryAt10s} von ${attacks.length} Angriffen stieg dein Gebiet im 10-Sekunden-Fenster; nach 30 Sekunden war das bei ${territoryAt30s} Angriffen der Fall. Ohne positive Gebietsreaktion: ${favorableTroopTrades.length} günstige Truppentausche ohne eigenen Gebietsverlust, ${evenTroopTrades.length} ausgeglichene, ${mixedTerritoryTrades.length} gemischte Tauschfenster mit eigenem Gebietsverlust und ${troopDownNoTerritory.length} ungünstige beobachtete Truppenverhältnisse.`,
       evidence: tradeEvidence.slice(0, 4).map((action) =>
         `${clock(action.seconds)} · eigenes Gebiet ${action.delta30s!.tiles} · eigene Truppen ${action.delta30s!.troops} · Zielgebiet ${action.targetDelta30s?.tiles ?? "n/v"} · Zieltruppen ${action.targetDelta30s?.troops ?? "n/v"}`
       ).join(" · ") || "Keine auswertbaren Truppenverhältnisse ohne Gebietsreaktion erfasst.",
-      nextStep: "Öffne die markierten Angriffe und vergleiche beide Truppenänderungen. Prüfe zusätzlich Zielverteidigung, Reisezeit und parallele Fronten, bevor du den Tausch als gut oder schlecht bewertest.",
+      nextStep: "Öffne die markierten Angriffe und vergleiche beide Truppenänderungen mit der Gebietsreaktion. Ein günstiger Truppentausch ist kein Vorteil, wenn du dabei strategisch wichtiges eigenes Gebiet verlierst; prüfe außerdem Zielverteidigung, Reisezeit und parallele Zielbindungen.",
       seconds: tradeEvidence[0]?.seconds ?? null,
       limitation: "Das sind Netto-Veränderungen bis 10 bzw. 30 Sekunden nach dem Befehl. Andere zeitgleiche Ereignisse wirken mit; Truppenverluste beim Ziel können durch andere Angreifer entstehen und beweisen keinen eigenen Kampferfolg.",
     });

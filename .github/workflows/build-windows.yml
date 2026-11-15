@@ -8,9 +8,6 @@ on:
 permissions:
   contents: read
 
-concurrency:
-  group: openfront-replay-coach-windows-${{ github.ref }}
-  cancel-in-progress: true
 
 jobs:
   build-windows:

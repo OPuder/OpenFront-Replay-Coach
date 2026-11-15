@@ -74,3 +74,16 @@ test('uses the declared frame count and ignores malformed turn numbers', () => {
   assert.equal(getTotalRecordedFrames({ info: { num_turns: 'invalid' }, turns: [{ turnNumber: 4 }] }), 5);
   assert.equal(getTotalRecordedFrames(null), 0);
 });
+test('counts very large replay frame arrays without argument spreading', () => {
+  const turns = Array.from({ length: 150_000 }, (_, turnNumber) => ({ turnNumber }));
+  assert.equal(getTotalRecordedFrames({ info: { num_turns: 10 }, turns }), 150_000);
+});
+
+test('uses the declared frame count and ignores malformed turn numbers', () => {
+  assert.equal(getTotalRecordedFrames({ info: { num_turns: 250 }, turns: [
+    { turnNumber: 10 }, { turnNumber: -1 }, { turnNumber: 'invalid' }, { turnNumber: null }, null, {},
+  ] }), 250);
+  assert.equal(getTotalRecordedFrames({ info: { num_turns: 'invalid' }, turns: [{ turnNumber: 4 }] }), 5);
+  assert.equal(getTotalRecordedFrames(null), 0);
+});
+

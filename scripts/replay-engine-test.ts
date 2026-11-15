@@ -11,6 +11,7 @@ declare global {
     __setBatchReplay?: (gameId: string, record: unknown) => void;
     __runBatchReplayTest?: (gameIds: string[]) => Promise<{ summary: unknown; outcomes: Array<any> }>;
     __verifyBatchStoreTest?: () => Promise<Array<any>>;
+    __verifyPlayerIndexTest?: () => Promise<{ indexPresent: boolean; playerAMatches: string[]; playerBMatches: string[] }>;
     __testAbortBatchReplay?: (gameId: string) => Promise<{ aborted: boolean }>;
     __testAbort?: (record: unknown) => Promise<{ aborted: boolean }>;
     __verifyStoreTest?: (gameId: string) => Promise<{ analysisStatus?: string; simulationStatus?: string; sampleCount: number }>;
@@ -159,3 +160,37 @@ window.__testAbortBatchReplay = async (gameId) => {
   if (!record) return { aborted: false };
   return window.__testAbort!(record);
 };
+
+window.__verifyPlayerIndexTest = async () => {
+  await saveImportedMatch("ci-player-index-a", {
+    game: { gameId: "index-a-1", map: "CI", mode: "Free For All", type: "Private" } as any,
+    status: "loaded",
+  });
+  await saveImportedMatch("ci-player-index-a", {
+    game: { gameId: "index-a-2", map: "CI", mode: "Free For All", type: "Private" } as any,
+    status: "loaded",
+  });
+  await saveImportedMatch("ci-player-index-b", {
+    game: { gameId: "index-b-1", map: "CI", mode: "Free For All", type: "Private" } as any,
+    status: "loaded",
+  });
+
+  const [playerA, playerB] = await Promise.all([
+    loadImportedMatches("ci-player-index-a"),
+    loadImportedMatches("ci-player-index-b"),
+  ]);
+  const db = await new Promise<IDBDatabase>((resolve, reject) => {
+    const request = indexedDB.open("openfront-replay-coach");
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error ?? new Error("Could not inspect match-store indexes"));
+  });
+  const indexPresent = db.transaction("matches", "readonly")
+    .objectStore("matches").indexNames.contains("by-player-id");
+  db.close();
+  return {
+    indexPresent,
+    playerAMatches: playerA.map(item => item.game.gameId).sort(),
+    playerBMatches: playerB.map(item => item.game.gameId).sort(),
+  };
+};
+

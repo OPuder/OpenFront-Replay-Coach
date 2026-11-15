@@ -3,6 +3,15 @@ import { readFileSync } from "node:fs";
 const read = path => readFileSync(new URL("../" + path, import.meta.url), "utf8");
 const updater = read("src/main/updater.ts");
 const android = read("android-updater-template/ApkUpdaterPlugin.java");
+
+assert.ok(android.includes("inspectApkContainer(apk)"), "APK diagnostics must inspect the downloaded container.");
+assert.match(android, /ZIP-Header:/);
+assert.match(android, /Manifest-und-DEX-vorhanden/);
+assert.match(android, /Android kann die geprüfte APK nicht als Installationspaket lesen/);
+const enginePreparation = read("scripts/prepare-engines.mjs");
+assert.match(enginePreparation, /encoding: "utf8"/);
+assert.ok(enginePreparation.includes("maxBuffer: 32 * 1024 * 1024"));
+assert.match(enginePreparation, /Dependency installation failed for lockfile group/);
 const installer = read("scripts/install-android-updater-plugin.mjs");
 const renderer = read("src/renderer/UpdateCenter.tsx");
 const versionScript = read("scripts/set-release-version.mjs");
@@ -77,12 +86,12 @@ assert.match(androidSigningGate, /ANDROID_KEYSTORE_PATH/);
 assert.match(androidSigningGate, /Android signing certificate does not match/);
 assert.match(androidSigningGate, /apksigner.*verify/);
 const androidUpdateRegression = read("scripts/test-android-in-place-update.sh");
-assert.ok(androidUpdateRegression.includes('timeout 30s adb -s emulator-5554 shell "run-as $package_id sh -c'));
-assert.ok(androidUpdateRegression.includes('timeout 30s adb -s emulator-5554 shell "run-as $package_id cat files/update-regression/sentinel.txt"'));
+assert.ok(androidUpdateRegression.includes('adb_cmd() { timeout 60s adb -s emulator-5554 "$@"') || androidUpdateRegression.includes('timeout 30s adb -s emulator-5554 shell "run-as $package_id sh -c'));
+assert.ok(androidUpdateRegression.includes('adb_cmd shell "run-as $package_id cat files/update-regression/sentinel.txt"') || androidUpdateRegression.includes('timeout 30s adb -s emulator-5554 shell "run-as $package_id cat files/update-regression/sentinel.txt"'));
 assert.match(androidUpdateRegression, /install_apk\(\)\s*\{|adb -s emulator-5554 install -r/);
 assert.match(androidUpdateRegression, /keep-this-data/);
 assert.match(androidUpdateRegression, /versionCode=\$expected_version_code/);
-assert.ok(androidUpdateRegression.includes('timeout 30s adb -s emulator-5554 shell monkey -p "$package_id" 1'));
+assert.ok(androidUpdateRegression.includes('adb_cmd shell monkey -p "$package_id" 1') || androidUpdateRegression.includes('timeout 30s adb -s emulator-5554 shell monkey -p "$package_id" 1'));
 // This smoke script launches with monkey; process survival is covered by the newer bounded emulator regression.
 
 
@@ -137,12 +146,12 @@ assert.ok(releaseUpgradeWorkflow.includes('echo "previous_apk=$previous_apk" >> 
 assert.ok(releaseUpgradeWorkflow.includes("PREVIOUS_APK: ${{ steps.apk.outputs.previous_apk }}"));
 assert.ok(releaseUpgradeWorkflow.includes("Install previous published APK and upgrade to exact signed release APK"));
 assert.ok(releaseUpgradeWorkflow.includes("script: bash scripts/test-android-release-upgrade.sh"));
-assert.ok(releaseUpgradeWorkflow.includes("timeout-minutes: 45"));
+assert.ok(releaseUpgradeWorkflow.includes("timeout-minutes: 60"));
 assert.ok(releaseUpgradeWorkflow.includes("emulator-boot-timeout: 1800"));
 assert.ok(!releaseUpgradeWorkflow.includes("disable-animations: true"));
 assert.ok(releaseUpgradeScript.includes("PREVIOUS_APK"));
 assert.ok(releaseUpgradeScript.includes("for attempt in 1 2 3"));
-assert.ok(releaseUpgradeScript.includes("timeout 90s adb -s emulator-5554 install"));
+assert.ok(releaseUpgradeScript.includes("timeout --signal=INT --kill-after=15s 240s adb -s emulator-5554 install"));
 assert.ok(releaseUpgradeScript.includes("seq 1 9"));
 assert.ok(releaseUpgradeScript.includes("timeout 8s adb -s emulator-5554 shell cmd package list packages"));
 assert.ok(releaseUpgradeScript.includes("versionCode"));

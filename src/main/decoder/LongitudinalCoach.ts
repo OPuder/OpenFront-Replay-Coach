@@ -262,22 +262,33 @@ export function buildLongitudinalCoachReport(
   });
   const trend=(id:"territory"|"income"|"attack-follow-through",label:string,unit:string):LongitudinalMetricTrend=>{
     const valueFor=(item:LongitudinalMatchProgress)=>id==="territory"?item.territoryPerMinute:id==="income"?item.incomePerMinute:item.attackFollowThroughPercent;
-    const values=trendChronological.map(entry=>{
-      const item=matchProgress.find(progress=>progress.gameId===entry.input.gameId);
-      const value=item?valueFor(item):null;
-      return item&&value!==null&&Number.isFinite(value)?{gameId:item.gameId,mapName:item.mapName,playedAt:item.playedAt,value}:null;
-    }).filter((value):value is {gameId:string;mapName:string;playedAt:string|null;value:number}=>value!==null);
-    // Compare the latest two complete chronological three-match windows. Missing
-    // values are not compressed across unknown dates; tied/absent dates are excluded.
+    const progressByGame=new Map(matchProgress.map(item=>[item.gameId,item]));
+    const toExamples=(entries:NormalizedMatch[])=>entries.flatMap(entry=>{
+      const progress=progressByGame.get(entry.input.gameId);
+      const value=progress?valueFor(progress):null;
+      return progress&&value!==null&&Number.isFinite(value)
+        ?[{gameId:progress.gameId,mapName:progress.mapName,playedAt:progress.playedAt,value}]
+        :[];
+    });
+    // Keep the two windows anchored to six consecutive, uniquely dated matches.
+    // A match with no usable metric remains a gap; it must not shift later matches
+    // into an earlier window and manufacture an improvement/regression.
     const blockSize=3;
-    const previousBlock=values.slice(-blockSize*2,-blockSize);
-    const latestBlock=values.slice(-blockSize);
-    const previous=previousBlock.length>=2?median(previousBlock.map(item=>item.value)):null;
-    const latest=latestBlock.length>=2?median(latestBlock.map(item=>item.value)):null;
+    const previousMatches=trendChronological.slice(-blockSize*2,-blockSize);
+    const latestMatches=trendChronological.slice(-blockSize);
+    const previousBlock=toExamples(previousMatches);
+    const latestBlock=toExamples(latestMatches);
+    const previous=previousBlock.length===blockSize?median(previousBlock.map(item=>item.value)):null;
+    const latest=latestBlock.length===blockSize?median(latestBlock.map(item=>item.value)):null;
     const delta=previous!==null&&latest!==null?latest-previous:null;
     const threshold=previous===null?0:Math.max(0.05,Math.abs(previous)*0.03);
     const direction=delta===null?"insufficient-data":delta>threshold?"improved":delta< -threshold?"declined":"stable";
-    return {id,label,previous,latest,delta,observations:values.length,direction,unit,
+    const observations=trendChronological.filter(entry=>{
+      const progress=progressByGame.get(entry.input.gameId);
+      const value=progress?valueFor(progress):null;
+      return value!==null&&Number.isFinite(value);
+    }).length;
+    return {id,label,previous,latest,delta,observations,direction,unit,
       previousExamples:previousBlock.map(({gameId,mapName,playedAt,value})=>({gameId,mapName,playedAt,value})),
       latestExamples:latestBlock.map(({gameId,mapName,playedAt,value})=>({gameId,mapName,playedAt,value})),
     };
@@ -321,8 +332,10 @@ export function buildLongitudinalCoachReport(
       const best = [...values].sort((a, b) => priorityRank(a.finding.priority) - priorityRank(b.finding.priority))[0].finding;
       const frequency = values.length / Math.max(1, comparable.length);
       const hasFinding = (entry: NormalizedMatch) => entry.report.findings.some(finding => finding.id === id);
-      const recent = chronological.slice(-3);
-      const previous = chronological.slice(-6, -3);
+      // Directional training status requires trustworthy chronology. Missing or
+      // tied timestamps remain in recurrence counts, but cannot define "recent".
+      const recent = trendChronological.slice(-3);
+      const previous = trendChronological.slice(-6, -3);
       const recentOccurrences = recent.filter(hasFinding).length;
       const previousOccurrences = previous.filter(hasFinding).length;
       const improving = previous.length === 3 && previousOccurrences >= 2 && recent.length === 3 && recentOccurrences === 0;

@@ -428,3 +428,41 @@ test('corrupt and partial sample rows are ignored without crashing verified matc
   assert.equal(report.comparableMatches,1);
   assert.equal(report.matchProgress.length,1);
 });
+
+
+test('missing metric values do not shift later matches into earlier trend windows',()=>{
+  const sparse=makeSimulation({
+    samples:makeSimulation().samples.slice(0,2),
+    actionReviews:[],
+  });
+  const report=buildLongitudinalCoachReport([
+    ...['a','b','c'].map((id,i)=>match(id,{playedAt:`2026-08-0${i+1}T00:00:00Z`})),
+    ...['d','e','f'].map((id,i)=>match(id,{playedAt:`2026-08-0${i+4}T00:00:00Z`,simulation:sparse})),
+  ]);
+  const trend=report.metricTrends.find(item=>item.id==='territory');
+  assert.equal(trend?.observations,3);
+  assert.equal(trend?.previous, null);
+  assert.equal(trend?.latest, null);
+  assert.equal(trend?.direction,'insufficient-data');
+  assert.equal(trend?.previousExamples.length,0);
+  assert.equal(trend?.latestExamples.length,0);
+});
+
+test('undated or tied recent matches cannot mark a training goal improving or regressing',()=>{
+  const clean=makeSimulation({actionReviews:[]});
+  const improvingWithAmbiguousRecent=[
+    match('a',{playedAt:'2026-09-01'}),match('b',{playedAt:'2026-09-02'}),match('c',{playedAt:'2026-09-03'}),
+    match('d',{playedAt:null,simulation:clean}),match('e',{playedAt:null,simulation:clean}),match('f',{playedAt:null,simulation:clean}),
+  ];
+  const regressingWithAmbiguousRecent=[
+    match('a',{playedAt:'2026-09-01',simulation:clean}),match('b',{playedAt:'2026-09-02',simulation:clean}),match('c',{playedAt:'2026-09-03',simulation:clean}),
+    match('d',{playedAt:'2026-09-04'}),match('e',{playedAt:'2026-09-04'}),match('f',{playedAt:'2026-09-04'}),
+  ];
+  for (const matches of [improvingWithAmbiguousRecent,regressingWithAmbiguousRecent]) {
+    const report=buildLongitudinalCoachReport(matches);
+    const goal=report.trainingGoals.find(item=>item.id==='attack-follow-through');
+    assert.ok(goal);
+    assert.notEqual(goal.status,'improving');
+    assert.notEqual(goal.status,'regressing');
+  }
+});

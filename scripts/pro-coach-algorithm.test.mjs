@@ -42,7 +42,7 @@ test('front overload is distinguished from proof of a bad attack',()=>{
  const actions=Array.from({length:3},(_,i)=>action(60+i*50,{ownFrontContextBefore:{activeTargetCount:2,outgoingAttackCount:2,outgoingAttackTroops:180,incomingAttackCount:1,incomingAttackTroops:40}}));
  const report=buildProCoachReport(samples,actions,'p1',500);
  assert.ok(report.findings.some(x=>x.id==='front-load'));
- assert.match(report.findings.find(x=>x.id==='front-load').caveat,/nicht zwingend getrennte geografische Fronten/);
+ assert.match(report.findings.find(x=>x.id==='front-load').caveat,/keine getrennten geografischen Fronten/);
 });
 
 
@@ -394,7 +394,7 @@ test('one already active own attack is sufficient evidence of a parallel-front d
  const report=buildProCoachReport(samples,actions,'p1',500);
  const finding=report.allFindings?.find(item=>item.id==='front-load');
  assert.ok(finding);
- assert.match(finding.decision,/eigene aktive Zielbindung/);
+ assert.match(finding.decision,/hohe bestehende Truppenbindung/);
 });
 
 test('multiple distinct incoming attackers without own active attacks produce a defensive overload finding',()=>{
@@ -414,7 +414,7 @@ test('multiple distinct incoming attackers without own active attacks produce a 
  assert.ok(overload);
  assert.equal(overload.seconds,0);
  assert.equal(overload.priority,'high');
- assert.match(overload.summary,/2 verschiedene Gegner/);
+ assert.match(overload.summary,/mindestens zwei verschiedene Gegner/);
  assert.match(overload.summary,/keine eigenen aktiven Angriffe/);
  assert.match(overload.evidence,/0:00/);
  assert.match(overload.evidence,/Enemy A/);

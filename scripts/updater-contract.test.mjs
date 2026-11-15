@@ -89,6 +89,7 @@ assert.match(androidUpdateRegression, /install_apk\(\)\s*\{/);
 assert.match(androidUpdateRegression, /cmd package resolve-activity/);
 assert.match(androidUpdateRegression, /am start -W -n/);
 assert.match(androidUpdateRegression, /pidof/);
+assert.match(read(".github/workflows/update-validation.yml"), /Validate Android update smoke-test shell syntax[\\s\\S]*?bash -n scripts\\/test-android-in-place-update\\.sh/);
 assert.doesNotMatch(androidUpdateRegression, /seq -s 1 60/);
 
 

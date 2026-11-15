@@ -168,7 +168,22 @@ function buildMatchReport(input: LongitudinalMatchInput): NormalizedMatch | null
 export function buildLongitudinalCoachReport(
   matches: readonly LongitudinalMatchInput[],
 ): LongitudinalCoachReport {
-  const imported = matches.filter(match => Boolean(match.gameId));
+  // De-duplicate stable game IDs before calculating confidence and patterns.
+  // Duplicate imports must never manufacture recurring evidence.
+  const importedByGame = new Map<string, LongitudinalMatchInput>();
+  for (const match of matches) {
+    const gameId = String(match.gameId ?? "").trim();
+    if (!gameId) continue;
+    const existing = importedByGame.get(gameId);
+    if (!existing) {
+      importedByGame.set(gameId, match);
+      continue;
+    }
+    const existingVerified = existing.analysisStatus === "verified" && existing.simulation?.status === "verified";
+    const candidateVerified = match.analysisStatus === "verified" && match.simulation?.status === "verified";
+    if (candidateVerified && !existingVerified) importedByGame.set(gameId, match);
+  }
+  const imported = [...importedByGame.values()];
   const verified = imported
     .map(input => buildMatchReport(input))
     .filter((entry): entry is NormalizedMatch => entry !== null);
@@ -209,8 +224,15 @@ export function buildLongitudinalCoachReport(
   });
   const trend=(id:"territory"|"income"|"attack-follow-through",label:string,unit:string):LongitudinalMetricTrend=>{
     const values=matchProgress.map(item=>id==="territory"?item.territoryPerMinute:id==="income"?item.incomePerMinute:item.attackFollowThroughPercent).filter((value):value is number=>value!==null&&Number.isFinite(value));
-    const previous=values.length>=2?values[values.length-2]:null,latest=values.length>=2?values[values.length-1]:null;
-    const delta=previous!==null&&latest!==null?latest-previous:null,threshold=previous===null?0:Math.max(0.05,Math.abs(previous)*0.03);
+    // Compare chronological three-match blocks, using medians to dampen outliers.
+    // Require two observations per block before exposing a direction.
+    const blockSize=3;
+    const previousBlock=values.slice(-blockSize*2,-blockSize);
+    const latestBlock=values.slice(-blockSize);
+    const previous=previousBlock.length>=2?median(previousBlock):null;
+    const latest=latestBlock.length>=2?median(latestBlock):null;
+    const delta=previous!==null&&latest!==null?latest-previous:null;
+    const threshold=previous===null?0:Math.max(0.05,Math.abs(previous)*0.03);
     const direction=delta===null?"insufficient-data":delta>threshold?"improved":delta< -threshold?"declined":"stable";
     return {id,label,previous,latest,delta,observations:values.length,direction,unit};
   };
@@ -253,12 +275,12 @@ export function buildLongitudinalCoachReport(
       const best = [...values].sort((a, b) => priorityRank(a.finding.priority) - priorityRank(b.finding.priority))[0].finding;
       const frequency = values.length / Math.max(1, comparable.length);
       const hasFinding = (entry: NormalizedMatch) => entry.report.findings.some(finding => finding.id === id);
-      const recent = chronological.slice(-2);
-      const previous = chronological.slice(-4, -2);
+      const recent = chronological.slice(-3);
+      const previous = chronological.slice(-6, -3);
       const recentOccurrences = recent.filter(hasFinding).length;
       const previousOccurrences = previous.filter(hasFinding).length;
-      const improving = previous.length === 2 && previousOccurrences === 2 && recent.length === 2 && recentOccurrences === 0;
-      const regressing = previous.length === 2 && previousOccurrences === 0 && recent.length === 2 && recentOccurrences === 2;
+      const improving = previous.length === 3 && previousOccurrences >= 2 && recent.length === 3 && recentOccurrences === 0;
+      const regressing = previous.length === 3 && previousOccurrences === 0 && recent.length === 3 && recentOccurrences >= 2;
       const status: LongitudinalTrainingGoal["status"] = improving
         ? "improving"
         : regressing
@@ -347,14 +369,14 @@ export function buildLongitudinalCoachReport(
   const trainingFocus = recurringFindings[0]?.trainingRule
     ?? (weakest ? `In ${weakest.label} gezielt die Entscheidungen und beobachteten Zustandswechsel vergleichen.` : "Weitere Partien desselben Modus und Spieltyps verifizieren, bevor wiederkehrende Muster bewertet werden.");
   const message = status === "ready"
-    ? `${comparable.length} vollständig verifizierte Partien aus ${groupLabel} bilden die Vergleichsgrundlage. Nicht verifizierte oder andersartige Partien fließen nicht ein; Karten- und Spielerzahlen können variieren, deshalb sind Raten und wiederkehrende Muster keine direkte Siegprognose.`
-    : `Für belastbare Langzeitmuster werden mindestens zwei vollständig hash-verifizierte Partien desselben Modus und Spieltyps benötigt. Aktuell vergleichbar: ${comparable.length}.`;
+    ? `${comparable.length} vollständig verifizierte Partien aus ${groupLabel} bilden die Vergleichsgrundlage. Nicht verifizierte oder andersartige Partien bleiben ausgeschlossen.`
+    : "Für wiederkehrende Muster werden mindestens zwei vollständig verifizierte Partien desselben Modus und Spieltyps benötigt.";
 
   return {
     status,
     importedMatches: imported.length,
     verifiedMatches: verified.length,
-    excludedMatches: imported.length - comparable.length,
+    excludedMatches: imported.length - verified.length,
     comparableMatches: comparable.length,
     comparableGroup: groupLabel,
     confidence,

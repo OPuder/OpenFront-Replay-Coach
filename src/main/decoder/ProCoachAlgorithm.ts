@@ -195,7 +195,17 @@ export function buildProCoachReport(
       evidence:`${weakest.label} · ${weakest.activeSamples} Zustände · ${weakest.attacks} Angriffe · ${weakest.minutes.toFixed(1)} Minuten`,
       seconds:weakest.fromSeconds,caveat:'Phasenlängen und Gegnerdruck unterscheiden sich. Das ist ein Vergleich innerhalb dieser Partie, kein allgemeiner Rang deiner Spielstärke.'});
   }
-  const ranked=[...findings].sort((a,b)=>({high:0,medium:1,low:2}[a.priority]-({high:0,medium:1,low:2}[b.priority])||({high:0,medium:1,low:2}[b.confidence]-{high:0,medium:1,low:2}[a.confidence])));
+  // Stable presentation utility balances estimated impact, evidence confidence,
+  // lesson quality and earlier actionable moments. It is not a gameplay score.
+  const confidenceWeight:Record<ProCoachConfidence,number>={high:3,medium:2,low:1};
+  const impactWeight:Record<ProCoachFinding['priority'],number>={high:3,medium:2,low:1};
+  const learningWeight=(finding:ProCoachFinding)=>finding.trainingRule.trim().length>=24&&finding.alternative.trim().length>=24?2:1;
+  const ranked=[...findings].sort((a,b)=>{
+    const utility=(finding:ProCoachFinding)=>impactWeight[finding.priority]*4
+      +confidenceWeight[finding.confidence]*2+learningWeight(finding)
+      +(finding.seconds===null?0:Math.max(0,1-Math.min(1,finding.seconds/safeDuration)));
+    return utility(b)-utility(a)||a.id.localeCompare(b.id);
+  });
   const strongest=phases.filter(p=>p.momentumIndex!==null).sort((a,b)=>(b.momentumIndex??0)-(a.momentumIndex??0))[0];
   const start=first?.player,end=last?.player;
   const territoryDelta=start&&end?end.tiles-start.tiles:null;

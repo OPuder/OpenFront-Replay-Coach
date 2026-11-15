@@ -141,7 +141,6 @@ test('attack follow-through keeps own territory gains when target observation is
   assert.equal(report.matchProgress[0].attackFollowThroughPercent, 100);
 });
 
-
 test('recurring strengths are surfaced across multiple verified comparable matches',()=>{
   const strengthSimulation=makeSimulation({
     playerReview:{
@@ -165,7 +164,6 @@ test('recurring strengths are surfaced across multiple verified comparable match
   assert.equal(strength.comparableMatches,2);
 });
 
-
 test('malformed action records are excluded instead of being fabricated at time zero',()=>{
   const simulation=makeSimulation({actionReviews:[
     ...makeSimulation().actionReviews,
@@ -177,7 +175,6 @@ test('malformed action records are excluded instead of being fabricated at time 
   const report=buildLongitudinalCoachReport([match('malformed-a',{simulation})]);
   assert.equal(report.matchProgress[0].attackFollowThroughSamples,6);
 });
-
 
 test('malformed action records cannot crash recurring strength analysis',()=>{
   const simulation=makeSimulation({
@@ -199,8 +196,6 @@ test('malformed action records cannot crash recurring strength analysis',()=>{
   assert.equal(report.matchProgress[0].attackFollowThroughSamples,1);
   assert.equal(report.status,'insufficient-data');
 });
-
-
 
 test('training goals remain provisional until the comparable sample is large enough',()=>{
   const report=buildLongitudinalCoachReport([match('a'),match('b')]);
@@ -239,4 +234,49 @@ test('training goals mark a repeated pattern as regressing only after two recent
   ]);
   const goal=report.trainingGoals.find(item=>item.id==='attack-follow-through');
   assert.equal(goal?.status,'regressing');
+});
+
+test('duplicate game IDs cannot inflate cohort confidence or recurring pattern counts',()=>{
+  const report=buildLongitudinalCoachReport([
+    match('same'),
+    match('same'),
+    match('same'),
+    match('other'),
+  ]);
+  assert.equal(report.importedMatches,2);
+  assert.equal(report.verifiedMatches,2);
+  assert.equal(report.comparableMatches,2);
+  const finding=report.recurringFindings.find(item=>item.id==='attack-follow-through');
+  assert.equal(finding?.occurrences,2);
+});
+
+test('training status does not oscillate from a single recurrence in a three-match window',()=>{
+  const clean=makeSimulation({actionReviews:[]});
+  const report=buildLongitudinalCoachReport([
+    match('a'),match('b'),match('c'),
+    match('d',{simulation:clean}),
+    match('e'),
+    match('f',{simulation:clean}),
+  ]);
+  const goal=report.trainingGoals.find(item=>item.id==='attack-follow-through');
+  assert.notEqual(goal?.status,'regressing');
+});
+
+test('trend compares medians of chronological three-match blocks and resists one outlier',()=>{
+  const makeTiles=(multiplier)=>makeSimulation({
+    samples:makeSimulation().samples.map(sample=>({...sample,players:sample.players.map(player=>({...player,tiles:player.tiles*multiplier}))})),
+    actionReviews:[],
+  });
+  const report=buildLongitudinalCoachReport([
+    match('a',{playedAt:'2026-01-01T00:00:00Z',simulation:makeTiles(1)}),
+    match('b',{playedAt:'2026-01-02T00:00:00Z',simulation:makeTiles(1)}),
+    match('c',{playedAt:'2026-01-03T00:00:00Z',simulation:makeTiles(1)}),
+    match('d',{playedAt:'2026-01-04T00:00:00Z',simulation:makeTiles(1)}),
+    match('e',{playedAt:'2026-01-05T00:00:00Z',simulation:makeTiles(1)}),
+    match('f',{playedAt:'2026-01-06T00:00:00Z',simulation:makeTiles(20)}),
+  ]);
+  const trend=report.metricTrends.find(item=>item.id==='territory');
+  assert.ok(trend);
+  assert.equal(trend.observations,6);
+  assert.equal(trend.direction,'stable');
 });

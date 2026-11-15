@@ -272,3 +272,13 @@ assert.match(windowsStorage, /openfront-coach-training-goal/);
 assert.match(windowsStorage, /openfront-replay-coach\.phase-history\.v1/);
 assert.doesNotMatch(windowsStorage, /ofrc:update-regression-settings/);
 assert.match(windowsInPlace, /writeFileSync/);
+
+
+const windowsDistributionVerifier = read("scripts/verify-windows-distributions.mjs");
+assert.match(windowsDistributionVerifier, /subarray\(peOffset, peOffset \+ 4\)\.equals\(Buffer\.from\(\[0x50, 0x45, 0x00, 0x00\]\)\)/);
+assert.match(windowsDistributionVerifier, /OFRC_INSTALLER_ATTEMPTS/);
+assert.match(windowsDistributionVerifier, /NSIS_INSTALL_ATTEMPT_START/);
+assert.match(windowsDistributionVerifier, /NSIS_INSTALL_ATTEMPT_FAILED/);
+assert.match(windowsDistributionVerifier, /NSIS_INSTALL_ATTEMPT_OK/);
+assert.match(windowsDistributionVerifier, /successfulInstallerAttempts: installerAttempts/);
+assert.match(windowsDistributionVerifier, /no installer or portable failure was ignored/);

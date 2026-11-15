@@ -54,12 +54,14 @@ install_apk() {
   local replace="$2"
   local output=""
   for attempt in 1 2 3; do
+    local install_status=0
     if [[ "$replace" == "true" ]]; then
-      output="$(timeout --signal=INT --kill-after=15s 240s adb -s emulator-5554 install --no-streaming -r "$apk" 2>&1)" && { log "$output"; return 0; }
+      output="$(timeout --signal=INT --kill-after=15s 240s adb -s emulator-5554 install --no-streaming -r "$apk" 2>&1)" || install_status=$?
     else
-      output="$(timeout --signal=INT --kill-after=15s 240s adb -s emulator-5554 install --no-streaming "$apk" 2>&1)" && { log "$output"; return 0; }
+      output="$(timeout --signal=INT --kill-after=15s 240s adb -s emulator-5554 install --no-streaming "$apk" 2>&1)" || install_status=$?
     fi
-    log "APK install failed (attempt $attempt/3; exit $?): ${output:-no output from adb install}"
+    if [[ "$install_status" -eq 0 ]]; then log "$output"; return 0; fi
+    log "APK install failed (attempt $attempt/3; exit $install_status): ${output:-no output from adb install}"
     if [[ "$attempt" -eq 3 ]]; then
       log "Collecting emulator diagnostics after APK installation failure."
       timeout 20s adb -s emulator-5554 get-state 2>&1 || true

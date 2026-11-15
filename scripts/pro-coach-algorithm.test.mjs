@@ -478,3 +478,19 @@ test('small own commitment on a second target is not mislabeled as offensive ove
  const report=buildProCoachReport(samples,actions,'p1',500);
  assert.ok(!report.allFindings?.some(item=>item.id==='front-load'));
 });
+
+test('two weak incoming attackers without losses are pressure, not defensive overload',()=>{
+ const before=enginePlayer({incomingAttacks:2,incomingAttackDetails:[
+  {id:'in-a',attackerID:2,troops:80,retreating:false},
+  {id:'in-b',attackerID:3,troops:80,retreating:false},
+ ]});
+ const after=enginePlayer({troops:1010,tiles:101});
+ const enemyA=enginePlayer({id:2,name:'Enemy A',clientID:'p2'});
+ const enemyB=enginePlayer({id:3,name:'Enemy B',clientID:'p3'});
+ const insights=buildEngineCoachInsights(engineReview,[],[
+  {tick:0,frame:0,players:[before,enemyA,enemyB]},
+  {tick:150,frame:150,players:[after,enemyA,enemyB]},
+ ]);
+ assert.ok(!insights.some(item=>item.id==='defensive-overload'));
+ assert.ok(insights.some(item=>item.id==='defensive-resilience'));
+});

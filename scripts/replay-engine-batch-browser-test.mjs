@@ -144,7 +144,7 @@ async function main() {
     assert.ok((coaching?.findings?.length ?? 0) <= 3, gameId + " must keep ProCoach findings to at most three");
     for (const insight of [...(coaching?.engineTop3 ?? []), ...(coaching?.findings ?? [])]) {
       assert.ok(Number.isFinite(insight.seconds), gameId + " insight " + insight.id + " must have an exact replay timestamp");
-      assert.match(String(insight.evidence ?? ""), /\\b\\d{1,2}:\\d{2}\\b/, gameId + " insight " + insight.id + " must cite a timestamped replay event");
+      assert.match(String(insight.evidence ?? ""), /\b\d{1,2}:\d{2}\b/, gameId + " insight " + insight.id + " must cite a timestamped replay event");
       assert.ok(Boolean(insight.decision || insight.summary), gameId + " insight " + insight.id + " must explain the observed decision/context");
       assert.ok(Boolean(insight.alternative), gameId + " insight " + insight.id + " must provide a better alternative");
       assert.ok(Boolean(insight.nextStep || insight.trainingRule), gameId + " insight " + insight.id + " must include an actionable lesson");

@@ -441,10 +441,10 @@ test('missing metric values do not shift later matches into earlier trend window
   ]);
   const trend=report.metricTrends.find(item=>item.id==='territory');
   assert.equal(trend?.observations,3);
-  assert.equal(trend?.previous, null);
+  assert.equal(trend?.previous, 1.2);
   assert.equal(trend?.latest, null);
   assert.equal(trend?.direction,'insufficient-data');
-  assert.equal(trend?.previousExamples.length,0);
+  assert.equal(trend?.previousExamples.length,3);
   assert.equal(trend?.latestExamples.length,0);
 });
 

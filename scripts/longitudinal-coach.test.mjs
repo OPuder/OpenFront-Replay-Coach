@@ -284,13 +284,14 @@ test('trend compares medians of chronological three-match blocks and resists one
 
 test('missing timestamps remain visible but cannot manufacture a chronological trend',()=>{
   const matches=[
-    ...Array.from({length:5},(_,i)=>match('dated-'+i,{playedAt:`2026-03-0${i+1}T00:00:00Z`})),
-    match('undated',{playedAt:null}),
+    ...Array.from({length:4},(_,i)=>match('dated-'+i,{playedAt:`2026-03-0${i+1}T00:00:00Z`})),
+    match('undated-a',{playedAt:null}),
+    match('undated-b',{playedAt:'not-a-date'}),
   ];
   const report=buildLongitudinalCoachReport(matches);
   const trend=report.metricTrends.find(item=>item.id==='territory');
   assert.equal(report.matchProgress.length,6);
-  assert.equal(trend?.observations,5);
+  assert.equal(trend?.observations,4);
   assert.equal(trend?.direction,'insufficient-data');
   assert.equal(trend?.previous,null);
   assert.equal(trend?.latest,null);
@@ -416,7 +417,7 @@ test('duplicate IDs cannot manufacture extra trend observations or alter their e
 test('corrupt and partial sample rows are ignored without crashing verified match history',()=>{
   const broken=makeSimulation({
     samples:[null,{tick:NaN,players:[]},{tick:10,players:[null]},{tick:20,players:[{clientID:'p1',alive:true,tiles:1}]}],
-    playerReview:null,
+    playerReview:{clientID:'p1'},
   });
   const report=buildLongitudinalCoachReport([
     match('broken',{simulation:broken}),

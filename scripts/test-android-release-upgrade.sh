@@ -4,8 +4,7 @@ set -Eeuo pipefail
 package_id="de.openfront.replaycoach"
 version="${RELEASE_VERSION:?RELEASE_VERSION is required}"
 current_apk="release/OpenFront-Replay-Coach-${version}-Android.apk"
-previous_dir="${RUNNER_TEMP:?RUNNER_TEMP is required}/previous-release"
-previous_apk="$(find "$previous_dir" -type f -name '*-Android.apk' -print -quit)"
+previous_apk="${PREVIOUS_APK:?PREVIOUS_APK is required}"
 
 log() { echo "::notice::[Android release upgrade] $*"; }
 fail() { echo "::error::[Android release upgrade] $*"; exit 1; }

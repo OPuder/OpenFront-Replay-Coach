@@ -87,9 +87,9 @@ export function toReplayCoachFindings(
       evidence,
       affectedPlayers,
       affectedOwnerIds,
-      uncertainty: finding.caveat || (seconds === null
-        ? 'Kein belastbarer Replay-Zeitstempel für diese Erkenntnis vorhanden.'
-        : 'Spieler- oder Gebietszuordnung ist nur sichtbar, wenn sie im passenden Engine-Snapshot eindeutig aufgelöst werden kann.'),
+      uncertainty: seconds === null
+        ? [finding.caveat, 'Kein belastbarer Replay-Zeitstempel für diese Erkenntnis vorhanden.'].filter(Boolean).join(' ')
+        : finding.caveat || 'Spieler- oder Gebietszuordnung ist nur sichtbar, wenn sie im passenden Engine-Snapshot eindeutig aufgelöst werden kann.',
     };
   });
 }

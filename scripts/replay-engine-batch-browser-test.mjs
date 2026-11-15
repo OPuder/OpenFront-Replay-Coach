@@ -109,7 +109,7 @@ async function main() {
   assert.equal(levantResult?.verifiedHashes, 626);
   for (const [gameId, outcome] of [["Europe", europeResult], ["Levant", levantResult]]) {
     assert.ok(Array.isArray(outcome?.coachingFindings), gameId + " must pass its verified engine result through the coaching/replay adapter");
-    assert.ok(outcome.coachingPlayerName, gameId + " must resolve the selected profile player");
+    assert.equal(outcome.coachingPlayerName, "OligenOle", gameId + " must coach the exact OligenOle profile, not merely any player");
     assert.ok(outcome.detectedFindingCount > 0 && outcome.coachingFindings.length > 0, gameId + " must produce actionable strategic findings for the selected player");
     for (const finding of outcome.coachingFindings) {
       assert.equal(finding.matchId, gameId, gameId + " finding must remain scoped to its source match");

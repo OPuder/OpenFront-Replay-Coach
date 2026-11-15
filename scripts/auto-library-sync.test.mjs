@@ -19,6 +19,7 @@ test('keeps full replay and simulation payloads out of the dashboard match list'
       playerReview: { playerName: 'Player 1', tilesGained: 20 },
       actionReviews: [{ actionType: 'attack', outcome: 'captured' }],
       spawnPositions: [{ clientId: 'p1', x: 10, y: 20 }],
+      spawnAlternatives: [{ x: 11, y: 21, score: 5 }],
       message: 'Verified',
     },
     analysisStatus: 'verified',
@@ -36,12 +37,14 @@ test('keeps full replay and simulation payloads out of the dashboard match list'
   assert.equal(compact.simulation.totalTicks, 50);
   assert.deepEqual(compact.simulation.playerReview, entry.simulation.playerReview);
   assert.deepEqual(compact.simulation.spawnPositions, entry.simulation.spawnPositions);
+  assert.equal(compact.simulation.spawnAlternatives, undefined);
 
   // Compaction is non-mutating; IndexedDB can retain the full payload.
   assert.equal(entry.result.record.turns.length, 1);
   assert.equal(entry.result.decodedActions.length, 1);
   assert.equal(entry.simulation.samples.length, 1);
   assert.equal(entry.simulation.actionReviews.length, 1);
+  assert.equal(entry.simulation.spawnAlternatives.length, 1);
 });
 
 test('does not invent a simulation summary for imported but unanalyzed matches', () => {

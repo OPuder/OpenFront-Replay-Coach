@@ -94,7 +94,7 @@ const expectedAppPid = parseExpectedWebViewPid(process.env.ANDROID_WEBVIEW_PID);
 const expectedSocketName = expectedWebViewSocketName(expectedAppPid);
 for (let attempt = 0; attempt < 120 && !target; attempt++) {
   try {
-    const sockets = [...new Set(adb("shell", "cat", "/proc/net/unix").split(/\\r?\\n/).map(line => line.match(/(webview_devtools_remote_\\d+)/)?.[1]).filter(Boolean))];
+    const sockets = [...new Set(adb("shell", "cat", "/proc/net/unix").split(/\r?\n/).map(line => line.match(/(webview_devtools_remote_\d+)/)?.[1]).filter(Boolean))];
     observedSockets = sockets;
     // Fail closed: never forward or inspect a WebView belonging to another PID.
     const candidateSocket = sockets.find(value => value === expectedSocketName);

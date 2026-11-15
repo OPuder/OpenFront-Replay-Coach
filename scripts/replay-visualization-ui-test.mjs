@@ -37,7 +37,7 @@ async function main(){
   const coached=await window.webContents.executeJavaScript('window.__uiTest()');
   assert.equal(coached.selectedTime,'00:10','Selecting a prioritized finding must synchronize the map/timeline playhead');
   assert.ok(coached.hasDecision,'Selected finding must expose its decision context');
-  await window.webContents.executeJavaScript("document.querySelectorAll('.replay-viz-marker')[1].click()");
+  await window.webContents.executeJavaScript("document.querySelector('.replay-viz-marker[aria-label^="00:15"]').click()");
   const selected=await window.webContents.executeJavaScript("window.__uiTest()");
   assert.equal(selected.selectedTime,'00:15','Selecting a timeline marker must update the coaching time');
   assert.equal(selected.buttons.filter(button=>button.pressed==='true').length,1,'Exactly one timeline marker must be selected');

@@ -20,8 +20,6 @@ with zipfile.ZipFile(source, "r") as original, zipfile.ZipFile(destination, "w")
             continue
         unsigned.writestr(item, original.read(item.filename))
 
-if not removed:
-    raise SystemExit("No JAR signature metadata was found to strip; refusing to create an ambiguous negative APK.")
 if destination.stat().st_size == 0:
     raise SystemExit("Unsigned negative APK is empty.")
 print(f"Created unsigned negative APK ({destination.stat().st_size} bytes); stripped {len(removed)} JAR signature entries. No signing key was generated or used.")

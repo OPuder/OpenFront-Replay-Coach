@@ -102,12 +102,15 @@ test('mixed modes are not combined into a misleading longitudinal cohort', () =>
 
 test('progression is chronological and only includes verified matches', () => {
   const report=buildLongitudinalCoachReport([
-    match('later',{playedAt:'2026-02-02T00:00:00Z'}),
-    match('earlier',{playedAt:'2026-02-01T00:00:00Z',simulation:makeSimulation({samples:makeSimulation().samples.map(sample=>({...sample,players:sample.players.map(player=>({...player,tiles:player.tiles*2,goldEarned:player.goldEarned*2}))}))})}),
-    match('ignored',{playedAt:'2026-02-03T00:00:00Z',analysisStatus:'unverified',simulation:makeSimulation({status:'unverified'})}),
+    match('latest',{playedAt:'2026-02-06T00:00:00Z'}),
+    match('later',{playedAt:'2026-02-05T00:00:00Z'}),
+    match('middle',{playedAt:'2026-02-04T00:00:00Z'}),
+    match('earlier-2',{playedAt:'2026-02-02T00:00:00Z',simulation:makeSimulation({samples:makeSimulation().samples.map(sample=>({...sample,players:sample.players.map(player=>({...player,tiles:player.tiles*2,goldEarned:player.goldEarned*2}))}))})}),
+    match('earlier-1',{playedAt:'2026-02-01T00:00:00Z',simulation:makeSimulation({samples:makeSimulation().samples.map(sample=>({...sample,players:sample.players.map(player=>({...player,tiles:player.tiles*2,goldEarned:player.goldEarned*2}))}))})}),
+    match('ignored',{playedAt:'2026-02-07T00:00:00Z',analysisStatus:'unverified',simulation:makeSimulation({status:'unverified'})}),
   ]);
-  assert.deepEqual(report.matchProgress.map(item=>item.gameId),['earlier','later']);
-  assert.equal(report.matchProgress.length,2);
+  assert.deepEqual(report.matchProgress.map(item=>item.gameId),['earlier-1','earlier-2','middle','later','latest']);
+  assert.equal(report.matchProgress.length,5);
   assert.equal(report.metricTrends.length,3);
   assert.equal(report.metricTrends.find(item=>item.id==='territory')?.direction,'declined');
 });
@@ -124,7 +127,7 @@ test('attack follow-through compares only attacks with observed target outcomes'
     {type:'attack',seconds:80,delta30s:{tiles:0,gold:0,troops:-30},targetDelta30s:null},
     {type:'build',seconds:90,delta30s:{tiles:0,gold:0,troops:0},targetDelta30s:{tiles:0,gold:0,troops:0}},
   ]});
-  const report=buildLongitudinalCoachReport([match('a',{simulation}),match('b',{simulation})]);
+  const report=buildLongitudinalCoachReport([match('a',{playedAt:'2026-01-01',simulation}),match('b',{playedAt:'2026-01-02',simulation}),match('c',{playedAt:'2026-01-03',simulation}),match('d',{playedAt:'2026-01-04',simulation}),match('e',{playedAt:'2026-01-05',simulation}),match('f',{playedAt:'2026-01-06',simulation})]);
   assert.ok(Math.abs(report.matchProgress[0].attackFollowThroughPercent - 200/3) < 1e-9);
   assert.equal(report.matchProgress[0].attackFollowThroughSamples, 3);
   assert.equal(report.metricTrends.find(item=>item.id==='attack-follow-through')?.observations, 2);
@@ -222,10 +225,10 @@ test('repeated evidence activates a training goal in a sufficiently large compar
 });
 
 test('training goals mark a repeated pattern as improving only after two clean recent matches',()=>{
+  const clean=makeSimulation({actionReviews:[]});
   const report=buildLongitudinalCoachReport([
-    match('a'),match('b'),
-    match('c',{simulation:makeSimulation({actionReviews:[]})}),
-    match('d',{simulation:makeSimulation({actionReviews:[]})}),
+    match('a',{playedAt:'2026-01-01'}),match('b',{playedAt:'2026-01-02'}),match('c',{playedAt:'2026-01-03'}),
+    match('d',{playedAt:'2026-01-04',simulation:clean}),match('e',{playedAt:'2026-01-05',simulation:clean}),match('f',{playedAt:'2026-01-06',simulation:clean}),
   ]);
   const goal=report.trainingGoals.find(item=>item.id==='attack-follow-through');
   assert.equal(goal?.status,'improving');
@@ -234,8 +237,8 @@ test('training goals mark a repeated pattern as improving only after two clean r
 test('training goals mark a repeated pattern as regressing only after two recent recurrences',()=>{
   const clean=makeSimulation({actionReviews:[]});
   const report=buildLongitudinalCoachReport([
-    match('a',{simulation:clean}),match('b',{simulation:clean}),
-    match('c'),match('d'),
+    match('a',{playedAt:'2026-01-01',simulation:clean}),match('b',{playedAt:'2026-01-02',simulation:clean}),match('c',{playedAt:'2026-01-03',simulation:clean}),
+    match('d',{playedAt:'2026-01-04'}),match('e',{playedAt:'2026-01-05'}),match('f',{playedAt:'2026-01-06'}),
   ]);
   const goal=report.trainingGoals.find(item=>item.id==='attack-follow-through');
   assert.equal(goal?.status,'regressing');

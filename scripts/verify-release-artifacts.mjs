@@ -57,6 +57,7 @@ export async function verifyReleaseArtifacts(directory, version) {
   assert.deepEqual(actual, expected, "Release directory contains missing, unexpected or incorrectly named files.");
 
   const manifest = JSON.parse(await readFile(path.join(directory, names.manifest), "utf8"));
+  assert.deepEqual(Object.keys(manifest).sort(), ["artifacts", "schemaVersion", "version"], "Manifest contains unsupported or unexpected top-level fields.");
   assert.equal(manifest.schemaVersion, 1, "Unsupported release manifest schema.");
   assert.equal(manifest.version, version, "Release manifest version does not match the requested version.");
   assert.ok(Array.isArray(manifest.artifacts), "Release manifest artifacts must be an array.");
@@ -79,12 +80,14 @@ export async function verifyReleaseArtifacts(directory, version) {
   assert.deepEqual([...checksums.keys()].sort(), packageNames, "SHA256SUMS.txt must contain exactly the three expected package filenames.");
 
   for (const name of packageNames) {
+    const record = manifest.artifacts.find(item => item?.name === name);
+    assert.ok(record && typeof record === "object" && !Array.isArray(record), `Missing manifest record: ${name}`);
+    assert.deepEqual(Object.keys(record).sort(), ["name", "sha256", "size"], `Unexpected manifest fields: ${name}`);
     const filePath = path.join(directory, name);
     const info = await lstat(filePath);
     assert.ok(info.isFile() && !info.isSymbolicLink(), `Package is not a regular file: ${name}`);
     assert.ok(info.size > MIN_PACKAGE_BYTES, `Package is empty or implausibly small: ${name} (${info.size} bytes)`);
     const sha256 = await digestFile(filePath);
-    const record = manifest.artifacts.find(item => item.name === name);
     assert.equal(record.size, info.size, `Manifest byte size mismatch: ${name}`);
     assert.match(record.sha256, /^[a-f0-9]{64}$/, `Malformed manifest SHA-256: ${name}`);
     assert.equal(record.sha256, sha256, `Manifest SHA-256 mismatch: ${name}`);

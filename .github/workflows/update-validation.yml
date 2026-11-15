@@ -9,9 +9,6 @@ on:
 permissions:
   contents: read
 
-concurrency:
-  group: update-validation-${{ github.ref }}
-  cancel-in-progress: true
 
 jobs:
   updater-contract-and-build:

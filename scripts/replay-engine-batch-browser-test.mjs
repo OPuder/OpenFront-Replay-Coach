@@ -39,6 +39,14 @@ async function main() {
   const europe = await loadReplay("c2R2JHZgUi", "8b5d071eed95f07c701b32e4c64e95b03f8577c1", "Europe", 1006);
   const levant = await loadReplay("dLNCLHCvMK", "bc3e3334c573c4959ec6a6745df6826d07233b4d", "Levant", 626);
   const unsupported = { ...europe, gitCommit: "0000000000000000000000000000000000000000" };
+  const hashMismatch = structuredClone(europe);
+  const firstCheckpoint = hashMismatch.turns.find(turn => turn?.hash !== null && turn?.hash !== undefined);
+  assert.ok(firstCheckpoint, "Europe fixture must contain a checkpoint to corrupt");
+  firstCheckpoint.hash = Number(firstCheckpoint.hash) ^ 1;
+  const malformedReplay = {
+    ...europe,
+    info: { ...europe.info, config: { ...europe.info.config, gameMap: "!" } },
+  };
 
   server = spawn("node", ["node_modules/vite/bin/vite.js", "--host", "127.0.0.1", "--port", String(VITE_PORT), "--strictPort"], {
     stdio: ["ignore", "pipe", "pipe"],
@@ -82,6 +90,8 @@ async function main() {
   const fixtures = [
     ["Europe", europe],
     ["unsupported-engine", unsupported],
+    ["hash-mismatch", hashMismatch],
+    ["malformed-replay", malformedReplay],
     ["Levant", levant],
   ];
   for (const [gameId, record] of fixtures) {
@@ -93,7 +103,7 @@ async function main() {
   }
 
   const batch = await window.webContents.executeJavaScript(
-    `window.__runBatchReplayTest(["Europe", "unsupported-engine", "Levant"])`,
+    `window.__runBatchReplayTest(["Europe", "unsupported-engine", "hash-mismatch", "malformed-replay", "Levant"])`,
     true,
   );
   if (batch.summary.failed > 0) {
@@ -103,12 +113,12 @@ async function main() {
     }
   }
   assert.deepEqual(batch.summary, {
-    total: 3,
-    completed: 3,
+    total: 5,
+    completed: 5,
     verified: 2,
     unverified: 0,
     unsupported: 1,
-    failed: 0,
+    failed: 2,
     cancelled: false,
   }, "One unsupported engine must not block other selected matches");
 
@@ -204,15 +214,21 @@ async function main() {
   console.log("Longitudinal cohort diagnostics:", JSON.stringify(batch.bridgeDiagnostics.longitudinal));
   const europeResult = batch.outcomes.find(item => item.gameId === "Europe");
   const unsupportedResult = batch.outcomes.find(item => item.gameId === "unsupported-engine");
+  const hashMismatchResult = batch.outcomes.find(item => item.gameId === "hash-mismatch");
+  const malformedResult = batch.outcomes.find(item => item.gameId === "malformed-replay");
   const levantResult = batch.outcomes.find(item => item.gameId === "Levant");
   assert.equal(europeResult?.status, "verified");
   assert.equal(europeResult?.recordedHashes, 1006);
   assert.equal(europeResult?.verifiedHashes, 1006);
   assert.equal(unsupportedResult?.status, "unsupported");
+  assert.equal(hashMismatchResult?.status, "failed");
+  assert.match(hashMismatchResult?.error ?? "", /Replay-Hash-Abweichung/);
+  assert.equal(malformedResult?.status, "failed");
+  assert.match(malformedResult?.error ?? "", /Karten-ID/);
   assert.equal(levantResult?.status, "verified");
   assert.equal(levantResult?.recordedHashes, 626);
   assert.equal(levantResult?.verifiedHashes, 626);
-  console.log("Mixed-engine multi-match batch:", JSON.stringify({ summary: batch.summary, outcomes: batch.outcomes }));
+  console.log("Mixed-engine/corruption multi-match batch:", JSON.stringify({ summary: batch.summary, outcomes: batch.outcomes }));
 
   const abortResult = await window.webContents.executeJavaScript(
     'window.__testAbortBatchReplay("Europe")',

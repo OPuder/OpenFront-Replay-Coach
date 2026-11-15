@@ -98,21 +98,28 @@ export function buildProCoachReport(
   const own = ordered.map(s=>({sample:s,player:s.players.find(p=>p.clientID===clientId)}))
     .filter((x):x is {sample:ProCoachPlayerSample;player:NonNullable<ProCoachPlayerSample['players'][number]>}=>Boolean(x.player));
   const alive = own.filter(x=>x.player.alive);
-  const safeDuration = Math.max(1,durationSeconds);
   const first = alive[0], last = alive.at(-1);
+  // Phase boundaries use the complete replay clock, matching the Match Coach.
+  // If the API duration is absent, the last reconstructed engine tick is the
+  // safest available replay-length estimate (not the selected player's survival time).
+  const reportedDuration = Number.isFinite(durationSeconds) && durationSeconds > 0 ? durationSeconds : 0;
+  const safeDuration = Math.max(1, reportedDuration || (ordered.at(-1)?.tick ?? 0) / 10);
+  // Retain the full replay clock for overall duration metrics as well as phase boundaries.
+  const endSeconds = safeDuration;
   const phaseDefs = [
     {id:'early' as const,label:'Early Game',from:0,to:.3},
     {id:'mid' as const,label:'Mid Game',from:.3,to:.7},
     {id:'late' as const,label:'Late Game',from:.7,to:1},
   ];
-  const endSeconds = first && last ? Math.min(safeDuration,Math.max(0,(last.sample.tick-first.sample.tick)/10)) : safeDuration;
+  const lastAliveSeconds = last ? last.sample.tick / 10 : 0;
   const phasesBase = phaseDefs.map(def=>{
-    const start=def.from*endSeconds, end=def.to*endSeconds;
-    const subset=alive.filter(x=>{const sec=(x.sample.tick-(first?.sample.tick??0))/10;return sec>=start && sec<=end;});
+    const start=def.from*safeDuration;
+    const end=Math.max(start,Math.min(def.to*safeDuration,lastAliveSeconds));
+    const subset=alive.filter(x=>{const sec=x.sample.tick/10;return sec>=start && sec<=end;});
     const a=subset[0],b=subset.at(-1);
     // Use the interval actually covered by observations, not the nominal phase length.
     const observedMinutes=a&&b?Math.max(0,(b.sample.tick-a.sample.tick)/600):0;
-    const minutes=Math.max(0,(end-start)/60);
+    const minutes=observedMinutes;
     const enoughObservedSpan=subset.length>=2&&observedMinutes>=1/6;
     const territoryPerMinute=enoughObservedSpan?(b!.player.tiles-a!.player.tiles)/observedMinutes:null;
     const incomePerMinute=enoughObservedSpan?(b!.player.goldEarned-a!.player.goldEarned)/observedMinutes:null;
@@ -124,7 +131,7 @@ export function buildProCoachReport(
   const peak=Math.max(0,...phaseMomentum);
   const phases=phasesBase.map(p=>({...p,momentumIndex:p.territoryPerMinute===null||peak<=0?null:Math.round(clamp((Math.max(0,p.territoryPerMinute)+Math.max(0,p.incomePerMinute??0)/1000)/peak*100))}));
   const findings:ProCoachFinding[]=[];
-  const openingSamples=alive.filter(x=>(x.sample.tick-(first?.sample.tick??0))/10<=180);
+  const openingSamples=alive.filter(x=>x.sample.tick/10<=180);
   const openingFirst=openingSamples[0], openingLast=openingSamples.at(-1);
   const openingSpan=openingFirst&&openingLast?(openingLast.sample.tick-openingFirst.sample.tick)/10:0;
   const firstExpansion=openingFirst?openingSamples.find(x=>x.player.tiles>openingFirst.player.tiles):undefined;
@@ -132,7 +139,7 @@ export function buildProCoachReport(
   const opening:ProCoachOpening={
     confidence:openingSamples.length>=4&&openingSpan>=120?'high':openingSamples.length>=2&&openingSpan>=60?'medium':'low',
     spawnPosition,
-    firstExpansionSeconds:firstExpansion&&openingFirst?(firstExpansion.sample.tick-openingFirst.sample.tick)/10:null,
+    firstExpansionSeconds:firstExpansion?firstExpansion.sample.tick/10:null,
     territoryGainFirstThreeMinutes:openingFirst&&openingLast&&openingSpan>=120?openingLast.player.tiles-openingFirst.player.tiles:null,
     incomeGainFirstThreeMinutes:openingFirst&&openingLast&&openingSpan>=120?openingLast.player.goldEarned-openingFirst.player.goldEarned:null,
     troopChangeFirstThreeMinutes:openingFirst&&openingLast&&openingSpan>=120?openingLast.player.troops-openingFirst.player.troops:null,
@@ -175,7 +182,7 @@ export function buildProCoachReport(
       seconds:a.seconds,caveat:'Aktive Angriffsobjekte zeigen Bindung, aber nicht zwingend getrennte geografische Fronten oder Erreichbarkeit anderer Ziele.'
     });
   }
-  const longPause=(()=>{let best:{from:number;to:number;seconds:number}|null=null;for(let i=1;i<alive.length;i++){const from=(alive[i-1].sample.tick-(first?.sample.tick??0))/10,to=(alive[i].sample.tick-(first?.sample.tick??0))/10;if(to-from>90&&(!best||to-from>best.seconds))best={from,to,seconds:to-from};}return best;})();
+  const longPause=(()=>{let best:{from:number;to:number;seconds:number}|null=null;for(let i=1;i<alive.length;i++){const from=alive[i-1].sample.tick/10,to=alive[i].sample.tick/10;if(to-from>90&&(!best||to-from>best.seconds))best={from,to,seconds:to-from};}return best;})();
   if(longPause&&longPause.seconds>=120){
     findings.push({id:'expansion-rhythm',priority:longPause.seconds>=240?'medium':'low',confidence:confidenceFor(alive.length,actions.length),title:'Lange Lücke zwischen beobachteten Zuständen',
       decision:`Zwischen ${clock(longPause.from)} und ${clock(longPause.to)} liegen ${fmt(longPause.seconds)} Sekunden zwischen erfassten Zuständen.`,

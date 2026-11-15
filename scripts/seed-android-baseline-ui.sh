@@ -116,11 +116,11 @@ for attempt in $(seq 1 300); do
   if [[ "$replay_count" =~ ^[0-9]+$ ]] && (( replay_count >= 2 )); then break; fi
   sleep 2
 done
-[[ "$replay_count" =~ ^[0-9]+$ ]] && (( replay_count >= 2 )) || fail "The actual app UI did not show at least two saved replay records within 20 minutes; last observed count=$replay_count."
+[[ "$replay_count" =~ ^[0-9]+$ ]] && (( replay_count >= 2 )) || fail "The actual app UI did not show at least two saved replay records within 8 minutes; last observed count=$replay_count."
 log "UI confirms $replay_count locally saved replays. Waiting for at least one hash-verified analysis."
 
 verified_count=0
-for attempt in $(seq 1 600); do
+for attempt in $(seq 1 240); do
   dump_ui || true
   verified_count="$(read_metric "HASH-VERIFIZIERT")"
   if [[ "$verified_count" =~ ^[0-9]+$ ]] && (( verified_count >= 1 )); then break; fi
@@ -133,7 +133,7 @@ adb -s emulator-5554 shell input swipe 520 1550 520 600 450
 sleep 2
 tap_text "Coach öffnen"
 training_goal=false
-for attempt in $(seq 1 600); do
+for attempt in $(seq 1 240); do
   dump_ui || true
   if grep -qi "Als Trainingsziel übernehmen" "$ui_xml"; then
     training_goal=true

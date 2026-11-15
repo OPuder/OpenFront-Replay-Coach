@@ -168,7 +168,7 @@ test("timeline uses source event seconds and omits untimed coaching observations
   }
 });
 
-test("longitudinal production analysis excludes non-verified matches and deduplicates match IDs", () => {
+test("longitudinal production analysis excludes non-verified matches and exposes current duplicate-ID boundary", () => {
   const verifiedA = makeVerifiedMatch("real-a");
   const verifiedB = makeVerifiedMatch("real-b", 10);
   const unverified = makeVerifiedMatch("unverified");
@@ -177,8 +177,8 @@ test("longitudinal production analysis excludes non-verified matches and dedupli
   const report = buildLongitudinalCoachReport([
     verifiedA, verifiedA, verifiedB, unverified,
   ]);
-  // The report counts all imported/verified rows, but match identity is
-  // deduplicated before comparable cohorts and metric calculations.
+  // The current base implementation counts the duplicate as a verified row
+  // and keeps it in matchProgress. PR #147 adds the stronger ID-dedup contract.
   assert.equal(report.importedMatches, 4);
   assert.equal(report.verifiedMatches, 3);
   assert.equal(report.comparableMatches, 3);

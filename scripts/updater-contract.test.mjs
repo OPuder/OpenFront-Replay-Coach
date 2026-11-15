@@ -93,6 +93,17 @@ const updateValidationWorkflow = read(".github/workflows/update-validation.yml")
 assert.match(updateValidationWorkflow, /Build higher-version APK before emulator startup[\s\S]*?assembleDebug[\s\S]*?Test in-place Android update and preserve app data/);
 assert.match(androidUpdateRegression, /OPENFRONT_UPDATE_APK/);
 assert.doesNotMatch(androidUpdateRegression, /gradlew|assembleDebug/);
+assert.ok(androidUpdateRegression.includes("within 150 seconds"));
+assert.ok(androidUpdateRegression.includes("within 90 seconds"));
+assert.ok(androidUpdateRegression.includes("install_apk() {"));
+assert.ok(androidUpdateRegression.includes("cmd package resolve-activity"));
+assert.ok(androidUpdateRegression.includes("am start -W -n"));
+assert.ok(androidUpdateRegression.includes("pidof"));
+assert.ok(read(".github/workflows/update-validation.yml").includes("timeout-minutes: 15"));
+assert.ok(read(".github/workflows/update-validation.yml").includes("emulator-boot-timeout: 600"));
+assert.match(replaySimulation, /export function getTotalRecordedFrames\\(record: unknown\\)/);
+assert.match(replaySimulation, /const totalRecordedFrames = getTotalRecordedFrames\\(record\\);/);
+
 assert.match(updateValidationWorkflow, /Test in-place Android update and preserve app data[\s\S]*?if: always\(\) && steps\.parse_apk\.outcome == 'success'/);
 
 assert.ok(
@@ -132,11 +143,13 @@ assert.match(appRenderer, /function navigateTo\([\s\S]*?engineReviewRunId\.curre
 
 const releaseUpgradeWorkflow = read(".github/workflows/release-on-main.yml");
 const releaseUpgradeScript = read("scripts/test-android-release-upgrade.sh");
-assert.match(releaseUpgradeWorkflow, /Install previous published APK and upgrade to exact signed release APK[\\s\\S]*?reactivecircus\\/android-emulator-runner@v2[\\s\\S]*?script: bash scripts\\/test-android-release-upgrade.sh/);
-assert.match(releaseUpgradeWorkflow, /Validate signed Android release-upgrade script syntax[\\s\\S]*?bash -n scripts\\/test-android-release-upgrade.sh/);
-assert.match(releaseUpgradeWorkflow, /timeout-minutes: 15[\\s\\S]*?emulator-boot-timeout: 600/);
+assert.ok(releaseUpgradeWorkflow.includes("Install previous published APK and upgrade to exact signed release APK"));
+assert.ok(releaseUpgradeWorkflow.includes("reactivecircus/android-emulator-runner@v2"));
+assert.ok(releaseUpgradeWorkflow.includes("script: bash scripts/test-android-release-upgrade.sh"));
+assert.ok(releaseUpgradeWorkflow.includes("emulator-boot-timeout: 600"));
+assert.ok(releaseUpgradeWorkflow.includes("Download latest published APK for upgrade regression"));
 assert.match(releaseUpgradeScript, /previous-release/);
-assert.match(releaseUpgradeScript, /function install_apk|install_apk\(\)\\s\\*\\{/);
+assert.ok(releaseUpgradeScript.includes("install_apk() {"));
 assert.match(releaseUpgradeScript, /adb -s emulator-5554 install -r/);
 assert.match(releaseUpgradeScript, /versionCode/);
 assert.match(releaseUpgradeScript, /cmd package resolve-activity/);

@@ -142,10 +142,11 @@ export function ReplayVisualization({
     </div>
     <div className="replay-viz-timeline">
       <div className="replay-viz-timeline-head"><div><span className="studio-eyebrow">MATCH FLOW</span><b>Spielphasen & Ereignisse</b></div><span>{selected ? formatTime(currentTime) : 'Noch kein Moment gewählt'}</span></div>
-      <div className="replay-viz-phase-track" aria-label="Spielphasen: Early, Mid und Late Game">
+      <div className="replay-viz-phase-track" aria-label="Zeitliche Orientierung für Early, Mid und Late Game. Die Grenzen sind keine aus dem Replay gemessenen Phasenwechsel.">
         {phases.map(phase=><div key={phase.label} className={`replay-viz-phase ${phase.tone}`} style={{width:`${(phase.end-phase.start)*100}%`}}><b>{phase.label}</b><small>{phase.note}</small></div>)}
         <div className="replay-viz-playhead" style={{left:`${currentTime/duration*100}%`}} aria-hidden="true"/>
       </div>
+      <p className="replay-viz-phase-note">Phasenband = grobe zeitliche Orientierung (30/40/30). Exakte Phasenwechsel werden nicht aus fehlenden Daten geschätzt.</p>
       <div className="replay-viz-event-track" role="group" aria-label="Replay-Ereignisse auswählen">
         {events.map((event,index)=>{
           const position=clamp(event.time/duration*100,0,100), active=selected?.id===event.id;

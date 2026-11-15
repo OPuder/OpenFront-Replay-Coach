@@ -165,32 +165,37 @@ window.__testAbortBatchReplay = async (gameId) => {
   if (!selected?.clientID) throw new Error(`Fixture ${gameId} does not contain the required OligenOle player`);
 
   const controller = new AbortController();
-  let simulationStarted = false;
-  const timer = window.setTimeout(() => controller.abort(), 50);
+  let engineProgressReceived = false;
   const summary = await runSequentialBatchAnalysis([{ gameId, record }], {
     signal: controller.signal,
     getId: item => item.gameId,
     isCompatible: item => Boolean(item.record && assessReplayCompatibility(item.record).engineVersionCompatible),
-    analyze: async (item, onProgress, signal) => {
-      simulationStarted = true;
-      return simulateReplay(
-        item.record,
-        buildReplayEngineAssets(item.record),
-        onProgress,
-        50,
-        String(selected.clientID),
-        signal,
-      );
-    },
+    analyze: async (item, onProgress, signal) => simulateReplay(
+      item.record,
+      buildReplayEngineAssets(item.record),
+      (percent, phase) => {
+        // This phase is emitted only after the processor receives progress from
+        // the original-engine worker. Abort here, not on a timer during module loading.
+        if (phase === "Original-Engine simuliert Spielzüge und prüft Hashes" && !engineProgressReceived) {
+          engineProgressReceived = true;
+          controller.abort();
+        }
+        onProgress(percent, phase);
+      },
+      50,
+      String(selected.clientID),
+      signal,
+    ),
     onStatus: () => undefined,
     onProgress: () => undefined,
-  }).finally(() => window.clearTimeout(timer));
+  });
 
   return {
-    aborted: summary.cancelled && simulationStarted,
-    simulationStarted,
+    aborted: summary.cancelled && engineProgressReceived && summary.completed === 0 && summary.failed === 0,
+    simulationStarted: engineProgressReceived,
     completed: summary.completed,
     failed: summary.failed,
+    cancelled: summary.cancelled,
   };
 };
 

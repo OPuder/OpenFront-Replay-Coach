@@ -215,6 +215,35 @@ test('troop attrition against the target is not mislabeled as a failed territori
  const report=buildProCoachReport(samples,actions,'p1',700);
  const finding=report.findings.find(item=>item.id==='attack-follow-through');
  assert.ok(finding);
- assert.match(finding.consequence,/0 zeigten Truppenrückgang ohne entsprechende Gebietsreaktion/);
- assert.doesNotMatch(finding.title,/hoher Truppenbindung/);
+ assert.match(finding.consequence,/1 weitere einen höheren beobachteten Truppenverlust beim Ziel als bei dir/);
+ assert.match(finding.evidence,/beobachtete Verluste: du 80, Ziel 120/);
+ assert.match(finding.title,/überwiegend günstig/);
+});
+
+test('attack with worse own attrition is flagged only when target losses are lower and no territory is gained',()=>{
+ const samples=Array.from({length:15},(_,i)=>sample(i*500,{tiles:100+i,goldEarned:100+i*20}));
+ const actions=Array.from({length:3},(_,i)=>action(30+i*40,{
+   delta30s:{tiles:0,gold:-30,troops:-120},
+   targetDelta30s:{tiles:0,gold:0,troops:-60},
+ }));
+ const report=buildProCoachReport(samples,actions,'p1',700);
+ const finding=report.findings.find(item=>item.id==='attack-follow-through');
+ assert.ok(finding);
+ assert.equal(finding.priority,'high');
+ assert.match(finding.title,/ungünstigem Truppenverhältnis/);
+ assert.match(finding.consequence,/3 zeigten höhere eigene Truppenverluste ohne Gebietsreaktion/);
+ assert.match(finding.evidence,/beobachtete Verluste: du 120, Ziel 60/);
+});
+
+test('equal troop attrition without territory change is reported as an even trade, not a failed attack',()=>{
+ const samples=Array.from({length:15},(_,i)=>sample(i*500,{tiles:100+i,goldEarned:100+i*20}));
+ const actions=Array.from({length:3},(_,i)=>action(30+i*40,{
+   delta30s:{tiles:0,gold:-30,troops:-80},
+   targetDelta30s:{tiles:0,gold:0,troops:-80},
+ }));
+ const report=buildProCoachReport(samples,actions,'p1',700);
+ const finding=report.findings.find(item=>item.id==='attack-follow-through');
+ assert.ok(finding);
+ assert.match(finding.consequence,/3 waren ausgeglichen/);
+ assert.match(finding.title,/sichtbarer Gebietsreaktion/);
 });

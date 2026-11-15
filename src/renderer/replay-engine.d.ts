@@ -10,7 +10,6 @@ declare module "*replay-engine-bc3e3334c573.js" {
       frame: number;
       tick: number;
       tileState: Uint16Array;
-      tileState: Uint16Array;
       players: ReadonlyMap<number, any>;
       units: ReadonlyMap<number, any>;
       falloutTiles: number;

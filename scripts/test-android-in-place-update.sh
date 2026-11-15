@@ -32,8 +32,48 @@ for attempt in $(seq 1 60); do
   sleep 3
 done
 [[ "$booted" == true ]] || fail "Android emulator did not finish booting within 3 minutes."
-log "Emulator booted; installing baseline APK."
-timeout 120s adb -s emulator-5554 install "$before_apk" || fail "Could not install baseline APK."
+
+# sys.boot_completed can become 1 before Package Manager is ready to accept
+# installs on a cold emulator. Probe Package Manager explicitly before sending
+# the APK so a slow first boot is not mistaken for an APK/signature failure.
+package_manager_ready=false
+for attempt in $(seq 1 60); do
+  if timeout 15s adb -s emulator-5554 shell cmd package list packages >/dev/null 2>&1; then
+    package_manager_ready=true
+    break
+  fi
+  sleep 3
+done
+if [[ "$package_manager_ready" != true ]]; then
+  adb -s emulator-5554 shell getprop sys.boot_completed || true
+  adb -s emulator-5554 shell df -h /data || true
+  adb devices -l || true
+  fail "Android Package Manager did not become ready after emulator boot."
+fi
+
+install_apk() {
+  local apk_path="$1"
+  local install_args=("$@")
+  local output
+  local status
+  log "Installing $(basename "$apk_path") using non-streaming ADB transfer."
+  if output="$(timeout 300s adb -s emulator-5554 install --no-streaming -t "${install_args[@]:1}" "$apk_path" 2>&1)"; then
+    printf '%s\n' "$output"
+    return 0
+  else
+    status=$?
+    printf '%s\n' "$output"
+    log "APK install failed with exit code $status; collecting emulator diagnostics."
+    adb -s emulator-5554 get-state || true
+    adb -s emulator-5554 shell getprop sys.boot_completed || true
+    adb -s emulator-5554 shell df -h /data || true
+    adb -s emulator-5554 shell pm list packages | head -n 30 || true
+    return "$status"
+  fi
+}
+
+log "Emulator and Package Manager are ready; installing baseline APK."
+install_apk "$before_apk" || fail "Could not install baseline APK after Package Manager readiness check."
 timeout 30s adb -s emulator-5554 shell "run-as $package_id sh -c 'mkdir -p files/update-regression && printf keep-this-data > files/update-regression/sentinel.txt'" || fail "Could not create app-data sentinel."
 
 current_version="$(node -p "require('./package.json').version")"
@@ -41,7 +81,7 @@ IFS='.' read -r major minor patch <<< "$current_version"
 next_version="$major.$minor.$((patch + 1))"
 test -s "$update_apk" || fail "Prebuilt higher-version APK is missing."
 log "Installing the prebuilt update APK for version $next_version."
-timeout 120s adb -s emulator-5554 install -r "$update_apk" || fail "Android rejected the in-place APK update."
+install_apk "$update_apk" -r || fail "Android rejected the in-place APK update."
 saved="$(timeout 30s adb -s emulator-5554 shell "run-as $package_id cat files/update-regression/sentinel.txt" | tr -d '\r')" || fail "Could not read the preserved app-data sentinel."
 [[ "$saved" == "keep-this-data" ]] || fail "App data was not preserved after adb -s emulator-5554 install -r."
 

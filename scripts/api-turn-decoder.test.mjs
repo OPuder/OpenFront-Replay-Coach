@@ -10,6 +10,8 @@ const record = (turns) => ({
 
 test('decoder ignores negative, fractional, non-numeric and unsafe turn numbers', () => {
   const decoded = decodeApiGameRecord(record([
+    { turnNumber: null, intents: [{ type: 'attack' }] },
+    { turnNumber: '', intents: [{ type: 'attack' }] },
     { turnNumber: -1, intents: [{ type: 'attack' }] },
     { turnNumber: 1.5, intents: [{ type: 'attack' }] },
     { turnNumber: 'not-a-turn', intents: [{ type: 'attack' }] },

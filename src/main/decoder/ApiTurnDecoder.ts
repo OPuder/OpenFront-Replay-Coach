@@ -47,7 +47,10 @@ export function decodeApiGameRecord(record: any) {
 
   const actions: DecodedAction[] = [];
   for (const turn of turns) {
-    const turnNumber = Number(turn?.turnNumber);
+    const rawTurnNumber = turn?.turnNumber;
+    if ((typeof rawTurnNumber !== "number" && typeof rawTurnNumber !== "string") ||
+        (typeof rawTurnNumber === "string" && !rawTurnNumber.trim())) continue;
+    const turnNumber = Number(rawTurnNumber);
     if (!Number.isSafeInteger(turnNumber) || turnNumber < 0 || !Array.isArray(turn?.intents)) continue;
     for (const intent of turn.intents) {
       if (!intent || typeof intent !== "object" || Array.isArray(intent)) continue;

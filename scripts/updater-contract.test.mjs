@@ -108,8 +108,6 @@ assert.ok(androidUpdateRegression.includes("five-minute idle soak"));
 assert.ok(read(".github/workflows/update-validation.yml").includes("timeout-minutes: 45"));
 assert.ok(read(".github/workflows/update-validation.yml").includes("timeout-minutes: 60"));
 assert.ok(read(".github/workflows/update-validation.yml").includes("emulator-boot-timeout: 1800"));
-assert.ok(replaySimulation.includes("export function getTotalRecordedFrames(record: unknown)"));
-assert.ok(replaySimulation.includes("const totalRecordedFrames = getTotalRecordedFrames(record);"));
 
 assert.match(updateValidationWorkflow, /Test in-place Android update and preserve app data[\s\S]*?if: always\(\) && steps\.parse_apk\.outcome == 'success'/);
 
@@ -141,6 +139,8 @@ assert.match(startupUpdater, /Installation wartet auf Bestätigung im Update Cen
 assert.doesNotMatch(startupUpdater, /scheduleWindowsInstall\(/);
 
 const replaySimulation = read("src/renderer/ReplaySimulation.ts");
+assert.ok(replaySimulation.includes("export function getTotalRecordedFrames(record: unknown)"));
+assert.ok(replaySimulation.includes("const totalRecordedFrames = getTotalRecordedFrames(record);"));
 assert.doesNotMatch(replaySimulation, /\.\.\.turns\.map/);
 assert.match(appRenderer, /engineReviewAbort\.current\?\.abort\(\)/);
 assert.match(appRenderer, /controller\.signal/);

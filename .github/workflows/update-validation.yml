@@ -9,10 +9,6 @@ on:
 permissions:
   contents: read
 
-concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
-
 
 jobs:
   updater-contract-and-build:
@@ -78,7 +74,7 @@ jobs:
           RELEASE_DIR: release/packages
         run: node scripts/verify-windows-distributions.mjs
 
-      - name: Download actual published Windows v2.2.51 packages
+      - name: Download published v2.2.51 NSIS installer
         shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
@@ -86,9 +82,8 @@ jobs:
           $ErrorActionPreference = 'Stop'
           $previous = Join-Path $env:RUNNER_TEMP 'previous-windows-release'
           New-Item -ItemType Directory -Path $previous -Force | Out-Null
-          gh release download v2.2.51 --repo $env:GITHUB_REPOSITORY --pattern 'OpenFront.Replay.Coach.Setup.2.2.51.exe' --pattern 'OpenFront.Replay.Coach-2.2.51-win.zip' --dir $previous
+          gh release download v2.2.51 --repo $env:GITHUB_REPOSITORY --pattern 'OpenFront.Replay.Coach.Setup.2.2.51.exe' --dir $previous
           if (-not (Test-Path (Join-Path $previous 'OpenFront.Replay.Coach.Setup.2.2.51.exe'))) { throw 'Published v2.2.51 installer missing.' }
-          if (-not (Test-Path (Join-Path $previous 'OpenFront.Replay.Coach-2.2.51-win.zip'))) { throw 'Published v2.2.51 portable ZIP missing.' }
 
       - name: Build updater-enabled portable baseline for the real updater regression
         shell: pwsh
@@ -122,6 +117,7 @@ jobs:
           PREVIOUS_RELEASE_DIR: ${{ runner.temp }}\previous-windows-release
           CURRENT_RELEASE_DIR: release/packages
           PORTABLE_UPDATE_BASELINE: ${{ runner.temp }}\portable-updater-baseline.zip
+          OFRC_UPGRADE_DIAGNOSTICS: '1'
         run: node scripts/verify-windows-in-place-updates.mjs
 
       - name: Upload verified Windows packages

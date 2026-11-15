@@ -3,7 +3,7 @@ declare global {
   interface Window {
     __OFRC_LOCAL_LIBRARY_RESTORE_COMPLETE__?: boolean;
     __OFRC_LOCAL_LIBRARY_RESTORE_ERROR__?: string | null;
-    __OFRC_LOCAL_LIBRARY_RESTORE_RESULT__?: { playerId: string | null; profileLoaded: boolean; matchIds: string[] } | null;
+    __OFRC_LOCAL_LIBRARY_RESTORE_RESULT__?: { playerId: string | null; profileLoaded: boolean; profilePublicId: string | null; matchIds: string[] } | null;
     replayAPI: {
       openReplay: () => Promise<ReplaySummary | null>;
       installUpdate: () => Promise<{ scheduled: boolean; version: string }>;

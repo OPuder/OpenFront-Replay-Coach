@@ -60,10 +60,20 @@ export function UpdateCenter() {
   }, [checking]);
 
   React.useEffect(() => {
-    if (!autoUpdateEnabled) return;
-    void checkForUpdates();
-    const interval = window.setInterval(() => void checkForUpdates(), 6 * 60 * 60 * 1000);
-    return () => window.clearInterval(interval);
+    let cancelled = false;
+    let interval: number | undefined;
+    void (async () => {
+      const diagnosticsEnabled = typeof window.replayAPI?.isUpgradeDiagnosticsEnabled === 'function'
+        ? await window.replayAPI.isUpgradeDiagnosticsEnabled()
+        : false;
+      if (cancelled || diagnosticsEnabled || !autoUpdateEnabled) return;
+      void checkForUpdates();
+      interval = window.setInterval(() => void checkForUpdates(), 6 * 60 * 60 * 1000);
+    })();
+    return () => {
+      cancelled = true;
+      if (interval !== undefined) window.clearInterval(interval);
+    };
   }, [autoUpdateEnabled]);
 
   function changeAutoUpdateEnabled(enabled: boolean) {

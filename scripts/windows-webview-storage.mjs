@@ -180,10 +180,21 @@ try{
   if(renderer?.title!=="OpenFront Replay Coach"||renderer.readyState!=="complete"||renderer.rootChildren<1||(renderer.restoreMarkerAvailable&&!renderer.restoreComplete)){
     throw new UpgradeContextError("Packaged renderer did not finish initialization: "+JSON.stringify({target:target.url,renderer}));
   }
+  // The published v2.2.51 renderer may run its Update Center check once on startup.
+  // Let that check settle before seeding, then diagnostics mode disables future checks.
+  await new Promise(resolve=>setTimeout(resolve,1500));
+  let updateCheckReady=false;
+  const updateCheckDeadline=Date.now()+20000;
+  while(Date.now()<updateCheckDeadline) {
+    updateCheckReady=await evaluate("!document.querySelector('.update-center-trigger')?.textContent?.includes('Prüfe')");
+    if(updateCheckReady) break;
+    await new Promise(resolve=>setTimeout(resolve,250));
+  }
+  if(!updateCheckReady) throw new UpgradeContextError("Update Center startup check did not settle before storage inspection.");
   if(renderer?.restoreError) throw new UpgradeContextError("Application local-library restore failed before storage inspection: " + renderer.restoreError);
   if(mode==="snapshot" && renderer.restoreMarkerAvailable) {
     const restored=renderer.restoreResult;
-    if(restored?.playerId!==UPGRADE_FIXTURE.playerId || restored?.profileLoaded!==true || !restored.matchIds?.includes(UPGRADE_FIXTURE.match.game.gameId)) {
+    if(restored?.playerId!==UPGRADE_FIXTURE.playerId || restored?.profileLoaded!==true || restored?.profilePublicId!==UPGRADE_FIXTURE.profile.profile.publicID || !restored.matchIds?.includes(UPGRADE_FIXTURE.match.game.gameId)) {
       throw new UpgradeContextError("Application completed startup without restoring the persisted player profile and linked match: " + JSON.stringify(restored));
     }
   }

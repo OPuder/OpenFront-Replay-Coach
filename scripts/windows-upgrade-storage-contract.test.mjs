@@ -117,3 +117,9 @@ test("validates the complete application fixture and distinguishes baseline setu
   assert.throws(() => assertFixtureRelationships(missing, "baseline"), /WINDOWS_UPGRADE_FIXTURE_ERROR/);
   assert.throws(() => assertFixtureRelationships(missing, "updated"), /DATA_LOSS_ERROR/);
 });
+
+test("allows additive LocalStorage keys without losing existing user values", () => {
+  const before = snapshot(), after = snapshot();
+  after.localStorage["new-app-default"] = "created-during-startup";
+  assert.equal(assertUpgradeSnapshotsEqual(before, after), true);
+});

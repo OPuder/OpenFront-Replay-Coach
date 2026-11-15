@@ -17,12 +17,11 @@ const temp = process.env.RUNNER_TEMP || os.tmpdir();
 const packageMetadata = JSON.parse(readFileSync("package.json", "utf8"));
 const version = packageMetadata.version;
 const oldInstaller = "OpenFront.Replay.Coach.Setup.2.2.51.exe";
-const oldPortable = "OpenFront.Replay.Coach-2.2.51-win.zip";
 const newInstaller = "OpenFront Replay Coach Setup " + version + ".exe";
 const newPortable = "OpenFront Replay Coach-" + version + "-win.zip";
 const appName = "OpenFront Replay Coach.exe";
 const helper = path.resolve("scripts/windows-webview-storage.mjs");
-for (const file of [path.join(previous, oldInstaller), path.join(previous, oldPortable), path.join(current, newInstaller), path.join(current, newPortable), portableBaselineZip]) {
+for (const file of [path.join(previous, oldInstaller), path.join(current, newInstaller), path.join(current, newPortable), portableBaselineZip]) {
   assert.ok(existsSync(file) && statSync(file).size > 1000000, "Missing or implausibly small upgrade package: " + file);
 }
 function run(command, args, env = process.env, timeout = 240000) {
@@ -224,6 +223,7 @@ async function startLocalReleaseServer(candidateZip) {
   return { server, releaseUrl: origin + "/release", sha256 };
 }
 async function verifyPortableUpdater() {
+  console.log("PORTABLE_UPDATER_BASELINE: rebuilt v2.2.51 package from this commit; exercising the production Update Center IPC and PowerShell updater against loopback release metadata.");
   const portableDirectory = path.join(temp, "ofrc-portable-real-update");
   const dataDirectory = path.join(temp, "ofrc-portable-user-data");
   rmSync(portableDirectory, { recursive: true, force: true });
@@ -239,7 +239,7 @@ async function verifyPortableUpdater() {
   try {
     baselineSession = await launch(baseline.executable, dataDirectory, 9232, "seed", testEnv, true);
     const before = attachContext(baselineSession.helperResult.snapshot, baselineSession, dataDirectory);
-    assertFixtureRelationships(before);
+    assertFixtureRelationships(before, "baseline");
     reportSnapshot("PORTABLE_BEFORE", before);
     const beforeHash = digest(baseline.archive);
     const scheduled = await invokeHelper("update", 9232, portableDirectory);

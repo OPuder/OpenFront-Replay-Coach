@@ -138,10 +138,11 @@ function App() {
           : false;
         if(!active) return;
         const savedId=window.localStorage.getItem('ofrc:last-player-id');
-        if(!savedId) { if(active) window.__OFRC_LOCAL_LIBRARY_RESTORE_RESULT__ = { playerId: null, profileLoaded: false, matchIds: [] }; return; }
+        if(!savedId) { if(active) window.__OFRC_LOCAL_LIBRARY_RESTORE_RESULT__ = { playerId: null, profileLoaded: false, profilePublicId: null, matchIds: [] }; return; }
         const [cachedPage,cachedMatches]=await Promise.all([loadPlayerLibrary(savedId),loadImportedMatches(savedId)]);
         if(!active) return;
-        window.__OFRC_LOCAL_LIBRARY_RESTORE_RESULT__ = { playerId: savedId, profileLoaded: Boolean(cachedPage), matchIds: cachedMatches.map(item=>item.game.gameId) };
+        const profilePublicId = cachedPage && typeof cachedPage.profile?.publicID === 'string' ? cachedPage.profile.publicID : null;
+        window.__OFRC_LOCAL_LIBRARY_RESTORE_RESULT__ = { playerId: savedId, profileLoaded: Boolean(cachedPage), profilePublicId, matchIds: cachedMatches.map(item=>item.game.gameId) };
         // Render the complete local library immediately; network refresh must not
         // hold the desktop UI hostage while OpenFront paginates old match history.
         const cachedMatchesRefreshed=diagnosticsEnabled ? cachedMatches : cachedMatches.map(refreshStoredMatch);

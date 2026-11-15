@@ -67,8 +67,14 @@ export function assertContextContinuity(before, after) {
 }
 
 export function assertStoragePreserved(before, after) {
-  const left = { localStorage: before.localStorage, indexedDB: before.indexedDB?.stores, records: before.indexedDB?.records };
-  const right = { localStorage: after.localStorage, indexedDB: after.indexedDB?.stores, records: after.indexedDB?.records };
+  const missingOrChangedLocalStorage = Object.entries(before.localStorage ?? {}).filter(([key, value]) =>
+    !Object.prototype.hasOwnProperty.call(after.localStorage ?? {}, key) || !isDeepStrictEqual(value, after.localStorage[key])
+  );
+  if (missingOrChangedLocalStorage.length) {
+    throw new UpgradeDataLossError("LocalStorage entries missing or changed: " + JSON.stringify(missingOrChangedLocalStorage.map(([key]) => key)));
+  }
+  const left = { indexedDB: before.indexedDB?.stores, records: before.indexedDB?.records };
+  const right = { indexedDB: after.indexedDB?.stores, records: after.indexedDB?.records };
   const difference = firstDifference(left, right);
   if (difference) {
     const show = value => value === undefined ? "<missing>" : JSON.stringify(value);

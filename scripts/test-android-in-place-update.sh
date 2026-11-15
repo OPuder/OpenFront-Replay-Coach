@@ -16,6 +16,9 @@ restore_apk() {
 }
 trap restore_apk EXIT
 
+log "Checking and starting the Android Debug Bridge server."
+timeout 30s adb start-server || fail "Android Debug Bridge server could not be started."
+timeout 30s adb devices -l || fail "Android Debug Bridge server did not respond to device enumeration."
 log "Waiting for emulator connection."
 timeout 90s adb -s emulator-5554 wait-for-device || fail "Android emulator did not connect to ADB within 90 seconds."
 online=false
@@ -33,7 +36,7 @@ for attempt in $(seq 1 60); do
 done
 [[ "$booted" == true ]] || fail "Android emulator did not finish booting within 3 minutes."
 log "Emulator booted; installing baseline APK."
-timeout 120s adb -s emulator-5554 install "$before_apk" || fail "Could not install baseline APK."
+timeout 300s adb -s emulator-5554 install "$before_apk" || fail "Could not install baseline APK."
 timeout 30s adb -s emulator-5554 shell "run-as $package_id sh -c 'mkdir -p files/update-regression && printf keep-this-data > files/update-regression/sentinel.txt'" || fail "Could not create app-data sentinel."
 
 current_version="$(node -p "require('./package.json').version")"
@@ -41,13 +44,23 @@ IFS='.' read -r major minor patch <<< "$current_version"
 next_version="$major.$minor.$((patch + 1))"
 test -s "$update_apk" || fail "Prebuilt higher-version APK is missing."
 log "Installing the prebuilt update APK for version $next_version."
-timeout 120s adb -s emulator-5554 install -r "$update_apk" || fail "Android rejected the in-place APK update."
+timeout 300s adb -s emulator-5554 install -r "$update_apk" || fail "Android rejected the in-place APK update."
 saved="$(timeout 30s adb -s emulator-5554 shell "run-as $package_id cat files/update-regression/sentinel.txt" | tr -d '\r')" || fail "Could not read the preserved app-data sentinel."
 [[ "$saved" == "keep-this-data" ]] || fail "App data was not preserved after adb -s emulator-5554 install -r."
 
 expected_version_code="$((major * 1000000 + minor * 1000 + patch + 1))"
 installed_package="$(timeout 30s adb -s emulator-5554 shell dumpsys package "$package_id")" || fail "Could not inspect installed package metadata."
 grep -F "versionCode=$expected_version_code" <<< "$installed_package" >/dev/null || fail "Installed package does not have expected versionCode $expected_version_code."
-log "Launching upgraded application."
-timeout 30s adb -s emulator-5554 shell monkey -p "$package_id" 1 >/dev/null || fail "Upgraded application could not be launched."
+log "Resolving the upgraded application's launcher activity."
+launcher_activity="$(timeout 30s adb -s emulator-5554 shell cmd package resolve-activity --brief -a android.intent.action.MAIN -c android.intent.category.LAUNCHER "$package_id" | tr -d '\r' | tail -n 1)"
+[[ "$launcher_activity" == */* ]] || fail "Could not resolve a launcher activity for $package_id."
+log "Launching upgraded application through $launcher_activity."
+launch_output="$(timeout 90s adb -s emulator-5554 shell am start -W -n "$launcher_activity" 2>&1)" || fail "Upgraded application launch command failed: $launch_output"
+grep -F "Status: ok" <<< "$launch_output" >/dev/null || fail "Android did not report a successful activity launch: $launch_output"
+app_started=false
+for attempt in $(seq 1 30); do
+  if timeout 10s adb -s emulator-5554 shell pidof "$package_id" >/dev/null 2>&1; then app_started=true; break; fi
+  sleep 2
+done
+[[ "$app_started" == true ]] || fail "The upgraded application process did not start after its launcher activity was opened."
 log "PASS: $current_version -> $next_version; package identity, signature, versionCode and app data preserved."

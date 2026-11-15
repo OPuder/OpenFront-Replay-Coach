@@ -11,7 +11,12 @@ async function main(){
   await wait('http://127.0.0.1:'+port+'/scripts/replay-visualization-ui-test.html');
   window=new BrowserWindow({show:false,width:375,height:900,webPreferences:{contextIsolation:true,nodeIntegration:false,sandbox:true}});
   await window.loadURL('http://127.0.0.1:'+port+'/scripts/replay-visualization-ui-test.html');
-  for(let i=0;i<80;i++){if(await window.webContents.executeJavaScript("typeof window.__uiTest==='function'"))break;await new Promise(resolve=>setTimeout(resolve,100));}
+  for(let i=0;i<80;i++){
+    const ready=await window.webContents.executeJavaScript("typeof window.__uiTest==='function' && !!document.querySelector('canvas.replay-viz-territory')");
+    if(ready)break;
+    await new Promise(resolve=>setTimeout(resolve,100));
+    if(i===79)throw new Error('Replay visualization did not render in the browser harness');
+  }
   const results=[];
   for(const width of [320,375,768,1440]){
     window.setSize(width,900);

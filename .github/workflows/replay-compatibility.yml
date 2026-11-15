@@ -53,6 +53,9 @@ jobs:
       - name: Verify source pin and engine checkout cannot drift
         run: npm run validate:engine-pin
 
+      - name: Test replay visualization at mobile, tablet and desktop widths with keyboard access
+        run: xvfb-run -a npm run test:ux-ui
+
       - name: Verify the actual Europe replay and all coaching regressions
         env:
           OPENFRONT_REPLAY_ID: c2R2JHZgUi

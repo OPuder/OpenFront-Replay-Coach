@@ -33,6 +33,8 @@ const formatTime = (seconds: number) => {
 };
 const playerColor = (id: number, players: ReplayStateSample['players']) =>
   players.find(player => player.id === id)?.color ?? `hsl(${(id * 137.508) % 360} 68% 58%)`;
+const confidenceLabel = (confidence: ReplayCoachFinding['confidence']) =>
+  confidence === 'high' ? 'hoch' : confidence === 'medium' ? 'mittel' : confidence === 'low' ? 'gering' : 'nicht angegeben';
 
 export function ReplayVisualization({
   mapName, mapPreview, durationSeconds, events, findings = [], samples, selectedEventId, onSelectEvent, onOpenReplay,
@@ -48,6 +50,22 @@ export function ReplayVisualization({
   const territory = sample?.territory ?? null;
   const previousSample = sample ? samples.reduce<ReplayStateSample | null>((previous, candidate) =>
     candidate.territory && candidate.tick < sample.tick && (!previous || candidate.tick > previous.tick) ? candidate : previous, null) : null;
+  const territoryTransfers = useMemo(() => {
+    if (!territory || !previousSample?.territory || territory.width !== previousSample.territory.width || territory.height !== previousSample.territory.height) return null;
+    const currentOwners = decodeTileOwners(territory);
+    const previousOwners = decodeTileOwners(previousSample.territory);
+    if (!currentOwners || !previousOwners || currentOwners.length !== previousOwners.length) return null;
+    const counts = new Map<string, { from: number; to: number; count: number }>();
+    for (let index = 0; index < currentOwners.length; index++) {
+      const from = previousOwners[index], to = currentOwners[index];
+      if (from === to) continue;
+      const key = `${from}:${to}`;
+      const transfer = counts.get(key) ?? { from, to, count: 0 };
+      transfer.count++;
+      counts.set(key, transfer);
+    }
+    return [...counts.values()].sort((a, b) => b.count - a.count).slice(0, 4);
+  }, [territory, previousSample?.territory]);
   const changedTerritoryTiles = useMemo(() => {
     if (!territory || !previousSample?.territory ||
         territory.width !== previousSample.territory.width || territory.height !== previousSample.territory.height) return null;
@@ -154,11 +172,11 @@ export function ReplayVisualization({
       <div><span className="studio-eyebrow">TACTICAL OVERVIEW</span><h3>Schlachtfeld & Zeitachse</h3><p>Territorien und Einheitenziele stammen aus dem rekonstruierten Original-Engine-Zustand.</p></div>
       <div className="replay-viz-status"><span className="replay-viz-live-dot"/>{events.length} Ereignisse · {formatTime(durationSeconds)} Gesamt</div>
     </div>
-    {findings.length > 0 && <div className="replay-viz-priority-findings" aria-label="Drei wichtigste strategische Erkenntnisse">
+    {findings.length > 0 ? <div className="replay-viz-priority-findings" aria-label="Drei wichtigste strategische Erkenntnisse">
       {findings.slice(0, 3).map((finding,index)=><button type="button" key={finding.id} disabled={finding.timestampSeconds === null} onClick={()=>onSelectEvent('pro-'+finding.id)} className={'replay-viz-priority-card priority-'+finding.priority+(selectedFinding?.id===finding.id?' selected':'')} aria-pressed={selectedFinding?.id===finding.id}>
-        <span>{String(index+1).padStart(2,'0')} · {finding.priority === 'high' ? 'HOHE WIRKUNG' : finding.priority === 'medium' ? 'WICHTIG' : 'HINWEIS'}</span><b>{finding.title}</b><small>{finding.timestampSeconds === null ? 'Kein genauer Replay-Zeitpunkt' : formatTime(finding.timestampSeconds)} · Sicherheit {finding.confidence === 'unknown' ? 'nicht angegeben' : finding.confidence}</small>
+        <span>{String(index+1).padStart(2,'0')} · {finding.priority === 'high' ? 'HOHE WIRKUNG' : finding.priority === 'medium' ? 'WICHTIG' : 'HINWEIS'}</span><b>{finding.title}</b><small>{finding.timestampSeconds === null ? 'Kein genauer Replay-Zeitpunkt' : formatTime(finding.timestampSeconds)} · Belegsicherheit: {confidenceLabel(finding.confidence)}</small><em>{finding.consequence || 'Konsequenz im Coaching-Datensatz nicht separat beschrieben'}</em>
       </button>)}
-    </div>}
+    </div> : <div className="replay-viz-no-findings"><b>Keine belastbaren Coaching-Erkenntnisse verfügbar</b><span>Für diese Partie liegen aktuell keine priorisierten strategischen Entscheidungen vor. Es werden keine Fehler ergänzt oder vermutet.</span></div>}
     <div className="replay-viz-grid">
       <div className="replay-viz-map">
         <div className="replay-viz-map-head"><span><MapIcon size={14}/> {mapName || 'Unbekannte Karte'}</span><span>{sample ? `Engine-Frame ${sample.frame}` : 'Kein Engine-Snapshot'}</span></div>
@@ -179,7 +197,12 @@ export function ReplayVisualization({
           {!territory && <div className="replay-viz-map-label"><MapIcon size={24}/><b>Kein Territoriums-Snapshot verfügbar</b><small>{samples.length ? 'Für diesen Zeitpunkt ist kein passender Engine-Zustand gespeichert.' : 'Die Partie wurde noch nicht mit der Original-Engine rekonstruiert.'}</small></div>}
           {territory && <div className="replay-viz-map-overlay"><span><Crosshair size={12}/> TERRITORIUM · {territory.width}×{territory.height}</span><b>{formatTime(currentTime)}</b></div>}
         </div>
-        <div className="replay-viz-map-note"><ShieldAlert size={13}/>{territory ? <>Besitzfarben: Replay-TileState (Owner-ID). Pfeile: aktive Einheiten mit explizitem Engine-Ziel.{changedTerritoryTiles !== null && <b className="replay-viz-front-change">{changedTerritoryTiles.toLocaleString('de-DE')} Tiles mit Besitzerwechsel seit letztem Snapshot</b>}</> : 'Besitzstände und Bewegungen werden nur bei vorhandenem Engine-Snapshot angezeigt.'}</div>
+        <div className="replay-viz-map-note"><ShieldAlert size={13}/>{territory ? <>**Replay-Fakten:** Besitzfarben stammen aus TileState; Pfeile zeigen aktive Einheiten mit explizitem Engine-Ziel.{changedTerritoryTiles !== null && <b className="replay-viz-front-change">{changedTerritoryTiles.toLocaleString('de-DE')} Tiles mit Besitzerwechsel seit letztem Snapshot</b>}</> : 'Kein Kartenbeleg für diesen Zeitpunkt. Ohne Engine-Snapshot werden weder Besitz noch Bewegungen ergänzt.'}</div>
+        {territory && <div className="replay-viz-transfer-summary"><b>Gebietswechsel zwischen Engine-Snapshots</b>{territoryTransfers === null ? <small>Kein vergleichbarer vorheriger Snapshot vorhanden.</small> : territoryTransfers.length ? territoryTransfers.map(transfer => {
+          const fromName = transfer.from === 0 ? 'Neutrales Gebiet' : playerNames.get(transfer.from) ?? `Spieler ${transfer.from}`;
+          const toName = transfer.to === 0 ? 'Neutrales Gebiet' : playerNames.get(transfer.to) ?? `Spieler ${transfer.to}`;
+          return <span key={`${transfer.from}:${transfer.to}`}><i style={{background:playerColor(transfer.from,sample?.players??[])}}/>{fromName}<b>→</b><i style={{background:playerColor(transfer.to,sample?.players??[])}}/>{toName}<small>{transfer.count.toLocaleString('de-DE')} Tiles</small></span>;
+        }) : <small>Im Vergleichszeitraum wurde kein Besitzerwechsel festgestellt.</small>}</div>}
         {sample && <div className="replay-viz-legend" aria-label="Spielerlegende">{sample.players.filter(player=>player.tiles>0).sort((a,b)=>b.tiles-a.tiles).slice(0,8).map(player=><span key={player.id}><i style={{background:playerColor(player.id,sample.players)}}/><b>{player.name}</b><small>{player.tiles.toLocaleString('de-DE')} Tiles</small></span>)}</div>}
       </div>
       <div className="replay-viz-focus">
@@ -193,13 +216,14 @@ export function ReplayVisualization({
             <div><b>Konsequenz</b><p>{selectedFinding.consequence}</p></div>
             <div><b>Bessere Alternative</b><p>{selectedFinding.alternative}</p></div>
             <div><b>Lernregel</b><p>{selectedFinding.learningRule}</p></div>
-            <div className="replay-viz-coach-evidence"><b>Replay-Beleg · {selectedFinding.timestampSeconds === null ? 'ohne Zeitstempel' : formatTime(selectedFinding.timestampSeconds)}</b>{selectedFinding.evidence.map((item,index)=><small key={index}>{item.label}{item.frame === null ? '' : ' · Frame '+item.frame} · {item.detail}</small>)}</div>
-            <small className="replay-viz-coach-uncertainty">Sicherheit: {selectedFinding.confidence === 'unknown' ? 'nicht angegeben' : selectedFinding.confidence} · {selectedFinding.uncertainty}</small>
+            <div className="replay-viz-coach-evidence"><b>Belegte Replay-Daten · {selectedFinding.timestampSeconds === null ? 'ohne Zeitstempel' : formatTime(selectedFinding.timestampSeconds)}</b>{selectedFinding.evidence.map((item,index)=><small key={index}><strong>{item.kind === 'action' && item.frame !== null ? 'Exakter Aktionsbezug' : 'Zusammenfassender Beleg'}</strong> · {item.label}{item.frame === null ? '' : ' · Frame '+item.frame} · {item.detail}</small>)}</div>
+            <div className="replay-viz-coach-assessment"><b>Coach-Bewertung · keine direkte Replay-Tatsache</b><small>Die Einordnung von Entscheidung, Konsequenz und Alternative ist eine strategische Bewertung auf Basis der angezeigten Belege.</small></div>
+            <small className="replay-viz-coach-uncertainty">Belegsicherheit: {confidenceLabel(selectedFinding.confidence)} · Einschränkung: {selectedFinding.uncertainty}</small>
             <small>Betroffene Spieler: {selectedFinding.affectedPlayers.length ? selectedFinding.affectedPlayers.map(player=>player.name).join(' · ') : 'nicht eindeutig auflösbar'}</small><small>Die Kartenmarkierung zeigt die gesamten Besitzgebiete dieser Spieler, keine einzelne Zielzone.</small>
           </div>}
           <div className="replay-viz-focus-foot"><small>{selected.isCoach ? 'Mit Replay-Zeitpunkt verknüpft' : 'Protokolliertes Replay-Ereignis'}</small><button type="button" onClick={onOpenReplay}>Original-Replay öffnen <ArrowUpRight size={14}/></button></div>
         </> : <div className="replay-viz-no-event"><Crosshair size={22}/><b>Noch keine Ereignisse markiert</b><small>Für diese Partie enthält die Timeline keine verwertbaren Marker.</small></div>}
-        <div className="replay-viz-engagements"><b>Aktive Angriffe · Engine-State</b>{attackLinks.length ? attackLinks.slice(0,8).map(link=><span key={link.id}><Swords size={12}/>{link.attacker} → {link.target}<small>{link.troops.toLocaleString('de-DE')} Truppen{link.retreating?' · Rückzug':''}</small></span>) : <small>Keine aktiven Angriffsbeziehungen in diesem Snapshot.</small>}</div>
+        <div className="replay-viz-engagements"><b>Angriffsbeziehungen · Engine-State</b><small className="replay-viz-engagement-note">Angreifer → Ziel und Truppenstärke sind Spielerbeziehungen. Sie belegen keinen geografischen Startpunkt und nicht automatisch einen Gebietsgewinn.</small>{attackLinks.length ? attackLinks.slice(0,8).map(link=><span key={link.id}><Swords size={12}/>{link.attacker} → {link.target}<small>{link.troops.toLocaleString('de-DE')} Truppen{link.retreating?' · Rückzug':''}</small></span>) : <small>Keine aktiven Angriffsbeziehungen in diesem Snapshot.</small>}</div>
         {movements.length>0 && <small className="replay-viz-movement-count">{movements.length} aktive Einheitenziele im ausgewählten Snapshot</small>}
       </div>
     </div>

@@ -274,7 +274,7 @@ assert.doesNotMatch(windowsStorage, /ofrc:update-regression-settings/);
 assert.match(windowsInPlace, /writeFileSync/);
 
 
-assert.match(windowsDistributionVerifier, /subarray\(peOffset, peOffset \+ 4\)\.equals\(Buffer\.from\(\[0x50, 0x45, 0x00, 0x00\]\)\)/);
+assert.match(windowsDistributionVerifier, /peSignature\.equals\(Buffer\.from\(\[0x50, 0x45, 0x00, 0x00\]\)\)/);
 assert.match(windowsDistributionVerifier, /OFRC_INSTALLER_ATTEMPTS/);
 assert.match(windowsDistributionVerifier, /NSIS_INSTALL_ATTEMPT_START/);
 assert.match(windowsDistributionVerifier, /NSIS_INSTALL_ATTEMPT_FAILED/);

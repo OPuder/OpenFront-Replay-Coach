@@ -21,21 +21,24 @@ if (!/signingConfigs\s*\{[\s\S]*?\brelease\s*\{/.test(gradle)) {
   gradle = gradle.replace(/android\s*\{/, signingBlock);
 }
 
+function findClosingBrace(source, openingIndex, label) {
+  let depth = 0;
+  for (let index = openingIndex; index < source.length; index += 1) {
+    if (source[index] === "{") depth += 1;
+    else if (source[index] === "}") {
+      depth -= 1;
+      if (depth === 0) return index;
+    }
+  }
+  throw new Error("Could not locate the end of the " + label + " block.");
+}
+
 function updateBuildType(source, type, { signWithRelease, debuggable }) {
   const pattern = "buildTypes\\s*\\{[\\s\\S]*?\\b" + type + "\\s*\\{";
   const match = new RegExp(pattern).exec(source);
   if (!match) throw new Error("Could not locate the " + type + " build type.");
   const open = source.indexOf("{", match.index + match[0].lastIndexOf(type));
-  let depth = 0;
-  let close = -1;
-  for (let index = open; index < source.length; index += 1) {
-    if (source[index] === "{") depth += 1;
-    else if (source[index] === "}") {
-      depth -= 1;
-      if (depth === 0) { close = index; break; }
-    }
-  }
-  if (close < 0) throw new Error("Could not locate the end of the " + type + " build type.");
+  const close = findClosingBrace(source, open, type);
   let block = source.slice(open + 1, close);
   if (signWithRelease) {
     if (/signingConfig\s+signingConfigs\.[A-Za-z0-9_]+/.test(block)) {
@@ -56,8 +59,20 @@ function updateBuildType(source, type, { signWithRelease, debuggable }) {
 
 gradle = updateBuildType(gradle, "release", { signWithRelease: true, debuggable: "false" });
 if (upgradeTestBuild) {
-  // BuildConfig.DEBUG and Android's debuggable manifest flag are enabled only
-  // in the test variant; it is signed by the same permanent release key.
+  // Capacitor's generated app/build.gradle may omit an explicit debug block;
+  // create one so the test APK is BuildConfig.DEBUG and uses the permanent key.
+  const hasDebugBlock = /buildTypes\\s*\\{[\\s\\S]*?\\bdebug\\s*\\{/.test(gradle);
+  if (!hasDebugBlock) {
+    const buildTypesMatch = /buildTypes\\s*\\{/.exec(gradle);
+    if (!buildTypesMatch) throw new Error("Could not locate buildTypes to add the isolated test variant.");
+    const buildTypesOpen = gradle.indexOf("{", buildTypesMatch.index);
+    const buildTypesClose = findClosingBrace(gradle, buildTypesOpen, "buildTypes");
+    gradle = gradle.slice(0, buildTypesClose)
+      + "\\n        debug {\\n            signingConfig signingConfigs.release\\n            debuggable true\\n        }\\n"
+      + gradle.slice(buildTypesClose);
+  }
+  // The test variant is debuggable for WebView inspection but uses the exact
+  // same permanent signing key as the non-debuggable production release.
   gradle = updateBuildType(gradle, "debug", { signWithRelease: true, debuggable: "true" });
 }
 

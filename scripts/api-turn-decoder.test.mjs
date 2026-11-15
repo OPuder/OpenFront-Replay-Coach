@@ -62,3 +62,14 @@ test('decoder keeps supplied Europe and Levant replay timelines finite and order
     assert.ok(decoded.actions.every((action, index, all) => index === 0 || all[index - 1].turn <= action.turn));
   }
 });
+
+test('decoder orders out-of-order source turns by game time', () => {
+  const decoded = decodeApiGameRecord(record([
+    { turnNumber: 300, intents: [{ type: 'attack', targetID: 'late' }] },
+    { turnNumber: 100, intents: [{ type: 'build_unit' }] },
+    { turnNumber: 200, intents: [{ type: 'boat' }] },
+  ]));
+  assert.deepEqual(decoded.actions.map(action => action.turn), [100, 200, 300]);
+  assert.deepEqual(decoded.actions.map(action => action.type), ['build_unit', 'boat', 'attack']);
+});
+

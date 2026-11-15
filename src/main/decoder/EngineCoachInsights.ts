@@ -277,9 +277,10 @@ export function buildEngineCoachInsights(
     const tradeEvidence = [...troopDownNoTerritory, ...favorableTroopTrades, ...evenTroopTrades, ...mixedTerritoryTrades];
     findings.push({
       id: "attack-response-windows",
-      kind: troopDownNoTerritory.length > 0 ? "review" : "observation",
+      kind: troopDownNoTerritory.length > 0 || mixedTerritoryTrades.length > 0 ? "review" : "observation",
       title: troopDownNoTerritory.length > 0 ? "Angriffe mit ungünstigem Truppenverhältnis prüfen" :
-        favorableTroopTrades.length > 0 ? "Günstige Truppentausche nach Angriffen beobachtet" : "Was nach deinen Angriffsbefehlen sichtbar wurde",
+        mixedTerritoryTrades.length > 0 ? "Truppentausch mit eigenem Gebietsverlust prüfen" :
+          favorableTroopTrades.length > 0 ? "Günstige Truppentausche nach Angriffen beobachtet" : "Was nach deinen Angriffsbefehlen sichtbar wurde",
       summary: `Bei ${territoryAt10s} von ${attacks.length} Angriffen stieg dein Gebiet im 10-Sekunden-Fenster; nach 30 Sekunden war das bei ${territoryAt30s} Angriffen der Fall. Ohne positive Gebietsreaktion: ${favorableTroopTrades.length} günstige Truppentausche ohne eigenen Gebietsverlust, ${evenTroopTrades.length} ausgeglichene, ${mixedTerritoryTrades.length} gemischte Tauschfenster mit eigenem Gebietsverlust und ${troopDownNoTerritory.length} ungünstige beobachtete Truppenverhältnisse.`,
       evidence: tradeEvidence.slice(0, 4).map((action) =>
         `${clock(action.seconds)} · eigenes Gebiet ${action.delta30s!.tiles} · eigene Truppen ${action.delta30s!.troops} · Zielgebiet ${action.targetDelta30s?.tiles ?? "n/v"} · Zieltruppen ${action.targetDelta30s?.troops ?? "n/v"}`

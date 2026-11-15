@@ -189,7 +189,11 @@ async function main() {
     "Only one match belongs to the selected shared mode/type comparison cohort");
   assert.equal(batch.longitudinal.comparableGroup, "Free For All · Private");
   assert.deepEqual(batch.bridgeDiagnostics.longitudinal.matchProgressIds, ["c2R2JHZgUi"]);
-  assert.equal(batch.longitudinal.status, "ready");
+  assert.equal(batch.longitudinal.status, "insufficient-data",
+    "One Private match is not enough to claim a longitudinal comparison when the other real match is Public");
+  assert.ok(batch.longitudinal.message.includes(
+    "mindestens zwei vollständig hash-verifizierte Partien desselben Modus und Spieltyps",
+  ), "The longitudinal report must explain why the two imported matches are not yet comparable");
   assert.deepEqual(batch.bridgeDiagnostics.reportIdentities.map(item => ({
     gameId: item.gameId, sourceMatchId: item.sourceMatchId, reportMatchId: item.reportMatchId,
     mode: item.mode, type: item.type,

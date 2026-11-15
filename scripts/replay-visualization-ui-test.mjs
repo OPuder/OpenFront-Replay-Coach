@@ -28,6 +28,10 @@ async function main(){
     assert.ok(state.buttons.every(button=>button.name.length>0),'Unlabelled button at '+width+'px');
     results.push({width,scrollWidth:state.scrollWidth,buttons:state.buttons.length,territory:state.hasTerritory,movement:state.hasMovement});
   }
+  await window.webContents.executeJavaScript("document.querySelectorAll('.replay-viz-marker')[1].click()");
+  const selected=await window.webContents.executeJavaScript("window.__uiTest()");
+  assert.equal(selected.selectedTime,'00:15','Selecting a timeline marker must update the coaching time');
+  assert.equal(selected.buttons.filter(button=>button.pressed==='true').length,1,'Exactly one timeline marker must be selected');
   await window.webContents.sendInputEvent({type:'keyDown',keyCode:'TAB'});
   await window.webContents.sendInputEvent({type:'keyUp',keyCode:'TAB'});
   const focus=await window.webContents.executeJavaScript("({tag:document.activeElement?.tagName,role:document.activeElement?.getAttribute('role'),label:document.activeElement?.getAttribute('aria-label')||document.activeElement?.textContent?.trim()})");

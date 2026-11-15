@@ -3,7 +3,7 @@ set -Eeuo pipefail
 
 package_id="de.openfront.replaycoach"
 version="${RELEASE_VERSION:?RELEASE_VERSION is required}"
-current_apk="release/OpenFront-Replay-Coach-${version}-Android.apk"
+current_apk="${OPENFRONT_CURRENT_APK:-release/OpenFront-Replay-Coach-${version}-Android.apk}"
 previous_apk="${PREVIOUS_APK:?PREVIOUS_APK is required}"
 
 log() { echo "::notice::[Android release upgrade] $*"; }
@@ -76,7 +76,7 @@ install_apk() {
 
 log "Installing previous published APK (versionCode $previous_version_code)."
 install_apk "$previous_apk" false
-log "Upgrading directly to the exact signed release APK (versionCode $current_version_code)."
+log "Upgrading in place from the exact published $previous_version_code APK to the signed candidate (versionCode $current_version_code)."
 install_apk "$current_apk" true
 
 installed="$(adb_cmd shell dumpsys package "$package_id")" || fail "Could not inspect the upgraded Android package."
@@ -113,4 +113,4 @@ if ! adb_cmd shell pidof "$package_id" >/dev/null 2>&1; then
   adb_cmd logcat -d -t 500 2>&1 | grep -E "FATAL EXCEPTION|AndroidRuntime|de.openfront.replaycoach|ActivityTaskManager" | tail -n 120 || true
   fail "Upgraded signed release app exited during the five-minute idle soak."
 fi
-log "PASS: previous published APK versionCode $previous_version_code upgraded to release $version (versionCode $current_version_code), launched and survived five minutes idle."
+log "PASS: exact published APK versionCode $previous_version_code upgraded in place to signed candidate $version (versionCode $current_version_code), launched and survived five minutes idle. App-data integrity is not asserted by this script."

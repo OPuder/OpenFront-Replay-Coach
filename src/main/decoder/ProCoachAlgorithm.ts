@@ -156,6 +156,7 @@ export function buildProCoachReport(
   };
   if(spawnPosition&&spawnPosition.classification!=='unknown') findings.push({id:'spawn-position-review',priority:spawnPosition.classification==='contested'?'medium':'low',confidence:'medium',title:spawnPosition.classification==='contested'?'Startposition: früher Grenzdruck':'Startposition: relative Lage im Lobbyvergleich',decision:`Dein Startgebiet lag im Kartenraster bei (${fmt(spawnPosition.centerX)}, ${fmt(spawnPosition.centerY)}) und umfasste ${fmt(spawnPosition.startTiles)} Felder.`,consequence:spawnPosition.classification==='contested'?`Es gab ${spawnPosition.rivalBorderContacts} direkte Grenzkontakte zu ${spawnPosition.adjacentRivals.length} anderen Spielern; der nächste gegnerische Gebietsschwerpunkt lag etwa ${fmt(spawnPosition.nearestRivalDistance??0)} Rasterfelder entfernt.`:`Der nächste gegnerische Gebietsschwerpunkt lag etwa ${fmt(spawnPosition.nearestRivalDistance??0)} Rasterfelder entfernt; direkte gegnerische Grenzkontakte: ${spawnPosition.rivalBorderContacts}.`,alternative:spawnPosition.classification==='contested'?'Plane die erste Expansion weg von der direkten Kontaktgrenze, sichere einen Rückzugsraum und eröffne nicht gleichzeitig eine zweite Front.':'Nutze den räumlichen Abstand für kontrollierte Expansion und sichere früh die erreichbaren Anschlussflächen, bevor ein Gegner den Zugang schließt.',trainingRule:'Vergleiche vor dem ersten Angriff die Startlage, direkte Nachbargrenzen und die erste sichere Expansionsrichtung.',evidence:`Startfelder: ${fmt(spawnPosition.startTiles)} · direkte Rivalen-Grenzkontakte: ${fmt(spawnPosition.rivalBorderContacts)} · Nachbarn: ${spawnPosition.adjacentRivals.length} · Schwerpunktdistanz: ${spawnPosition.nearestRivalDistance===null?'unbekannt':fmt(spawnPosition.nearestRivalDistance)}.`,seconds:0,caveat:opening.limitation});
   if(opening.confidence!=='low') findings.push({id:'opening-review',priority:opening.firstExpansionSeconds===null?'medium':'low',confidence:opening.confidence,title:'Eröffnung: erste Expansion und Reserve prüfen',decision:'Bewerte die ersten drei Minuten anhand der ersten beobachteten Expansion.',consequence:opening.territoryGainFirstThreeMinutes===null?'Für drei Minuten fehlen ausreichend Zustandsdaten.':'Gebietsänderung: '+fmt(opening.territoryGainFirstThreeMinutes)+', Einkommensänderung: '+fmt(opening.incomeGainFirstThreeMinutes??0)+', Truppenänderung: '+fmt(opening.troopChangeFirstThreeMinutes??0)+'.',alternative:'Sichere erreichbare neutrale Gebiete, wenn die Karte es zulässt, und behalte eine Reserve für frühe Bedrohungen. Vergleiche Expansion immer mit Einkommen und Truppenbestand.',trainingRule:'Prüfe in der nächsten Partie bei 1:00, 2:00 und 3:00 Gebiet, Goldentwicklung und Truppenreserve gemeinsam.',evidence:'Erste Expansion: '+(opening.firstExpansionSeconds===null?'nicht beobachtet':clock(opening.firstExpansionSeconds))+' · Beobachtungsfenster: '+fmt(openingSpan)+' s.',seconds:opening.firstExpansionSeconds,caveat:opening.limitation});
+  const playerStateBefore=(seconds:number)=>alive.filter(x=>x.sample.tick<=seconds*10).at(-1)?.player??null;
   const attackActions=actions.filter(a=>a.type==='attack'&&a.delta30s);
   // Missing target observations are unknown, not a zero territorial response.
   const evaluatedAttackActions=attackActions.filter(a=>(a.delta30s?.tiles??0)>0||a.targetDelta30s!=null);
@@ -179,36 +180,65 @@ export function buildProCoachReport(
     return ownLoss>targetLoss&&(a.delta30s?.tiles??0)<=0&&(a.targetDelta30s?.tiles??0)>=0;
   });
   const productiveWindows=evaluatedAttackActions.filter(a=>territorialWins.includes(a)||favorableTrades.includes(a));
+  const negativeImpact=negativeWindows.map(action=>{
+    const before=playerStateBefore(action.seconds);
+    const ownLoss=Math.max(0,-(action.delta30s?.troops??0));
+    const ownTileLoss=Math.max(0,-(action.delta30s?.tiles??0));
+    const troopLossShare=before&&before.troops>0?ownLoss/before.troops:null;
+    const tileLossShare=before&&before.tiles>0?ownTileLoss/before.tiles:null;
+    return {action,before,ownLoss,ownTileLoss,troopLossShare,tileLossShare,severity:Math.max(troopLossShare??0,tileLossShare??0)};
+  });
+  const severeNegative=negativeImpact.filter(item=>(item.troopLossShare??0)>=.2||(item.tileLossShare??0)>=.1);
   if(evaluatedAttackActions.length>=3){
     const ratio=productiveWindows.length/evaluatedAttackActions.length;
-    const example=negativeWindows[0]??favorableTrades[0]??evenTrades[0]??evaluatedAttackActions.find(a=>(a.delta30s?.tiles??0)<=0);
+    const exampleImpact=[...negativeImpact].sort((a,b)=>b.severity-a.severity)[0];
+    const example=exampleImpact?.action??favorableTrades[0]??evenTrades[0]??evaluatedAttackActions.find(a=>(a.delta30s?.tiles??0)<=0);
     const exampleOwnLoss=Math.max(0,-(example?.delta30s?.troops??0));
     const exampleTargetLoss=Math.max(0,-(example?.targetDelta30s?.troops??0));
+    const exampleOwnTileLoss=Math.max(0,-(example?.delta30s?.tiles??0));
+    const exampleBefore=example?playerStateBefore(example.seconds):null;
+    const exampleTroopShare=exampleBefore&&exampleBefore.troops>0?exampleOwnLoss/exampleBefore.troops:null;
+    const exampleTileShare=exampleBefore&&exampleBefore.tiles>0?exampleOwnTileLoss/exampleBefore.tiles:null;
     findings.push({
-      id:'attack-follow-through',priority:negativeWindows.length>=Math.max(2,Math.ceil(evaluatedAttackActions.length*.35))?'high':'medium',
+      id:'attack-follow-through',
+      priority:severeNegative.length>0||negativeWindows.length>=Math.max(2,Math.ceil(evaluatedAttackActions.length*.35))?'high':'medium',
       confidence:confidenceFor(alive.length,evaluatedAttackActions.length),
       title:negativeWindows.length?'Angriffe mit ungünstigem Truppenverhältnis prüfen':favorableTrades.length?'Beobachtete Truppentausche waren überwiegend günstig':'Angriffe mit sichtbarer Gebietsreaktion',
-      decision:`${evaluatedAttackActions.length} von ${attackActions.length} Angriffen hatten auswertbare 30-Sekunden-Ziel- oder Gebietsdaten.`,
-      consequence:`${territorialWins.length} zeigten eine positive Gebietsreaktion; ${favorableTrades.length} weitere einen höheren beobachteten Truppenverlust beim Ziel als bei dir; ${evenTrades.length} waren ausgeglichen; ${negativeWindows.length} zeigten höhere eigene Truppenverluste ohne Gebietsreaktion.`,
-      alternative:negativeWindows.length?'Vor einem Folgeangriff Zielzustand, eigene aktive Angriffe und eingehenden Druck vergleichen. Bei ungünstigem Truppenverhältnis erst Reserve und Front stabilisieren.':'Nutze günstige Truppentausche nur dann als Anlass zum Nachsetzen, wenn die eigene Reserve und die übrigen Fronten stabil bleiben; prüfe das Ziel erneut vor dem nächsten Befehl.',
+      decision:evaluatedAttackActions.length+' von '+attackActions.length+' Angriffen hatten auswertbare 30-Sekunden-Ziel- oder Gebietsdaten; '+severeNegative.length+' davon überschritten mindestens 20 % des vorher beobachteten eigenen Truppenbestands oder 10 % des eigenen Gebiets.',
+      consequence:territorialWins.length+' zeigten eine positive Gebietsreaktion; '+favorableTrades.length+' weitere einen höheren beobachteten Truppenverlust beim Ziel als bei dir; '+evenTrades.length+' waren ausgeglichen; '+negativeWindows.length+' zeigten höhere eigene Truppenverluste ohne Gebietsreaktion.',
+      alternative:negativeWindows.length?'Vor einem Folgeangriff Zielzustand, eigene aktive Angriffe und eingehenden Druck vergleichen. Bei ungünstigem Truppenverhältnis erst Reserve und gefährdete Gebiete stabilisieren.':'Nutze günstige Truppentausche nur dann als Anlass zum Nachsetzen, wenn die eigene Reserve und die übrigen Ziele stabil bleiben; prüfe das Ziel erneut vor dem nächsten Befehl.',
       trainingRule:'Vergleiche nach jedem Angriff im gleichen Beobachtungsfenster eigene und gegnerische Truppenänderung sowie Gebietsänderung. Öffne erst dann ein weiteres Ziel, wenn der Tausch und die verbleibende Reserve tragfähig sind.',
-      evidence:example?`${clock(example.seconds)} · ${example.targetName??'Ziel nicht benannt'} · eigene Truppen ${fmt(example.delta30s?.troops??0)} · Zieltruppen ${fmt(example.targetDelta30s?.troops??0)} · eigenes Gebiet ${fmt(example.delta30s?.tiles??0)} · Zielgebiet ${fmt(example.targetDelta30s?.tiles??0)} · beobachtete Verluste: du ${fmt(exampleOwnLoss)}, Ziel ${fmt(exampleTargetLoss)}`:`${fmt(ratio*100)} % der auswertbaren Fenster zeigten Gebietsfortschritt oder einen günstigen Truppentausch.`,
+      evidence:example?clock(example.seconds)+' · '+(example.targetName??'Ziel nicht benannt')+' · eigene Truppen '+fmt(example.delta30s?.troops??0)+' · Zieltruppen '+fmt(example.targetDelta30s?.troops??0)+' · eigenes Gebiet '+fmt(example.delta30s?.tiles??0)+' · Zielgebiet '+fmt(example.targetDelta30s?.tiles??0)+' · beobachtete Verluste: du '+fmt(exampleOwnLoss)+', Ziel '+fmt(exampleTargetLoss)+(exampleTroopShare===null?'':' · '+fmt(exampleTroopShare*100)+' % des vorher beobachteten eigenen Truppenbestands')+(exampleTileShare===null?'':' · '+fmt(exampleTileShare*100)+' % des vorher beobachteten eigenen Gebiets'):' '+fmt(ratio*100)+' % der auswertbaren Fenster zeigten Gebietsfortschritt oder einen günstigen Truppentausch.',
       seconds:example?.seconds??attackActions[0]?.seconds??null,
-      caveat:'30 Sekunden sind ein Beobachtungsfenster, kein vollständiger Kampfabschluss. Andere Angriffe, passive Eroberungen und Reisezeiten können die Truppenänderungen beeinflussen; das Verhältnis ist kein sicherer Kausalnachweis.'
+      caveat:'30 Sekunden sind ein Beobachtungsfenster, kein vollständiger Kampfabschluss. Relative Verluste nutzen den letzten aktiven Replay-Zustand vor dem Befehl; andere Angriffe, passive Eroberungen und Reisezeiten können die Änderungen beeinflussen. Das ist kein sicherer Kausalnachweis.'
     });
   }
   const loadedFronts=actions.filter(a=>a.type==='attack'&&a.ownFrontContextBefore&&((a.ownFrontContextBefore.activeTargetCount>=2)||(a.ownFrontContextBefore.incomingAttackCount>=1)));
   if(loadedFronts.length>=2){
-    const a=loadedFronts[0],ctx=a.ownFrontContextBefore!;
+    const reviews=loadedFronts.map(action=>{
+      const ctx=action.ownFrontContextBefore!;
+      const before=playerStateBefore(action.seconds);
+      const ownLoss=Math.max(0,-(action.delta30s?.troops??0));
+      const targetLoss=Math.max(0,-(action.targetDelta30s?.troops??0));
+      const ownTileLoss=Math.max(0,-(action.delta30s?.tiles??0));
+      const troopLossShare=before&&before.troops>0?ownLoss/before.troops:null;
+      const tileLossShare=before&&before.tiles>0?ownTileLoss/before.tiles:null;
+      const territoryProgress=(action.delta30s?.tiles??0)>0||(action.targetDelta30s?.tiles??0)<0;
+      const severeOutcome=action.delta30s!==null&&action.targetDelta30s!==null&&!territoryProgress&&ownLoss>targetLoss&&((troopLossShare??0)>=.2||(tileLossShare??0)>=.1);
+      const commitmentShare=before&&before.troops>0?ctx.outgoingAttackTroops/before.troops:null;
+      return {action,ctx,before,ownLoss,targetLoss,troopLossShare,tileLossShare,severeOutcome,commitmentShare};
+    });
+    const review=reviews.find(item=>item.severeOutcome)??reviews[0];
+    const a=review.action,ctx=review.ctx;
     findings.push({
-      id:'front-load',priority:loadedFronts.length>=4?'high':'medium',confidence:confidenceFor(alive.length,loadedFronts.length),
-      title:'Mehrere Fronten gleichzeitig belastet',
-      decision:`Bei ${loadedFronts.length} Angriffsbefehlen war bereits Frontdruck dokumentiert.`,
-      consequence:`Beim ersten markierten Befehl liefen ${ctx.activeTargetCount} eigene Zielbindungen und ${ctx.incomingAttackCount} eingehende Angriffe; ${fmt(ctx.outgoingAttackTroops)} eigene Truppen waren unterwegs.`,
-      alternative:'Eine bestehende Front zuerst abschließen oder stabilisieren. Neue Ziele priorisieren, wenn sie einen klaren strategischen Vorteil bieten und nicht nur zusätzliche Bindung erzeugen.',
-      trainingRule:'Halte die Zahl gleichzeitig offener Ziele bewusst niedrig, bis du erkennst, welche Angriffe tatsächlich Fortschritt bringen.',
-      evidence:`${clock(a.seconds)} · ${ctx.outgoingAttackCount} aktive eigene Angriffe · ${ctx.incomingAttackCount} eingehende Angriffe · ${fmt(ctx.outgoingAttackTroops)} Truppen gebunden`,
-      seconds:a.seconds,caveat:'Aktive Angriffsobjekte zeigen Bindung, aber nicht zwingend getrennte geografische Fronten oder Erreichbarkeit anderer Ziele.'
+      id:'front-load',priority:review.severeOutcome?'high':'medium',confidence:confidenceFor(alive.length,loadedFronts.length),
+      title:'Angriffsziele parallel gebunden',
+      decision:'Bei '+loadedFronts.length+' Angriffsbefehlen waren bereits eigene Zielbindungen oder eingehender Druck dokumentiert.',
+      consequence:'Bei '+clock(a.seconds)+' liefen '+ctx.activeTargetCount+' eigene Zielbindungen und '+ctx.incomingAttackCount+' eingehende Angriffe; '+fmt(ctx.outgoingAttackTroops)+' eigene Truppen waren unterwegs.'+(a.delta30s&&a.targetDelta30s?' Im 30-Sekunden-Fenster: eigene Truppen '+fmt(a.delta30s.troops)+', Zieltruppen '+fmt(a.targetDelta30s.troops)+', eigenes Gebiet '+fmt(a.delta30s.tiles)+', Zielgebiet '+fmt(a.targetDelta30s.tiles)+'.':''),
+      alternative:review.severeOutcome?'Stoppe weitere Zielbindungen, sichere zuerst die verlorenen Gebiete und baue Reserve auf, bevor du erneut angreifst.':'Schließe oder stabilisiere ein bestehendes Ziel, bevor du ein weiteres bindest. Priorisiere nur dann parallel, wenn Reserve und Verteidigung nachweislich ausreichen.',
+      trainingRule:'Prüfe vor jedem neuen Angriff die Zahl aktiver Ziele, gebundene Truppen, eingehenden Druck und die nach dem letzten Befehl verbleibende Reserve.',
+      evidence:clock(a.seconds)+' · '+ctx.activeTargetCount+' aktive Zielbindungen · '+ctx.outgoingAttackCount+' eigene Angriffe · '+ctx.incomingAttackCount+' eingehende Angriffe · '+fmt(ctx.outgoingAttackTroops)+' Truppen gebunden'+(review.commitmentShare===null?'':' · '+fmt(review.commitmentShare*100)+' % des vorher beobachteten eigenen Truppenbestands'),
+      seconds:a.seconds,caveat:'Aktive Angriffsobjekte zeigen Zielbindungen, aber nicht zwingend getrennte geografische Fronten oder Erreichbarkeit anderer Ziele. 30-Sekunden-Änderungen können durch weitere Angriffe beeinflusst sein.'
     });
   }
   const longPause=(()=>{let best:{from:number;to:number;seconds:number}|null=null;for(let i=1;i<alive.length;i++){const from=(alive[i-1].sample.tick-(first?.sample.tick??0))/10,to=(alive[i].sample.tick-(first?.sample.tick??0))/10;if(to-from>90&&(!best||to-from>best.seconds))best={from,to,seconds:to-from};}return best;})();
@@ -223,13 +253,15 @@ export function buildProCoachReport(
   }
   const weakest=phases.filter(p=>p.momentumIndex!==null&&p.activeSamples>=3).sort((a,b)=>(a.momentumIndex??0)-(b.momentumIndex??0))[0];
   if(weakest&&phases.filter(p=>p.momentumIndex!==null&&p.activeSamples>=3).length>=2){
-    findings.push({id:'phase-focus',priority:'medium',confidence:confidenceFor(alive.length,actions.length),title:`${weakest.label}: geringster beobachteter Gebiet-/Einkommensimpuls`,
-      decision:`In ${weakest.label} lag der kombinierte positive Gebiet-/Einkommensimpuls relativ zu deinen anderen Phasen am niedrigsten.`,
-      consequence:`Gebiet ${weakest.territoryPerMinute===null?'–':fmt(weakest.territoryPerMinute)+' / Min.'} · Brutto-Gold ${weakest.incomePerMinute===null?'–':fmt(weakest.incomePerMinute)+' / Min.'}.`,
-      alternative:'Vergleiche die Phase mit der stärksten Phase: Welche Bau-, Angriffs- oder Verteidigungsentscheidungen unterscheiden sich? Übertrage nur eine konkrete, wiederholbare Verhaltensweise.',
-      trainingRule:`In der nächsten Partie ${weakest.label} gezielt beobachten und eine sichere Expansion oder einen begründeten Wirtschafts-/Verteidigungsschritt pro Leerlaufprüfung planen.`,
-      evidence:`${weakest.label} · ${weakest.activeSamples} Zustände · ${weakest.attacks} Angriffe · ${weakest.minutes.toFixed(1)} Minuten`,
-      seconds:weakest.fromSeconds,caveat:'Phasenlängen und Gegnerdruck unterscheiden sich. Das ist ein Vergleich innerhalb dieser Partie, kein allgemeiner Rang deiner Spielstärke.'});
+    const territoryShare=weakest.territoryPerMinute===null||peakTerritory<=0?null:Math.max(0,weakest.territoryPerMinute)/peakTerritory;
+    const incomeShare=weakest.incomePerMinute===null||peakIncome<=0?null:Math.max(0,weakest.incomePerMinute)/peakIncome;
+    findings.push({id:'phase-focus',priority:'low',confidence:confidenceFor(alive.length,actions.length),title:weakest.label+': schwächster kombinierter Phasenimpuls',
+      decision:'Der normalisierte Phasenindex war in '+weakest.label+' am niedrigsten (70 % Gebietswachstum, 30 % Brutto-Gold; jeweils relativ zum stärksten Phasenwert).',
+      consequence:'Gebiet '+(weakest.territoryPerMinute===null?'–':fmt(weakest.territoryPerMinute)+' / Min.'+(territoryShare===null?'':' ('+fmt(territoryShare*100)+' % des stärksten Phasenwerts)'))+' · Brutto-Gold '+(weakest.incomePerMinute===null?'–':fmt(weakest.incomePerMinute)+' / Min.'+(incomeShare===null?'':' ('+fmt(incomeShare*100)+' % des stärksten Phasenwerts)'))+'.',
+      alternative:'Nutze den Phasenvergleich als Trainingshinweis: Prüfe die konkreten Bau-, Angriffs- und Verteidigungsentscheidungen in diesem Zeitfenster, bevor du eine Ursache annimmst.',
+      trainingRule:'In der nächsten Partie '+weakest.label+' gezielt beobachten und eine sichere Expansion oder einen begründeten Wirtschafts-/Verteidigungsschritt pro Leerlaufprüfung planen.',
+      evidence:weakest.label+' · '+clock(weakest.fromSeconds)+'–'+clock(weakest.toSeconds)+' · '+weakest.activeSamples+' Zustände · '+weakest.attacks+' Angriffe · '+weakest.minutes.toFixed(1)+' Minuten',
+      seconds:weakest.fromSeconds,caveat:'Der Phasenindex normalisiert Gebietswachstum und Brutto-Gold getrennt und gewichtet sie 70/30. Phasenlängen und Gegnerdruck unterscheiden sich; er zeigt eine relative Beobachtung, keine Ursache oder allgemeine Spielstärke.'});
   }
   // Stable presentation utility balances estimated impact, evidence confidence,
   // lesson quality and earlier actionable moments. It is not a gameplay score.
@@ -249,7 +281,7 @@ export function buildProCoachReport(
   const start=first?.player,end=last?.player;
   const territoryDelta=start&&end?end.tiles-start.tiles:null;
   const incomeDelta=start&&end?end.goldEarned-start.goldEarned:null;
-  const durationMinutes=Math.max(0,endSeconds/60);
+  const durationMinutes=Math.max(0,playerObservedSeconds/60);
   const coverage=confidenceFor(alive.length,actions.length);
   const attackRatio=evaluatedAttackActions.length?productiveWindows.length/evaluatedAttackActions.length:null;
   const attackCommands=actions.filter(a=>a.type==='attack'&&a.ownFrontContextBefore);
@@ -266,5 +298,6 @@ export function buildProCoachReport(
   ];
   const validPhases=phases.filter(p=>p.momentumIndex!==null&&p.activeSamples>=3);
   const matchScore=validPhases.length>=2?Math.round(median(validPhases.map(p=>p.momentumIndex??0))*.7+Math.max(...validPhases.map(p=>p.momentumIndex??0))*.3):null;
-  return {confidence:coverage,confidenceLabel:coverage==='high'?'Gute Datenbasis':coverage==='medium'?'Begrenzte Datenbasis':'Wenig Stichproben',matchScore,scoreLabel:'Match-Entwicklungsindex',scoreExplanation:'Relativer Gebiet-/Einkommensimpuls innerhalb dieser Partie. Kein Skill-Rating, keine Siegchance und keine Aussage über optimale Spielzüge.',phases,opening,findings:ranked.slice(0,3),metrics,trainingRule:ranked[0]?.trainingRule??'Noch kein belastbares Trainingsziel. Prüfe die Zeitachse und sammle weitere verifizierte Partien.',dataCoverage:{samples:alive.length,actions:actions.length,durationMinutes}};
+  const topFindings=ranked.filter(finding=>finding.priority!=='low').slice(0,3);
+  return {confidence:coverage,confidenceLabel:coverage==='high'?'Gute Datenbasis':coverage==='medium'?'Begrenzte Datenbasis':'Wenig Stichproben',matchScore,scoreLabel:'Match-Entwicklungsindex',scoreExplanation:'Relativer Phasenindex: getrennt normalisiertes Gebietswachstum (70 %) und Brutto-Gold (30 %) innerhalb dieser Partie. Kein Skill-Rating, keine Siegchance und keine Aussage über optimale Spielzüge.',phases,opening,findings:topFindings,allFindings:ranked,metrics,trainingRule:topFindings[0]?.trainingRule??'Noch kein belastbares Trainingsziel. Prüfe die Zeitachse und sammle weitere verifizierte Partien.',dataCoverage:{samples:alive.length,actions:actions.length,durationMinutes}};
 }

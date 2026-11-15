@@ -142,8 +142,11 @@ assert.match(appRenderer, /function navigateTo\([\s\S]*?engineReviewRunId\.curre
 
 const releaseUpgradeWorkflow = read(".github/workflows/release-on-main.yml");
 const releaseUpgradeScript = read("scripts/test-android-release-upgrade.sh");
-assert.match(releaseUpgradeWorkflow, /Install previous published APK and upgrade to exact signed release APK[\\s\\S]*?reactivecircus\\/android-emulator-runner@v2[\\s\\S]*?script: bash scripts\\/test-android-release-upgrade.sh/);
-assert.match(releaseUpgradeWorkflow, /Validate signed Android release-upgrade script syntax[\\s\\S]*?bash -n scripts\\/test-android-release-upgrade.sh/);
+assert.ok(releaseUpgradeWorkflow.includes("Install previous published APK and upgrade to exact signed release APK"), "Release workflow must contain the signed previous-to-current APK upgrade job.");
+assert.ok(releaseUpgradeWorkflow.includes("uses: reactivecircus/android-emulator-runner@v2"), "The signed APK upgrade must run on the Android emulator.");
+assert.ok(releaseUpgradeWorkflow.includes("script: bash scripts/test-android-release-upgrade.sh"), "The release workflow must execute the signed APK upgrade script.");
+assert.ok(releaseUpgradeWorkflow.includes("Validate signed Android release-upgrade script syntax"), "The release workflow must validate the upgrade script syntax.");
+assert.ok(releaseUpgradeWorkflow.includes("bash -n scripts/test-android-release-upgrade.sh"), "The release workflow must run bash syntax validation.");
 assert.match(releaseUpgradeWorkflow, /timeout-minutes: 15[\\s\\S]*?emulator-boot-timeout: 600/);
 assert.match(releaseUpgradeScript, /previous-release/);
 assert.match(releaseUpgradeScript, /function install_apk|install_apk\(\)\\s\\*\\{/);

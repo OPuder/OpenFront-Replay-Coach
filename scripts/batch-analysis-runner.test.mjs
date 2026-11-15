@@ -217,6 +217,55 @@ test('desktop analysis concurrency scales conservatively with CPU and memory', (
 });
 
 
+test('automatic import repairs partial stored rows after restart',()=>{
+ const games=[{gameId:'partial-loaded'},{gameId:'partial-running'},{gameId:'complete'},{gameId:'failed'}];
+ const stored=[
+  {game:{gameId:'partial-loaded'},status:'loaded'},
+  {game:{gameId:'partial-running'},status:'running'},
+  {game:{gameId:'complete'},status:'loaded',result:{gameId:'complete'}},
+  {game:{gameId:'failed'},status:'failed'},
+ ];
+ assert.deepEqual(selectGamesToImport(games,stored).map(x=>x.gameId),['partial-loaded','partial-running','failed']);
+});
+
+test('a complete duplicate row prevents unnecessary re-import of a partial duplicate',()=>{
+ const games=[{gameId:'same'}];
+ const stored=[
+  {game:{gameId:'same'},status:'loaded'},
+  {game:{gameId:'same'},status:'loaded',result:{gameId:'same'}},
+ ];
+ assert.deepEqual(selectGamesToImport(games,stored),[]);
+});
+
+test('automatic import ignores empty or whitespace-only game identifiers',()=>{
+ const games=[{gameId:''},{gameId:'   '},{gameId:'valid'}];
+ assert.deepEqual(selectGamesToImport(games,[]).map(x=>x.gameId),['valid']);
+});
+
+
+test('batch analysis skips entries without a stable replay identity', async () => {
+  const controller = new AbortController();
+  const started = [];
+  const summary = await runSequentialBatchAnalysis(
+    [{ id: '' }, { id: '   ' }, { id: undefined }, { id: null }, { id: 'valid' }],
+    {
+      signal: controller.signal,
+      getId: item => item.id,
+      isCompatible: () => true,
+      analyze: async item => {
+        started.push(item.id);
+        return { status: 'verified' };
+      },
+      onStatus: () => undefined,
+      onProgress: () => undefined,
+    },
+  );
+  assert.deepEqual(started, ['valid']);
+  assert.equal(summary.total, 1);
+  assert.equal(summary.completed, 1);
+});
+
+
 test('parallel ETA accounts for partially completed active workers before the first match finishes', async () => {
   const controller = new AbortController();
   const progress = [];

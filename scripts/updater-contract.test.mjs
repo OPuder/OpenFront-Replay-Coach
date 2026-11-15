@@ -274,10 +274,16 @@ assert.doesNotMatch(windowsStorage, /ofrc:update-regression-settings/);
 assert.match(windowsInPlace, /writeFileSync/);
 
 
-assert.match(windowsDistributionVerifier, /peSignature\.equals\(Buffer\.from\(\[0x50, 0x45, 0x00, 0x00\]\)\)/);
+assert.match(windowsDistributionVerifier, /signature\.equals\(Buffer\.from\(\[0x50, 0x45, 0x00, 0x00\]\)\)/);
 assert.match(windowsDistributionVerifier, /OFRC_INSTALLER_ATTEMPTS/);
 assert.match(windowsDistributionVerifier, /NSIS_INSTALL_ATTEMPT_START/);
 assert.match(windowsDistributionVerifier, /NSIS_INSTALL_ATTEMPT_FAILED/);
 assert.match(windowsDistributionVerifier, /NSIS_INSTALL_ATTEMPT_OK/);
 assert.match(windowsDistributionVerifier, /successfulInstallerAttempts: installerAttempts/);
 assert.match(windowsDistributionVerifier, /no installer or portable failure was ignored/);
+
+assert.match(windowsDistributionVerifier, /Unsupported NSIS bootstrapper architecture/);
+assert.match(windowsDistributionVerifier, /const installedPe = inspectPe\(installedExe\)/);
+assert.match(windowsDistributionVerifier, /installedPe\.architecture !== "x64"/);
+assert.match(windowsDistributionVerifier, /const portablePe = inspectPe\(portableExe\)/);
+assert.match(windowsDistributionVerifier, /portablePe\.architecture !== "x64"/);

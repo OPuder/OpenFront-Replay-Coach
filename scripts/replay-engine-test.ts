@@ -138,27 +138,42 @@ window.__runBatchReplayTest = async (gameIds) => {
     isCompatible: item => Boolean(item.record && assessReplayCompatibility(item.record).engineVersionCompatible),
     analyze: async (item, onProgress, signal) => {
       const record = item.record;
-      const clientId = Array.isArray(record?.info?.players)
-        ? String(record.info.players.find((player: any) => player?.clientID)?.clientID ?? "") || null
+      const selectedPlayer = Array.isArray(record?.info?.players)
+        ? record.info.players.find((player: any) => /oligenole/i.test(String(player?.displayName ?? player?.name ?? player?.username ?? "")))
         : null;
-      return simulateReplay(record, buildReplayEngineAssets(record), onProgress, 50, clientId, signal);
+      if (!selectedPlayer?.clientID) throw new Error(`Profile player OligenOle missing from ${item.gameId} integration replay`);
+      return simulateReplay(record, buildReplayEngineAssets(record), onProgress, 50, String(selectedPlayer.clientID), signal);
     },
     onStatus: async (item, status, result, error) => {
       const selectedClientId = status === "verified" && result?.playerReview?.clientID
         ? String(result.playerReview.clientID)
         : "";
-      const coachingFindings = selectedClientId && result
-        ? toReplayCoachFindings(
-            buildProCoachReport(result.samples as any, result.actionReviews as any, selectedClientId, result.totalTicks / 10).findings,
-            item.gameId,
-            selectedClientId,
-            result.actionReviews,
-            result.samples,
-          )
+      const report = selectedClientId && result
+        ? buildProCoachReport(result.samples as any, result.actionReviews as any, selectedClientId, result.totalTicks / 10)
+        : null;
+      const repeatedReport = selectedClientId && result
+        ? buildProCoachReport(result.samples as any, result.actionReviews as any, selectedClientId, result.totalTicks / 10)
+        : null;
+      if (report && ["Europe", "Levant"].includes(item.gameId)) {
+        if (report.findings.length === 0 || report.findings.length > 3)
+          throw new Error(item.gameId + ": expected one to three strategic coaching findings for OligenOle");
+        if (JSON.stringify(report.findings.map(finding => finding.id)) !== JSON.stringify(repeatedReport?.findings.map(finding => finding.id)))
+          throw new Error(item.gameId + ": strategic finding ranking must be deterministic");
+        for (const finding of report.findings) {
+          if (!Number.isFinite(finding.seconds) || finding.seconds === null || finding.seconds < 0 ||
+              !finding.evidence.trim() || !finding.decision.trim() || !finding.consequence.trim() ||
+              !finding.alternative.trim() || !finding.trainingRule.trim() || !finding.caveat.trim())
+            throw new Error(item.gameId + "/" + finding.id + ": incomplete decision-to-lesson evidence chain");
+        }
+      }
+      const coachingFindings = report && selectedClientId && result
+        ? toReplayCoachFindings(report.findings, item.gameId, selectedClientId, result.actionReviews, result.samples)
         : [];
       outcomes.set(item.gameId, {
         gameId: item.gameId,
         status,
+        coachingPlayerName: result?.playerReview?.playerName ?? null,
+        detectedFindingCount: report?.findings.length ?? 0,
         coachingFindings: coachingFindings.map(finding => ({
           id: finding.id,
           matchId: finding.matchId,

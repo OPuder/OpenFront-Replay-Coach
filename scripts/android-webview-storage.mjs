@@ -91,7 +91,8 @@ for (let attempt = 0; attempt < 120; attempt++) {
   await sleep(1000);
 }
 assert.ok(socket, "Debug WebView DevTools socket was not exposed within 120 seconds; IndexedDB preservation cannot be verified.");
-try { adb("forward", "tcp:9222", `localabstract:${socket}`); } catch {}
+try { adb("forward", "--remove", "tcp:9222"); } catch {}
+adb("forward", "tcp:9222", `localabstract:${socket}`);
 let target;
 for (let attempt = 0; attempt < 20; attempt++) {
   try {

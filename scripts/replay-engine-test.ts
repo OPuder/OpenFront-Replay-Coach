@@ -11,6 +11,8 @@ declare global {
     __setBatchReplay?: (gameId: string, record: unknown) => void;
     __runBatchReplayTest?: (gameIds: string[]) => Promise<{ summary: unknown; outcomes: Array<any> }>;
     __verifyBatchStoreTest?: () => Promise<Array<any>>;
+    __prepareLegacyMatchStore?: () => Promise<void>;
+    __verifyPlayerIndexTest?: () => Promise<{ indexPresent: boolean; playerAMatches: string[]; playerBMatches: string[]; legacyMatches: string[] }>;
     __testAbortBatchReplay?: (gameId: string) => Promise<{ aborted: boolean }>;
     __testAbort?: (record: unknown) => Promise<{ aborted: boolean }>;
     __verifyStoreTest?: (gameId: string) => Promise<{ analysisStatus?: string; simulationStatus?: string; sampleCount: number }>;
@@ -23,6 +25,39 @@ declare global {
     }>;
   }
 }
+
+
+window.__prepareLegacyMatchStore = async () => {
+  await new Promise<void>((resolve, reject) => {
+    const deletion = indexedDB.deleteDatabase("openfront-replay-coach");
+    deletion.onsuccess = () => {
+      const request = indexedDB.open("openfront-replay-coach", 2);
+      request.onupgradeneeded = () => {
+        const db = request.result;
+        db.createObjectStore("matches", { keyPath: ["playerId", "game.gameId"] });
+        db.createObjectStore("profiles", { keyPath: "playerId" });
+        db.createObjectStore("replay-records", { keyPath: ["playerId", "gameId"] });
+      };
+      request.onsuccess = () => {
+        const db = request.result;
+        const tx = db.transaction("matches", "readwrite");
+        tx.objectStore("matches").put({
+          playerId: "legacy-index-player",
+          game: { gameId: "legacy-index-game", map: "CI", mode: "Free For All", type: "Private" },
+          status: "loaded",
+          updatedAt: 1,
+        });
+        tx.oncomplete = () => { db.close(); resolve(); };
+        tx.onerror = () => { db.close(); reject(tx.error ?? new Error("Could not seed legacy IndexedDB match row")); };
+        tx.onabort = () => { db.close(); reject(tx.error ?? new Error("Legacy IndexedDB seed was aborted")); };
+      };
+      request.onerror = () => reject(request.error ?? new Error("Could not create legacy IndexedDB v2"));
+      request.onblocked = () => reject(new Error("Legacy IndexedDB database deletion was blocked"));
+    };
+    deletion.onerror = () => reject(deletion.error ?? new Error("Could not reset IndexedDB for migration test"));
+    deletion.onblocked = () => reject(new Error("IndexedDB reset was blocked by another connection"));
+  });
+};
 
 window.__runReplayTest = async (record, gameId) => {
   const assets = buildReplayEngineAssets(record);
@@ -159,3 +194,39 @@ window.__testAbortBatchReplay = async (gameId) => {
   if (!record) return { aborted: false };
   return window.__testAbort!(record);
 };
+
+window.__verifyPlayerIndexTest = async () => {
+  await saveImportedMatch("ci-player-index-a", {
+    game: { gameId: "index-a-1", map: "CI", mode: "Free For All", type: "Private" } as any,
+    status: "loaded",
+  });
+  await saveImportedMatch("ci-player-index-a", {
+    game: { gameId: "index-a-2", map: "CI", mode: "Free For All", type: "Private" } as any,
+    status: "loaded",
+  });
+  await saveImportedMatch("ci-player-index-b", {
+    game: { gameId: "index-b-1", map: "CI", mode: "Free For All", type: "Private" } as any,
+    status: "loaded",
+  });
+
+  const [playerA, playerB, legacyPlayer] = await Promise.all([
+    loadImportedMatches("ci-player-index-a"),
+    loadImportedMatches("ci-player-index-b"),
+    loadImportedMatches("legacy-index-player"),
+  ]);
+  const db = await new Promise<IDBDatabase>((resolve, reject) => {
+    const request = indexedDB.open("openfront-replay-coach");
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error ?? new Error("Could not inspect match-store indexes"));
+  });
+  const indexPresent = db.transaction("matches", "readonly")
+    .objectStore("matches").indexNames.contains("by-player-id");
+  db.close();
+  return {
+    indexPresent,
+    playerAMatches: playerA.map(item => item.game.gameId).sort(),
+    playerBMatches: playerB.map(item => item.game.gameId).sort(),
+    legacyMatches: legacyPlayer.map(item => item.game.gameId).sort(),
+  };
+};
+

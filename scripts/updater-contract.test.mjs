@@ -114,5 +114,5 @@ assert.ok(releaseWorkflow.includes("names.some(name => /-Android\\.apk$/i.test(n
 
 
 assert.match(updateValidationWorkflow, /android-apk-validation:[\s\S]*?runs-on: ubuntu-22\.04/);
-assert.match(updateValidationWorkflow, /api-level: 34[\s\S]*?cores: 4/);
-assert.match(updateValidationWorkflow, /-gpu swiftshader_indirect/);
+assert.match(updateValidationWorkflow, /api-level: 34[\s\S]*?cores: 2/);
+assert.match(updateValidationWorkflow, /-memory 2048 -partition-size 4096/);

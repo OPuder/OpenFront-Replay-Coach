@@ -87,6 +87,12 @@ async function main() {
     `window.__runBatchReplayTest(["Europe", "unsupported-engine", "Levant"])`,
     true,
   );
+  if (batch.summary.failed > 0) {
+    console.error("Replay batch diagnostic outcomes:", JSON.stringify(batch.outcomes, null, 2));
+    for (const outcome of batch.outcomes.filter(item => item.status === "failed")) {
+      console.error(`Replay ${outcome.gameId} failed: ${outcome.error ?? "no error supplied"}`);
+    }
+  }
   assert.deepEqual(batch.summary, {
     total: 3,
     completed: 3,

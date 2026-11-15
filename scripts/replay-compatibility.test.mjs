@@ -160,3 +160,49 @@ test('cached unsupported compatibility is invalidated when an exact engine is ad
   };
   assert.equal(isReplayCompatibilityCurrent(record, previous), false);
 });
+
+test('malformed turn entries and non-object checkpoints are ignored safely', () => {
+  const result = assessReplayCompatibility(matchingRecord({
+    turns: [null, undefined, 42, 'turn', [], {}, { hash: null }, { hash: 0 }, { hash: '' }],
+  }));
+  assert.equal(result.recordedHashCount, 2);
+  assert.equal(result.hashVerificationAvailable, true);
+});
+
+test('empty and structurally invalid replay envelopes never throw', () => {
+  for (const input of [null, undefined, 0, false, '', [], {}, { data: null }, { game: [] }, { result: 42 }]) {
+    assert.doesNotThrow(() => assessReplayCompatibility(input));
+    const result = assessReplayCompatibility(input);
+    assert.equal(result.status, 'missing-engine-version');
+    assert.equal(result.engineVersionCompatible, false);
+  }
+});
+
+test('nested API envelopes resolve only a recognizable game record', () => {
+  const record = matchingRecord();
+  const wrapped = { result: { data: { game: { record } } } };
+  const result = assessReplayCompatibility(wrapped);
+  assert.equal(result.replayCommit, PINNED_OPENFRONT_COMMIT);
+  assert.equal(result.recordedHashCount, 1);
+});
+
+test('malformed map identifiers are rejected before constructing terrain URLs', () => {
+  for (const gameMap of ['', ' ', '../World', 'World/../../secret', 'x'.repeat(100), 'World?token=bad']) {
+    assert.throws(() => buildReplayEngineAssets({
+      gitCommit: PINNED_OPENFRONT_COMMIT,
+      info: { config: { gameMap } },
+      turns: [],
+    }), /Karten-ID/);
+  }
+});
+
+test('missing and malformed engine commit input cannot produce asset URLs', () => {
+  for (const gitCommit of [undefined, null, '', 'not-a-commit', 'deadbee']) {
+    assert.throws(() => buildReplayEngineAssets({
+      gitCommit,
+      info: { config: { gameMap: 'World' } },
+      turns: [],
+    }), /Original-Build/);
+  }
+});
+

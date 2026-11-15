@@ -124,7 +124,7 @@ assert.ok(releaseWorkflow.includes("names.some(name => /-Android\\.apk$/i.test(n
 
 const matchStore = read("src/renderer/matchStore.ts");
 const appRenderer = read("src/renderer/main.tsx");
-assert.match(matchStore, /const DB_VERSION = 2/);
+assert.match(matchStore, /const DB_VERSION = 3/);
 assert.match(matchStore, /const REPLAY_STORE = "replay-records"/);
 assert.match(matchStore, /event\.oldVersion < 2[\s\S]*?replays\.put[\s\S]*?cursor\.update/);
 assert.match(matchStore, /export async function loadImportedMatch\(/);

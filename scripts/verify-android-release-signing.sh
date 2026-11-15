@@ -32,6 +32,14 @@ if [[ ${#previous_apks[@]} -ne 1 ]]; then
   exit 1
 fi
 previous_apk="${previous_apks[0]}"
+previous_release_version="${previous_tag#v}"
+expected_previous_apk="OpenFront-Replay-Coach-${previous_release_version}-Android.apk"
+if [[ "$(basename "$previous_apk")" != "$expected_previous_apk" ]]; then
+  echo "::error::Published Android asset name does not match release tag $previous_tag: $(basename "$previous_apk")"
+  exit 1
+fi
+echo "Previous published Android asset: $previous_tag / $expected_previous_apk"
+sha256sum "$previous_apk"
 persisted_previous_apk="$RUNNER_TEMP/openfront-previous-published-android.apk"
 cp "$previous_apk" "$persisted_previous_apk"
 echo "PREVIOUS_PUBLISHED_APK=$persisted_previous_apk" >> "$GITHUB_ENV"

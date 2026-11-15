@@ -110,25 +110,19 @@ PY
 }
 
 replay_count=0
-for attempt in $(seq 1 300); do
-  dump_ui || true
-  replay_count="$(read_metric "REPLAYS GESPEICHERT")"
-  if [[ "$replay_count" =~ ^[0-9]+$ ]] && (( replay_count >= 2 )); then break; fi
-  sleep 2
-done
-[[ "$replay_count" =~ ^[0-9]+$ ]] && (( replay_count >= 2 )) || fail "The actual app UI did not show at least two saved replay records within 8 minutes; last observed count=$replay_count."
-log "UI confirms $replay_count locally saved replays. Waiting for at least one hash-verified analysis."
-
-verified_count=0
 for attempt in $(seq 1 240); do
   dump_ui || true
-  verified_count="$(read_metric "HASH-VERIFIZIERT")"
-  if [[ "$verified_count" =~ ^[0-9]+$ ]] && (( verified_count >= 1 )); then break; fi
+  replay_count="$(read_metric "REPLAYS GESPEICHERT")"
+  if [[ "$replay_count" =~ ^[0-9]+$ ]] && (( replay_count >= 3 )); then break; fi
   sleep 2
 done
-[[ "$verified_count" =~ ^[0-9]+$ ]] && (( verified_count >= 1 )) || fail "No hash-verified replay analysis became visible in the real app UI."
+[[ "$replay_count" =~ ^[0-9]+$ ]] && (( replay_count >= 3 )) || fail "The actual app UI did not show at least three saved replay records within 8 minutes; last observed count=$replay_count."
+log "UI confirms $replay_count locally saved replays. Opening a not-yet-reviewed match from the real UI."
 
-log "Opening a real match from the UI and saving its evidence-backed training goal."
+# Automatic background analysis handles one replay at a time. Open a later
+# imported match so the UI performs a foreground, fully persisted engine review.
+adb -s emulator-5554 shell input swipe 520 1550 520 600 450
+sleep 1
 adb -s emulator-5554 shell input swipe 520 1550 520 600 450
 sleep 2
 tap_text "Coach öffnen"

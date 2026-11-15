@@ -104,6 +104,8 @@ assert.match(androidWebViewStorageTest, /analysisStatus !== "verified"/);
 assert.match(androidWebViewStorageTest, /openfront-coach-training-goal/);
 assert.match(androidWebViewStorageTest, /openfront-replay-coach\.phase-history\.v1/);
 assert.doesNotMatch(androidWebViewStorageTest, /ofrc:update-regression-settings/);
+assert.match(androidWebViewStorageTest, /gameId \\+ ":7"/);
+assert.doesNotMatch(androidWebViewStorageTest, /`\\$\\{gameId\\}:7`/);
 assert.match(androidUpdateRegression, /OPENFRONT_UPDATE_APK/);
 assert.doesNotMatch(androidUpdateRegression, /gradlew|assembleDebug/);
 assert.match(updateValidationWorkflow, /Test debug data preservation and real published-APK update[\s\S]*?if: steps\.parse_apk\.outcome == 'success'/);

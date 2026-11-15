@@ -253,19 +253,19 @@ export function buildEngineCoachInsights(
       const ownLoss = Math.max(0, -action.delta30s!.troops);
       const targetLoss = Math.max(0, -(action.targetDelta30s?.troops ?? 0));
       return ownLoss > targetLoss && action.delta30s!.tiles <= 0 &&
-        (action.targetDelta30s?.tiles ?? 0) >= 0 && action.targetDelta30s !== null;
+        (action.targetDelta30s?.tiles ?? 0) >= 0 && action.targetDelta30s != null;
     });
     const favorableTroopTrades = attacks.filter((action) => {
       const ownLoss = Math.max(0, -action.delta30s!.troops);
       const targetLoss = Math.max(0, -(action.targetDelta30s?.troops ?? 0));
       return ownLoss > 0 && targetLoss > ownLoss && action.delta30s!.tiles <= 0 &&
-        (action.targetDelta30s?.tiles ?? 0) >= 0 && action.targetDelta30s !== null;
+        (action.targetDelta30s?.tiles ?? 0) >= 0 && action.targetDelta30s != null;
     });
     const evenTroopTrades = attacks.filter((action) => {
       const ownLoss = Math.max(0, -action.delta30s!.troops);
       const targetLoss = Math.max(0, -(action.targetDelta30s?.troops ?? 0));
       return ownLoss > 0 && targetLoss === ownLoss && action.delta30s!.tiles <= 0 &&
-        (action.targetDelta30s?.tiles ?? 0) >= 0 && action.targetDelta30s !== null;
+        (action.targetDelta30s?.tiles ?? 0) >= 0 && action.targetDelta30s != null;
     });
     const tradeEvidence = [...troopDownNoTerritory, ...favorableTroopTrades, ...evenTroopTrades];
     findings.push({

@@ -519,12 +519,12 @@ jobs:
             process.stdin.on("end", () => {
               const assets = JSON.parse(input).assets;
               const names = assets.map(asset => asset.name);
-              const distributables = assets.filter(asset => /(?:\\.Setup\\.| Setup )[0-9.]+\\.exe$/i.test(asset.name) || /-win\\.zip$/i.test(asset.name) || /-Android\\.apk$/i.test(asset.name));
+              const distributables = assets.filter(asset => /(?:\.Setup\.| Setup )[0-9.]+\.exe$/i.test(asset.name) || /-win\.zip$/i.test(asset.name) || /-Android\.apk$/i.test(asset.name));
               const checks = [
                 distributables.length === 3,
-                names.some(name => /(?:\\.Setup\\.| Setup )[0-9.]+\\.exe$/i.test(name)),
-                names.some(name => /-win\\.zip$/i.test(name)),
-                names.some(name => /-Android\\.apk$/i.test(name)),
+                names.some(name => /(?:\.Setup\.| Setup )[0-9.]+\.exe$/i.test(name)),
+                names.some(name => /-win\.zip$/i.test(name)),
+                names.some(name => /-Android\.apk$/i.test(name)),
                 assets.filter(asset => asset.name !== "SHA256SUMS.txt" && asset.name !== "release-manifest.json").every(asset => asset.size > 1000000),
                 names.includes("SHA256SUMS.txt"),
                 names.includes("release-manifest.json"),

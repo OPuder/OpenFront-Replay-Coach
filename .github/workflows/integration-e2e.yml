@@ -22,9 +22,12 @@ jobs:
   integration-contracts:
     runs-on: ubuntu-latest
     steps:
+      # Initialize only the top-level OpenFront engine submodules through
+      # prepare:engines. Recursive checkout follows OpenFrontIO's unrelated
+      # server/gatekeeper submodule, whose upstream URL is no longer available.
       - uses: actions/checkout@v4
         with:
-          submodules: recursive
+          submodules: false
       - uses: actions/setup-node@v4
         with:
           node-version-file: .node-version

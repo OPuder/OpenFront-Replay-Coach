@@ -85,7 +85,7 @@ assert.match(androidUpdateRegression, /versionCode=\$expected_version_code/);
 assert.match(androidUpdateRegression, /adb start-server/);
 assert.match(androidUpdateRegression, /sys\.boot_completed=1 within 150 seconds/);
 assert.match(androidUpdateRegression, /Package Manager did not become ready within 90 seconds/);
-assert.match(androidUpdateRegression, /function install_apk\(/);
+assert.match(androidUpdateRegression, /install_apk\(\)\s*\{/);
 assert.match(androidUpdateRegression, /cmd package resolve-activity/);
 assert.match(androidUpdateRegression, /am start -W -n/);
 assert.match(androidUpdateRegression, /pidof/);

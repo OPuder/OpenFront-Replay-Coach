@@ -27,8 +27,9 @@ async function main(){
     assert.ok(state.scrollWidth<=state.width,'Horizontal overflow at '+width+'px: '+JSON.stringify(state));
     assert.ok(state.hasTerritory,'Territory overlay missing at '+width+'px');
     assert.ok(state.hasMovement,'Engine movement overlay missing at '+width+'px');
+    assert.ok(state.hasTerritoryChanges,'Territory-change overlay missing at '+width+'px');
     assert.ok(state.buttons.every(button=>button.name.length>0),'Unlabelled button at '+width+'px');
-    results.push({width,scrollWidth:state.scrollWidth,buttons:state.buttons.length,territory:state.hasTerritory,movement:state.hasMovement});
+    results.push({width,scrollWidth:state.scrollWidth,buttons:state.buttons.length,territory:state.hasTerritory,movement:state.hasMovement,territoryChanges:state.hasTerritoryChanges});
   }
   await window.webContents.executeJavaScript("document.querySelectorAll('.replay-viz-marker')[1].click()");
   const selected=await window.webContents.executeJavaScript("window.__uiTest()");

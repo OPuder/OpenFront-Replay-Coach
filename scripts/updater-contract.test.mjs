@@ -224,6 +224,9 @@ assert.match(androidReleaseUpgrade, /install --no-streaming -r "\$current_releas
 assert.match(androidReleaseUpgrade, /copy_webview_storage "\$seed_package_id" "\$package_id"/);
 assert.match(androidReleaseUpgrade, /copy_webview_storage "\$package_id" "\$seed_package_id"/);
 assert.match(androidReleaseUpgrade, /Production update did not preserve IndexedDB/);
+assert.match(androidReleaseUpgrade, /INSTALL_FAILED_UPDATE_INCOMPATIBLE/);
+assert.match(androidReleaseUpgrade, /incompatible-signature-test\.jks/);
+assert.match(androidReleaseUpgrade, /Android rejected the incompatible APK for an unexpected reason/);
 assert.match(androidReleaseUpgrade, /PREVIOUS_RELEASE_TAG/);
 assert.match(androidReleaseUpgrade, /previous_release_name/);
 const signingScript = read("scripts/verify-android-release-signing.sh");

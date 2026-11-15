@@ -27,11 +27,11 @@ previous_dir="$directory/previous"
 mkdir -p "$previous_dir"
 gh release download "$previous_tag" --pattern '*-Android.apk' --dir "$previous_dir"
 mapfile -t previous_apks < <(find "$previous_dir" -maxdepth 1 -type f -name '*.apk' -print)
-if [[ \${#previous_apks[@]} -ne 1 ]]; then
-  echo "::error::Expected exactly one Android APK in previous release $previous_tag; found \${#previous_apks[@]}."
+if [[ ${#previous_apks[@]} -ne 1 ]]; then
+  echo "::error::Expected exactly one Android APK in previous release $previous_tag; found ${#previous_apks[@]}."
   exit 1
 fi
-previous_apk="\${previous_apks[0]}"
+previous_apk="${previous_apks[0]}"
 persisted_previous_apk="$RUNNER_TEMP/openfront-previous-published-android.apk"
 cp "$previous_apk" "$persisted_previous_apk"
 echo "PREVIOUS_PUBLISHED_APK=$persisted_previous_apk" >> "$GITHUB_ENV"

@@ -156,6 +156,44 @@ window.__testAbort = async (record) => {
   }
 };
 
+window.__testAbortBatchReplay = async (gameId) => {
+  const record = batchTestRecords.get(gameId);
+  if (!record) throw new Error(`No real replay fixture is registered for batch cancellation: ${gameId}`);
+  const players = Array.isArray(record?.info?.players) ? record.info.players : [];
+  const selected = players.find((player: any) =>
+    /oligenole/i.test(String(player?.displayName ?? player?.name ?? player?.username ?? "")));
+  if (!selected?.clientID) throw new Error(`Fixture ${gameId} does not contain the required OligenOle player`);
+
+  const controller = new AbortController();
+  let simulationStarted = false;
+  const timer = window.setTimeout(() => controller.abort(), 50);
+  const summary = await runSequentialBatchAnalysis([{ gameId, record }], {
+    signal: controller.signal,
+    getId: item => item.gameId,
+    isCompatible: item => Boolean(item.record && assessReplayCompatibility(item.record).engineVersionCompatible),
+    analyze: async (item, onProgress, signal) => {
+      simulationStarted = true;
+      return simulateReplay(
+        item.record,
+        buildReplayEngineAssets(item.record),
+        onProgress,
+        50,
+        String(selected.clientID),
+        signal,
+      );
+    },
+    onStatus: () => undefined,
+    onProgress: () => undefined,
+  }).finally(() => window.clearTimeout(timer));
+
+  return {
+    aborted: summary.cancelled && simulationStarted,
+    simulationStarted,
+    completed: summary.completed,
+    failed: summary.failed,
+  };
+};
+
 window.__setBatchReplay = (gameId, record) => {
   batchTestRecords.set(gameId, record);
 };

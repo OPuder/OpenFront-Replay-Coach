@@ -59,7 +59,7 @@ assert.match(android, /currentSigners/);
 assert.match(android, /expectedVersion\.equals\(incoming\.versionName\)/);
 assert.match(android, /incomingVersion <= installedVersion/);
 assert.match(android, /Arrays\.equals\(incomingSignatures, installedSignatures\)/);
-assert.match(android, /Android kann die heruntergeladene APK nicht als gültiges Installationspaket lesen/);
+assert.match(android, /Android kann die geprüfte APK nicht als Installationspaket lesen/);
 assert.match(updater, /-Verb RunAs/);
 assert.match(updater, /ofrc-installer-backup/);
 assert.match(updater, /BackupVerified/);

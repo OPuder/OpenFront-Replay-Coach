@@ -178,9 +178,10 @@ assert.doesNotMatch(releaseSource, /git push origin HEAD:main/, "The release wor
 assert.ok(releaseSource.includes("Release version drift detected") && releaseSource.includes("reviewed pull request"));
 assert.ok(releaseSource.includes("sha256sum") && releaseSource.includes("SHA256SUMS.txt"));
 assert.ok(releaseSource.includes("release-manifest.json"));
-assert.ok(releaseSource.includes("distributables.length === 3"));
-assert.ok(releaseSource.includes('names.includes("SHA256SUMS.txt")'));
-assert.ok(releaseSource.includes('names.includes("release-manifest.json")'));
+assert.ok(releaseSource.includes("verify-release-artifacts.mjs generate"));
+assert.ok(releaseSource.includes("verify-release-artifacts.mjs verify"));
+assert.match(read("scripts/verify-release-artifacts.mjs"), /SHA256SUMS\.txt/);
+assert.match(read("scripts/verify-release-artifacts.mjs"), /release-manifest\.json/);
 
 
 const artifactVerifier = read("scripts/verify-release-artifacts.mjs");

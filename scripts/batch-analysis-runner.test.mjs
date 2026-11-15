@@ -286,7 +286,7 @@ test('parallel ETA accounts for partially completed active workers before the fi
       onProgress: value => progress.push(value),
     },
   );
-  const inFlight = progress.find(value => value.done === 0 && value.active === 2 && value.percent > 0);
+  const inFlight = progress.find(value => value.done === 0 && value.active === 2 && value.percent === 50);
   assert.ok(inFlight, 'both workers should report in-flight progress');
   assert.equal(inFlight.percent, 50, 'progress is averaged across active workers, not summed');
   assert.ok(inFlight.estimatedRemainingMs > 0, 'ETA should be available before the first replay completes');

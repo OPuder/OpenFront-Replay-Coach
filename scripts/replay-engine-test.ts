@@ -24,6 +24,13 @@ function verifyRecordedActionFrameConvention(gameId: string, result: any) {
   }
   const checked = result.actionReviews.filter((action: any) => Number.isInteger(action.turn) && action.turn >= 1);
   if (checked.length === 0) throw new Error(gameId + ": no recorded actions available for frame convention verification");
+  const actionsByFrame = new Map<number, any[]>();
+  for (const action of checked) {
+    const frame = action.turn - 1;
+    const atFrame = actionsByFrame.get(frame) ?? [];
+    atFrame.push(action);
+    actionsByFrame.set(frame, atFrame);
+  }
   const requiredObservations = new Map<number, Set<string>>();
   const requireFrame = (frame: number, reason: string) => {
     if (frame < 0 || frame >= result.totalTicks) return;
@@ -51,7 +58,7 @@ function verifyRecordedActionFrameConvention(gameId: string, result: any) {
     if (sample.tick !== expectedTick)
       throw new Error(gameId + ": ReplayReader frame " + frame + " carries tick " + sample.tick + ", expected " + expectedTick);
     if (reasons.has("action")) {
-      const actionsAtFrame = checked.filter((action: any) => action.turn - 1 === frame);
+      const actionsAtFrame = actionsByFrame.get(frame) ?? [];
       if (!actionsAtFrame.length || actionsAtFrame.some((action: any) => action.frame !== frame || action.turn !== sample.tick))
         throw new Error(gameId + ": action review does not reference its exact ReplayReader sample at frame " + frame);
     }

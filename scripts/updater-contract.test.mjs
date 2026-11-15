@@ -2,6 +2,11 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 const read = path => readFileSync(new URL("../" + path, import.meta.url), "utf8");
 const updater = read("src/main/updater.ts");
+
+assert.match(updater, /\$AfterArchiveHash -eq \$BeforeArchiveHash -and -not \$ElevationAttempted/);
+assert.match(updater, /\$ElevationAttempted = \$true/);
+assert.match(updater, /Start-Process -FilePath \$Installer -ArgumentList '\/S' -Verb RunAs -Wait -PassThru/);
+
 const android = read("android-updater-template/ApkUpdaterPlugin.java");
 const installer = read("scripts/install-android-updater-plugin.mjs");
 const renderer = read("src/renderer/UpdateCenter.tsx");
@@ -58,7 +63,7 @@ assert.match(updater, /Die Sicherung der installierten Version konnte nicht veri
 assert.match(updater, /Die wiederhergestellte Version stimmt nicht mit der Sicherung überein/);
 assert.match(updater, /update-install\.log/);
 assert.ok(updater.includes("Get-FileHash -LiteralPath $AppArchive"));
-assert.match(updater, /Programmdateien wurden nicht ersetzt/);
+assert.match(updater, /Programmdateien wurden auch nach dem erhöhten Wiederholungsversuch nicht ersetzt/);
 assert.match(updater, /Portable-Dateien wurden nicht aktualisiert/);
 const main = read("src/main/main.ts");
 assert.match(main, /createWindow\(\);\s*void autoUpdateOnStartup\(\);/);

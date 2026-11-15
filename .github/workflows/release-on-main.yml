@@ -6,6 +6,20 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+    paths:
+      - ".github/workflows/release-on-main.yml"
+      - "android-updater-template/**"
+      - "android/**"
+      - "scripts/test-android-release-upgrade.sh"
+      - "scripts/install-android-updater-plugin.mjs"
+      - "scripts/set-android-version.mjs"
+      - "scripts/configure-android-signing.mjs"
+      - "scripts/verify-android-keystore.mjs"
+      - "src/main/updater.ts"
+      - "src/renderer/UpdateCenter.tsx"
+      - "package.json"
+      - "package-lock.json"
+      - "capacitor.config.*"
   workflow_dispatch:
 
 permissions:

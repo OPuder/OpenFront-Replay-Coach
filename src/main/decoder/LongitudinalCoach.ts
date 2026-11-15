@@ -319,6 +319,7 @@ export function buildLongitudinalCoachReport(
   const findingGroups = new Map<string, Array<{ input: LongitudinalMatchInput; finding: ProCoachFinding }>>();
   for (const entry of comparable) {
     for (const finding of (entry.report.allFindings ?? entry.report.findings)) {
+      if (finding.priority === "low") continue;
       const values = findingGroups.get(finding.id) ?? [];
       if (!values.some(value => value.input.gameId === entry.input.gameId)) {
         values.push({ input: entry.input, finding });
@@ -331,7 +332,7 @@ export function buildLongitudinalCoachReport(
     .map(([id, values]) => {
       const best = [...values].sort((a, b) => priorityRank(a.finding.priority) - priorityRank(b.finding.priority))[0].finding;
       const frequency = values.length / Math.max(1, comparable.length);
-      const hasFinding = (entry: NormalizedMatch) => (entry.report.allFindings ?? entry.report.findings).some(finding => finding.id === id);
+      const hasFinding = (entry: NormalizedMatch) => (entry.report.allFindings ?? entry.report.findings).some(finding => finding.id === id && finding.priority !== "low");
       // Directional training status requires trustworthy chronology. Missing or
       // tied timestamps remain in recurrence counts, but cannot define "recent".
       const recent = trendChronological.slice(-3);

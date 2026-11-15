@@ -222,9 +222,11 @@ export const LOCAL_STORAGE_ENTRIES = {
   "openfront.update-center.last-successful-check.v1": "2026-11-15T18:30:00.000Z",
 };
 
-export function assertFixtureRelationships(snapshot) {
+export function assertFixtureRelationships(snapshot, phase = "updated") {
+  const fail = message => { throw new Error((phase === "baseline" ? "WINDOWS_UPGRADE_FIXTURE_ERROR: " : "DATA_LOSS_ERROR: ") + message); };
+  if (snapshot.indexedDB?.missing) fail("application IndexedDB database is missing in the verified renderer profile");
   if (snapshot.indexedDB?.name !== "openfront-replay-coach" || snapshot.indexedDB?.version !== 3) {
-    throw new Error("DATA_LOSS_ERROR: unexpected application IndexedDB name or version");
+    fail("unexpected application IndexedDB name or version");
   }
   const expectedSchema = [
     { name: "matches", keyPath: ["playerId", "game.gameId"], autoIncrement: false, indexes: [{ name: "by-player-id", keyPath: "playerId", unique: false, multiEntry: false }] },
@@ -232,20 +234,21 @@ export function assertFixtureRelationships(snapshot) {
     { name: "replay-records", keyPath: ["playerId", "gameId"], autoIncrement: false, indexes: [] },
   ];
   if (JSON.stringify(snapshot.indexedDB.stores) !== JSON.stringify(expectedSchema)) {
-    throw new Error("DATA_LOSS_ERROR: IndexedDB schema does not match the application matchStore schema: " + JSON.stringify(snapshot.indexedDB.stores));
+    fail("IndexedDB schema does not match the application matchStore schema: " + JSON.stringify(snapshot.indexedDB.stores));
   }
   if (snapshot.indexedDB.counts?.matches !== 1 || snapshot.indexedDB.counts?.profiles !== 1 || snapshot.indexedDB.counts?.["replay-records"] !== 1) {
-    throw new Error("DATA_LOSS_ERROR: unexpected application record counts: " + JSON.stringify(snapshot.indexedDB.counts));
+    fail("unexpected application record counts: " + JSON.stringify(snapshot.indexedDB.counts));
   }
   const stores = snapshot.indexedDB.records;
   const profile = stores.profiles?.find(value => value.playerId === PLAYER_ID);
   const match = stores.matches?.find(value => value.playerId === PLAYER_ID && value.game?.gameId === GAME_ID);
   const replay = stores["replay-records"]?.find(value => value.playerId === PLAYER_ID && value.gameId === GAME_ID);
-  if (!profile) throw new Error("Fixture relationship missing: player profile");
-  if (!profile.games?.some(game => game.gameId === GAME_ID)) throw new Error("Fixture relationship missing: profile -> match");
-  if (!match) throw new Error("Fixture relationship missing: stored match");
-  if (!match.result || match.result.record !== undefined) throw new Error("Stored match must contain the summary while the raw replay remains separately stored");
-  if (!match.simulation?.samples?.length || match.analysisStatus !== "verified") throw new Error("Fixture relationship missing: match -> verified analysis");
-  if (!replay?.record?.info?.gameID || replay.record.info.gameID !== match.game.gameId) throw new Error("Fixture relationship missing: match -> replay record");
+  if (!profile) fail("fixture relationship missing: player profile");
+  if (profile.profile?.publicID !== "upgrade-public-player-001" || !profile.games?.some(game => game.gameId === GAME_ID)) fail("fixture relationship missing: complete player profile -> match");
+  if (!match) fail("fixture relationship missing: stored match");
+  if (!match.result || match.result.record !== undefined) fail("stored match must contain the summary while the raw replay remains separately stored");
+  if (match.result.gameId !== GAME_ID || !match.result.actionAnalysis || !match.result.detailedAnalysis || !match.result.coachInsights?.length || !match.result.playerStats?.length) fail("fixture relationship missing: full import summary and analysis results");
+  if (!match.simulation?.samples?.[0]?.players?.length || match.analysisStatus !== "verified") fail("fixture relationship missing: match -> complete verified simulation");
+  if (!replay?.record?.info?.gameID || replay.record.info.gameID !== match.game.gameId || !replay.record.info.players?.some(player => player.clientID === "upgrade-client-01") || !replay.record.turns?.length) fail("fixture relationship missing: match -> complete raw replay record");
   return true;
 }

@@ -4,9 +4,10 @@ import { createReadStream, existsSync, mkdirSync, readFileSync, readdirSync, rmS
 import { spawn, spawnSync, execFileSync } from "node:child_process";
 import { createServer } from "node:http";
 import path from "node:path";
+import { assertFixtureRelationships } from "./windows-upgrade-fixture.mjs";
 import os from "node:os";
 import {
-  UpgradeContextError, assertUpgradeSnapshotsEqual,
+  UpgradeContextError, assertContextContinuity, assertUpgradeSnapshotsEqual,
 } from "./windows-upgrade-storage-contract.mjs";
 
 const previous = path.resolve(process.env.PREVIOUS_RELEASE_DIR || "");
@@ -82,15 +83,21 @@ function readElectronContext(output) {
 function normalizedWindows(value) { return path.win32.normalize(path.win32.resolve(value)).toLowerCase(); }
 function attachContext(snapshot, session, dataDir) {
   const indexedDbDirectories = findIndexedDbDirectories(dataDir);
-  if (indexedDbDirectories.length !== 1) {
-    throw new UpgradeContextError("Expected exactly one physical Chromium IndexedDB directory for the isolated app profile; found " + JSON.stringify(indexedDbDirectories));
+  if (indexedDbDirectories.length > 1) {
+    throw new UpgradeContextError("Multiple physical Chromium IndexedDB directories make the active profile ambiguous: " + JSON.stringify(indexedDbDirectories));
   }
-  const physicalUserDataPath = path.dirname(indexedDbDirectories[0]);
   const context = session.electronContext;
+  if (!context?.userDataPath && indexedDbDirectories.length !== 1) {
+    throw new UpgradeContextError("Cannot establish the active Electron userData profile from main-process diagnostics or a physical IndexedDB directory.");
+  }
+  const physicalUserDataPath = indexedDbDirectories.length === 1 ? path.dirname(indexedDbDirectories[0]) : null;
   const userDataPath = normalizedWindows(context?.userDataPath || physicalUserDataPath);
   const appDataPath = normalizedWindows(context?.appDataPath || session.appData);
-  if (userDataPath !== normalizedWindows(physicalUserDataPath)) {
+  if (physicalUserDataPath && userDataPath !== normalizedWindows(physicalUserDataPath)) {
     throw new UpgradeContextError("Electron app.getPath('userData') does not own the IndexedDB directory: userData=" + userDataPath + "; IndexedDB=" + indexedDbDirectories[0]);
+  }
+  if (!physicalUserDataPath && !snapshot.indexedDB?.missing) {
+    throw new UpgradeContextError("IndexedDB records were returned but no physical IndexedDB profile directory could be located.");
   }
   return {
     ...snapshot,
@@ -162,6 +169,7 @@ async function verifyNsisUpdate() {
   const baselineSession = await launch(baseline.executable, dataDirectory, 9231, "seed");
   try {
     const before = attachContext(baselineSession.helperResult.snapshot, baselineSession, dataDirectory);
+    assertFixtureRelationships(before, "baseline");
     reportSnapshot("NSIS_BEFORE", before);
     const beforeHash = digest(baseline.archive);
     stop(baselineSession.child);
@@ -173,6 +181,8 @@ async function verifyNsisUpdate() {
     try {
       const after = attachContext(updatedSession.helperResult.snapshot, updatedSession, dataDirectory);
       reportSnapshot("NSIS_AFTER", after);
+      assertContextContinuity(before, after);
+      assertFixtureRelationships(after, "updated");
       assertUpgradeSnapshotsEqual(before, after);
       console.log("WINDOWS_IN_PLACE_UPGRADE_OK NSIS v2.2.51 -> v" + version + " full profile, match, replay, simulation, analysis, LocalStorage and IndexedDB contents retained");
     } finally { stop(updatedSession.child); }
@@ -229,6 +239,7 @@ async function verifyPortableUpdater() {
   try {
     baselineSession = await launch(baseline.executable, dataDirectory, 9232, "seed", testEnv, true);
     const before = attachContext(baselineSession.helperResult.snapshot, baselineSession, dataDirectory);
+    assertFixtureRelationships(before);
     reportSnapshot("PORTABLE_BEFORE", before);
     const beforeHash = digest(baseline.archive);
     const scheduled = await invokeHelper("update", 9232, portableDirectory);
@@ -236,7 +247,7 @@ async function verifyPortableUpdater() {
     await waitFor(() => baselineSession.child.exitCode !== null, 30000, "baseline portable process to exit after handing off the update");
     const userDataPath = before.electron.userDataPath;
     const updateLog = path.join(userDataPath, "update-install.log");
-    await waitFor(() => existsSync(updateLog) && readFileSync(updateLog, "utf8").includes("Programmdateien geändert und verifiziert; starte Anwendung."),
+    await waitFor(() => existsSync(updateLog) && readFileSync(updateLog, "utf8").includes("Portable-Programmdateien geändert und verifiziert; starte Anwendung."),
       120000, "the actual portable updater to verify and install the downloaded candidate ZIP");
     assert.notEqual(digest(baseline.archive), beforeHash, "Portable updater did not replace app.asar.");
     await waitFor(() => isExecutableRunning(baseline.executable), 30000, "the portable updater to restart the updated application");
@@ -245,6 +256,8 @@ async function verifyPortableUpdater() {
     try {
       const after = attachContext(updatedSession.helperResult.snapshot, updatedSession, dataDirectory);
       reportSnapshot("PORTABLE_AFTER", after);
+      assertContextContinuity(before, after);
+      assertFixtureRelationships(after);
       assertUpgradeSnapshotsEqual(before, after);
       console.log("WINDOWS_IN_PLACE_UPGRADE_OK PORTABLE updater-script v2.2.51 -> v" + version + " downloaded ZIP SHA-256=" + server.sha256 + "; full profile, match, replay, simulation, analysis, LocalStorage and IndexedDB contents retained");
     } finally { stop(updatedSession.child); }

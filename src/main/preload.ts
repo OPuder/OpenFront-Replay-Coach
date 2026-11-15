@@ -2,6 +2,7 @@ import { contextBridge, ipcRenderer } from 'electron';
 contextBridge.exposeInMainWorld('replayAPI', {
   openReplay: () => ipcRenderer.invoke('replay:open'),
   installUpdate: () => ipcRenderer.invoke('updates:install'),
+  isUpgradeDiagnosticsEnabled: () => ipcRenderer.invoke('diagnostics:is-upgrade-test'),
   getUpdateStatus: () => ipcRenderer.invoke('updates:status'),
   onUpdateProgress: (callback: (progress: { phase: string; percent: number }) => void) => {
     const listener = (_event: Electron.IpcRendererEvent, progress: { phase: string; percent: number }) => callback(progress);

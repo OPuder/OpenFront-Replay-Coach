@@ -132,6 +132,7 @@ assert.match(read("scripts/verify-release-artifacts.mjs"), /OpenFront-Replay-Coa
 
 const matchStore = read("src/renderer/matchStore.ts");
 const appRenderer = read("src/renderer/main.tsx");
+assert.match(matchStore, /const DB_NAME = "openfront-replay-coach"/);
 assert.match(matchStore, /const DB_VERSION = 3/);
 assert.match(matchStore, /const REPLAY_STORE = "replay-records"/);
 assert.match(matchStore, /createObjectStore\(MATCH_STORE, \{ keyPath: \["playerId", "game.gameId"\] \}\)/);
@@ -297,11 +298,24 @@ assert.match(windowsFixture, /openfront-replay-coach\.phase-history\.v1/);
 assert.match(windowsFixture, /openfront\.update-center\.auto-check\.v1/);
 assert.match(windowsFixture, /assertFixtureRelationships/);
 assert.match(windowsContract, /UpgradeContextError/);
+assert.match(windowsContract, /assertCoachRendererTarget/);
 assert.match(windowsContract, /UpgradeDataLossError/);
 assert.match(windowsContract, /assertStoragePreserved/);
 assert.match(updater, /OFRC_UPDATE_TEST_MODE/);
 assert.match(updater, /127\.0\.0\.1/);
+assert.match(updater, /Portable-Programmdateien geändert und verifiziert; starte Anwendung/);
 assert.match(read("src/main/main.ts"), /OFRC_UPGRADE_CONTEXT=/);
+assert.match(read("src/main/main.ts"), /diagnostics:is-upgrade-test/);
+assert.match(read("src/main/preload.ts"), /isUpgradeDiagnosticsEnabled/);
+assert.match(read("src/renderer/env.d.ts"), /__OFRC_LOCAL_LIBRARY_RESTORE_COMPLETE__/);
+assert.match(read("src/renderer/env.d.ts"), /__OFRC_LOCAL_LIBRARY_RESTORE_RESULT__/);
+assert.match(read("src/renderer/main.tsx"), /profileLoaded: Boolean\(cachedPage\)/);
+assert.match(windowsStorage, /restoreResult/);
+assert.match(read("src/renderer/main.tsx"), /if\(diagnosticsEnabled\) return/);
+assert.match(read("src/renderer/platform/BrowserReplayAPI.ts"), /isUpgradeDiagnosticsEnabled: async \(\) => false/);
+assert.match(windowsStorage, /restoreMarkerAvailable/);
+assert.match(windowsStorage, /restoreError/);
+assert.match(read("src/renderer/main.tsx"), /__OFRC_LOCAL_LIBRARY_RESTORE_ERROR__/);
 
 
 assert.match(windowsDistributionVerifier, /signature\.equals\(Buffer\.from\(\[0x50, 0x45, 0x00, 0x00\]\)\)/);

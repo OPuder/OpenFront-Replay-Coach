@@ -21,6 +21,13 @@ export function isCoachRendererTarget(target, expectedInstallDirectory) {
   } catch { return false; }
 }
 
+export function assertCoachRendererTarget(target, expectedInstallDirectory) {
+  if (!isCoachRendererTarget(target, expectedInstallDirectory)) {
+    throw new UpgradeContextError("DevTools target is not the expected packaged Coach renderer.");
+  }
+  return true;
+}
+
 export function firstDifference(before, after, prefix = "$") {
   if (isDeepStrictEqual(before, after)) return null;
   if (before === null || after === null || typeof before !== "object" || typeof after !== "object") {

@@ -1,9 +1,10 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
-  UpgradeContextError, UpgradeDataLossError, isCoachRendererTarget,
+  UpgradeContextError, UpgradeDataLossError, isCoachRendererTarget, assertCoachRendererTarget,
   assertUpgradeSnapshotsEqual,
 } from "./windows-upgrade-storage-contract.mjs";
+import { UPGRADE_FIXTURE, assertFixtureRelationships } from "./windows-upgrade-fixture.mjs";
 
 const install = "C:\\CI\\OpenFront Replay Coach";
 const target = {
@@ -36,6 +37,7 @@ test("selects only the actual packaged Coach renderer", () => {
   assert.equal(isCoachRendererTarget({ ...target, url: "file:///C:/CI/other.html" }, install), false);
   assert.equal(isCoachRendererTarget({ ...target, type: "worker" }, install), false);
   assert.equal(isCoachRendererTarget({ ...target, url: "http://localhost:5173/" }, install), false);
+  assert.throws(() => assertCoachRendererTarget({ ...target, url: "file:///C:/CI/other.html" }, install), UpgradeContextError);
 });
 
 test("classifies a wrong DevTools target and an incomplete renderer as context errors", () => {
@@ -54,6 +56,15 @@ test("classifies a different Electron userData profile as a context error", () =
   const before = snapshot(), after = snapshot();
   after.electron.userDataPath = "C:\\CI\\OtherProfile";
   assert.throws(() => assertUpgradeSnapshotsEqual(before, after), UpgradeContextError);
+});
+
+test("classifies a changed IndexedDB database identity as a context error", () => {
+  const before = snapshot(), after = snapshot();
+  after.indexedDB.name = "other-database";
+  assert.throws(() => assertUpgradeSnapshotsEqual(before, after), UpgradeContextError);
+  const versionChanged = snapshot();
+  versionChanged.indexedDB.version = 4;
+  assert.throws(() => assertUpgradeSnapshotsEqual(before, versionChanged), UpgradeContextError);
 });
 
 test("detects a missing or modified IndexedDB record as data loss", () => {
@@ -76,4 +87,33 @@ test("detects a missing or modified LocalStorage value as data loss", () => {
 
 test("accepts complete structured equality including relationships and records", () => {
   assert.equal(assertUpgradeSnapshotsEqual(snapshot(), snapshot()), true);
+});
+
+
+test("validates the complete application fixture and distinguishes baseline setup from post-update data loss", () => {
+  const fixtureSnapshot = () => ({
+    indexedDB: {
+      name: "openfront-replay-coach",
+      version: 3,
+      stores: [
+        { name: "matches", keyPath: ["playerId", "game.gameId"], autoIncrement: false, indexes: [{ name: "by-player-id", keyPath: "playerId", unique: false, multiEntry: false }] },
+        { name: "profiles", keyPath: "playerId", autoIncrement: false, indexes: [] },
+        { name: "replay-records", keyPath: ["playerId", "gameId"], autoIncrement: false, indexes: [] },
+      ],
+      counts: { matches: 1, profiles: 1, "replay-records": 1 },
+      records: {
+        profiles: [UPGRADE_FIXTURE.profile],
+        matches: [UPGRADE_FIXTURE.match],
+        "replay-records": [UPGRADE_FIXTURE.replay],
+      },
+    },
+  });
+  assert.equal(assertFixtureRelationships(fixtureSnapshot(), "baseline"), true);
+  const missing = {
+    indexedDB: {
+      name: "openfront-replay-coach", version: 3, stores: [], counts: {}, records: {}, missing: true,
+    },
+  };
+  assert.throws(() => assertFixtureRelationships(missing, "baseline"), /WINDOWS_UPGRADE_FIXTURE_ERROR/);
+  assert.throws(() => assertFixtureRelationships(missing, "updated"), /DATA_LOSS_ERROR/);
 });

@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import {
-  UpgradeContextError, UpgradeDataLossError, isCoachRendererTarget,
+  UpgradeContextError, UpgradeDataLossError, isCoachRendererTarget, assertCoachRendererTarget,
 } from "./windows-upgrade-storage-contract.mjs";
-import { UPGRADE_FIXTURE, LOCAL_STORAGE_ENTRIES, assertFixtureRelationships } from "./windows-upgrade-fixture.mjs";
+import { UPGRADE_FIXTURE, LOCAL_STORAGE_ENTRIES } from "./windows-upgrade-fixture.mjs";
 
 const mode = process.argv[2];
 const port = Number(process.argv[3]);
@@ -38,7 +38,7 @@ const seedExpression = `(async()=>{
     request.onerror=()=>reject(request.error);
     request.onblocked=()=>reject(new Error("IndexedDB upgrade blocked by another renderer connection"));
   });
-  if(db.version!==3) throw new Error("DATA_LOSS_ERROR: unexpected application database version "+db.version);
+  if(db.version!==3) throw new Error("CONTEXT_ERROR: unexpected application database version "+db.version);
   const tx=db.transaction(["profiles","matches","replay-records"],"readwrite");
   tx.objectStore("profiles").put(fixture.profile);
   tx.objectStore("matches").put(fixture.match);
@@ -54,23 +54,48 @@ const updateExpression = `(async()=>{
   return result;
 })()`;
 const snapshotExpression = `(async()=>{
-  const databaseList=await indexedDB.databases();
+  let databaseList;
+  try { databaseList=await indexedDB.databases(); }
+  catch(error) { throw new Error("CONTEXT_ERROR: IndexedDB metadata is inaccessible in the selected renderer: "+String(error)); }
   const metadata=databaseList.find(item=>item.name===${JSON.stringify(dbName)});
-  if(!metadata) throw new Error("DATA_LOSS_ERROR: application IndexedDB database is missing");
+  if(!metadata) {
+    const otherDatabase=databaseList.find(item=>item.name);
+    let localStorageValues;
+    try { localStorageValues=Object.fromEntries(Object.keys(localStorage).sort().map(key=>[key,localStorage.getItem(key)])); }
+    catch(error) { throw new Error("CONTEXT_ERROR: LocalStorage is inaccessible in the selected renderer: "+String(error)); }
+    return {
+      renderer:{href:location.href,origin:location.origin,protocol:location.protocol,title:document.title,readyState:document.readyState},
+      localStorage:localStorageValues,
+      indexedDB:{name:otherDatabase?.name??${JSON.stringify(dbName)},version:otherDatabase?.version??${3},stores:[],counts:{},records:{},missing:true},
+    };
+  }
   const db=await new Promise((resolve,reject)=>{
     const request=indexedDB.open(${JSON.stringify(dbName)});
     request.onsuccess=()=>resolve(request.result);
-    request.onerror=()=>reject(request.error);
+    request.onerror=()=>reject(new Error("CONTEXT_ERROR: application IndexedDB cannot be opened: "+String(request.error)));
     request.onblocked=()=>reject(new Error("CONTEXT_ERROR: application IndexedDB is blocked"));
   });
   const names=Array.from(db.objectStoreNames).sort();
-  if(!names.length) throw new Error("DATA_LOSS_ERROR: application IndexedDB has no object stores");
+  if(!names.length) {
+    let localStorageValues;
+    try { localStorageValues=Object.fromEntries(Object.keys(localStorage).sort().map(key=>[key,localStorage.getItem(key)])); }
+    catch(error) { throw new Error("CONTEXT_ERROR: LocalStorage is inaccessible in the selected renderer: "+String(error)); }
+    const emptySnapshot={
+      renderer:{href:location.href,origin:location.origin,protocol:location.protocol,title:document.title,readyState:document.readyState},
+      localStorage:localStorageValues,
+      indexedDB:{name:db.name,version:db.version,stores:[],counts:{},records:{}},
+    };
+    db.close();
+    return emptySnapshot;
+  }
   const records={};
   const stores=[];
   const counts={};
   await new Promise((resolve,reject)=>{
     const tx=db.transaction(names,"readonly");
-    let pending=names.length;
+    tx.oncomplete=resolve;
+    tx.onerror=()=>reject(new Error("CONTEXT_ERROR: IndexedDB read transaction failed: "+String(tx.error)));
+    tx.onabort=()=>reject(new Error("CONTEXT_ERROR: IndexedDB read transaction aborted: "+String(tx.error)));
     for(const name of names){
       const store=tx.objectStore(name);
       stores.push({
@@ -83,12 +108,13 @@ const snapshotExpression = `(async()=>{
         }),
       });
       const request=store.getAll();
-      request.onsuccess=()=>{records[name]=request.result;counts[name]=request.result.length;if(--pending===0)resolve();};
-      request.onerror=()=>reject(request.error);
+      request.onsuccess=()=>{records[name]=request.result;counts[name]=request.result.length;};
+      request.onerror=()=>reject(new Error("CONTEXT_ERROR: IndexedDB store "+name+" could not be read: "+String(request.error)));
     }
-    tx.onabort=()=>reject(tx.error);
   });
-  const localStorageValues=Object.fromEntries(Object.keys(localStorage).sort().map(key=>[key,localStorage.getItem(key)]));
+  let localStorageValues;
+  try { localStorageValues=Object.fromEntries(Object.keys(localStorage).sort().map(key=>[key,localStorage.getItem(key)])); }
+  catch(error) { throw new Error("CONTEXT_ERROR: LocalStorage is inaccessible in the selected renderer: "+String(error)); }
   const snapshot={
     renderer:{href:location.href,origin:location.origin,protocol:location.protocol,title:document.title,readyState:document.readyState},
     localStorage:localStorageValues,
@@ -113,7 +139,10 @@ while(Date.now()<deadline){
   }catch{}
   await new Promise(resolve=>setTimeout(resolve,500));
 }
-if(!target) throw new UpgradeContextError("Expected packaged Coach DevTools target not found within 120 seconds. Expected install directory="+expectedInstallDirectory+"; observed="+JSON.stringify(observedTargets));
+if(!target) {
+  try { assertCoachRendererTarget(observedTargets.find(item=>item.type==="page") ?? null, expectedInstallDirectory); }
+  catch { throw new UpgradeContextError("Expected packaged Coach DevTools target not found within 120 seconds. Expected install directory="+expectedInstallDirectory+"; observed="+JSON.stringify(observedTargets)); }
+}
 
 const ws=new WebSocket(target.webSocketDebuggerUrl);
 await new Promise((resolve,reject)=>{
@@ -144,18 +173,24 @@ try{
   let renderer;
   const readyDeadline=Date.now()+60000;
   while(Date.now()<readyDeadline){
-    renderer=await evaluate("({href:location.href,origin:location.origin,protocol:location.protocol,title:document.title,readyState:document.readyState,rootChildren:document.querySelector('#root')?.children.length??0})");
-    if(renderer?.title==="OpenFront Replay Coach"&&renderer.readyState==="complete"&&renderer.rootChildren>0)break;
+    renderer=await evaluate("({href:location.href,origin:location.origin,protocol:location.protocol,title:document.title,readyState:document.readyState,rootChildren:document.querySelector('#root')?.children.length??0,restoreMarkerAvailable:window.__OFRC_LOCAL_LIBRARY_RESTORE_COMPLETE__!==undefined,restoreComplete:window.__OFRC_LOCAL_LIBRARY_RESTORE_COMPLETE__===true,restoreError:window.__OFRC_LOCAL_LIBRARY_RESTORE_ERROR__??null,restoreResult:window.__OFRC_LOCAL_LIBRARY_RESTORE_RESULT__??null})");
+    if(renderer?.title==="OpenFront Replay Coach"&&renderer.readyState==="complete"&&renderer.rootChildren>0&&(!renderer.restoreMarkerAvailable||renderer.restoreComplete))break;
     await new Promise(resolve=>setTimeout(resolve,250));
   }
-  if(renderer?.title!=="OpenFront Replay Coach"||renderer.readyState!=="complete"||renderer.rootChildren<1){
+  if(renderer?.title!=="OpenFront Replay Coach"||renderer.readyState!=="complete"||renderer.rootChildren<1||(renderer.restoreMarkerAvailable&&!renderer.restoreComplete)){
     throw new UpgradeContextError("Packaged renderer did not finish initialization: "+JSON.stringify({target:target.url,renderer}));
+  }
+  if(renderer?.restoreError) throw new UpgradeContextError("Application local-library restore failed before storage inspection: " + renderer.restoreError);
+  if(mode==="snapshot" && renderer.restoreMarkerAvailable) {
+    const restored=renderer.restoreResult;
+    if(restored?.playerId!==UPGRADE_FIXTURE.playerId || restored?.profileLoaded!==true || !restored.matchIds?.includes(UPGRADE_FIXTURE.match.game.gameId)) {
+      throw new UpgradeContextError("Application completed startup without restoring the persisted player profile and linked match: " + JSON.stringify(restored));
+    }
   }
   let result;
   if(mode==="seed") result=await evaluate(seedExpression);
   else if(mode==="update") result=await evaluate(updateExpression);
   const snapshot=mode==="update"?null:await evaluate(snapshotExpression);
-  if(snapshot) assertFixtureRelationships(snapshot);
   console.log(JSON.stringify({mode,targetUrl:target.url,renderer,result,snapshot}));
 }catch(error){
   const message=String(error?.message??error);

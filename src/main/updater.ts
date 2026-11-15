@@ -136,6 +136,7 @@ async function scheduleWindowsInstall(downloadPath: string, portable: boolean): 
     "  if (-not $BeforeArchiveHash -or -not (Test-Path -LiteralPath $ArchivePath)) { throw 'Die Portable-App enthält keine prüfbare resources/app.asar-Datei.' }",
     "  $AfterArchiveHash = (Get-FileHash -LiteralPath $ArchivePath -Algorithm SHA256).Hash",
     "  if ($AfterArchiveHash -eq $BeforeArchiveHash) { throw 'Die Portable-Dateien wurden nicht aktualisiert; die alte Programmversion bleibt erhalten.' }",
+    "  Add-Content -LiteralPath $Log -Value ('[' + (Get-Date -Format o) + '] Portable-Programmdateien geändert und verifiziert; starte Anwendung.')",
     '  Start-Process -FilePath $Executable',
     '  $Installed = $true',
     '} catch {',

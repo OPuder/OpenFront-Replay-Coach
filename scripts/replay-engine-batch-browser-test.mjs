@@ -284,8 +284,10 @@ async function main() {
   assert.equal(unsupportedStored?.status, "engine-mismatch");
   assert.equal(unsupportedStored?.analysisStatus, "unsupported");
   const hashMismatchStored = persisted.find(entry => entry.gameId === "hash-mismatch");
+  assert.equal(hashMismatchStored?.status, "loaded");
   assert.equal(hashMismatchStored?.analysisStatus, "failed");
   const malformedStored = persisted.find(entry => entry.gameId === "malformed-replay");
+  assert.equal(malformedStored?.status, "loaded");
   assert.equal(malformedStored?.analysisStatus, "failed");
   assert.equal(persisted.every(entry => entry.jsonExportRestored), true,
     "Every persisted real and synthetic replay must preserve its full JSON export");

@@ -205,3 +205,16 @@ test('short sparse replays do not receive fabricated phase rates',()=>{
  assert.ok(report.phases.every(phase=>phase.territoryPerMinute===null));
  assert.equal(report.opening.confidence,'low');
 });
+
+test('troop attrition against the target is not mislabeled as a failed territorial attack',()=>{
+ const samples=Array.from({length:15},(_,i)=>sample(i*500,{tiles:100+i,goldEarned:100+i*20}));
+ const actions=Array.from({length:3},(_,i)=>action(30+i*40,{
+   delta30s:{tiles:0,gold:-30,troops:-80},
+   targetDelta30s:{tiles:0,gold:0,troops:-120},
+ }));
+ const report=buildProCoachReport(samples,actions,'p1',700);
+ const finding=report.findings.find(item=>item.id==='attack-follow-through');
+ assert.ok(finding);
+ assert.match(finding.consequence,/0 zeigten Truppenrückgang ohne entsprechende Gebietsreaktion/);
+ assert.doesNotMatch(finding.title,/hoher Truppenbindung/);
+});

@@ -4,7 +4,7 @@ import { execFileSync } from "node:child_process";
 const mode = process.argv[2];
 if (!["seed", "verify"].includes(mode)) throw new Error("Usage: node scripts/android-webview-storage.mjs <seed|verify>");
 
-const adb = (...args) => execFileSync("adb", ["-s", "emulator-5554", ...args], { encoding: "utf8", timeout: 15000 }).trim();
+const adb = (...args) => execFileSync("adb", ["-s", "emulator-5554", ...args], { encoding: "utf8", timeout: 30000 }).trim();
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 const marker = "ofrc-android-upgrade-regression-v1";
 const expression = mode === "seed" ? `
@@ -83,9 +83,11 @@ const expression = mode === "seed" ? `
 `;
 
 let socket = "";
+const expectedPid = process.env.ANDROID_WEBVIEW_PID ?? "";
 for (let attempt = 0; attempt < 120; attempt++) {
   try {
-    socket = adb("shell", "cat", "/proc/net/unix").split(/\r?\n/).map(line => line.match(/webview_devtools_remote_(\d+)/)?.[1]).filter(Boolean).at(-1) || "";
+    const sockets = adb("shell", "cat", "/proc/net/unix").split(/\r?\n/).map(line => line.match(/webview_devtools_remote_(\d+)/)?.[1]).filter(Boolean);
+    socket = expectedPid ? (sockets.find(pid => pid === expectedPid) ?? "") : (sockets.at(-1) ?? "");
     if (socket) break;
   } catch {}
   await sleep(1000);
@@ -94,7 +96,7 @@ assert.ok(socket, "Debug WebView DevTools socket was not exposed within 120 seco
 try { adb("forward", "--remove", "tcp:9222"); } catch {}
 adb("forward", "tcp:9222", `localabstract:${socket}`);
 let target;
-for (let attempt = 0; attempt < 20; attempt++) {
+for (let attempt = 0; attempt < 120; attempt++) {
   try {
     const response = await fetch("http://127.0.0.1:9222/json");
     const targets = await response.json();

@@ -179,6 +179,11 @@ export function buildProCoachReport(
     const targetLoss=Math.max(0,-(a.targetDelta30s?.troops??0));
     return ownLoss>targetLoss&&(a.delta30s?.tiles??0)<=0&&(a.targetDelta30s?.tiles??0)>=0;
   });
+  const mixedTrades=evaluatedAttackActions.filter(a=>{
+    const ownLoss=Math.max(0,-(a.delta30s?.troops??0));
+    const targetLoss=Math.max(0,-(a.targetDelta30s?.troops??0));
+    return ownLoss>0&&targetLoss>ownLoss&&(a.delta30s?.tiles??0)<0&&(a.targetDelta30s?.tiles??0)>=0;
+  });
   const productiveWindows=evaluatedAttackActions.filter(a=>territorialWins.includes(a)||favorableTrades.includes(a));
   const negativeImpact=negativeWindows.map(action=>{
     const before=playerStateBefore(action.seconds);
@@ -192,7 +197,7 @@ export function buildProCoachReport(
   if(evaluatedAttackActions.length>=3){
     const ratio=productiveWindows.length/evaluatedAttackActions.length;
     const exampleImpact=[...negativeImpact].sort((a,b)=>b.severity-a.severity)[0];
-    const example=exampleImpact?.action??favorableTrades[0]??evenTrades[0]??evaluatedAttackActions.find(a=>(a.delta30s?.tiles??0)<=0);
+    const example=exampleImpact?.action??mixedTrades[0]??favorableTrades[0]??evenTrades[0]??evaluatedAttackActions.find(a=>(a.delta30s?.tiles??0)<=0);
     const exampleOwnLoss=Math.max(0,-(example?.delta30s?.troops??0));
     const exampleTargetLoss=Math.max(0,-(example?.targetDelta30s?.troops??0));
     const exampleOwnTileLoss=Math.max(0,-(example?.delta30s?.tiles??0));
@@ -203,10 +208,10 @@ export function buildProCoachReport(
       id:'attack-follow-through',
       priority:severeNegative.length>0||negativeWindows.length>=Math.max(2,Math.ceil(evaluatedAttackActions.length*.35))?'high':'medium',
       confidence:confidenceFor(alive.length,evaluatedAttackActions.length),
-      title:negativeWindows.length?'Angriffe mit ungünstigem Truppenverhältnis prüfen':favorableTrades.length?'Beobachtete Truppentausche waren überwiegend günstig':'Angriffe mit sichtbarer Gebietsreaktion',
+      title:negativeWindows.length?'Angriffe mit ungünstigem Truppenverhältnis prüfen':mixedTrades.length?'Truppentausch mit eigenem Gebietsverlust prüfen':favorableTrades.length?'Beobachtete Truppentausche waren überwiegend günstig':'Angriffe mit sichtbarer Gebietsreaktion',
       decision:evaluatedAttackActions.length+' von '+attackActions.length+' Angriffen hatten auswertbare 30-Sekunden-Ziel- oder Gebietsdaten; '+severeNegative.length+' davon überschritten mindestens 20 % des vorher beobachteten eigenen Truppenbestands oder 10 % des eigenen Gebiets.',
-      consequence:territorialWins.length+' zeigten eine positive Gebietsreaktion; '+favorableTrades.length+' weitere einen höheren beobachteten Truppenverlust beim Ziel als bei dir; '+evenTrades.length+' waren ausgeglichen; '+negativeWindows.length+' zeigten höhere eigene Truppenverluste ohne Gebietsreaktion.',
-      alternative:negativeWindows.length?'Vor einem Folgeangriff Zielzustand, eigene aktive Angriffe und eingehenden Druck vergleichen. Bei ungünstigem Truppenverhältnis erst Reserve und gefährdete Gebiete stabilisieren.':'Nutze günstige Truppentausche nur dann als Anlass zum Nachsetzen, wenn die eigene Reserve und die übrigen Ziele stabil bleiben; prüfe das Ziel erneut vor dem nächsten Befehl.',
+      consequence:territorialWins.length+' zeigten eine positive Gebietsreaktion; '+favorableTrades.length+' weitere einen höheren beobachteten Truppenverlust beim Ziel ohne eigenen Gebietsverlust; '+mixedTrades.length+' zeigten trotz günstigem Truppenverhältnis einen eigenen Gebietsverlust; '+evenTrades.length+' waren ausgeglichen; '+negativeWindows.length+' zeigten höhere eigene Truppenverluste ohne Gebietsreaktion.',
+      alternative:negativeWindows.length?'Vor einem Folgeangriff Zielzustand, eigene aktive Angriffe und eingehenden Druck vergleichen. Bei ungünstigem Truppenverhältnis erst Reserve und gefährdete Gebiete stabilisieren.':mixedTrades.length?'Bewerte den Gebietsverlust getrennt vom günstigen Truppenverhältnis. Sichere zuerst die verlorene Grenze und prüfe, ob das Ziel strategisch wichtiger war als das eigene Gebiet.':'Nutze günstige Truppentausche nur dann als Anlass zum Nachsetzen, wenn die eigene Reserve und die übrigen Ziele stabil bleiben; prüfe das Ziel erneut vor dem nächsten Befehl.',
       trainingRule:'Vergleiche nach jedem Angriff im gleichen Beobachtungsfenster eigene und gegnerische Truppenänderung sowie Gebietsänderung. Öffne erst dann ein weiteres Ziel, wenn der Tausch und die verbleibende Reserve tragfähig sind.',
       evidence:example?clock(example.seconds)+' · '+(example.targetName??'Ziel nicht benannt')+' · eigene Truppen '+fmt(example.delta30s?.troops??0)+' · Zieltruppen '+fmt(example.targetDelta30s?.troops??0)+' · eigenes Gebiet '+fmt(example.delta30s?.tiles??0)+' · Zielgebiet '+fmt(example.targetDelta30s?.tiles??0)+' · beobachtete Verluste: du '+fmt(exampleOwnLoss)+', Ziel '+fmt(exampleTargetLoss)+(exampleTroopShare===null?'':' · '+fmt(exampleTroopShare*100)+' % des vorher beobachteten eigenen Truppenbestands')+(exampleTileShare===null?'':' · '+fmt(exampleTileShare*100)+' % des vorher beobachteten eigenen Gebiets'):' '+fmt(ratio*100)+' % der auswertbaren Fenster zeigten Gebietsfortschritt oder einen günstigen Truppentausch.',
       seconds:example?.seconds??attackActions[0]?.seconds??null,

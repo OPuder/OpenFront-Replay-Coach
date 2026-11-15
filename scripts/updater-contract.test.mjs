@@ -77,12 +77,13 @@ assert.match(androidSigningGate, /ANDROID_KEYSTORE_PATH/);
 assert.match(androidSigningGate, /Android signing certificate does not match/);
 assert.match(androidSigningGate, /apksigner.*verify/);
 const androidUpdateRegression = read("scripts/test-android-in-place-update.sh");
-assert.match(androidUpdateRegression, /adb_cmd shell "run-as \$package_id sh -c/);
-assert.match(androidUpdateRegression, /adb_cmd shell "run-as \$package_id cat files\/update-regression\/sentinel\.txt"/);
+assert.ok(androidUpdateRegression.includes('timeout 30s adb -s emulator-5554 shell "run-as $package_id sh -c'));
+assert.ok(androidUpdateRegression.includes('timeout 30s adb -s emulator-5554 shell "run-as $package_id cat files/update-regression/sentinel.txt"'));
 assert.match(androidUpdateRegression, /install_apk\(\)\s*\{|adb -s emulator-5554 install -r/);
 assert.match(androidUpdateRegression, /keep-this-data/);
 assert.match(androidUpdateRegression, /versionCode=\$expected_version_code/);
-assert.match(androidUpdateRegression, /cmd package resolve-activity[\s\S]*?am start -W -n[\s\S]*?pidof/);
+assert.ok(androidUpdateRegression.includes('timeout 30s adb -s emulator-5554 shell monkey -p "$package_id" 1'));
+assert.ok(androidUpdateRegression.includes('pidof "$package_id"'));
 
 
 assert.match(releaseWorkflow, /Verify published release contains exactly three usable artifacts/);

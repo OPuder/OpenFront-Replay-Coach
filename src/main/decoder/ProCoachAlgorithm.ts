@@ -244,7 +244,7 @@ export function buildProCoachReport(
     findings.push({
       id:'front-load',strategicClass:'decision',priority:review.severeOutcome?'high':'medium',confidence:confidenceFor(alive.length,loadedFronts.length),
       title:'Angriffsziele parallel gebunden',
-      decision:'Bei '+loadedFronts.length+' Angriffsbefehlen waren bereits eigene Zielbindungen oder eingehender Druck dokumentiert.',
+      decision:'Bei '+loadedFronts.length+' Angriffsbefehlen bestand bereits mindestens eine eigene aktive Zielbindung.',
       consequence:'Bei '+clock(a.seconds)+' liefen '+ctx.activeTargetCount+' eigene Zielbindungen und '+ctx.incomingAttackCount+' eingehende Angriffe; '+fmt(ctx.outgoingAttackTroops)+' eigene Truppen waren unterwegs.'+(a.delta30s&&a.targetDelta30s?' Im 30-Sekunden-Fenster: eigene Truppen '+fmt(a.delta30s.troops)+', Zieltruppen '+fmt(a.targetDelta30s.troops)+', eigenes Gebiet '+fmt(a.delta30s.tiles)+', Zielgebiet '+fmt(a.targetDelta30s.tiles)+'.':''),
       alternative:review.severeOutcome?'Stoppe weitere Zielbindungen, sichere zuerst die verlorenen Gebiete und baue Reserve auf, bevor du erneut angreifst.':'Schließe oder stabilisiere ein bestehendes Ziel, bevor du ein weiteres bindest. Priorisiere nur dann parallel, wenn Reserve und Verteidigung nachweislich ausreichen.',
       trainingRule:'Prüfe vor jedem neuen Angriff die Zahl aktiver Ziele, gebundene Truppen, eingehenden Druck und die nach dem letzten Befehl verbleibende Reserve.',

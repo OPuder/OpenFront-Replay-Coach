@@ -4,7 +4,7 @@ const read = path => readFileSync(new URL("../" + path, import.meta.url), "utf8"
 const updater = read("src/main/updater.ts");
 const android = read("android-updater-template/ApkUpdaterPlugin.java");
 
-assert.match(android, /inspectApkContainer\\(apk\\)/);
+assert.ok(android.includes("inspectApkContainer(apk)"), "APK diagnostics must inspect the downloaded container.");
 assert.match(android, /ZIP-Header:/);
 assert.match(android, /Manifest-und-DEX-vorhanden/);
 assert.match(android, /Android kann die geprüfte APK nicht als Installationspaket lesen/);
@@ -147,9 +147,9 @@ assert.ok(releaseUpgradeWorkflow.includes("uses: reactivecircus/android-emulator
 assert.ok(releaseUpgradeWorkflow.includes("script: bash scripts/test-android-release-upgrade.sh"), "The release workflow must execute the signed APK upgrade script.");
 assert.ok(releaseUpgradeWorkflow.includes("Validate signed Android release-upgrade script syntax"), "The release workflow must validate the upgrade script syntax.");
 assert.ok(releaseUpgradeWorkflow.includes("bash -n scripts/test-android-release-upgrade.sh"), "The release workflow must run bash syntax validation.");
-assert.match(releaseUpgradeWorkflow, /timeout-minutes: 15[\\s\\S]*?emulator-boot-timeout: 600/);
+assert.ok(releaseUpgradeWorkflow.includes("timeout-minutes: 15") && releaseUpgradeWorkflow.includes("emulator-boot-timeout: 600"), "The signed upgrade emulator must have bounded execution and boot time.");
 assert.match(releaseUpgradeScript, /previous-release/);
-assert.match(releaseUpgradeScript, /function install_apk|install_apk\(\)\\s\\*\\{/);
+assert.ok(releaseUpgradeScript.includes("install_apk() {"), "The signed upgrade script must define its APK installer.");
 assert.match(releaseUpgradeScript, /adb -s emulator-5554 install -r/);
 assert.match(releaseUpgradeScript, /versionCode/);
 assert.match(releaseUpgradeScript, /cmd package resolve-activity/);

@@ -59,7 +59,7 @@ test('does not treat a missing target observation as a failed attack window',()=
  const finding=report.findings.find(x=>x.id==='attack-follow-through');
  assert.ok(finding);
  assert.match(finding.decision,/4 von 6 Angriffen/);
- assert.match(finding.consequence,/0 von 4 auswertbaren Fenstern/);
+ assert.match(finding.consequence,/4 zeigten höhere eigene Truppenverluste ohne Gebietsreaktion/);
 });
 
 
@@ -215,9 +215,11 @@ test('troop attrition against the target is not mislabeled as a failed territori
  const report=buildProCoachReport(samples,actions,'p1',700);
  const finding=report.findings.find(item=>item.id==='attack-follow-through');
  assert.ok(finding);
- assert.match(finding.consequence,/1 weitere einen höheren beobachteten Truppenverlust beim Ziel als bei dir/);
+ assert.match(finding.consequence,/3 weitere einen höheren beobachteten Truppenverlust beim Ziel als bei dir/);
  assert.match(finding.evidence,/beobachtete Verluste: du 80, Ziel 120/);
  assert.match(finding.title,/überwiegend günstig/);
+ assert.equal(report.metrics.find(item=>item.label==='Angriffs-Folgefenster')?.value,'100 %');
+ assert.match(report.metrics.find(item=>item.label==='Angriffs-Folgefenster')?.note??'',/günstigem Truppentausch/);
 });
 
 test('attack with worse own attrition is flagged only when target losses are lower and no territory is gained',()=>{

@@ -295,8 +295,9 @@ window.__runBatchReplayTest = async (gameIds) => {
 
   await savePlayerLibrary({
     playerId: "ci-batch-player",
-    playerName: "OligenOle",
+    profile: { displayName: "OligenOle", name: "OligenOle" },
     games: [],
+    nextCursor: null,
   } as any);
   const coachingResults = [...coaching.entries()].map(([gameId, value]) => ({ gameId, ...value }));
   const longitudinal = buildLongitudinalCoachReport(coachingResults.map(item => item.longitudinalInput));
@@ -308,7 +309,7 @@ window.__verifyPersistedProfileTest = async () => {
   const matches = await loadImportedMatches("ci-batch-player");
   return {
     profilePresent: stored?.playerId === "ci-batch-player",
-    profileName: stored?.playerName ?? stored?.name ?? null,
+    profileName: stored?.profile?.displayName ?? stored?.profile?.name ?? null,
     gameIds: matches.map(item => item.game.gameId).sort(),
     verifiedGames: matches.filter(item => item.analysisStatus === "verified" && item.simulation?.status === "verified").map(item => item.game.gameId).sort(),
   };

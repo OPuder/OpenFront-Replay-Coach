@@ -6,7 +6,8 @@ test("encodes exact owner IDs while ignoring fallout and defense flag bits", () 
   const input = new Uint16Array([1, 1 | 8192, 2 | 16384, 2, 0, 0]);
   const encoded = encodeTileOwners(input, 3, 2);
   assert.deepEqual(encoded?.ownerRuns, [1, 2, 2, 2, 0, 2]);
-  assert.deepEqual([...decodeTileOwners(encoded!)], [1, 1, 2, 2, 0, 0]);
+  assert.ok(encoded);
+  assert.deepEqual([...decodeTileOwners(encoded)], [1, 1, 2, 2, 0, 0]);
 });
 
 test("rejects tile buffers whose dimensions do not match", () => {

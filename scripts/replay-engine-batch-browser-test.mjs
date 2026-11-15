@@ -45,7 +45,7 @@ async function main() {
   firstCheckpoint.hash = Number(firstCheckpoint.hash) ^ 1;
   const malformedReplay = {
     ...europe,
-    info: { ...europe.info, config: { ...europe.info.config, gameMap: "../invalid-map" } },
+    info: { ...europe.info, config: { ...europe.info.config, gameMap: "!" } },
   };
 
   server = spawn("node", ["node_modules/vite/bin/vite.js", "--host", "127.0.0.1", "--port", String(VITE_PORT), "--strictPort"], {

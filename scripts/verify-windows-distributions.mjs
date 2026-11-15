@@ -28,9 +28,7 @@ assert.notEqual(installerName, portableName, "Installer and portable distributio
 
 const temp = process.env.RUNNER_TEMP ?? os.tmpdir();
 const portableDir = path.join(temp, `ofrc-portable-${version}`);
-rmSync(installDir, { recursive: true, force: true });
 rmSync(portableDir, { recursive: true, force: true });
-mkdirSync(installDir, { recursive: true });
 mkdirSync(portableDir, { recursive: true });
 
 const installerBytes = readFileSync(installer);
@@ -41,13 +39,14 @@ assert.ok(peOffset + 6 <= installerBytes.length, "Installer PE header offset is 
 const peSignature = installerBytes.subarray(peOffset, peOffset + 4);
 const machine = installerBytes.readUInt16LE(peOffset + 4);
 const architecture = ({ 0x014c: "x86", 0x8664: "x64", 0xaa64: "arm64" })[machine] ?? `unknown (0x${machine.toString(16)})`;
+const portableBytes = readFileSync(portable);
 console.log(JSON.stringify({
   installer: {
     path: installer, bytes: installerBytes.length, sha256: installerSha256,
     peSignatureHex: peSignature.toString("hex"), peMachine: `0x${machine.toString(16).padStart(4, "0")}`,
     peArchitecture: architecture, runnerArchitecture: process.arch, runnerPlatform: process.platform,
   },
-  portable: { path: portable, bytes: statSync(portable).size, sha256: createHash("sha256").update(readFileSync(portable)).digest("hex") },
+  portable: { path: portable, bytes: portableBytes.length, sha256: createHash("sha256").update(portableBytes).digest("hex") },
 }, null, 2));
 assert.ok(peSignature.equals(Buffer.from([0x50, 0x45, 0x00, 0x00])), "Installer has no valid PE header.");
 assert.equal(architecture, "x64", `Expected the Windows installer to target x64, received ${architecture}.`);
@@ -57,15 +56,16 @@ assert.ok(Number.isInteger(installerAttempts) && installerAttempts >= 2 && insta
   "OFRC_INSTALLER_ATTEMPTS must be an integer between 2 and 3 so intermittent NSIS failures are exercised.");
 const failures = [];
 const smokeScript = path.join(root, "scripts", "smoke-test-windows.mjs");
-const idleSoakMs = process.env.OFRC_IDLE_SOAK_MS ?? "300000";
+const idleSoakMs = Number(process.env.OFRC_IDLE_SOAK_MS ?? 5 * 60 * 1000);
+assert.ok(Number.isFinite(idleSoakMs) && idleSoakMs >= 300_000, "Each Windows distribution must complete at least five minutes of renderer idle stability.");
 const werKey = `HKCU\\Software\\Microsoft\\Windows\\Windows Error Reporting\\LocalDumps\\${path.basename(installer)}`;
 
 function runRendererSmoke(kind, executable) {
   console.log(`Launching ${kind} distribution: ${executable}`);
   const smoke = spawnSync(process.execPath, [smokeScript, executable], {
     stdio: "inherit", windowsHide: true,
-    env: { ...process.env, OFRC_IDLE_SOAK_MS: idleSoakMs },
-    timeout: Number(idleSoakMs) + 180_000,
+    env: { ...process.env, OFRC_IDLE_SOAK_MS: String(idleSoakMs) },
+    timeout: idleSoakMs + 180_000,
   });
   if (smoke.error || smoke.status !== 0) {
     const failure = { kind, status: smoke.status, signal: smoke.signal, error: smoke.error?.message };
@@ -104,9 +104,10 @@ for (let attempt = 1; attempt <= installerAttempts; attempt++) {
     ], { encoding: "utf8", windowsHide: true, env: { ...process.env, OFRC_CRASH_WINDOW: crashWindowStart } });
     const dumps = readdirSync(dumpDir).map(name => ({ name, bytes: statSync(path.join(dumpDir, name)).size }));
     const failure = {
-      attempt, status: install.status, exitCode, exitHex, signal: install.signal, error: install.error?.message,
-      stdout: install.stdout, stderr: install.stderr, installerPath: installer, installerBytes: installerBytes.length,
-      installerSha256, peSignatureHex: peSignature.toString("hex"), peArchitecture: architecture,
+      attempt, elapsedMs: Date.now() - attemptStartedAt, status: install.status, exitCode, exitHex,
+      signal: install.signal, error: install.error?.message, stdout: install.stdout, stderr: install.stderr,
+      installerPath: installer, installerBytes: installerBytes.length, installerSha256,
+      peSignatureHex: peSignature.toString("hex"), peArchitecture: architecture,
       installerMetadata: metadata.stdout?.trim(), metadataError: metadata.stderr?.trim(),
       applicationCrashEvents: events.stdout?.trim(), eventQueryError: events.stderr?.trim(),
       werDumpDirectory: dumpDir, werDumps: dumps,
@@ -118,9 +119,16 @@ for (let attempt = 1; attempt <= installerAttempts; attempt++) {
   }
   const installedExe = path.join(installDir, "OpenFront Replay Coach.exe");
   const installedAsar = path.join(installDir, "resources", "app.asar");
-  assert.ok(existsSync(installedExe) && statSync(installedExe).size > 1_000_000, `NSIS attempt ${attempt} did not install a runnable application executable.`);
-  assert.ok(existsSync(installedAsar) && statSync(installedAsar).size > 1_000, `NSIS attempt ${attempt} is missing resources/app.asar.`);
-  console.log("NSIS_INSTALL_ATTEMPT_OK", JSON.stringify({ attempt, elapsedMs: Date.now() - attemptStartedAt, installDir, installedExeBytes: statSync(installedExe).size, appAsarBytes: statSync(installedAsar).size }));
+  if (!existsSync(installedExe) || !existsSync(installedAsar) || statSync(installedExe).size <= 1_000_000 || statSync(installedAsar).size <= 1_000) {
+    const failure = { attempt, kind: "NSIS install contents", installDir, executableExists: existsSync(installedExe), appAsarExists: existsSync(installedAsar) };
+    failures.push(failure);
+    console.error("NSIS_INSTALL_ATTEMPT_FAILED", JSON.stringify(failure));
+    continue;
+  }
+  console.log("NSIS_INSTALL_ATTEMPT_OK", JSON.stringify({
+    attempt, elapsedMs: Date.now() - attemptStartedAt, installDir,
+    installedExeBytes: statSync(installedExe).size, appAsarBytes: statSync(installedAsar).size,
+  }));
   runRendererSmoke(`installed NSIS attempt ${attempt}`, installedExe);
 }
 
@@ -130,42 +138,19 @@ const expand = spawnSync("powershell.exe", ["-NoProfile", "-NonInteractive", "-C
   env: { ...process.env, OFRC_PORTABLE_ZIP: portable, OFRC_PORTABLE_DIR: portableDir },
   timeout: 180_000,
 });
-if (expand.error || expand.status !== 0) failures.push({ kind: "portable ZIP extraction", status: expand.status, error: expand.error?.message, stdout: expand.stdout, stderr: expand.stderr });
-const portableExe = path.join(portableDir, "OpenFront Replay Coach.exe");
-const portableAsar = path.join(portableDir, "resources", "app.asar");
-if (existsSync(portableExe) && existsSync(portableAsar)) {
-  assert.ok(statSync(portableExe).size > 1_000_000, "Portable ZIP is missing its directly launchable executable.");
-  assert.ok(statSync(portableAsar).size > 1_000, "Portable ZIP is missing resources/app.asar.");
-  runRendererSmoke("portable ZIP", portableExe);
-} else if (!failures.some(failure => failure.kind === "portable ZIP extraction")) {
-  failures.push({ kind: "portable ZIP extraction", error: "Portable ZIP is missing executable or app.asar." });
+if (expand.error || expand.status !== 0) {
+  failures.push({ kind: "portable ZIP extraction", status: expand.status, error: expand.error?.message, stdout: expand.stdout, stderr: expand.stderr });
+} else {
+  const portableExe = path.join(portableDir, "OpenFront Replay Coach.exe");
+  const portableAsar = path.join(portableDir, "resources", "app.asar");
+  if (!existsSync(portableExe) || !existsSync(portableAsar) || statSync(portableExe).size <= 1_000_000 || statSync(portableAsar).size <= 1_000) {
+    failures.push({ kind: "portable ZIP contents", executableExists: existsSync(portableExe), appAsarExists: existsSync(portableAsar) });
+  } else {
+    runRendererSmoke("portable ZIP", portableExe);
+  }
 }
 if (failures.length > 0) {
   console.error("WINDOWS_DISTRIBUTION_FAILURE_SUMMARY", JSON.stringify(failures, null, 2));
   throw new Error(`Windows distribution verification failed in ${failures.length} attempt(s); no installer or portable failure was ignored.`);
 }
 console.log("WINDOWS_DISTRIBUTIONS_OK", JSON.stringify({ installerAttempts, successfulInstallerAttempts: installerAttempts, portable: true, idleSoakMs }));
-
-const expand = spawnSync("powershell.exe", ["-NoProfile", "-NonInteractive", "-Command", "Expand-Archive -LiteralPath $env:OFRC_PORTABLE_ZIP -DestinationPath $env:OFRC_PORTABLE_DIR -Force"], {
-  encoding: "utf8", windowsHide: true,
-  env: { ...process.env, OFRC_PORTABLE_ZIP: portable, OFRC_PORTABLE_DIR: portableDir },
-  timeout: 180_000,
-});
-if (expand.error || expand.status !== 0) throw new Error(`Portable ZIP extraction failed: ${expand.error ?? expand.stderr ?? expand.stdout}`);
-const portableExe = path.join(portableDir, "OpenFront Replay Coach.exe");
-const portableAsar = path.join(portableDir, "resources", "app.asar");
-assert.ok(existsSync(portableExe) && statSync(portableExe).size > 1_000_000, "Portable ZIP is missing its directly launchable executable.");
-assert.ok(existsSync(portableAsar) && statSync(portableAsar).size > 1_000, "Portable ZIP is missing resources/app.asar.");
-
-const smokeScript = path.join(root, "scripts", "smoke-test-windows.mjs");
-const idleSoakMs = process.env.OFRC_IDLE_SOAK_MS ?? "300000";
-for (const [kind, executable] of [["installed NSIS", installedExe], ["portable ZIP", portableExe]]) {
-  console.log(`Launching ${kind} distribution: ${executable}`);
-  const smoke = spawnSync(process.execPath, [smokeScript, executable], {
-    stdio: "inherit", windowsHide: true,
-    env: { ...process.env, OFRC_IDLE_SOAK_MS: idleSoakMs },
-    timeout: Number(idleSoakMs) + 180_000,
-  });
-  if (smoke.error || smoke.status !== 0) throw new Error(`${kind} renderer smoke test failed (status ${smoke.status}): ${smoke.error ?? "see smoke-test output"}`);
-}
-console.log("WINDOWS_DISTRIBUTIONS_OK: installer and portable are distinct, extracted/installed and both launched with a responsive renderer.");

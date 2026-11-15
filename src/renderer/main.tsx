@@ -22,6 +22,7 @@ import { compactBatchMatchForUi, mergeReplayPlayerCounts, preferReplayPlayerCoun
 import { getReplayDisplayState } from './replayPresentation';
 import { buildReplayEngineCoverageReport } from './ReplayEngineCoverage';
 import { ReplayVisualization } from './ReplayVisualization';
+import { toReplayCoachFindings } from './ReplayCoachIntegration';
 
 // Electron provides its API through the isolated preload; normal browsers use
 // the browser adapter so the same React interface powers Windows and Android.
@@ -899,7 +900,12 @@ function CoachPanel({apiResult,preferredPlayerPublicId,decodedActions,simulation
     : null;
 
   const { ordered: orderedEngineInsights, primary: primaryEngineInsights, supporting: supportingEngineInsights } = selectPrimaryCoachInsights(engineInsights);
-  const replayTimeline = buildReplayTimeline(timeline, primaryEngineInsights);
+  const proCoachFindings = simulationResult?.status === 'verified' && selectedClientId && proCoachReport
+    ? toReplayCoachFindings(proCoachReport.findings, apiResult.gameId, selectedClientId, selectedActionReviews, simulationResult.samples)
+    : [];
+  const replayTimeline = [...buildReplayTimeline(timeline, primaryEngineInsights), ...proCoachFindings.flatMap(finding =>
+    finding.timestampSeconds === null ? [] : [{ id: 'pro-' + finding.id, time: finding.timestampSeconds, title: finding.title, detail: finding.consequence, kind: 'Strategisches Coaching', turn: null }],
+  )].sort((a,b)=>a.time-b.time);
   const selectedTimelineEntry = replayTimeline.find(event => event.id === selectedTimelineId) ?? replayTimeline[0] ?? null;
   React.useEffect(()=>{setSelectedTimelineId(null);},[apiResult.gameId]);
   const leadEngineInsight = primaryEngineInsights[0] ?? null;
@@ -1240,13 +1246,14 @@ function CoachPanel({apiResult,preferredPlayerPublicId,decodedActions,simulation
         mapPreview={apiResult.previewUrl}
         durationSeconds={apiResult.durationSeconds ?? 0}
         samples={simulationResult?.status === 'verified' ? simulationResult.samples : []}
+        findings={proCoachFindings}
         events={replayTimeline.map(event => ({
           id: event.id,
           title: event.title,
           kind: event.kind,
           detail: event.detail,
           time: event.time,
-          isCoach: Boolean(event.insight),
+          isCoach: Boolean(event.insight) || event.id.startsWith('pro-'),
         }))}
         selectedEventId={selectedTimelineEntry?.id ?? null}
         onSelectEvent={setSelectedTimelineId}

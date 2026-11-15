@@ -421,7 +421,7 @@ window.__runBatchReplayTest = async (gameIds) => {
       // The unsupported-engine fixture is a deliberately mutated copy of the
       // Europe replay, not a third match. Persisting it under an alias would
       // hide a duplicate-key overwrite and would falsely inflate match counts.
-      if (item.gameId !== "unsupported-engine"
+      if (!["unsupported-engine", "hash-mismatch", "malformed-replay"].includes(item.gameId)
         && (status === "verified" || status === "unverified" || status === "failed")) {
         await saveImportedMatch("ci-batch-player", {
           game: {

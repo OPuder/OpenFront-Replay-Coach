@@ -269,7 +269,7 @@ jobs:
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
           ANDROID_BASELINE_TAG: v2.2.51
           PREVIOUS_APK: ${{ runner.temp }}/ofrc-android-baseline/OpenFront-Replay-Coach-2.2.51-Android.apk
-          OPENFRONT_CURRENT_APK: android/app/build/outputs/apk/release/app-release.apk
+          OPENFRONT_CURRENT_APK: ${{ runner.temp }}/openfront-coach-android-upgrade-test.apk
           ANDROID_SIGNING_VERIFY_ONLY: "1"
           GH_TOKEN: ${{ github.token }}
         run: bash scripts/verify-android-release-signing.sh

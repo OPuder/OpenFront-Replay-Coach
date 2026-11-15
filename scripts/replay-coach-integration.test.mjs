@@ -47,6 +47,11 @@ test('keeps missing timestamps and unmatched evidence explicit without fabricati
   assert.match(result[0].uncertainty, /Zeitstempel/);
 });
 
+test('does not promote low-priority observations into the three strategic decision cards', () => {
+  const result = toReplayCoachFindings([finding({ priority: 'low' }), finding({ id: 'decision-2' })], 'match-1', 'self-client', [], []);
+  assert.deepEqual(result.map(item => item.id), ['decision-2']);
+});
+
 test('rejects cross-match or unscoped output when match/player identity is missing', () => {
   assert.deepEqual(toReplayCoachFindings([finding()], '', 'self-client', [], []), []);
   assert.deepEqual(toReplayCoachFindings([finding()], 'match-1', '', [], []), []);

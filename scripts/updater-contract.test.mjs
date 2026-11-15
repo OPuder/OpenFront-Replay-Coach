@@ -3,6 +3,15 @@ import { readFileSync } from "node:fs";
 const read = path => readFileSync(new URL("../" + path, import.meta.url), "utf8");
 const updater = read("src/main/updater.ts");
 const android = read("android-updater-template/ApkUpdaterPlugin.java");
+
+assert.ok(android.includes("inspectApkContainer(apk)"), "APK diagnostics must inspect the downloaded container.");
+assert.match(android, /ZIP-Header:/);
+assert.match(android, /Manifest-und-DEX-vorhanden/);
+assert.match(android, /Android kann die geprüfte APK nicht als Installationspaket lesen/);
+const enginePreparation = read("scripts/prepare-engines.mjs");
+assert.match(enginePreparation, /encoding: "utf8"/);
+assert.ok(enginePreparation.includes("maxBuffer: 32 * 1024 * 1024"));
+assert.match(enginePreparation, /Dependency installation failed for lockfile group/);
 const installer = read("scripts/install-android-updater-plugin.mjs");
 const renderer = read("src/renderer/UpdateCenter.tsx");
 const versionScript = read("scripts/set-release-version.mjs");
@@ -50,7 +59,7 @@ assert.match(android, /currentSigners/);
 assert.match(android, /expectedVersion\.equals\(incoming\.versionName\)/);
 assert.match(android, /incomingVersion <= installedVersion/);
 assert.match(android, /Arrays\.equals\(incomingSignatures, installedSignatures\)/);
-assert.match(android, /Android kann die heruntergeladene APK nicht als gültiges Installationspaket lesen/);
+assert.match(android, /Android kann die geprüfte APK nicht als Installationspaket lesen/);
 assert.match(updater, /-Verb RunAs/);
 assert.match(updater, /ofrc-installer-backup/);
 assert.match(updater, /BackupVerified/);
@@ -77,12 +86,12 @@ assert.match(androidSigningGate, /ANDROID_KEYSTORE_PATH/);
 assert.match(androidSigningGate, /Android signing certificate does not match/);
 assert.match(androidSigningGate, /apksigner.*verify/);
 const androidUpdateRegression = read("scripts/test-android-in-place-update.sh");
-assert.ok(androidUpdateRegression.includes('timeout 30s adb -s emulator-5554 shell "run-as $package_id sh -c'));
-assert.ok(androidUpdateRegression.includes('timeout 30s adb -s emulator-5554 shell "run-as $package_id cat files/update-regression/sentinel.txt"'));
+assert.ok(androidUpdateRegression.includes('adb_cmd() { timeout 60s adb -s emulator-5554 "$@"') || androidUpdateRegression.includes('timeout 30s adb -s emulator-5554 shell "run-as $package_id sh -c'));
+assert.ok(androidUpdateRegression.includes('adb_cmd shell "run-as $package_id cat files/update-regression/sentinel.txt"') || androidUpdateRegression.includes('timeout 30s adb -s emulator-5554 shell "run-as $package_id cat files/update-regression/sentinel.txt"'));
 assert.match(androidUpdateRegression, /install_apk\(\)\s*\{|adb -s emulator-5554 install -r/);
 assert.match(androidUpdateRegression, /keep-this-data/);
 assert.match(androidUpdateRegression, /versionCode=\$expected_version_code/);
-assert.ok(androidUpdateRegression.includes('timeout 30s adb -s emulator-5554 shell monkey -p "$package_id" 1'));
+assert.ok(androidUpdateRegression.includes('adb_cmd shell monkey -p "$package_id" 1') || androidUpdateRegression.includes('timeout 30s adb -s emulator-5554 shell monkey -p "$package_id" 1'));
 // This smoke script launches with monkey; process survival is covered by the newer bounded emulator regression.
 
 

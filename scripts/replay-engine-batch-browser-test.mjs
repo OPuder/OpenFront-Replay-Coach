@@ -128,9 +128,16 @@ async function main() {
     })) : null,
   }));
   assert.equal(batch.coaching.length, 2, "Both real replays should produce coach reports");
+  const replayIds = { Europe: "c2R2JHZgUi", Levant: "dLNCLHCvMK" };
+  assert.equal(new Set(batch.coaching.map(report => report.matchId)).size, 2,
+    "The two coaching reports must retain distinct canonical replay IDs");
   for (const gameId of ["Europe", "Levant"]) {
     const report = batch.coaching.find(item => item.gameId === gameId);
     assert.ok(report, `${gameId} coach report missing`);
+    assert.equal(report.matchId, replayIds[gameId], `${gameId} must retain its original replay match ID`);
+    assert.equal(report.engineId, gameId === "Europe"
+      ? "8b5d071eed95f07c701b32e4c64e95b03f8577c1"
+      : "bc3e3334c573c4959ec6a6745df6826d07233b4d");
     assert.equal(String(report.selectedPlayer).toLowerCase(), "oligenole");
     assert.equal(report.selectedClientId, report.clientId);
     assert.ok(report.clientId);
@@ -141,6 +148,10 @@ async function main() {
     assert.ok(report.engineInsights.length > 0);
     assert.ok(report.timeline.length > 0);
     assert.ok(report.selection.primary.length <= 3);
+    for (const entry of report.timeline) {
+      assert.equal(entry.matchId, report.matchId, `${gameId} timeline entry must retain its match identity`);
+      assert.ok(Number.isFinite(entry.time) && entry.time >= 0);
+    }
     for (const entry of report.timeline.filter(item => item.id.startsWith("coach-"))) {
       assert.ok(entry.insight.evidence);
       assert.ok(entry.insight.nextStep);
@@ -184,24 +195,25 @@ async function main() {
     await new Promise(resolve => setTimeout(resolve, 250));
   }
   const persisted = await window.webContents.executeJavaScript("window.__verifyBatchStoreTest()", true);
-  assert.equal(persisted.length, 3, "All selected match records must survive refresh");
-  for (const gameId of ["Europe", "Levant"]) {
+  assert.equal(persisted.length, 2, "Only the two real matches, not the mutated unsupported copy, must survive refresh");
+  assert.deepEqual(persisted.map(entry => entry.gameId).sort(), Object.values(replayIds).sort(),
+    "IndexedDB keys must be the original replay match IDs, not fixture labels");
+  for (const gameId of Object.values(replayIds)) {
     const item = persisted.find(entry => entry.gameId === gameId);
     assert.equal(item?.analysisStatus, "verified");
     assert.equal(item?.simulationStatus, "verified");
     assert.ok(item?.sampleCount > 0);
     assert.equal(item?.jsonExportRestored, true, `${gameId} must export its persisted original JSON after renderer reload`);
   }
-  const unsupportedStored = persisted.find(entry => entry.gameId === "unsupported-engine");
-  assert.equal(unsupportedStored?.status, "engine-mismatch");
-  assert.equal(unsupportedStored?.analysisStatus, "unsupported");
+  assert.equal(persisted.some(entry => entry.gameId === "unsupported-engine"), false,
+    "The unsupported duplicate fixture must never be persisted as a third match");
   console.log("Multi-match IndexedDB persistence after refresh:", JSON.stringify(persisted));
 
   const profile = await window.webContents.executeJavaScript("window.__verifyPersistedProfileTest()", true);
   assert.equal(profile.profilePresent, true, "Player profile must survive renderer restart");
   assert.equal(profile.profileName, "OligenOle");
-  assert.deepEqual(profile.gameIds, ["Europe", "Levant", "unsupported-engine"]);
-  assert.deepEqual(profile.verifiedGames, ["Europe", "Levant"]);
+  assert.deepEqual(profile.gameIds, Object.values(replayIds).sort());
+  assert.deepEqual(profile.verifiedGames, Object.values(replayIds).sort());
   console.log("Player profile after renderer restart:", JSON.stringify(profile));
 
   const playerIndex = await window.webContents.executeJavaScript("window.__verifyPlayerIndexTest()", true);

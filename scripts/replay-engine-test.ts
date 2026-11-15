@@ -298,7 +298,7 @@ window.__runBatchReplayTest = async (gameIds) => {
         recordedHashes: Array.isArray(item.record?.turns)
           ? item.record.turns.filter((turn: any) => turn?.hash !== null && turn?.hash !== undefined).length
           : 0,
-        error,
+        error: error ? String(error?.stack ?? error?.message ?? error) : null,
       });
       if (status === "verified" || status === "unverified" || status === "unsupported" || status === "failed") {
         await saveImportedMatch("ci-batch-player", {

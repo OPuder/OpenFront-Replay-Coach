@@ -12,29 +12,19 @@ if (!keystorePath || !storePassword || !keyAlias || !keyPassword) {
 
 const gradlePath = "android/app/build.gradle";
 let gradle = readFileSync(gradlePath, "utf8");
-if (!/android\\s*\\{/.test(gradle) || !/buildTypes\\s*\\{/.test(gradle)) {
+if (!/android\s*\{/.test(gradle) || !/buildTypes\s*\{/.test(gradle)) {
   throw new Error("Could not locate android { ... } and buildTypes { ... } in generated app/build.gradle.");
 }
 
-if (!/signingConfigs\\s*\\{[\\s\\S]*?release\\s*\\{/.test(gradle)) {
-  gradle = gradle.replace(
-    /android\\s*\\{/,
-    `android {
-    signingConfigs {
-        release {
-            storeFile file(System.getenv("ANDROID_KEYSTORE_PATH"))
-            storePassword System.getenv("ANDROID_KEYSTORE_PASSWORD")
-            keyAlias System.getenv("ANDROID_KEY_ALIAS")
-            keyPassword System.getenv("ANDROID_KEY_PASSWORD")
-        }
-    }
-`,
-  );
+if (!/signingConfigs\s*\{[\s\S]*?\brelease\s*\{/.test(gradle)) {
+  const signingBlock = "android {\n    signingConfigs {\n        release {\n            storeFile file(System.getenv(\"ANDROID_KEYSTORE_PATH\"))\n            storePassword System.getenv(\"ANDROID_KEYSTORE_PASSWORD\")\n            keyAlias System.getenv(\"ANDROID_KEY_ALIAS\")\n            keyPassword System.getenv(\"ANDROID_KEY_PASSWORD\")\n        }\n    }\n";
+  gradle = gradle.replace(/android\s*\{/, signingBlock);
 }
 
 function updateBuildType(source, type, { signWithRelease, debuggable }) {
-  const match = new RegExp(`buildTypes\\\\s*\\\\{[\\\\s\\\\S]*?\\\\b${type}\\\\s*\\\\{`).exec(source);
-  if (!match) throw new Error(`Could not locate the ${type} build type.`);
+  const pattern = "buildTypes\\s*\\{[\\s\\S]*?\\b" + type + "\\s*\\{";
+  const match = new RegExp(pattern).exec(source);
+  if (!match) throw new Error("Could not locate the " + type + " build type.");
   const open = source.indexOf("{", match.index + match[0].lastIndexOf(type));
   let depth = 0;
   let close = -1;
@@ -45,20 +35,16 @@ function updateBuildType(source, type, { signWithRelease, debuggable }) {
       if (depth === 0) { close = index; break; }
     }
   }
-  if (close < 0) throw new Error(`Could not locate the end of the ${type} build type.`);
+  if (close < 0) throw new Error("Could not locate the end of the " + type + " build type.");
   let block = source.slice(open + 1, close);
-  if (signWithRelease) {
-    if (/signingConfig\\s+signingConfigs\\.release/.test(block)) {
-      // Keep the permanent signing assignment.
-    } else {
-      block += "\\n            signingConfig signingConfigs.release";
-    }
+  if (signWithRelease && !/signingConfig\s+signingConfigs\.release/.test(block)) {
+    block += "\n            signingConfig signingConfigs.release";
   }
   if (debuggable !== undefined) {
-    if (/debuggable\\s+(?:true|false)/.test(block)) {
-      block = block.replace(/debuggable\\s+(?:true|false)/, `debuggable ${debuggable}`);
+    if (/debuggable\s+(?:true|false)/.test(block)) {
+      block = block.replace(/debuggable\s+(?:true|false)/, "debuggable " + debuggable);
     } else {
-      block += `\\n            debuggable ${debuggable}`;
+      block += "\n            debuggable " + debuggable;
     }
   }
   return source.slice(0, open + 1) + block + source.slice(close);

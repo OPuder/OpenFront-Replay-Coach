@@ -132,11 +132,11 @@ assert.match(appRenderer, /function navigateTo\([\s\S]*?engineReviewRunId\.curre
 
 const releaseUpgradeWorkflow = read(".github/workflows/release-on-main.yml");
 const releaseUpgradeScript = read("scripts/test-android-release-upgrade.sh");
-assert.match(releaseUpgradeWorkflow, /Install previous published APK and upgrade to exact signed release APK[\\s\\S]*?reactivecircus\\/android-emulator-runner@v2[\\s\\S]*?script: bash scripts\\/test-android-release-upgrade.sh/);
-assert.match(releaseUpgradeWorkflow, /Validate signed Android release-upgrade script syntax[\\s\\S]*?bash -n scripts\\/test-android-release-upgrade.sh/);
-assert.match(releaseUpgradeWorkflow, /timeout-minutes: 15[\\s\\S]*?emulator-boot-timeout: 600/);
+assert.ok(releaseUpgradeWorkflow.includes("Install previous published APK and upgrade to exact signed release APK") && releaseUpgradeWorkflow.includes("reactivecircus/android-emulator-runner@v2") && releaseUpgradeWorkflow.includes("script: bash scripts/test-android-release-upgrade.sh"));
+assert.ok(releaseUpgradeWorkflow.includes("Validate signed Android release-upgrade script syntax") && releaseUpgradeWorkflow.includes("bash -n scripts/test-android-release-upgrade.sh"));
+assert.ok(releaseUpgradeWorkflow.includes("timeout-minutes: 15") && releaseUpgradeWorkflow.includes("emulator-boot-timeout: 600"));
 assert.match(releaseUpgradeScript, /previous-release/);
-assert.match(releaseUpgradeScript, /function install_apk|install_apk\(\)\\s\\*\\{/);
+assert.ok(releaseUpgradeScript.includes("install_apk() {"));
 assert.match(releaseUpgradeScript, /adb -s emulator-5554 install -r/);
 assert.match(releaseUpgradeScript, /versionCode/);
 assert.match(releaseUpgradeScript, /cmd package resolve-activity/);

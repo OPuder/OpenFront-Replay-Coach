@@ -141,7 +141,7 @@ const releaseUpgradeScript = read("scripts/test-android-release-upgrade.sh");
 assert.match(releaseUpgradeWorkflow, /Install previous published APK and upgrade to the exact signed release APK[\s\S]*?reactivecircus\/android-emulator-runner@v2[\s\S]*?script: bash scripts\/test-android-release-upgrade.sh/);
 assert.match(releaseUpgradeWorkflow, /build-android:[\s\S]*?runs-on: ubuntu-22\.04/);
 assert.match(releaseUpgradeWorkflow, /api-level: 34[\s\S]*?cores: 2[\s\S]*?-memory 2048 -partition-size 4096/);
-assert.match(releaseUpgradeWorkflow, /Validate Android release-upgrade test script syntax[\\s\\S]*?bash -n scripts\\/test-android-release-upgrade.sh/);
+assert.match(releaseUpgradeWorkflow, /Validate Android release-upgrade test script syntax[\s\S]*?bash -n scripts\/test-android-release-upgrade.sh/);
 assert.match(releaseUpgradeScript, /previous-release/);
 assert.match(releaseUpgradeScript, /adb -s emulator-5554 install -r/);
 assert.match(releaseUpgradeScript, /versionCode/);

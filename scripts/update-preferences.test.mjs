@@ -3,18 +3,7 @@ import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import { pathToFileURL } from 'node:url';
 
-const source = readFileSync(new URL('../src/renderer/updatePreferences.ts', import.meta.url), 'utf8');
-const transpiled = source
-  .replace(/export interface UpdatePreferenceStorage \{[\s\S]*?\n\}/, '')
-  .replace(/: UpdatePreferenceStorage/g, '')
-  .replace(/\?: UpdatePreferenceStorage/g, '')
-  .replace(/: boolean/g, '')
-  .replace(/: string \| null/g, '')
-  .replace(/: Date/g, '')
-  .replace(/: string/g, '')
-  .replace(/: null/g, '');
-const moduleUrl = 'data:text/javascript;base64,' + Buffer.from(transpiled).toString('base64');
-const prefs = await import(moduleUrl);
+const prefs = await import('../src/renderer/updatePreferences.ts');
 
 function memoryStorage(initial = {}) {
   const values = new Map(Object.entries(initial));

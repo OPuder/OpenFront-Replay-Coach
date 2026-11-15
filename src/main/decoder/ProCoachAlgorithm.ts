@@ -219,7 +219,12 @@ export function buildProCoachReport(
       caveat:'30 Sekunden sind ein Beobachtungsfenster, kein vollständiger Kampfabschluss. Relative Verluste nutzen den letzten aktiven Replay-Zustand vor dem Befehl; andere Angriffe, passive Eroberungen und Reisezeiten können die Änderungen beeinflussen. Das ist kein sicherer Kausalnachweis.'
     });
   }
-  const loadedFronts=actions.filter(a=>a.type==='attack'&&a.ownFrontContextBefore&&((a.ownFrontContextBefore.activeTargetCount>=2)||(a.ownFrontContextBefore.incomingAttackCount>=1)));
+  // Only an already committed own target makes a new attack a parallel-front decision.
+  // Incoming pressure is important context, but by itself it does not prove that
+  // the player has opened or overloaded multiple offensive fronts.
+  const loadedFronts=actions.filter(a=>a.type==='attack'&&a.ownFrontContextBefore&&(
+    a.ownFrontContextBefore.activeTargetCount>=1||a.ownFrontContextBefore.outgoingAttackCount>=1
+  ));
   if(loadedFronts.length>=2){
     const reviews=loadedFronts.map(action=>{
       const ctx=action.ownFrontContextBefore!;

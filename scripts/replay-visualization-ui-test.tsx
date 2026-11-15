@@ -19,14 +19,18 @@ const previousSample: ReplayStateSample = {
   frame: 50,
   territory: { width: 4, height: 3, ownerRuns: [1,5,2,3,0,4] },
 };
+const findings=[{id:'finding-1',matchId:'test-match',timestampSeconds:10,title:'Neue Front trotz Druck',priority:'high' as const,confidence:'medium' as const,decision:'Zweites Ziel eröffnet',context:'Eine Front war bereits aktiv.',consequence:'Truppen wurden parallel gebunden.',alternative:'Zuerst bestehende Front stabilisieren.',learningRule:'Reserve vor Folgeangriff prüfen.',evidence:[{kind:'action' as const,seconds:10,frame:100,label:'Angriff',detail:'10:00 · Ziel Bravo'}],affectedPlayers:[{name:'Alpha',ownerId:1,role:'self' as const},{name:'Bravo',ownerId:2,role:'target' as const}],affectedOwnerIds:[1,2],uncertainty:'Zielspieler wurde über eindeutigen Namen aufgelöst.'}];
 const events=[{id:'coach-1',title:'Expansion verzögert',kind:'Coach',detail:'Ein belegter Test-Hinweis.',time:10,isCoach:true},{id:'event-2',title:'Angriff gestartet',kind:'Angriff',detail:'Engine-Ereignis.',time:15,isCoach:false}];
-function TestApp(){const [selected,setSelected]=React.useState('coach-1');return <ReplayVisualization mapName="Testmap" durationSeconds={30} events={events} samples={[previousSample,sample]} selectedEventId={selected} onSelectEvent={setSelected} onOpenReplay={()=>{}}/>;}
+function TestApp(){const [selected,setSelected]=React.useState('coach-1');return <ReplayVisualization mapName="Testmap" durationSeconds={30} events={events} findings={findings} samples={[previousSample,sample]} selectedEventId={selected} onSelectEvent={setSelected} onOpenReplay={()=>{}}/>;}
 createRoot(document.getElementById('root')!).render(<TestApp/>);
 (window as any).__uiTest=()=>({
   width:window.innerWidth,
   scrollWidth:document.documentElement.scrollWidth,
   buttons:[...document.querySelectorAll('button')].map(button=>({name:button.getAttribute('aria-label')||button.textContent?.trim()||'',pressed:button.getAttribute('aria-pressed')})),
   hasTerritory:!!document.querySelector('canvas.replay-viz-territory'),
+  hasPriorityCards:document.querySelectorAll('.replay-viz-priority-card').length===1,
+  hasAffectedOverlay:!!document.querySelector('canvas.replay-viz-territory-affected'),
+  hasDecision:document.querySelector('.replay-viz-coach-detail')?.textContent?.includes('Zweites Ziel eröffnet')??false,
   hasTerritoryChanges:!!document.querySelector('canvas.replay-viz-territory-changes'),
   hasMovement:!!document.querySelector('.replay-viz-movements line'),
   selectedTime:document.querySelector('.replay-viz-focus-head b')?.textContent,

@@ -83,6 +83,8 @@ assert.match(androidUpdateRegression, /adb -s emulator-5554 install -r/);
 assert.match(androidUpdateRegression, /keep-this-data/);
 assert.match(androidUpdateRegression, /versionCode=\$expected_version_code/);
 assert.match(androidUpdateRegression, /adb start-server/);
+assert.match(androidUpdateRegression, /function wait_for_package_service/);
+assert.match(androidUpdateRegression, /function install_apk_with_retry/);
 assert.match(androidUpdateRegression, /cmd package resolve-activity/);
 assert.match(androidUpdateRegression, /am start -W -n/);
 assert.match(androidUpdateRegression, /pidof/);

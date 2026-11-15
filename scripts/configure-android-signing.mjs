@@ -37,8 +37,12 @@ function updateBuildType(source, type, { signWithRelease, debuggable }) {
   }
   if (close < 0) throw new Error("Could not locate the end of the " + type + " build type.");
   let block = source.slice(open + 1, close);
-  if (signWithRelease && !/signingConfig\s+signingConfigs\.release/.test(block)) {
-    block += "\n            signingConfig signingConfigs.release";
+  if (signWithRelease) {
+    if (/signingConfig\s+signingConfigs\.[A-Za-z0-9_]+/.test(block)) {
+      block = block.replace(/signingConfig\s+signingConfigs\.[A-Za-z0-9_]+/, "signingConfig signingConfigs.release");
+    } else {
+      block += "\n            signingConfig signingConfigs.release";
+    }
   }
   if (debuggable !== undefined) {
     if (/debuggable\s+(?:true|false)/.test(block)) {

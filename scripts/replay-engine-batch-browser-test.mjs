@@ -102,6 +102,7 @@ async function main() {
     const report = batch.coaching.find(item => item.gameId === gameId);
     assert.ok(report, `${gameId} coach report missing`);
     assert.equal(String(report.selectedPlayer).toLowerCase(), "oligenole");
+    assert.equal(report.selectedClientId, report.clientId);
     assert.ok(report.clientId);
     assert.ok(report.verifiedHashes > 0);
     assert.ok(report.sampleCount > 0);
@@ -165,6 +166,13 @@ async function main() {
   assert.equal(unsupportedStored?.status, "engine-mismatch");
   assert.equal(unsupportedStored?.analysisStatus, "unsupported");
   console.log("Multi-match IndexedDB persistence after refresh:", JSON.stringify(persisted));
+
+  const profile = await window.webContents.executeJavaScript("window.__verifyPersistedProfileTest()", true);
+  assert.equal(profile.profilePresent, true, "Player profile must survive renderer restart");
+  assert.equal(profile.profileName, "OligenOle");
+  assert.deepEqual(profile.gameIds, ["Europe", "Levant", "unsupported-engine"]);
+  assert.deepEqual(profile.verifiedGames, ["Europe", "Levant"]);
+  console.log("Player profile after renderer restart:", JSON.stringify(profile));
 
   const playerIndex = await window.webContents.executeJavaScript("window.__verifyPlayerIndexTest()", true);
   assert.deepEqual(playerIndex, {

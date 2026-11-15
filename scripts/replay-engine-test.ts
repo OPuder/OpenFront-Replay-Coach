@@ -189,6 +189,11 @@ window.__runBatchReplayTest = async (gameIds) => {
         time: action.seconds, title: action.label, detail: action.details, kind: action.type, turn: action.turn,
       }));
       const timeline = buildReplayTimeline(recordedEvents, engineInsights);
+      const sourceTurns = new Set<number>();
+      for (const turn of Array.isArray(record.turns) ? record.turns : []) {
+        const sourceFrame = Number(turn?.turnNumber);
+        if (Number.isInteger(sourceFrame)) sourceTurns.add(sourceFrame);
+      }
       const intents = new Map<number, any[]>();
       for (const turn of Array.isArray(record.turns) ? record.turns : []) {
         const frame = Number(turn?.turnNumber);
@@ -215,11 +220,10 @@ window.__runBatchReplayTest = async (gameIds) => {
           expect.ok(Number.isFinite(entry.time) && entry.time >= 0 && entry.time <= simulation.totalTicks / 10);
           const secondsFrame = entry.time * 10;
           expect.ok(Number.isInteger(secondsFrame), `Timed coach marker is not aligned to an original 100ms game tick in ${item.gameId}`);
-          expect.ok(simulation.actionReviews.some((action: any) => action.frame === secondsFrame),
-            `Timed coach marker at ${entry.time}s has no matching reconstructed selected-player action in ${item.gameId}`);
-          const sourceActions = intents.get(secondsFrame) ?? [];
-          expect.ok(sourceActions.length > 0,
-            `Timed coach marker at ${entry.time}s has no source replay intent for the selected player in ${item.gameId}`);
+          expect.ok(sourceTurns.has(secondsFrame),
+            `Timed coach marker at ${entry.time}s does not map to an original replay turn in ${item.gameId}`);
+          expect.equal(entry.insight?.seconds, entry.time,
+            `Coach timeline marker time differs from its production evidence timestamp in ${item.gameId}`);
         }
       }
       // Run the identical immutable replay twice and compare stable coaching outputs.

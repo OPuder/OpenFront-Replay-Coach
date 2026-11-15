@@ -85,7 +85,7 @@ done
 [[ "$profile_ready" == true ]] || fail "The real UI did not finish loading the archived player's public profile."
 log "The public profile loaded through the app UI. Waiting for automatic import of full replay records."
 
-tap_text "Meine Partien"
+tap_text "Partien"
 replay_count=0
 for attempt in $(seq 1 600); do
   dump_ui || true

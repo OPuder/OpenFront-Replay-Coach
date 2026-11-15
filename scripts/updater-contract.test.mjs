@@ -255,7 +255,7 @@ assert.match(androidVersionTests, /signingConfig signingConfigs\\.release/);
 
 const windowsInPlace = read("scripts/verify-windows-in-place-updates.mjs");
 const windowsStorage = read("scripts/windows-webview-storage.mjs");
-assert.match(windowsInPlace, /OpenFront\.Replay\.Coach\.Setup\\.2\\.2\\.51\\.exe/);
+assert.match(windowsInPlace, /OpenFront\.Replay\.Coach\.Setup\.2\.2\.51\.exe/);
 assert.match(windowsInPlace, /OpenFront\.Replay\.Coach-2\.2\.51-win\.zip/);
 assert.match(windowsInPlace, /WINDOWS_IN_PLACE_UPGRADE_OK/);
 assert.match(windowsInPlace, /--user-data-dir=/);

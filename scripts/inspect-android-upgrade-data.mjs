@@ -5,8 +5,8 @@ const packageId = "de.openfront.replaycoach";
 const outputPath = process.env.OPENFRONT_STORAGE_SNAPSHOT ?? process.argv[2] ?? "android-upgrade-storage-snapshot.json";
 const adb = (...args) => execFileSync("adb", args, { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] }).trim();
 
-const pid = adb("shell", "pidof", packageId).split(/\\s+/)[0];
-if (!/^\\d+$/.test(pid ?? "")) throw new Error("The upgraded Android app is not running; cannot inspect its WebView.");
+const pid = adb("shell", "pidof", packageId).split(/\s+/)[0];
+if (!/^\d+$/.test(pid ?? "")) throw new Error("The upgraded Android app is not running; cannot inspect its WebView.");
 adb("forward", "tcp:9222", `localabstract:webview_devtools_remote_${pid}`);
 
 const targets = await fetch("http://127.0.0.1:9222/json/list").then(response => {

@@ -148,6 +148,7 @@ async function scheduleWindowsInstall(downloadPath: string, portable: boolean): 
     "      $RestoredHash = (Get-FileHash -LiteralPath $ArchivePath -Algorithm SHA256).Hash",
     '      if ($RestoredHash -ne $BeforeArchiveHash) { throw "Die wiederhergestellte Portable-Version stimmt nicht mit der Sicherung überein." }',
     '      $Restored = $true',
+    "      Add-Content -LiteralPath $Log -Value 'Rollback erfolgreich; vorherige Version wurde wiederhergestellt.'",
     '    } catch {',
     '      $_ | Out-String | Add-Content -LiteralPath $Log',
     "      Add-Content -LiteralPath $Log -Value ('WICHTIG: Die vorherige Portable-Version liegt als Sicherung unter ' + $Backup)",

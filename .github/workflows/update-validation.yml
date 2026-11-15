@@ -122,8 +122,10 @@ jobs:
       - name: Verify updater contract tests
         run: node --test scripts/updater-contract.test.mjs
 
-      - name: Validate signed Android release-upgrade script syntax
-        run: bash -n scripts/test-android-release-upgrade.sh
+      - name: Validate both Android upgrade test scripts
+        run: |
+          bash -n scripts/test-android-in-place-update.sh
+          bash -n scripts/test-android-release-upgrade.sh
 
       - name: Set up Java
         uses: actions/setup-java@v4
@@ -203,7 +205,7 @@ jobs:
           script: bash scripts/test-android-in-place-update.sh
 
       - name: Verify permanent Android release signing key and continuity
-        if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+        if: always() && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
         env:
           ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}

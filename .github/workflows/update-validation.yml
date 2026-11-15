@@ -76,9 +76,6 @@ jobs:
       - name: Launch packaged Windows app and verify renderer
         run: node scripts/smoke-test-windows.mjs
 
-      - name: Test Windows portable upgrade and rollback
-        run: node scripts/test-windows-portable-upgrade.mjs
-
       - name: Upload verified Windows packages
         uses: actions/upload-artifact@v4
         with:

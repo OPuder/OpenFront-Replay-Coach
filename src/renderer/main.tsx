@@ -1239,7 +1239,7 @@ function CoachPanel({apiResult,preferredPlayerPublicId,decodedActions,simulation
         mapName={apiResult.mapName}
         mapPreview={apiResult.previewUrl}
         durationSeconds={apiResult.durationSeconds ?? 0}
-        samples={simulationResult?.samples ?? []}
+        samples={simulationResult?.status === 'verified' ? simulationResult.samples : []}
         events={replayTimeline.map(event => ({
           id: event.id,
           title: event.title,

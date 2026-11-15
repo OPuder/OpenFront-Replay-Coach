@@ -8,7 +8,8 @@ import os from "node:os";
 const previous = path.resolve(process.env.PREVIOUS_RELEASE_DIR || "");
 const current = path.resolve(process.env.CURRENT_RELEASE_DIR || "release/packages");
 const temp = process.env.RUNNER_TEMP || os.tmpdir();
-const version = JSON.parse(readFileSync("package.json", "utf8")).version;
+const packageMetadata = JSON.parse(readFileSync("package.json", "utf8"));
+const version = packageMetadata.version;
 const oldInstaller = "OpenFront.Replay.Coach.Setup.2.2.51.exe";
 const oldPortable = "OpenFront.Replay.Coach-2.2.51-win.zip";
 const newInstaller = "OpenFront Replay Coach Setup " + version + ".exe";
@@ -36,8 +37,11 @@ async function launch(file, dataDir, port, mode) {
     env: { ...process.env, APPDATA: appData, LOCALAPPDATA: localData },
   });
   try {
-    run(process.execPath, [helper, mode, String(port)]);
-    return child;
+    const output = run(process.execPath, [helper, mode, String(port)]);
+    const diagnostic = JSON.parse(output.trim().split(/\r?\n/).at(-1));
+    assert.equal(diagnostic.mode, mode, "Storage helper returned an unexpected mode.");
+    assert.ok(diagnostic.renderer?.href && diagnostic.renderer?.origin, "Storage helper did not report the actual renderer URL and origin.");
+    return { child, diagnostic, chromiumData };
   } catch (error) {
     stop(child);
     throw error;
@@ -63,19 +67,25 @@ function extract(zip, directory) {
 async function verify(kind, baseline, update, dataDir, port) {
   rmSync(dataDir, { recursive: true, force: true });
   mkdirSync(dataDir, { recursive: true });
-  const appDataRoot = path.join(dataDir, "appdata", "OpenFront Replay Coach");
+  const appDataRoot = path.join(dataDir, "appdata", packageMetadata.productName || packageMetadata.name);
   mkdirSync(appDataRoot, { recursive: true });
   const playerHistory = path.join(appDataRoot, "player-history-upgrade-regression-player.json");
   const historyFixture = { complete: true, games: [{ gameId: "upgrade-regression-game", result: "victory" }], mapPreviews: {}, updatedAt: "2026-11-15T00:00:00.000Z" };
   writeFileSync(playerHistory, JSON.stringify(historyFixture), "utf8");
   const before = digest(baseline.archive);
-  let child = await launch(baseline.executable, dataDir, port, "seed");
-  stop(child);
+  const baselineSession = await launch(baseline.executable, dataDir, port, "seed");
+  stop(baselineSession.child);
   update();
   const candidate = update.candidate;
   assert.notEqual(digest(candidate.archive), before, kind + " did not replace application files.");
-  child = await launch(candidate.executable, dataDir, port, "verify");
-  stop(child);
+  assert.equal(path.resolve(candidate.executable), path.resolve(baseline.executable), kind + " changed the installed executable path instead of updating in place.");
+  assert.equal(path.resolve(candidate.archive), path.resolve(baseline.archive), kind + " changed the installed app.asar path instead of updating in place.");
+  const updatedSession = await launch(candidate.executable, dataDir, port, "verify");
+  stop(updatedSession.child);
+  assert.equal(updatedSession.chromiumData, baselineSession.chromiumData, kind + " changed the Chromium profile directory.");
+  assert.equal(updatedSession.diagnostic.renderer.origin, baselineSession.diagnostic.renderer.origin, kind + " changed the renderer origin.");
+  assert.equal(updatedSession.diagnostic.renderer.href, baselineSession.diagnostic.renderer.href, kind + " changed the renderer document URL.");
+  console.log("WINDOWS_STORAGE_CONTEXT", JSON.stringify({kind, baseline: baselineSession.diagnostic.renderer, updated: updatedSession.diagnostic.renderer, chromiumData: updatedSession.chromiumData, appDataRoot}));
   assert.deepEqual(JSON.parse(readFileSync(playerHistory, "utf8")), historyFixture, kind + " overwrote or removed the app's persisted player-history cache.");
   console.log("WINDOWS_IN_PLACE_UPGRADE_OK", kind, "v2.2.51 -> v" + version, "IndexedDB profile/replay/analysis, selected profile, settings marker and app-owned player-history cache retained");
 }

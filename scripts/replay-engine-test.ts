@@ -238,6 +238,36 @@ async function verifyRealReplayReactUi(gameId: string, record: any, result: any,
   } finally { root.unmount(); container.remove(); }
 }
 
+
+async function verifyUnavailableReplayReactUi() {
+  const container = document.createElement("div");
+  document.body.appendChild(container);
+  const root = createRoot(container);
+  const render = (samples: any[]) => flushSync(() => root.render(React.createElement(ReplayVisualization, {
+    mapName: "Unavailable-data regression", durationSeconds: 30, samples, findings: [], events: [],
+    selectedEventId: null, onSelectEvent: () => undefined, onOpenReplay: () => undefined,
+  })));
+  const nextFrame = () => new Promise<void>(resolve => requestAnimationFrame(() => resolve()));
+  try {
+    render([]); await nextFrame(); await nextFrame();
+    if (!container.querySelector(".replay-viz-no-findings") || container.querySelectorAll(".replay-viz-marker").length)
+      throw new Error("Empty replay must show the no-findings state without timeline markers");
+    if (!container.querySelector(".replay-viz-map-label") ||
+        container.querySelector(".replay-viz-map-head span:last-child")?.textContent !== "Kein Engine-Snapshot")
+      throw new Error("Empty replay must explicitly report that no engine snapshot is available");
+    render([{
+      tick: 50, frame: 999, territory: { width: 2, height: 2, ownerRuns: [1, 3] },
+      unitMovements: [], players: [], totalUnits: 0, falloutTiles: 0,
+    }]);
+    await nextFrame(); await nextFrame();
+    if (!container.querySelector(".replay-viz-map-label") ||
+        container.querySelector(".replay-viz-territory") ||
+        container.querySelector(".replay-viz-map-head span:last-child")?.textContent !== "Kein Engine-Snapshot")
+      throw new Error("Malformed/incomplete territory must be rejected and shown as unavailable, not as a real frame");
+    return { emptyReplay: "explicitly unavailable", malformedTerritory: "rejected without drawing or fabricated frame" };
+  } finally { root.unmount(); container.remove(); }
+}
+
 window.__setBatchReplay = (gameId, record) => {
   batchTestRecords.set(gameId, record);
 };
@@ -289,6 +319,7 @@ window.__runBatchReplayTest = async (gameIds) => {
       const realReactUi = status === "verified" && result && ["Europe", "Levant"].includes(item.gameId)
         ? await verifyRealReplayReactUi(item.gameId, item.record, result, coachingFindings)
         : null;
+      const unavailableReactUi = item.gameId === "Europe" ? await verifyUnavailableReplayReactUi() : null;
       outcomes.set(item.gameId, {
         gameId: item.gameId,
         status,
@@ -309,6 +340,7 @@ window.__runBatchReplayTest = async (gameIds) => {
         })),
         timelineFrameChecks,
         realReactUi,
+        unavailableReactUi,
         verifiedHashes: result?.verifiedHashes ?? 0,
         recordedHashes: Array.isArray(item.record?.turns)
           ? item.record.turns.filter((turn: any) => turn?.hash !== null && turn?.hash !== undefined).length

@@ -4,6 +4,8 @@ import { loadImportedMatch, loadImportedMatches, saveImportedMatch } from "../sr
 import { runSequentialBatchAnalysis } from "../src/renderer/BatchAnalysisRunner";
 import { assessReplayCompatibility } from "../src/main/decoder/ReplayCompatibility";
 import { resolveReplayJsonExport } from "../src/main/decoder/ReplayJsonExport";
+import { buildProCoachReport } from "../src/main/decoder/ProCoachAlgorithm";
+import { toReplayCoachFindings } from "../src/renderer/ReplayCoachIntegration";
 
 const batchTestRecords = new Map<string, any>();
 
@@ -142,9 +144,30 @@ window.__runBatchReplayTest = async (gameIds) => {
       return simulateReplay(record, buildReplayEngineAssets(record), onProgress, 50, clientId, signal);
     },
     onStatus: async (item, status, result, error) => {
+      const selectedClientId = status === "verified" && result?.playerReview?.clientID
+        ? String(result.playerReview.clientID)
+        : "";
+      const coachingFindings = selectedClientId && result
+        ? toReplayCoachFindings(
+            buildProCoachReport(result.samples as any, result.actionReviews as any, selectedClientId, result.totalTicks / 10).findings,
+            item.gameId,
+            selectedClientId,
+            result.actionReviews,
+            result.samples,
+          )
+        : [];
       outcomes.set(item.gameId, {
         gameId: item.gameId,
         status,
+        coachingFindings: coachingFindings.map(finding => ({
+          id: finding.id,
+          matchId: finding.matchId,
+          timestampSeconds: finding.timestampSeconds,
+          priority: finding.priority,
+          confidence: finding.confidence,
+          evidenceReferences: finding.evidence.length,
+          affectedOwnerIds: finding.affectedOwnerIds,
+        })),
         verifiedHashes: result?.verifiedHashes ?? 0,
         recordedHashes: Array.isArray(item.record?.turns)
           ? item.record.turns.filter((turn: any) => turn?.hash !== null && turn?.hash !== undefined).length

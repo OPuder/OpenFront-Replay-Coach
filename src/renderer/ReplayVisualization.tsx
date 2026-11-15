@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef } from 'react';
 import { ArrowUpRight, Crosshair, Map as MapIcon, Play, ShieldAlert, Swords } from 'lucide-react';
 import type { ReplayStateSample } from './ReplaySimulation';
+import { decodeTileOwners, selectTerritorySample, tileCoordinates } from './ReplayTerritory';
 import './ReplayVisualization.css';
 
 export type ReplayVisualizationEvent = {
@@ -38,13 +39,7 @@ export function ReplayVisualization({
   const duration = Math.max(1, durationSeconds);
   const currentTime = selected ? clamp(selected.time, 0, duration) : 0;
   const currentTick = currentTime * 10;
-  const sample = useMemo(() => {
-    let nearest: ReplayStateSample | null = null;
-    for (const candidate of samples) {
-      if (candidate.tick <= currentTick && (!nearest || candidate.tick > nearest.tick)) nearest = candidate;
-    }
-    return nearest ?? samples[0] ?? null;
-  }, [samples, currentTick]);
+  const sample = useMemo(() => selectTerritorySample(samples, currentTime), [samples, currentTime]);
   const territoryCanvas = useRef<HTMLCanvasElement>(null);
   const territory = sample?.territory ?? null;
   useEffect(() => {
@@ -53,18 +48,19 @@ export function ReplayVisualization({
     if (!canvas || !context || !territory) return;
     canvas.width = territory.width;
     canvas.height = territory.height;
+    const owners = decodeTileOwners(territory);
+    if (!owners) return;
     const image = context.createImageData(territory.width, territory.height);
-    let offset = 0;
-    for (let index = 0; index + 1 < territory.ownerRuns.length; index += 2) {
-      const owner = territory.ownerRuns[index];
-      const length = territory.ownerRuns[index + 1];
-      const color = owner ? playerColor(owner, sample?.players ?? []) : null;
+    for (let tile = 0; tile < owners.length; tile++) {
+      const owner = owners[tile];
+      if (!owner) continue;
+      const color = playerColor(owner, sample?.players ?? []);
       let red = 0, green = 0, blue = 0;
-      if (color?.startsWith('#')) {
+      if (color.startsWith('#')) {
         red = parseInt(color.slice(1, 3), 16);
         green = parseInt(color.slice(3, 5), 16);
         blue = parseInt(color.slice(5, 7), 16);
-      } else if (color) {
+      } else {
         const hue = Number(color.match(/[0-9.]+/)?.[0] ?? 0) / 60;
         const chroma = .68 * .58;
         const x = chroma * (1 - Math.abs(hue % 2 - 1));
@@ -72,15 +68,11 @@ export function ReplayVisualization({
         const match = .58 - chroma / 2;
         [red, green, blue] = rgb.map(value => Math.round((value + match) * 255));
       }
-      const end = Math.min(offset + length, territory.width * territory.height);
-      for (let tile = offset; tile < end; tile++) {
-        const pixel = tile * 4;
-        image.data[pixel] = red;
-        image.data[pixel + 1] = green;
-        image.data[pixel + 2] = blue;
-        image.data[pixel + 3] = owner ? 150 : 0;
-      }
-      offset = end;
+      const pixel = tile * 4;
+      image.data[pixel] = red;
+      image.data[pixel + 1] = green;
+      image.data[pixel + 2] = blue;
+      image.data[pixel + 3] = 150;
     }
     context.putImageData(image, 0, 0);
   }, [territory, sample?.players]);
@@ -114,8 +106,9 @@ export function ReplayVisualization({
           {territory && <svg className="replay-viz-movements" viewBox={`0 0 ${territory.width} ${territory.height}`} preserveAspectRatio="none" aria-label="Aktive Einheitenziele aus Replay-Engine-Frame">
             <defs><marker id="replay-viz-arrow" markerWidth="5" markerHeight="5" refX="4" refY="2.5" orient="auto"><path d="M0,0 L5,2.5 L0,5" fill="#fff2a8"/></marker></defs>
             {movements.slice(0, 180).map((movement,index)=>{
-              const x1=movement.fromTile%territory.width, y1=Math.floor(movement.fromTile/territory.width);
-              const x2=movement.targetTile%territory.width, y2=Math.floor(movement.targetTile/territory.width);
+              const from=tileCoordinates(movement.fromTile,territory.width,territory.height), target=tileCoordinates(movement.targetTile,territory.width,territory.height);
+              if(!from||!target)return null;
+              const x1=from.x, y1=from.y, x2=target.x, y2=target.y;
               return <line key={index} x1={x1} y1={y1} x2={x2} y2={y2} stroke={playerColor(movement.ownerID,sample?.players??[])} strokeWidth={Math.max(.7,territory.width/700)} opacity=".88" markerEnd="url(#replay-viz-arrow)"><title>{`${playerNames.get(movement.ownerID)??'Spieler'} · ${movement.unitType} · ${movement.troops} Truppen`}</title></line>;
             })}
           </svg>}

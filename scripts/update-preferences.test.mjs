@@ -1,7 +1,5 @@
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
 import test from 'node:test';
-import { pathToFileURL } from 'node:url';
 
 const prefs = await import('../src/renderer/updatePreferences.ts');
 

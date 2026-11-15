@@ -143,7 +143,7 @@ async function main() {
     await new Promise(resolve => setTimeout(resolve, 250));
   }
   const persisted = await window.webContents.executeJavaScript("window.__verifyBatchStoreTest()", true);
-  assert.equal(persisted.length, 3, "All selected match records must survive refresh");
+  assert.equal(persisted.length, 5, "All selected match records must survive refresh");
   for (const gameId of ["Europe", "Levant"]) {
     const item = persisted.find(entry => entry.gameId === gameId);
     assert.equal(item?.analysisStatus, "verified");
@@ -154,6 +154,12 @@ async function main() {
   const unsupportedStored = persisted.find(entry => entry.gameId === "unsupported-engine");
   assert.equal(unsupportedStored?.status, "engine-mismatch");
   assert.equal(unsupportedStored?.analysisStatus, "unsupported");
+  const hashMismatchStored = persisted.find(entry => entry.gameId === "hash-mismatch");
+  assert.equal(hashMismatchStored?.analysisStatus, "failed");
+  assert.match(hashMismatchStored?.item?.analysisError ?? "", /Replay-Hash-Abweichung/);
+  const malformedStored = persisted.find(entry => entry.gameId === "malformed-replay");
+  assert.equal(malformedStored?.analysisStatus, "failed");
+  assert.match(malformedStored?.item?.analysisError ?? "", /Karten-ID/);
   console.log("Multi-match IndexedDB persistence after refresh:", JSON.stringify(persisted));
 
   const playerIndex = await window.webContents.executeJavaScript("window.__verifyPlayerIndexTest()", true);

@@ -148,12 +148,20 @@ window.__runBatchReplayTest = async (gameIds) => {
 
 
       const samples = simulation.samples.map((sample: any) => ({
-        tick: sample.tick, frame: sample.frame, spawnPositions: (sample as any).spawnPositions,
+        tick: sample.tick,
+        frame: sample.frame,
         players: sample.players.map((player: any) => ({
-          clientID: player.clientID, alive: player.alive, tiles: player.tiles,
-          gold: player.gold, goldEarned: player.goldEarned, troops: player.troops,
-          outgoingAttackDetails: player.outgoingAttackDetails, incomingAttackDetails: player.incomingAttackDetails,
-          allies: player.allies, betrayals: player.betrayals, unitCounts: player.unitCounts,
+          clientID: player.clientID,
+          alive: player.alive,
+          tiles: player.tiles,
+          gold: player.gold,
+          goldEarned: player.goldEarned,
+          troops: player.troops,
+          outgoingAttackDetails: player.outgoingAttackDetails,
+          incomingAttackDetails: player.incomingAttackDetails,
+          allies: player.allies,
+          betrayals: player.betrayals,
+          unitCounts: player.unitCounts,
         })),
       }));
       const actions = simulation.actionReviews.map((action: any) => ({
@@ -200,12 +208,20 @@ window.__runBatchReplayTest = async (gameIds) => {
         throw new Error(`Repeated simulation verification differs for ${item.gameId}`);
       }
       const repeatedSamples = repeated.samples.map((sample: any) => ({
-        tick: sample.tick, frame: sample.frame,
+        tick: sample.tick,
+        frame: sample.frame,
         players: sample.players.map((player: any) => ({
-          clientID: player.clientID, alive: player.alive, tiles: player.tiles,
-          gold: player.gold, goldEarned: player.goldEarned, troops: player.troops,
-          outgoingAttackDetails: player.outgoingAttackDetails, incomingAttackDetails: player.incomingAttackDetails,
-          allies: player.allies, betrayals: player.betrayals, unitCounts: player.unitCounts,
+          clientID: player.clientID,
+          alive: player.alive,
+          tiles: player.tiles,
+          gold: player.gold,
+          goldEarned: player.goldEarned,
+          troops: player.troops,
+          outgoingAttackDetails: player.outgoingAttackDetails,
+          incomingAttackDetails: player.incomingAttackDetails,
+          allies: player.allies,
+          betrayals: player.betrayals,
+          unitCounts: player.unitCounts,
         })),
       }));
       const repeatedActions = repeated.actionReviews.map((action: any) => ({

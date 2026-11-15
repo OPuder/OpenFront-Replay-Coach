@@ -90,8 +90,15 @@ assert.match(releaseWorkflow, /Download published release and verify every byte/
 assert.match(releaseWorkflow, /verify-release-artifacts\.mjs verify/);
 
 const updateValidationWorkflow = read(".github/workflows/update-validation.yml");
-assert.match(updateValidationWorkflow, /Build higher-version APK before emulator startup[\s\S]*?assembleDebug[\s\S]*?Test debug data preservation and real published-APK update/);
-assert.match(updateValidationWorkflow, /rm -f android\/app\/build\.gradle[\s\S]*?npx cap sync android[\s\S]*?node scripts\/install-android-updater-plugin\.mjs[\s\S]*?assembleDebug/, "The debug upgrade APK must be rebuilt from a clean generated Gradle project, not the release-signed project without its keystore environment.");
+assert.match(updateValidationWorkflow, /Recreate an unsigned Android project for isolated debug upgrade tests[\\s\\S]*?rm -rf android[\\s\\S]*?npx cap add android[\\s\\S]*?assembleDebug[\\s\\S]*?Test debug data preservation and real published-APK update/);
+assert.match(updateValidationWorkflow, /Preserve the permanently signed APK outside the generated Android project[\\s\\S]*?CURRENT_RELEASE_APK=/);
+assert.doesNotMatch(updateValidationWorkflow, /rm -f android\\/app\\/build\\.gradle/);
+const androidWebViewStorageTest = read("scripts/android-webview-storage.mjs");
+assert.match(androidWebViewStorageTest, /openfront-replay-coach/);
+assert.match(androidWebViewStorageTest, /upgrade-regression-player/);
+assert.match(androidWebViewStorageTest, /replay-records/);
+assert.match(androidWebViewStorageTest, /analysisStatus !== "verified"/);
+assert.match(androidWebViewStorageTest, /ofrc:update-regression-settings/);
 assert.match(androidUpdateRegression, /OPENFRONT_UPDATE_APK/);
 assert.doesNotMatch(androidUpdateRegression, /gradlew|assembleDebug/);
 assert.match(updateValidationWorkflow, /Test debug data preservation and real published-APK update[\s\S]*?if: steps\.parse_apk\.outcome == 'success'/);

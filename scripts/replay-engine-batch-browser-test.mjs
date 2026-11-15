@@ -45,6 +45,17 @@ async function main() {
 
   const europe = await loadReplay("c2R2JHZgUi", "8b5d071eed95f07c701b32e4c64e95b03f8577c1", "Europe", 1006, "Free For All", "Private");
   const levant = await loadReplay("dLNCLHCvMK", "bc3e3334c573c4959ec6a6745df6826d07233b4d", "Levant", 626, "Free For All", "Public");
+  const publicCohort = [
+    { gameId: "cHFTSJS4hT", map: "Scandinavia", commit: "0211f17b71efa762242b620b91ffa5d8439522e6", hashes: 998 },
+    { gameId: "c4DBD1VsyU", map: "Strait of Gibraltar", commit: "0211f17b71efa762242b620b91ffa5d8439522e6", hashes: 1736 },
+    { gameId: "c5gCRN1cHU", map: "France", commit: "0211f17b71efa762242b620b91ffa5d8439522e6", hashes: 1157 },
+    { gameId: "dzXSbgxQUe", map: "Warship Warship", commit: "bc3e3334c573c4959ec6a6745df6826d07233b4d", hashes: 1056 },
+    { gameId: "dbuAxuNWHz", map: "Mars", commit: "bc3e3334c573c4959ec6a6745df6826d07233b4d", hashes: 947 },
+    { gameId: "dLNCLHCvMK", map: "Levant", commit: "bc3e3334c573c4959ec6a6745df6826d07233b4d", hashes: 626 },
+  ];
+  const publicRecords = await Promise.all(publicCohort.map(fixture =>
+    loadReplay(fixture.gameId, fixture.commit, fixture.map, fixture.hashes, "Free For All", "Public"),
+  ));
   const unsupported = { ...europe, gitCommit: "0000000000000000000000000000000000000000" };
 
   server = spawn("node", ["node_modules/vite/bin/vite.js", "--host", "127.0.0.1", "--port", String(VITE_PORT), "--strictPort"], {

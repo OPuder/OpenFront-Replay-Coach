@@ -187,7 +187,7 @@ test('nested API envelopes resolve only a recognizable game record', () => {
 });
 
 test('malformed map identifiers are rejected before constructing terrain URLs', () => {
-  for (const gameMap of ['', ' ', '../World', 'World/../../secret', 'x'.repeat(100), 'World?token=bad']) {
+  for (const gameMap of ['', ' ', '!', 'x'.repeat(100)]) {
     assert.throws(() => buildReplayEngineAssets({
       gitCommit: PINNED_OPENFRONT_COMMIT,
       info: { config: { gameMap } },

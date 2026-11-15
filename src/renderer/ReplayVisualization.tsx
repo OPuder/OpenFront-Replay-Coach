@@ -40,6 +40,7 @@ export function ReplayVisualization({
   const currentTime = selected ? clamp(selected.time, 0, duration) : 0;
   const sample = useMemo(() => selectTerritorySample(samples, currentTime), [samples, currentTime]);
   const territoryCanvas = useRef<HTMLCanvasElement>(null);
+  const territoryChangesCanvas = useRef<HTMLCanvasElement>(null);
   const territory = sample?.territory ?? null;
   const previousSample = sample ? samples.reduce<ReplayStateSample | null>((previous, candidate) =>
     candidate.territory && candidate.tick < sample.tick && (!previous || candidate.tick > previous.tick) ? candidate : previous, null) : null;
@@ -87,6 +88,28 @@ export function ReplayVisualization({
     }
     context.putImageData(image, 0, 0);
   }, [territory, sample?.players]);
+  useEffect(() => {
+    const canvas = territoryChangesCanvas.current;
+    const context = canvas?.getContext('2d');
+    if (!canvas || !context || !territory) return;
+    canvas.width = territory.width;
+    canvas.height = territory.height;
+    context.clearRect(0, 0, canvas.width, canvas.height);
+    if (!previousSample?.territory || changedTerritoryTiles === null || changedTerritoryTiles === 0) return;
+    const currentOwners = decodeTileOwners(territory);
+    const previousOwners = decodeTileOwners(previousSample.territory);
+    if (!currentOwners || !previousOwners || currentOwners.length !== previousOwners.length) return;
+    const image = context.createImageData(territory.width, territory.height);
+    for (let tile = 0; tile < currentOwners.length; tile++) {
+      if (currentOwners[tile] === previousOwners[tile]) continue;
+      const pixel = tile * 4;
+      image.data[pixel] = 255;
+      image.data[pixel + 1] = 205;
+      image.data[pixel + 2] = 112;
+      image.data[pixel + 3] = 220;
+    }
+    context.putImageData(image, 0, 0);
+  }, [territory, previousSample?.territory, changedTerritoryTiles]);
 
   const movements = sample?.unitMovements ?? [];
   const playerNames = new Map((sample?.players ?? []).map(player => [player.id, player.name]));
@@ -114,6 +137,7 @@ export function ReplayVisualization({
         <div className="replay-viz-map-canvas" style={{aspectRatio: territory ? `${territory.width} / ${territory.height}` : '16 / 9'}}>
           {mapPreview && <img src={mapPreview} alt={`Kartenbasis ${mapName}`} loading="lazy"/>}
           {territory && <canvas ref={territoryCanvas} className="replay-viz-territory" aria-label="Territoriumsbesitz aus Replay-Engine-Snapshot"/>}
+          {territory && <canvas ref={territoryChangesCanvas} className="replay-viz-territory-changes" aria-label="Tiles mit Besitzerwechsel seit dem vorherigen Engine-Snapshot"/>}
           {territory && <svg className="replay-viz-movements" viewBox={`0 0 ${territory.width} ${territory.height}`} preserveAspectRatio="none" aria-label="Aktive Einheitenziele aus Replay-Engine-Frame">
             <defs><marker id="replay-viz-arrow" markerWidth="5" markerHeight="5" refX="4" refY="2.5" orient="auto"><path d="M0,0 L5,2.5 L0,5" fill="#fff2a8"/></marker></defs>
             {movements.slice(0, 180).map((movement,index)=>{

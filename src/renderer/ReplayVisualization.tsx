@@ -166,7 +166,7 @@ export function ReplayVisualization({
           {mapPreview && <img src={mapPreview} alt={`Kartenbasis ${mapName}`} loading="lazy"/>}
           {territory && <canvas ref={territoryCanvas} className="replay-viz-territory" aria-label="Territoriumsbesitz aus Replay-Engine-Snapshot"/>}
           {territory && <canvas ref={territoryChangesCanvas} className="replay-viz-territory-changes" aria-label="Tiles mit Besitzerwechsel seit dem vorherigen Engine-Snapshot"/>}
-          {territory && <canvas ref={territoryAffectedCanvas} className="replay-viz-territory-affected" aria-label="Gebiete der ausgewählten Coaching-Erkenntnis"/>}
+          {territory && <canvas ref={territoryAffectedCanvas} className="replay-viz-territory-affected" aria-label="Besitzgebiete der eindeutig zugeordneten beteiligten Spieler"/>}
           {territory && <svg className="replay-viz-movements" viewBox={`0 0 ${territory.width} ${territory.height}`} preserveAspectRatio="none" aria-label="Aktive Einheitenziele aus Replay-Engine-Frame">
             <defs><marker id="replay-viz-arrow" markerWidth="5" markerHeight="5" refX="4" refY="2.5" orient="auto"><path d="M0,0 L5,2.5 L0,5" fill="#fff2a8"/></marker></defs>
             {movements.slice(0, 180).map((movement,index)=>{
@@ -195,7 +195,7 @@ export function ReplayVisualization({
             <div><b>Lernregel</b><p>{selectedFinding.learningRule}</p></div>
             <div className="replay-viz-coach-evidence"><b>Replay-Beleg · {selectedFinding.timestampSeconds === null ? 'ohne Zeitstempel' : formatTime(selectedFinding.timestampSeconds)}</b>{selectedFinding.evidence.map((item,index)=><small key={index}>{item.label}{item.frame === null ? '' : ' · Frame '+item.frame} · {item.detail}</small>)}</div>
             <small className="replay-viz-coach-uncertainty">Sicherheit: {selectedFinding.confidence === 'unknown' ? 'nicht angegeben' : selectedFinding.confidence} · {selectedFinding.uncertainty}</small>
-            <small>Betroffene Spieler: {selectedFinding.affectedPlayers.length ? selectedFinding.affectedPlayers.map(player=>player.name).join(' · ') : 'nicht eindeutig auflösbar'}</small>
+            <small>Betroffene Spieler: {selectedFinding.affectedPlayers.length ? selectedFinding.affectedPlayers.map(player=>player.name).join(' · ') : 'nicht eindeutig auflösbar'}</small><small>Die Kartenmarkierung zeigt die gesamten Besitzgebiete dieser Spieler, keine einzelne Zielzone.</small>
           </div>}
           <div className="replay-viz-focus-foot"><small>{selected.isCoach ? 'Mit Replay-Zeitpunkt verknüpft' : 'Protokolliertes Replay-Ereignis'}</small><button type="button" onClick={onOpenReplay}>Original-Replay öffnen <ArrowUpRight size={14}/></button></div>
         </> : <div className="replay-viz-no-event"><Crosshair size={22}/><b>Noch keine Ereignisse markiert</b><small>Für diese Partie enthält die Timeline keine verwertbaren Marker.</small></div>}

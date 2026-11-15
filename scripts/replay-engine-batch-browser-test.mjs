@@ -107,7 +107,10 @@ async function main() {
   assert.equal(levantResult?.status, "verified");
   assert.equal(levantResult?.recordedHashes, 626);
   assert.equal(levantResult?.verifiedHashes, 626);
+  assert.deepEqual(batch.coaching.map(item => item.gameId).sort(), ["Europe", "Levant"],
+    "Both real replays must produce a profile-specific coaching review after exact-engine verification");
   console.log("Mixed-engine multi-match batch:", JSON.stringify({ summary: batch.summary, outcomes: batch.outcomes }));
+  console.log("Profile-specific Europe/Levant coaching ranking:", JSON.stringify(batch.coaching));
 
   const abortResult = await window.webContents.executeJavaScript(
     'window.__testAbortBatchReplay("Europe")',

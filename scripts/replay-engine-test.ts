@@ -2,6 +2,7 @@ import { buildReplayEngineAssets, simulateReplay } from "../src/renderer/ReplayS
 import { loadImportedMatch, loadImportedMatches, saveImportedMatch } from "../src/renderer/matchStore";
 import { runSequentialBatchAnalysis } from "../src/renderer/BatchAnalysisRunner";
 import { assessReplayCompatibility } from "../src/main/decoder/ReplayCompatibility";
+import { buildProCoachReport } from "../src/main/decoder/ProCoachAlgorithm";
 import { resolveReplayJsonExport } from "../src/main/decoder/ReplayJsonExport";
 
 const batchTestRecords = new Map<string, any>();
@@ -9,7 +10,7 @@ const batchTestRecords = new Map<string, any>();
 declare global {
   interface Window {
     __setBatchReplay?: (gameId: string, record: unknown) => void;
-    __runBatchReplayTest?: (gameIds: string[]) => Promise<{ summary: unknown; outcomes: Array<any> }>;
+    __runBatchReplayTest?: (gameIds: string[]) => Promise<{ summary: unknown; outcomes: Array<any>; coaching: Array<any> }>;
     __verifyBatchStoreTest?: () => Promise<Array<any>>;
     __prepareLegacyMatchStore?: () => Promise<void>;
     __verifyPlayerIndexTest?: () => Promise<{ indexPresent: boolean; playerAMatches: string[]; playerBMatches: string[]; legacyMatches: string[] }>;
@@ -119,6 +120,7 @@ window.__setBatchReplay = (gameId, record) => {
 window.__runBatchReplayTest = async (gameIds) => {
   const items = gameIds.map(gameId => ({ gameId, record: batchTestRecords.get(gameId) }));
   const outcomes = new Map<string, any>();
+  const coaching = new Map<string, any>();
   const controller = new AbortController();
   const summary = await runSequentialBatchAnalysis(items, {
     signal: controller.signal,
@@ -126,10 +128,11 @@ window.__runBatchReplayTest = async (gameIds) => {
     isCompatible: item => Boolean(item.record && assessReplayCompatibility(item.record).engineVersionCompatible),
     analyze: async (item, onProgress, signal) => {
       const record = item.record;
-      const clientId = Array.isArray(record?.info?.players)
-        ? String(record.info.players.find((player: any) => player?.clientID)?.clientID ?? "") || null
+      const selectedPlayer = Array.isArray(record?.info?.players)
+        ? record.info.players.find((player: any) => /oligenole/i.test(String(player?.displayName ?? player?.name ?? player?.username ?? "")))
         : null;
-      return simulateReplay(record, buildReplayEngineAssets(record), onProgress, 50, clientId, signal);
+      if (!selectedPlayer?.clientID) throw new Error(`Profile player missing from ${item.gameId} regression replay`);
+      return simulateReplay(record, buildReplayEngineAssets(record), onProgress, 50, String(selectedPlayer.clientID), signal);
     },
     onStatus: async (item, status, result, error) => {
       outcomes.set(item.gameId, {
@@ -141,6 +144,36 @@ window.__runBatchReplayTest = async (gameIds) => {
           : 0,
         error,
       });
+      if (status === "verified" && result?.playerReview?.clientID) {
+        const report = buildProCoachReport(result.samples, result.actionReviews, result.playerReview.clientID, result.totalTicks / 10);
+        const repeated = buildProCoachReport(result.samples, result.actionReviews, result.playerReview.clientID, result.totalTicks / 10);
+        const rank = { high: 3, medium: 2, low: 1 };
+        if (report.findings.length === 0 || report.findings.length > 3) {
+          throw new Error(`${item.gameId}: expected one to three prioritized profile-specific coaching findings`);
+        }
+        report.findings.forEach((finding, index) => {
+          if (!finding.evidence.trim() || !finding.decision.trim() || !finding.consequence.trim() ||
+              !finding.alternative.trim() || !finding.trainingRule.trim()) {
+            throw new Error(`${item.gameId}/${finding.id}: incomplete evidence-to-lesson chain`);
+          }
+          if (index > 0 && rank[report.findings[index - 1].priority] < rank[finding.priority]) {
+            throw new Error(`${item.gameId}: lower-impact finding ranked ahead of higher-impact finding`);
+          }
+        });
+        if (JSON.stringify(report.findings.map(finding => finding.id)) !==
+            JSON.stringify(repeated.findings.map(finding => finding.id))) {
+          throw new Error(`${item.gameId}: coaching ranking is not deterministic`);
+        }
+        coaching.set(item.gameId, {
+          player: result.playerReview.playerName,
+          sampleCount: result.samples.length,
+          actionCount: result.actionReviews.length,
+          findings: report.findings.map(({ id, priority, confidence, title, evidence, alternative }) =>
+            ({ id, priority, confidence, title, evidence, alternative })),
+          phases: report.phases.map(({ id, activeSamples, territoryPerMinute, incomePerMinute }) =>
+            ({ id, activeSamples, territoryPerMinute, incomePerMinute })),
+        });
+      }
       if (status === "verified" || status === "unverified" || status === "unsupported" || status === "failed") {
         await saveImportedMatch("ci-batch-player", {
           game: {
@@ -159,7 +192,7 @@ window.__runBatchReplayTest = async (gameIds) => {
     },
     onProgress: () => undefined,
   });
-  return { summary, outcomes: [...outcomes.values()] };
+  return { summary, outcomes: [...outcomes.values()], coaching: [...coaching.entries()].map(([gameId, report]) => ({ gameId, ...report })) };
 };
 
 window.__verifyBatchStoreTest = async () => {

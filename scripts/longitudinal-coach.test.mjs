@@ -280,3 +280,113 @@ test('trend compares medians of chronological three-match blocks and resists one
   assert.equal(trend.observations,6);
   assert.equal(trend.direction,'stable');
 });
+
+
+test('missing timestamps remain visible but cannot manufacture a chronological trend',()=>{
+  const matches=[
+    ...Array.from({length:5},(_,i)=>match('dated-'+i,{playedAt:`2026-03-0${i+1}T00:00:00Z`})),
+    match('undated',{playedAt:null}),
+  ];
+  const report=buildLongitudinalCoachReport(matches);
+  const trend=report.metricTrends.find(item=>item.id==='territory');
+  assert.equal(report.matchProgress.length,6);
+  assert.equal(trend?.observations,5);
+  assert.equal(trend?.direction,'insufficient-data');
+  assert.equal(trend?.previous,null);
+  assert.equal(trend?.latest,null);
+});
+
+test('identical timestamps are not treated as an ordered pair for trend claims',()=>{
+  const report=buildLongitudinalCoachReport([
+    match('a',{playedAt:'2026-04-01T00:00:00Z'}),
+    match('b',{playedAt:'2026-04-02T00:00:00Z'}),
+    match('c',{playedAt:'2026-04-03T00:00:00Z'}),
+    match('d',{playedAt:'2026-04-04T00:00:00Z'}),
+    match('e',{playedAt:'2026-04-04T00:00:00Z'}),
+    match('f',{playedAt:'2026-04-06T00:00:00Z'}),
+  ]);
+  const trend=report.metricTrends.find(item=>item.id==='territory');
+  assert.equal(report.matchProgress.length,6);
+  assert.equal(trend?.observations,4);
+  assert.equal(trend?.direction,'insufficient-data');
+});
+
+test('trend examples identify the exact matches behind improvements and regressions',()=>{
+  const makeTiles=(multiplier)=>makeSimulation({
+    samples:makeSimulation().samples.map(sample=>({...sample,players:sample.players.map(player=>({...player,tiles:player.tiles*multiplier}))})),
+    actionReviews:[],
+  });
+  const report=buildLongitudinalCoachReport([
+    ...['a','b','c'].map((id,i)=>match(id,{playedAt:`2026-05-0${i+1}T00:00:00Z`,simulation:makeTiles(1)})),
+    ...['d','e','f'].map((id,i)=>match(id,{playedAt:`2026-05-0${i+4}T00:00:00Z`,simulation:makeTiles(2)})),
+  ]);
+  const trend=report.metricTrends.find(item=>item.id==='territory');
+  assert.equal(trend?.direction,'improved');
+  assert.deepEqual(trend?.previousExamples.map(item=>item.gameId),['a','b','c']);
+  assert.deepEqual(trend?.latestExamples.map(item=>item.gameId),['d','e','f']);
+  assert.ok(trend?.latestExamples.every(item=>item.value>0));
+});
+
+test('duplicate IDs prefer a usable verified replay and never inflate recurring evidence',()=>{
+  const incomplete=match('same',{simulation:makeSimulation({playerReview:null})});
+  const complete=match('same');
+  const report=buildLongitudinalCoachReport([
+    incomplete,
+    complete,
+    match('other'),
+  ]);
+  assert.equal(report.importedMatches,2);
+  assert.equal(report.verifiedMatches,2);
+  assert.equal(report.comparableMatches,2);
+  assert.equal(report.recurringFindings.find(item=>item.id==='attack-follow-through')?.occurrences,2);
+});
+
+test('missing or incomplete match records are excluded without fabricating progress',()=>{
+  const report=buildLongitudinalCoachReport([
+    match('valid-a'),
+    match('missing-review',{simulation:makeSimulation({playerReview:null})}),
+    {...match('missing-simulation'),simulation:null},
+    {...match('missing-id'),gameId:'  '},
+  ]);
+  assert.equal(report.importedMatches,3);
+  assert.equal(report.verifiedMatches,1);
+  assert.equal(report.comparableMatches,1);
+  assert.equal(report.status,'insufficient-data');
+  assert.equal(report.matchProgress.length,1);
+  assert.equal(report.recurringFindings.length,0);
+});
+
+test('different match durations compare per-minute rates without mixing raw match totals',()=>{
+  const makeTimed=(durationSeconds,rate)=>makeSimulation({
+    totalTicks:durationSeconds*10,
+    samples:Array.from({length:15},(_,i)=>({
+      tick:i*(durationSeconds*10/14),
+      frame:i,
+      players:[{...makeSimulation().samples[0].players[0],tiles:100+i*rate,goldEarned:100+i*rate*2}],
+    })),
+    actionReviews:[],
+  });
+  const report=buildLongitudinalCoachReport([
+    match('short',{playedAt:'2026-06-01T00:00:00Z',durationSeconds:300,simulation:makeTimed(300,1)}),
+    match('long',{playedAt:'2026-06-02T00:00:00Z',durationSeconds:900,simulation:makeTimed(900,3)}),
+  ]);
+  assert.ok(Math.abs(report.matchProgress[0].territoryPerMinute-report.matchProgress[1].territoryPerMinute)<1e-6);
+  assert.ok(Math.abs(report.matchProgress[0].incomePerMinute-report.matchProgress[1].incomePerMinute)<1e-6);
+});
+
+test('early mid and late phase reviews require real samples in each observed phase',()=>{
+  const simulation=makeSimulation({
+    totalTicks:7200,
+    samples:Array.from({length:15},(_,i)=>({
+      tick:i*500,
+      frame:i*500,
+      players:[{...makeSimulation().samples[0].players[0],tiles:100+i*10,goldEarned:100+i*20}],
+    })),
+    actionReviews:[],
+  });
+  const report=buildLongitudinalCoachReport([match('phases',{durationSeconds:720,simulation})]);
+  const phases=report.matchProgress[0].phaseMomentum;
+  assert.ok(phases.early!==null);
+  assert.ok(phases.mid!==null);
+  assert.ok(phases.late!==null);
+});

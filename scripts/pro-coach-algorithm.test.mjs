@@ -177,3 +177,31 @@ test('match coach creates a spawn-position lesson from first-frame spatial evide
  assert.ok(report.findings.some(x=>x.id==='spawn-position-review'));
  assert.match(report.opening.limitation,/Owner-Grid/);
 });
+
+
+test('strategic impact outranks confidence when the high-impact evidence is sparse',()=>{
+ const samples=[sample(0,{tiles:100,goldEarned:100}),sample(500,{tiles:110,goldEarned:120})];
+ const spawn={clientID:'p1',name:'Player',startTiles:100,centerX:1,centerY:1,adjacentRivals:[2],rivalBorderContacts:3,nearestRivalDistance:2,classification:'contested'};
+ const withSpawn=samples.map((item,index)=>({...item,spawnPositions:index===0?[spawn]:[]}));
+ const actions=Array.from({length:3},(_,i)=>action(5+i*10,{
+   delta30s:{tiles:0,gold:-10,troops:-80},
+   targetDelta30s:{tiles:0,gold:0,troops:0},
+ }));
+ const report=buildProCoachReport(withSpawn,actions,'p1',60);
+ const attack=report.findings.find(item=>item.id==='attack-follow-through');
+ const position=report.findings.find(item=>item.id==='spawn-position-review');
+ assert.equal(attack?.priority,'high');
+ assert.equal(attack?.confidence,'low');
+ assert.equal(position?.priority,'medium');
+ assert.equal(position?.confidence,'medium');
+ assert.ok(report.findings.indexOf(attack)<report.findings.indexOf(position));
+});
+
+test('short sparse replays do not receive fabricated phase rates',()=>{
+ const report=buildProCoachReport([
+  sample(0,{tiles:100,goldEarned:100}),
+  sample(20,{tiles:120,goldEarned:140}),
+ ],[],'p1',600);
+ assert.ok(report.phases.every(phase=>phase.territoryPerMinute===null));
+ assert.equal(report.opening.confidence,'low');
+});

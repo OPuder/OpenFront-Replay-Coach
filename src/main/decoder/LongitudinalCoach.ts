@@ -41,7 +41,8 @@ export interface LongitudinalFinding {
 }
 
 export interface LongitudinalMatchProgress { gameId:string; mapName:string; playedAt:string|null; territoryPerMinute:number|null; incomePerMinute:number|null; attackFollowThroughPercent:number|null; attackFollowThroughSamples:number; phaseMomentum:{early:number|null;mid:number|null;late:number|null}; reviewedFindings:number; }
-export interface LongitudinalMetricTrend { id:"territory"|"income"|"attack-follow-through"; label:string; previous:number|null; latest:number|null; delta:number|null; observations:number; direction:"improved"|"declined"|"stable"|"insufficient-data"; unit:string; }
+export interface LongitudinalTrendExample { gameId:string; mapName:string; playedAt:string|null; value:number; }
+export interface LongitudinalMetricTrend { id:"territory"|"income"|"attack-follow-through"; label:string; previous:number|null; latest:number|null; delta:number|null; observations:number; direction:"improved"|"declined"|"stable"|"insufficient-data"; unit:string; previousExamples:LongitudinalTrendExample[]; latestExamples:LongitudinalTrendExample[]; }
 export interface LongitudinalTrainingGoal {
   id: string;
   title: string;
@@ -170,22 +171,26 @@ export function buildLongitudinalCoachReport(
 ): LongitudinalCoachReport {
   // De-duplicate stable game IDs before calculating confidence and patterns.
   // Duplicate imports must never manufacture recurring evidence.
-  const importedByGame = new Map<string, LongitudinalMatchInput>();
+  const importedByGame = new Map<string, NormalizedMatch | null>();
   for (const match of matches) {
     const gameId = String(match.gameId ?? "").trim();
     if (!gameId) continue;
-    const existing = importedByGame.get(gameId);
-    if (!existing) {
-      importedByGame.set(gameId, match);
+    const candidate = buildMatchReport(match);
+    if (!importedByGame.has(gameId)) {
+      importedByGame.set(gameId, candidate);
       continue;
     }
-    const existingVerified = existing.analysisStatus === "verified" && existing.simulation?.status === "verified";
-    const candidateVerified = match.analysisStatus === "verified" && match.simulation?.status === "verified";
-    if (candidateVerified && !existingVerified) importedByGame.set(gameId, match);
+    const existing = importedByGame.get(gameId) ?? null;
+    // Prefer a genuinely usable verified report, not just status flags. A partial
+    // duplicate may carry "verified" metadata while lacking the selected player.
+    if (candidate && (!existing ||
+      candidate.report.dataCoverage.samples + candidate.report.dataCoverage.actions >
+      existing.report.dataCoverage.samples + existing.report.dataCoverage.actions)) {
+      importedByGame.set(gameId, candidate);
+    }
   }
-  const imported = [...importedByGame.values()];
-  const verified = imported
-    .map(input => buildMatchReport(input))
+  const imported = [...importedByGame.keys()];
+  const verified = [...importedByGame.values()]
     .filter((entry): entry is NormalizedMatch => entry !== null);
 
   const groups = new Map<string, NormalizedMatch[]>();
@@ -203,11 +208,27 @@ export function buildLongitudinalCoachReport(
     { id: "late" as const, label: "Late Game" },
   ];
 
-  const chronological = [...comparable].sort((a,b) => {
-    const left=a.input.playedAt?Date.parse(a.input.playedAt):Number.NaN, right=b.input.playedAt?Date.parse(b.input.playedAt):Number.NaN;
-    if(Number.isFinite(left)&&Number.isFinite(right)&&left!==right)return left-right;
-    if(Number.isFinite(left)!==Number.isFinite(right))return Number.isFinite(left)?-1:1;
-    return a.input.gameId.localeCompare(b.input.gameId);
+  // Preserve caller order for missing/equal timestamps. A game ID is not a
+  // substitute for chronology: it is deterministic, but says nothing about time.
+  const chronological = comparable.map((entry, index) => ({ entry, index, timestamp:
+    typeof entry.input.playedAt === "string" && entry.input.playedAt.trim()
+      ? Date.parse(entry.input.playedAt) : Number.NaN,
+  })).sort((a, b) => {
+    const aValid = Number.isFinite(a.timestamp), bValid = Number.isFinite(b.timestamp);
+    if (aValid && bValid && a.timestamp !== b.timestamp) return a.timestamp - b.timestamp;
+    if (aValid !== bValid) return aValid ? -1 : 1;
+    return a.index - b.index;
+  }).map(item => item.entry);
+  const timestampCounts = new Map<number, number>();
+  for (const entry of comparable) {
+    const value = typeof entry.input.playedAt === "string" ? Date.parse(entry.input.playedAt) : Number.NaN;
+    if (Number.isFinite(value)) timestampCounts.set(value, (timestampCounts.get(value) ?? 0) + 1);
+  }
+  // Only unique, parseable timestamps can support a directional trend. Missing or
+  // tied timestamps remain visible in match history and recurrence evidence.
+  const trendChronological = chronological.filter(entry => {
+    const value = typeof entry.input.playedAt === "string" ? Date.parse(entry.input.playedAt) : Number.NaN;
+    return Number.isFinite(value) && timestampCounts.get(value) === 1;
   });
   const matchProgress:LongitudinalMatchProgress[]=chronological.map(entry=>{
     const phase=(id:"early"|"mid"|"late")=>entry.report.phases.find(item=>item.id===id);
@@ -223,18 +244,26 @@ export function buildLongitudinalCoachReport(
       reviewedFindings:entry.report.findings.length};
   });
   const trend=(id:"territory"|"income"|"attack-follow-through",label:string,unit:string):LongitudinalMetricTrend=>{
-    const values=matchProgress.map(item=>id==="territory"?item.territoryPerMinute:id==="income"?item.incomePerMinute:item.attackFollowThroughPercent).filter((value):value is number=>value!==null&&Number.isFinite(value));
-    // Compare chronological three-match blocks, using medians to dampen outliers.
-    // Require two observations per block before exposing a direction.
+    const valueFor=(item:LongitudinalMatchProgress)=>id==="territory"?item.territoryPerMinute:id==="income"?item.incomePerMinute:item.attackFollowThroughPercent;
+    const values=trendChronological.map(entry=>{
+      const item=matchProgress.find(progress=>progress.gameId===entry.input.gameId);
+      const value=item?valueFor(item):null;
+      return item&&value!==null&&Number.isFinite(value)?{gameId:item.gameId,mapName:item.mapName,playedAt:item.playedAt,value}:null;
+    }).filter((value):value is {gameId:string;mapName:string;playedAt:string|null;value:number}=>value!==null);
+    // Compare the latest two complete chronological three-match windows. Missing
+    // values are not compressed across unknown dates; tied/absent dates are excluded.
     const blockSize=3;
     const previousBlock=values.slice(-blockSize*2,-blockSize);
     const latestBlock=values.slice(-blockSize);
-    const previous=previousBlock.length>=2?median(previousBlock):null;
-    const latest=latestBlock.length>=2?median(latestBlock):null;
+    const previous=previousBlock.length>=2?median(previousBlock.map(item=>item.value)):null;
+    const latest=latestBlock.length>=2?median(latestBlock.map(item=>item.value)):null;
     const delta=previous!==null&&latest!==null?latest-previous:null;
     const threshold=previous===null?0:Math.max(0.05,Math.abs(previous)*0.03);
     const direction=delta===null?"insufficient-data":delta>threshold?"improved":delta< -threshold?"declined":"stable";
-    return {id,label,previous,latest,delta,observations:values.length,direction,unit};
+    return {id,label,previous,latest,delta,observations:values.length,direction,unit,
+      previousExamples:previousBlock.map(({gameId,mapName,playedAt,value})=>({gameId,mapName,playedAt,value})),
+      latestExamples:latestBlock.map(({gameId,mapName,playedAt,value})=>({gameId,mapName,playedAt,value})),
+    };
   };
   const metricTrends=[trend("territory","Gebietszuwachs","Gebiete/min"),trend("income","Einkommenszuwachs","Gold/min"),trend("attack-follow-through","Angriffs-Folge","%")];
 

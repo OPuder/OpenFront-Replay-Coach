@@ -198,7 +198,10 @@ export function buildProCoachReport(
   // Stable presentation utility balances estimated impact, evidence confidence,
   // lesson quality and earlier actionable moments. It is not a gameplay score.
   const confidenceWeight:Record<ProCoachConfidence,number>={high:3,medium:2,low:1};
-  const impactWeight:Record<ProCoachFinding['priority'],number>={high:3,medium:2,low:1};
+  // Priority is the evidence-backed impact tier and must dominate confidence:
+  // a high-impact finding with sparse evidence stays visible, but its confidence
+  // remains explicit and cannot be silently promoted.
+  const impactWeight:Record<ProCoachFinding['priority'],number>={high:20,medium:10,low:1};
   const learningWeight=(finding:ProCoachFinding)=>finding.trainingRule.trim().length>=24&&finding.alternative.trim().length>=24?2:1;
   const ranked=[...findings].sort((a,b)=>{
     const utility=(finding:ProCoachFinding)=>impactWeight[finding.priority]*4

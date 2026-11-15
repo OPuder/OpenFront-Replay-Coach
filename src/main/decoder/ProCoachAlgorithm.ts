@@ -225,31 +225,40 @@ export function buildProCoachReport(
   const loadedFronts=actions.filter(a=>a.type==='attack'&&a.ownFrontContextBefore&&(
     a.ownFrontContextBefore.activeTargetCount>=1||a.ownFrontContextBefore.outgoingAttackCount>=1
   ));
-  if(loadedFronts.length>=2){
-    const reviews=loadedFronts.map(action=>{
-      const ctx=action.ownFrontContextBefore!;
-      const before=playerStateBefore(action.seconds);
-      const ownLoss=Math.max(0,-(action.delta30s?.troops??0));
-      const targetLoss=Math.max(0,-(action.targetDelta30s?.troops??0));
-      const ownTileLoss=Math.max(0,-(action.delta30s?.tiles??0));
-      const troopLossShare=before&&before.troops>0?ownLoss/before.troops:null;
-      const tileLossShare=before&&before.tiles>0?ownTileLoss/before.tiles:null;
-      const territoryProgress=(action.delta30s?.tiles??0)>0||(action.targetDelta30s?.tiles??0)<0;
-      const severeOutcome=action.delta30s!==null&&action.targetDelta30s!==null&&!territoryProgress&&ownLoss>targetLoss&&((troopLossShare??0)>=.2||(tileLossShare??0)>=.1);
-      const commitmentShare=before&&before.troops>0?ctx.outgoingAttackTroops/before.troops:null;
-      return {action,ctx,before,ownLoss,targetLoss,troopLossShare,tileLossShare,severeOutcome,commitmentShare};
-    });
-    const review=reviews.find(item=>item.severeOutcome)??reviews[0];
+  const frontReviews=loadedFronts.map(action=>{
+    const ctx=action.ownFrontContextBefore!;
+    const before=playerStateBefore(action.seconds);
+    const ownLoss=Math.max(0,-(action.delta30s?.troops??0));
+    const targetLoss=Math.max(0,-(action.targetDelta30s?.troops??0));
+    const ownTileLoss=Math.max(0,-(action.delta30s?.tiles??0));
+    const troopLossShare=before&&before.troops>0?ownLoss/before.troops:null;
+    const tileLossShare=before&&before.tiles>0?ownTileLoss/before.tiles:null;
+    const territoryProgress=(action.delta30s?.tiles??0)>0||(action.targetDelta30s?.tiles??0)<0;
+    const severeOutcome=action.delta30s!==null&&action.targetDelta30s!==null&&!territoryProgress&&ownLoss>targetLoss&&((troopLossShare??0)>=.2||(tileLossShare??0)>=.1);
+    const commitmentShare=before&&before.troops>0?ctx.outgoingAttackTroops/before.troops:null;
+    return {action,ctx,before,ownLoss,targetLoss,troopLossShare,tileLossShare,severeOutcome,commitmentShare};
+  });
+  const riskyFrontReviews=frontReviews.filter(item=>
+    item.severeOutcome||
+    (item.commitmentShare??0)>=.55||
+    (item.ctx.incomingAttackCount>0&&(item.commitmentShare??0)>=.35)
+  );
+  if(riskyFrontReviews.length>0){
+    const review=[...riskyFrontReviews].sort((a,b)=>
+      Number(b.severeOutcome)-Number(a.severeOutcome)||
+      (b.commitmentShare??0)-(a.commitmentShare??0)||
+      b.ctx.incomingAttackCount-a.ctx.incomingAttackCount
+    )[0];
     const a=review.action,ctx=review.ctx;
     findings.push({
-      id:'front-load',strategicClass:'decision',priority:review.severeOutcome?'high':'medium',confidence:confidenceFor(alive.length,loadedFronts.length),
-      title:'Angriffsziele parallel gebunden',
-      decision:'Bei '+loadedFronts.length+' Angriffsbefehlen bestand bereits mindestens eine eigene aktive Zielbindung.',
-      consequence:'Bei '+clock(a.seconds)+' liefen '+ctx.activeTargetCount+' eigene Zielbindungen und '+ctx.incomingAttackCount+' eingehende Angriffe; '+fmt(ctx.outgoingAttackTroops)+' eigene Truppen waren unterwegs.'+(a.delta30s&&a.targetDelta30s?' Im 30-Sekunden-Fenster: eigene Truppen '+fmt(a.delta30s.troops)+', Zieltruppen '+fmt(a.targetDelta30s.troops)+', eigenes Gebiet '+fmt(a.delta30s.tiles)+', Zielgebiet '+fmt(a.targetDelta30s.tiles)+'.':''),
+      id:'front-load',strategicClass:'decision',priority:review.severeOutcome?'high':'medium',confidence:confidenceFor(alive.length,riskyFrontReviews.length),
+      title:'Neue Zielfront unter hoher Truppenbindung eröffnet',
+      decision:'Bei '+riskyFrontReviews.length+' Angriffsbefehlen war eine hohe bestehende Truppenbindung oder eine messbare negative Folge belegt.',
+      consequence:'Bei '+clock(a.seconds)+' liefen '+ctx.activeTargetCount+' eigene Zielbindungen und '+ctx.incomingAttackCount+' eingehende Angriffe; '+fmt(ctx.outgoingAttackTroops)+' eigene Truppen waren bereits unterwegs.'+(a.delta30s&&a.targetDelta30s?' Im 30-Sekunden-Fenster: eigene Truppen '+fmt(a.delta30s.troops)+', Zieltruppen '+fmt(a.targetDelta30s.troops)+', eigenes Gebiet '+fmt(a.delta30s.tiles)+', Zielgebiet '+fmt(a.targetDelta30s.tiles)+'.':''),
       alternative:review.severeOutcome?'Stoppe weitere Zielbindungen, sichere zuerst die verlorenen Gebiete und baue Reserve auf, bevor du erneut angreifst.':'Schließe oder stabilisiere ein bestehendes Ziel, bevor du ein weiteres bindest. Priorisiere nur dann parallel, wenn Reserve und Verteidigung nachweislich ausreichen.',
       trainingRule:'Prüfe vor jedem neuen Angriff die Zahl aktiver Ziele, gebundene Truppen, eingehenden Druck und die nach dem letzten Befehl verbleibende Reserve.',
       evidence:clock(a.seconds)+' · '+ctx.activeTargetCount+' aktive Zielbindungen · '+ctx.outgoingAttackCount+' eigene Angriffe · '+ctx.incomingAttackCount+' eingehende Angriffe · '+fmt(ctx.outgoingAttackTroops)+' Truppen gebunden'+(review.commitmentShare===null?'':' · '+fmt(review.commitmentShare*100)+' % des vorher beobachteten eigenen Truppenbestands'),
-      seconds:a.seconds,caveat:'Aktive Angriffsobjekte zeigen Zielbindungen, aber nicht zwingend getrennte geografische Fronten oder Erreichbarkeit anderer Ziele. 30-Sekunden-Änderungen können durch weitere Angriffe beeinflusst sein.'
+      seconds:a.seconds,caveat:'Eine zusätzliche Zielbindung ist nicht automatisch Überdehnung. Diese Warnung erscheint nur bei hoher Truppenbindung, eingehendem Druck oder einer messbaren negativen Folge. Aktive Angriffsobjekte belegen keine getrennten geografischen Fronten; 30-Sekunden-Änderungen können durch weitere Ereignisse beeinflusst sein.'
     });
   }
   const longPause=(()=>{let best:{from:number;to:number;seconds:number}|null=null;for(let i=1;i<alive.length;i++){const from=(alive[i-1].sample.tick-(first?.sample.tick??0))/10,to=(alive[i].sample.tick-(first?.sample.tick??0))/10;if(to-from>90&&(!best||to-from>best.seconds))best={from,to,seconds:to-from};}return best;})();

@@ -8,6 +8,8 @@ import { buildReplayTimeline } from '../src/main/decoder/CoachTimeline.ts';
 const player=(overrides={})=>({clientID:'p1',alive:true,tiles:100,gold:500,goldEarned:1000,troops:300,outgoingAttackDetails:[],incomingAttackDetails:[],allies:0,betrayals:0,unitCounts:{City:2},...overrides});
 const sample=(tick,p)=>({tick,frame:tick,players:[player(p)]});
 const action=(seconds,overrides={})=>({seconds,type:'attack',label:'Attack',targetName:'Target',delta10s:{tiles:1,gold:-10,troops:-5},delta30s:{tiles:2,gold:-20,troops:-30},targetDelta30s:{tiles:-3,gold:-5,troops:-10},ownFrontContextBefore:{activeTargetCount:0,outgoingAttackCount:0,outgoingAttackTroops:0,incomingAttackCount:0,incomingAttackTroops:0},targetPressureBefore:null,...overrides});
+const enginePlayer=(overrides={})=>({id:1,name:'Player',clientID:'p1',alive:true,gold:100,goldEarned:100,tradeGold:0,trainGold:0,piracyGold:0,troops:1000,tiles:100,units:0,unitCounts:{},unitTroops:{},unitsUnderConstruction:0,outgoingAttacks:0,incomingAttacks:0,outgoingAttackDetails:[],incomingAttackDetails:[],attackTroops:0,allies:0,alliances:0,targets:0,betrayals:0,isTraitor:false,isDecaying:false,inDoomsdayClock:false,...overrides});
+const engineReview={playerName:'Player',clientID:'p1',startTiles:100,endTiles:100,tilesGained:0,startGold:100,endGold:100,startTroops:1000,endTroops:1000,outgoingAttackSamples:0,longestNoExpansionSeconds:0};
 
 test('does not invent a match score or tactical finding without verified samples',()=>{
  const report=buildProCoachReport([],[], 'p1',600);
@@ -393,4 +395,86 @@ test('one already active own attack is sufficient evidence of a parallel-front d
  const finding=report.allFindings?.find(item=>item.id==='front-load');
  assert.ok(finding);
  assert.match(finding.decision,/eigene aktive Zielbindung/);
+});
+
+test('multiple distinct incoming attackers without own active attacks produce a defensive overload finding',()=>{
+ const before=enginePlayer({troops:1000,tiles:100,incomingAttacks:2,incomingAttackDetails:[
+  {id:'in-a',attackerID:2,troops:200,retreating:false},
+  {id:'in-b',attackerID:3,troops:150,retreating:false},
+ ]});
+ const after=enginePlayer({troops:700,tiles:85});
+ const enemyA=enginePlayer({id:2,name:'Enemy A',clientID:'p2'});
+ const enemyB=enginePlayer({id:3,name:'Enemy B',clientID:'p3'});
+ const samples=[
+  {tick:0,frame:0,players:[before,enemyA,enemyB]},
+  {tick:150,frame:150,players:[after,enemyA,enemyB]},
+ ];
+ const insights=buildEngineCoachInsights(engineReview,[],samples);
+ const overload=insights.find(item=>item.id==='defensive-overload');
+ assert.ok(overload);
+ assert.equal(overload.seconds,0);
+ assert.equal(overload.priority,'high');
+ assert.match(overload.summary,/2 verschiedene Gegner/);
+ assert.match(overload.summary,/keine eigenen aktiven Angriffe/);
+ assert.match(overload.evidence,/0:00/);
+ assert.match(overload.evidence,/Enemy A/);
+ assert.match(overload.evidence,/Enemy B/);
+ assert.ok(!insights.some(item=>item.id==='defensive-resilience'));
+});
+
+test('one incoming attacker with stable territory is resilience, not defensive overload',()=>{
+ const before=enginePlayer({incomingAttacks:1,incomingAttackDetails:[{id:'in-a',attackerID:2,troops:200,retreating:false}]});
+ const after=enginePlayer({troops:980,tiles:102});
+ const enemy=enginePlayer({id:2,name:'Enemy A',clientID:'p2'});
+ const insights=buildEngineCoachInsights(engineReview,[],[
+  {tick:0,frame:0,players:[before,enemy]},
+  {tick:150,frame:150,players:[after,enemy]},
+ ]);
+ assert.ok(insights.some(item=>item.id==='defensive-resilience'));
+ assert.ok(!insights.some(item=>item.id==='defensive-overload'));
+});
+
+test('multiple incoming attackers are not classified as defensive when own attacks remain active',()=>{
+ const before=enginePlayer({
+  outgoingAttacks:1,
+  outgoingAttackDetails:[{id:'own',targetID:4,troops:400,retreating:false}],
+  incomingAttacks:2,
+  incomingAttackDetails:[
+   {id:'in-a',attackerID:2,troops:400,retreating:false},
+   {id:'in-b',attackerID:3,troops:350,retreating:false},
+  ],
+ });
+ const after=enginePlayer({troops:700,tiles:80});
+ const insights=buildEngineCoachInsights(engineReview,[],[
+  {tick:0,frame:0,players:[before,enginePlayer({id:2,name:'Enemy A',clientID:'p2'}),enginePlayer({id:3,name:'Enemy B',clientID:'p3'})]},
+  {tick:150,frame:150,players:[after]},
+ ]);
+ assert.ok(!insights.some(item=>item.id==='defensive-overload'));
+ assert.ok(!insights.some(item=>item.id==='defensive-resilience'));
+});
+
+test('high offensive commitment still produces an offensive new-front review',()=>{
+ const actionReview={
+  frame:100,turn:100,seconds:10,type:'attack',commandTroops:50,label:'Attack',details:'',targetId:'2',targetName:'Rival',targetSmallID:2,
+  before:{tiles:100,gold:100,troops:100,goldEarned:100,tradeGold:0,trainGold:0,piracyGold:0},
+  after:null,delta:null,delta5s:null,delta10s:null,delta30s:null,targetDelta10s:null,targetDelta30s:null,
+  targetAliveBefore:true,targetAliveAt10s:null,targetAliveAt30s:null,
+  ownFrontContextBefore:{activeTargetCount:1,outgoingTargetIds:[1],outgoingAttackCount:1,outgoingAttackTroops:40,incomingAttackCount:0,incomingAttackTroops:0,incomingAttackerNames:[]},
+  targetPressureBefore:null,activeAttack10s:null,activeAttack30s:null,
+ };
+ const insights=buildEngineCoachInsights(engineReview,[actionReview],[]);
+ const overload=insights.find(item=>item.id.startsWith('decision-front-load-'));
+ assert.ok(overload);
+ assert.match(overload.summary,/64 % der Truppen gebunden/);
+});
+
+test('small own commitment on a second target is not mislabeled as offensive overextension',()=>{
+ const samples=Array.from({length:10},(_,i)=>sample(i*500,{troops:300}));
+ const actions=Array.from({length:4},(_,i)=>action(60+i*50,{
+  ownFrontContextBefore:{activeTargetCount:1,outgoingAttackCount:1,outgoingAttackTroops:6,incomingAttackCount:0,incomingAttackTroops:0},
+  delta30s:{tiles:1,gold:0,troops:0},
+  targetDelta30s:{tiles:-1,gold:0,troops:0},
+ }));
+ const report=buildProCoachReport(samples,actions,'p1',500);
+ assert.ok(!report.allFindings?.some(item=>item.id==='front-load'));
 });

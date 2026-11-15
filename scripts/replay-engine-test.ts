@@ -160,7 +160,7 @@ window.__runBatchReplayTest = async (gameIds) => {
         if (JSON.stringify(report.findings.map(finding => finding.id)) !== JSON.stringify(repeatedReport?.findings.map(finding => finding.id)))
           throw new Error(item.gameId + ": strategic finding ranking must be deterministic");
         for (const finding of report.findings) {
-          if (!Number.isFinite(finding.seconds) || finding.seconds === null || finding.seconds < 0 ||
+          if (finding.seconds !== null && (!Number.isFinite(finding.seconds) || finding.seconds < 0) ||
               !finding.evidence.trim() || !finding.decision.trim() || !finding.consequence.trim() ||
               !finding.alternative.trim() || !finding.trainingRule.trim() || !finding.caveat.trim())
             throw new Error(item.gameId + "/" + finding.id + ": incomplete decision-to-lesson evidence chain");

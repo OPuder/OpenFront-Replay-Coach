@@ -82,7 +82,8 @@ assert.ok(androidUpdateRegression.includes('timeout 30s adb -s emulator-5554 she
 assert.match(androidUpdateRegression, /install_apk\(\)\s*\{|adb -s emulator-5554 install -r/);
 assert.match(androidUpdateRegression, /keep-this-data/);
 assert.match(androidUpdateRegression, /versionCode=\$expected_version_code/);
-assert.match(androidUpdateRegression, /cmd package resolve-activity[\s\S]*?am start -W -n[\s\S]*?pidof/);
+assert.ok(androidUpdateRegression.includes('timeout 30s adb -s emulator-5554 shell monkey -p "$package_id" 1'));
+assert.ok(androidUpdateRegression.includes('pidof "$package_id"'));
 
 
 assert.match(releaseWorkflow, /Verify published release contains exactly three usable artifacts/);

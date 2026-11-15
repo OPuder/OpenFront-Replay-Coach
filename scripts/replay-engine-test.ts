@@ -14,20 +14,55 @@ import { toReplayCoachFindings } from "../src/renderer/ReplayCoachIntegration";
 const batchTestRecords = new Map<string, any>();
 
 function verifyRecordedActionFrameConvention(gameId: string, result: any) {
-  const samplesByFrame = new Map<number, any>(result.samples.map((sample: any) => [sample.frame, sample]));
+  const samplesByFrame = new Map<number, any>();
+  for (const sample of result.samples) {
+    if (samplesByFrame.has(sample.frame))
+      throw new Error(gameId + ": duplicate ReplayReader sample for engine frame " + sample.frame);
+    samplesByFrame.set(sample.frame, sample);
+    if (sample.tick !== sample.frame + 1)
+      throw new Error(gameId + ": ReplayReader sample frame " + sample.frame + " carries tick " + sample.tick + ", expected " + (sample.frame + 1));
+  }
   const checked = result.actionReviews.filter((action: any) => Number.isInteger(action.turn) && action.turn >= 1);
   if (checked.length === 0) throw new Error(gameId + ": no recorded actions available for frame convention verification");
+  const requiredObservations = new Map<number, Set<string>>();
+  const requireFrame = (frame: number, reason: string) => {
+    if (frame < 0 || frame >= result.totalTicks) return;
+    const reasons = requiredObservations.get(frame) ?? new Set<string>();
+    reasons.add(reason);
+    requiredObservations.set(frame, reasons);
+  };
   for (const action of checked) {
-    const expectedEngineFrame = action.turn - 1;
-    if (action.frame !== expectedEngineFrame)
-      throw new Error(gameId + ": recorded tick " + action.turn + " must map to zero-based ReplayReader frame " + expectedEngineFrame + ", got " + action.frame);
-    const sample = samplesByFrame.get(expectedEngineFrame);
-    if (sample && sample.tick !== action.turn)
-      throw new Error(gameId + ": ReplayReader frame " + expectedEngineFrame + " carries tick " + sample.tick + ", expected recorded tick " + action.turn);
+    const actionFrame = action.turn - 1;
+    if (action.frame !== actionFrame)
+      throw new Error(gameId + ": recorded tick " + action.turn + " must map to zero-based ReplayReader frame " + actionFrame + ", got " + action.frame);
     if (action.seconds !== action.turn / 10)
       throw new Error(gameId + ": action timestamp must be recorded tick / 10 seconds");
+    requireFrame(actionFrame, "action");
+    requireFrame(actionFrame - 1, "before");
+    requireFrame(actionFrame + 1, "after");
+    for (const offset of [50, 100, 300]) requireFrame(actionFrame + offset, "delayed+" + offset);
   }
-  return { recordedActions: checked.length, convention: "turnNumber=tick (1-based); ReplayReader frame=turnNumber-1 (0-based)", checked: checked.length };
+  const observations = [...requiredObservations.entries()].sort((a,b) => a[0] - b[0]);
+  for (const [frame, reasons] of observations) {
+    const sample = samplesByFrame.get(frame);
+    if (!sample)
+      throw new Error(gameId + ": required " + [...reasons].join("/") + " ReplayReader sample missing for frame " + frame);
+    const expectedTick = frame + 1;
+    if (sample.tick !== expectedTick)
+      throw new Error(gameId + ": ReplayReader frame " + frame + " carries tick " + sample.tick + ", expected " + expectedTick);
+    if (reasons.has("action")) {
+      const actionsAtFrame = checked.filter((action: any) => action.turn - 1 === frame);
+      if (!actionsAtFrame.length || actionsAtFrame.some((action: any) => action.frame !== frame || action.turn !== sample.tick))
+        throw new Error(gameId + ": action review does not reference its exact ReplayReader sample at frame " + frame);
+    }
+  }
+  return {
+    recordedActions: checked.length,
+    requiredUniqueSamples: observations.length,
+    actionSamples: [...requiredObservations.entries()].filter(([,reasons]) => reasons.has("action")).length,
+    beforeAfterAndDelayedSamples: observations.length - [...requiredObservations.entries()].filter(([,reasons]) => reasons.has("action")).length,
+    convention: "turnNumber=tick (1-based); ReplayReader frame=turnNumber-1 (0-based)",
+  };
 }
 
 function verifyActualTimelineFrameMapping(gameId: string, samples: any[]) {

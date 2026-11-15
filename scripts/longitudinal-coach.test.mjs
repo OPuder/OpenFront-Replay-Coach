@@ -130,7 +130,7 @@ test('attack follow-through compares only attacks with observed target outcomes'
   const report=buildLongitudinalCoachReport([match('a',{playedAt:'2026-01-01',simulation}),match('b',{playedAt:'2026-01-02',simulation}),match('c',{playedAt:'2026-01-03',simulation}),match('d',{playedAt:'2026-01-04',simulation}),match('e',{playedAt:'2026-01-05',simulation}),match('f',{playedAt:'2026-01-06',simulation})]);
   assert.ok(Math.abs(report.matchProgress[0].attackFollowThroughPercent - 200/3) < 1e-9);
   assert.equal(report.matchProgress[0].attackFollowThroughSamples, 3);
-  assert.equal(report.metricTrends.find(item=>item.id==='attack-follow-through')?.observations, 2);
+  assert.equal(report.metricTrends.find(item=>item.id==='attack-follow-through')?.observations, 6);
   assert.equal(report.metricTrends.find(item=>item.id==='attack-follow-through')?.direction,'stable');
 });
 

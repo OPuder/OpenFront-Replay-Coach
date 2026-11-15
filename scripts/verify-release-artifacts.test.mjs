@@ -32,6 +32,14 @@ test("rejects unexpected additional files", async () => {
   } finally { await rm(directory, { recursive: true, force: true }); }
 });
 
+test("rejects a missing distributable before generating release metadata", async () => {
+  const { directory, names } = await fixture();
+  try {
+    await rm(path.join(directory, names.android));
+    await assert.rejects(() => generateReleaseMetadata(directory, version), /exactly the three correctly named distributables/);
+  } finally { await rm(directory, { recursive: true, force: true }); }
+});
+
 test("rejects malformed package names", async () => {
   const { directory, names } = await fixture();
   try {

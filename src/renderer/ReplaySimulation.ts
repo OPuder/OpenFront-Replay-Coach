@@ -6,15 +6,16 @@ export function getTotalRecordedFrames(record: unknown): number {
   const source = record && typeof record === "object"
     ? record as { info?: { num_turns?: unknown }; turns?: unknown }
     : {};
-  const declared = Number(source.info?.num_turns ?? 0);
-  let total = Number.isFinite(declared) ? Math.max(0, Math.floor(declared)) : 0;
+  const declared = source.info?.num_turns;
+  let total = typeof declared === "number" && Number.isFinite(declared)
+    ? Math.max(0, Math.floor(declared))
+    : 0;
   if (!Array.isArray(source.turns)) return total;
   for (const turn of source.turns) {
     if (!turn || typeof turn !== "object") continue;
     const rawFrame = (turn as { turnNumber?: unknown }).turnNumber;
-    if (rawFrame === null || rawFrame === undefined) continue;
-    const frame = Number(rawFrame);
-    if (Number.isInteger(frame) && frame >= 0) total = Math.max(total, frame + 1);
+    if (typeof rawFrame !== "number" || !Number.isInteger(rawFrame) || rawFrame < 0) continue;
+    total = Math.max(total, rawFrame + 1);
   }
   return total;
 }

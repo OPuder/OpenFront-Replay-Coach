@@ -89,10 +89,12 @@ jobs:
 
   android-apk-validation:
     name: Android APK parse, identity, version and signature validation
+    outputs:
+      release_apk_ready: ${{ steps.release_apk.outputs.ready }}
     # Keep emulator integration tests on the stable LTS runner; ubuntu-latest
     # moved to 26.04 and the Android 34 emulator repeatedly went offline there.
     runs-on: ubuntu-22.04
-    timeout-minutes: 45
+    timeout-minutes: 90
     steps:
       - name: Check out source
         uses: actions/checkout@v4
@@ -189,6 +191,7 @@ jobs:
         run: bash scripts/verify-android-release-signing.sh
 
       - name: Preserve the permanently signed APK outside the generated Android project
+        id: release_apk
         if: steps.parse_apk.outcome == 'success'
         shell: bash
         run: |
@@ -197,6 +200,7 @@ jobs:
           test -s android/app/build/outputs/apk/release/app-release.apk
           cp android/app/build/outputs/apk/release/app-release.apk "$signed_apk"
           echo "CURRENT_RELEASE_APK=$signed_apk" >> "$GITHUB_ENV"
+          echo "ready=true" >> "$GITHUB_OUTPUT"
           version="$(node -p "require('./package.json').version")"
           mkdir -p release
           cp "$signed_apk" "release/OpenFront-Replay-Coach-$version-Android.apk"
@@ -238,25 +242,18 @@ jobs:
           target: google_apis
           arch: x86_64
           profile: pixel_2
-          cores: 4
+          cores: 2
           emulator-boot-timeout: 1800
-          emulator-options: -no-window -no-audio -no-boot-anim -no-snapshot -no-metrics -gpu swiftshader_indirect -memory 4096 -partition-size 4096
+          emulator-options: -no-window -no-audio -no-boot-anim -no-metrics -gpu swiftshader -memory 3072 -partition-size 4096
           disable-animations: true
           script: bash scripts/test-android-in-place-update.sh
-
-      - name: Upload validated permanent-key APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: updater-validation-android
-          path: release/*-Android.apk
-          if-no-files-found: error
-          retention-days: 7
 
   release-artifact-download-audit:
     name: Download and verify release manifest and SHA-256 files
     needs: [updater-contract-and-build, android-apk-validation]
+    if: always() && needs.updater-contract-and-build.result == 'success' && needs.android-apk-validation.outputs.release_apk_ready == 'true'
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     steps:
       - name: Check out verifier
         uses: actions/checkout@v4

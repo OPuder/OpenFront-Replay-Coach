@@ -70,3 +70,43 @@ test("rejects a manifest for a different version", async () => {
     await assert.rejects(() => verifyReleaseArtifacts(directory, version), /version does not match/);
   } finally { await rm(directory, { recursive: true, force: true }); }
 });
+
+test("rejects a missing or malformed manifest", async () => {
+  const { directory, names } = await fixture();
+  try {
+    await generateReleaseMetadata(directory, version);
+    await rm(path.join(directory, names.manifest));
+    await assert.rejects(() => verifyReleaseArtifacts(directory, version));
+    await writeFile(path.join(directory, names.manifest), "{ invalid json", "utf8");
+    await assert.rejects(() => verifyReleaseArtifacts(directory, version), SyntaxError);
+  } finally { await rm(directory, { recursive: true, force: true }); }
+});
+
+test("rejects missing manifest fields and malformed SHA-256 values", async () => {
+  const { directory, names } = await fixture();
+  try {
+    await generateReleaseMetadata(directory, version);
+    const manifestPath = path.join(directory, names.manifest);
+    const manifest = JSON.parse(await (await import("node:fs/promises")).readFile(manifestPath, "utf8"));
+    delete manifest.artifacts[0].sha256;
+    await writeFile(manifestPath, JSON.stringify(manifest));
+    await assert.rejects(() => verifyReleaseArtifacts(directory, version), /Unexpected manifest fields/);
+    manifest.artifacts[0].sha256 = "invalid";
+    await writeFile(manifestPath, JSON.stringify(manifest));
+    await assert.rejects(() => verifyReleaseArtifacts(directory, version), /Malformed manifest SHA-256/);
+  } finally { await rm(directory, { recursive: true, force: true }); }
+});
+
+test("rejects corrupted checksum files and truncated downloads", async () => {
+  const { directory, names } = await fixture();
+  try {
+    await generateReleaseMetadata(directory, version);
+    const checksumPath = path.join(directory, names.checksums);
+    const original = await (await import("node:fs/promises")).readFile(checksumPath, "utf8");
+    await writeFile(checksumPath, original.replace(/[a-f0-9]{64}/, "0".repeat(64)));
+    await assert.rejects(() => verifyReleaseArtifacts(directory, version), /SHA256SUMS\\.txt mismatch/);
+    await writeFile(checksumPath, original);
+    await writeFile(path.join(directory, names.portable), Buffer.alloc(512, 7));
+    await assert.rejects(() => verifyReleaseArtifacts(directory, version), /Manifest byte size mismatch|implausibly small/);
+  } finally { await rm(directory, { recursive: true, force: true }); }
+});

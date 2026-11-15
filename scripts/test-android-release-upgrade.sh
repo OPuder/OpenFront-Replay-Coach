@@ -76,8 +76,16 @@ install_apk() {
 
 log "Installing previous published APK (versionCode $previous_version_code)."
 install_apk "$previous_apk" false
-log "Upgrading in place from the exact published $previous_version_code APK to the signed candidate (versionCode $current_version_code)."
+log "Creating a realistic baseline through the published application's actual UI."
+bash scripts/seed-android-baseline-ui.sh
+bash scripts/snapshot-android-web-storage.sh before
+log "Upgrading in place from the exact published $previous_version_code APK to the permanent-key test candidate (versionCode $current_version_code)."
 install_apk "$current_apk" true
+
+# Keep the upgrade offline after the baseline was seeded. This prevents background
+# profile refresh from introducing unrelated records while storage integrity is checked.
+adb_cmd shell svc wifi disable >/dev/null 2>&1 || true
+adb_cmd shell svc data disable >/dev/null 2>&1 || true
 
 installed="$(adb_cmd shell dumpsys package "$package_id")" || fail "Could not inspect the upgraded Android package."
 grep -F "versionCode=$current_version_code" <<< "$installed" >/dev/null || fail "Installed package does not report release versionCode $current_version_code."
@@ -105,7 +113,39 @@ if [[ "$started" != true ]]; then
   adb_cmd logcat -d -t 700 2>&1 | grep -E "FATAL EXCEPTION|AndroidRuntime|de.openfront.replaycoach|ActivityTaskManager|ActivityManager|chromium" | tail -n 160 || true
   fail "Current release app did not reach its resumed launcher activity within 120 seconds after the upgrade."
 fi
-log "Running a five-minute foreground idle soak on the upgraded signed release."
+log "Inspecting every LocalStorage and IndexedDB record through the test-build-only WebView bridge."
+node scripts/inspect-android-upgrade-data.mjs "$RUNNER_TEMP/after-valid-upgrade-storage.json"
+log "Capturing the post-upgrade WebView storage tables."
+bash scripts/snapshot-android-web-storage.sh after
+node scripts/compare-android-web-storage.mjs
+
+log "Creating an unsigned negative APK by removing APK signature metadata (no temporary signing key is used)."
+negative_apk="$RUNNER_TEMP/openfront-coach-unsigned-negative.apk"
+python3 scripts/create-android-unsigned-negative-apk.py "$current_apk" "$negative_apk"
+if "$apksigner" verify --verbose "$negative_apk" >/dev/null 2>&1; then
+  fail "The negative APK unexpectedly passed apksigner verification."
+fi
+negative_status=0
+negative_output="$(timeout --signal=INT --kill-after=15s 240s adb -s emulator-5554 install --no-streaming -r "$negative_apk" 2>&1)" || negative_status=$?
+log "Package Manager negative-test response (exit $negative_status): ${negative_output:-<empty>}"
+[[ "$negative_status" -ne 0 ]] || fail "Android Package Manager unexpectedly accepted the unsigned update APK."
+if ! grep -E "INSTALL_PARSE_FAILED_NO_CERTIFICATES|INSTALL_FAILED_INVALID_APK" <<< "$negative_output" >/dev/null; then
+  adb_cmd logcat -d -t 700 2>&1 | grep -E "PackageManager|PackageInstaller|INSTALL_PARSE_FAILED|INSTALL_FAILED_INVALID_APK|certificate|signature" | tail -n 120 || true
+  fail "Android rejected the negative APK, but the actual Package Manager response did not identify a signature/certificate or invalid-APK failure."
+fi
+
+installed_after_negative="$(adb_cmd shell dumpsys package "$package_id")" || fail "Could not inspect the valid package after the negative test."
+grep -F "versionCode=$current_version_code" <<< "$installed_after_negative" >/dev/null || fail "The failed negative install replaced or damaged the valid package."
+adb_cmd shell am force-stop "$package_id" >/dev/null 2>&1 || true
+adb_cmd shell monkey -p "$package_id" 1 >/dev/null || fail "The valid signed app could not be launched after the Package Manager rejected the negative APK."
+sleep 5
+adb_cmd shell pidof "$package_id" >/dev/null || fail "The valid signed app did not remain running after the negative install."
+node scripts/inspect-android-upgrade-data.mjs "$RUNNER_TEMP/after-negative-test-storage.json"
+bash scripts/snapshot-android-web-storage.sh after
+node scripts/compare-android-web-storage.mjs
+node scripts/compare-android-upgrade-snapshots.mjs "$RUNNER_TEMP/after-valid-upgrade-storage.json" "$RUNNER_TEMP/after-negative-test-storage.json"
+
+log "Running a five-minute foreground idle soak on the upgraded signed test build."
 sleep 300
 if ! adb_cmd shell pidof "$package_id" >/dev/null 2>&1; then
   log "Release app exited during the five-minute idle soak; collecting diagnostics."
@@ -113,4 +153,4 @@ if ! adb_cmd shell pidof "$package_id" >/dev/null 2>&1; then
   adb_cmd logcat -d -t 500 2>&1 | grep -E "FATAL EXCEPTION|AndroidRuntime|de.openfront.replaycoach|ActivityTaskManager" | tail -n 120 || true
   fail "Upgraded signed release app exited during the five-minute idle soak."
 fi
-log "PASS: exact published APK versionCode $previous_version_code upgraded in place to signed candidate $version (versionCode $current_version_code), launched and survived five minutes idle. App-data integrity is not asserted by this script."
+log "PASS: published APK $previous_version_code upgraded in place to the permanent-key test build $version ($current_version_code); UI-seeded IndexedDB/LocalStorage survived, Package Manager rejected the unsigned negative APK, the valid app remained startable, and the app survived five minutes idle."

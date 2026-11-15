@@ -31,25 +31,31 @@ const portableDir = path.join(temp, `ofrc-portable-${version}`);
 rmSync(portableDir, { recursive: true, force: true });
 mkdirSync(portableDir, { recursive: true });
 
+function inspectPe(file) {
+  const bytes = readFileSync(file);
+  assert.ok(bytes.length > 0x40, `Executable is too small to contain a valid PE header: ${file}`);
+  const peOffset = bytes.readUInt32LE(0x3c);
+  assert.ok(peOffset + 6 <= bytes.length, `Executable PE header offset is outside the file: ${file}`);
+  const signature = bytes.subarray(peOffset, peOffset + 4);
+  assert.ok(signature.equals(Buffer.from([0x50, 0x45, 0x00, 0x00])), `Executable has no valid PE header: ${file}`);
+  const machine = bytes.readUInt16LE(peOffset + 4);
+  const architecture = ({ 0x014c: "x86", 0x8664: "x64", 0xaa64: "arm64" })[machine] ?? `unknown (0x${machine.toString(16)})`;
+  return {
+    path: file, bytes: bytes.length, sha256: createHash("sha256").update(bytes).digest("hex"),
+    peOffset, peSignatureHex: signature.toString("hex"),
+    peMachine: `0x${machine.toString(16).padStart(4, "0")}`, architecture,
+  };
+}
+
+const installerPe = inspectPe(installer);
 const installerBytes = readFileSync(installer);
-const installerSha256 = createHash("sha256").update(installerBytes).digest("hex");
-assert.ok(installerBytes.length > 0x40, "Installer is too small to contain a valid PE header.");
-const peOffset = installerBytes.readUInt32LE(0x3c);
-assert.ok(peOffset + 6 <= installerBytes.length, "Installer PE header offset is outside the file.");
-const peSignature = installerBytes.subarray(peOffset, peOffset + 4);
-const machine = installerBytes.readUInt16LE(peOffset + 4);
-const architecture = ({ 0x014c: "x86", 0x8664: "x64", 0xaa64: "arm64" })[machine] ?? `unknown (0x${machine.toString(16)})`;
 const portableBytes = readFileSync(portable);
 console.log(JSON.stringify({
-  installer: {
-    path: installer, bytes: installerBytes.length, sha256: installerSha256,
-    peSignatureHex: peSignature.toString("hex"), peMachine: `0x${machine.toString(16).padStart(4, "0")}`,
-    peArchitecture: architecture, runnerArchitecture: process.arch, runnerPlatform: process.platform,
-  },
-  portable: { path: portable, bytes: portableBytes.length, sha256: createHash("sha256").update(portableBytes).digest("hex") },
+  installerBootstrapper: { ...installerPe, runnerArchitecture: process.arch, runnerPlatform: process.platform },
+  portableArchive: { path: portable, bytes: portableBytes.length, sha256: createHash("sha256").update(portableBytes).digest("hex") },
 }, null, 2));
-assert.ok(peSignature.equals(Buffer.from([0x50, 0x45, 0x00, 0x00])), "Installer has no valid PE header.");
-assert.equal(architecture, "x64", `Expected the Windows installer to target x64, received ${architecture}.`);
+assert.ok(["x86", "x64"].includes(installerPe.architecture),
+  `Unsupported NSIS bootstrapper architecture: ${installerPe.architecture}; the installed application payload is validated separately as x64.`);
 
 const installerAttempts = Number(process.env.OFRC_INSTALLER_ATTEMPTS ?? "2");
 assert.ok(Number.isInteger(installerAttempts) && installerAttempts >= 2 && installerAttempts <= 3,
@@ -106,8 +112,8 @@ for (let attempt = 1; attempt <= installerAttempts; attempt++) {
     const failure = {
       attempt, elapsedMs: Date.now() - attemptStartedAt, status: install.status, exitCode, exitHex,
       signal: install.signal, error: install.error?.message, stdout: install.stdout, stderr: install.stderr,
-      installerPath: installer, installerBytes: installerBytes.length, installerSha256,
-      peSignatureHex: peSignature.toString("hex"), peArchitecture: architecture,
+      installerPath: installer, installerBytes: installerBytes.length, installerSha256: installerPe.sha256,
+      peSignatureHex: installerPe.peSignatureHex, peArchitecture: installerPe.architecture,
       installerMetadata: metadata.stdout?.trim(), metadataError: metadata.stderr?.trim(),
       applicationCrashEvents: events.stdout?.trim(), eventQueryError: events.stderr?.trim(),
       werDumpDirectory: dumpDir, werDumps: dumps,
@@ -125,9 +131,16 @@ for (let attempt = 1; attempt <= installerAttempts; attempt++) {
     console.error("NSIS_INSTALL_ATTEMPT_FAILED", JSON.stringify(failure));
     continue;
   }
+  const installedPe = inspectPe(installedExe);
+  if (installedPe.architecture !== "x64") {
+    const failure = { attempt, kind: "installed application architecture", expected: "x64", actual: installedPe.architecture, installedPe };
+    failures.push(failure);
+    console.error("NSIS_INSTALL_ATTEMPT_FAILED", JSON.stringify(failure));
+    continue;
+  }
   console.log("NSIS_INSTALL_ATTEMPT_OK", JSON.stringify({
     attempt, elapsedMs: Date.now() - attemptStartedAt, installDir,
-    installedExeBytes: statSync(installedExe).size, appAsarBytes: statSync(installedAsar).size,
+    installedApplication: installedPe, appAsarBytes: statSync(installedAsar).size,
   }));
   runRendererSmoke(`installed NSIS attempt ${attempt}`, installedExe);
 }
@@ -146,7 +159,13 @@ if (expand.error || expand.status !== 0) {
   if (!existsSync(portableExe) || !existsSync(portableAsar) || statSync(portableExe).size <= 1_000_000 || statSync(portableAsar).size <= 1_000) {
     failures.push({ kind: "portable ZIP contents", executableExists: existsSync(portableExe), appAsarExists: existsSync(portableAsar) });
   } else {
-    runRendererSmoke("portable ZIP", portableExe);
+    const portablePe = inspectPe(portableExe);
+    if (portablePe.architecture !== "x64") {
+      failures.push({ kind: "portable application architecture", expected: "x64", actual: portablePe.architecture, portablePe });
+    } else {
+      console.log("PORTABLE_APPLICATION_ARCHITECTURE_OK", JSON.stringify(portablePe));
+      runRendererSmoke("portable ZIP", portableExe);
+    }
   }
 }
 if (failures.length > 0) {

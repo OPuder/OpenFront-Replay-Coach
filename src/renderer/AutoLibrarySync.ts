@@ -47,3 +47,31 @@ export function compactBatchMatchForUi<T extends object>(entry: T): T {
     : value.simulation;
   return { ...value, result, simulation } as T;
 }
+
+/** Prefer the player count reconstructed from the replay over stale history metadata. */
+export function preferReplayPlayerCount<T extends { totalPlayers?: number | null }>(
+  game: T,
+  replayPlayerCount?: number | null,
+): T {
+  if (typeof replayPlayerCount !== 'number' || !Number.isFinite(replayPlayerCount) || replayPlayerCount <= 0) return game;
+  const count = Math.floor(replayPlayerCount);
+  if (count <= 0 || game.totalPlayers === count) return game;
+  return { ...game, totalPlayers: count };
+}
+
+/** Merge verified replay player counts into the match-history page without changing result labels. */
+export function mergeReplayPlayerCounts<
+  T extends { games: Array<{ gameId: string; totalPlayers?: number | null }> },
+>(
+  page: T,
+  entries: ReadonlyArray<{
+    game: { gameId: string; totalPlayers?: number | null };
+    result?: { playerCount?: number | null };
+  }>,
+): T {
+  const counts = new Map(entries.map(entry => [entry.game.gameId, entry.result?.playerCount]));
+  return {
+    ...page,
+    games: page.games.map(game => preferReplayPlayerCount(game, counts.get(game.gameId))),
+  };
+}

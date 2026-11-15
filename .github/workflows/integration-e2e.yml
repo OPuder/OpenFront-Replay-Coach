@@ -6,6 +6,10 @@ on:
     paths:
       - "docs/INTEGRATION_E2E.md"
       - "scripts/integration-e2e-contract.test.mjs"
+      - "scripts/replay-engine-test.ts"
+      - "scripts/replay-engine-batch-browser-test.mjs"
+      - "scripts/pro-coach-algorithm.test.mjs"
+      - "scripts/longitudinal-coach.test.mjs"
       - "package.json"
       - "src/**"
       - ".github/workflows/integration-e2e.yml"
@@ -47,9 +51,11 @@ jobs:
         run: npm run prepare:engines
       - name: Validate pinned engine catalog
         run: npm run validate:engine-pin
-      - name: Run cross-module integration contracts
+      - name: Typecheck and production build
+        run: npm run build
+      - name: Run production-module integration unit contracts
         run: npm run test:integration-e2e
       - name: Run replay, coaching, storage, and updater regression suites
         run: npm run test:coach
-      - name: Typecheck and production build
-        run: npm run build
+      - name: Run real Europe and Levant replay → simulation → coaching → timeline → IndexedDB flow
+        run: xvfb-run -a ./node_modules/.bin/electron --no-sandbox scripts/replay-engine-batch-browser-test.mjs

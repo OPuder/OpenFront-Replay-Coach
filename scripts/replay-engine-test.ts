@@ -335,6 +335,17 @@ window.__runBatchReplayTest = async (gameIds) => {
         durationSeconds: simulation.totalTicks / 10,
         analysisStatus: "verified", simulation,
       };
+      const longitudinalEvidence = {
+        gameId: longitudinalInput.gameId,
+        mode: longitudinalInput.mode,
+        type: longitudinalInput.type,
+        playerReviewClientId: simulation.playerReview?.clientID ?? null,
+        sampleCount: Array.isArray(simulation.samples) ? simulation.samples.length : -1,
+        actionCount: Array.isArray(simulation.actionReviews) ? simulation.actionReviews.length : -1,
+        finiteActionCount: simulation.actionReviews.filter((action: any) =>
+          action && typeof action === "object" && Number.isFinite(action.seconds) && action.seconds >= 0
+          && typeof action.type === "string" && action.type.trim().length > 0).length,
+      };
       coaching.set(item.gameId, {
         selectedPlayer: simulation.playerReview.playerName, selectedClientId: simulation.playerReview.clientID, clientId,
         verifiedHashes: simulation.verifiedHashes, totalTicks: simulation.totalTicks,

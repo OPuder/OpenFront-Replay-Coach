@@ -9,11 +9,11 @@ const finding = (overrides = {}) => ({
   evidence: '01:20 · 2 aktive Ziele', seconds: 80, caveat: '30-Sekunden-Fenster ist kein Kampfabschluss.',
   ...overrides,
 });
-const sample = (players) => ({ tick: 800, frame: 80, players, territory: null, unitMovements: [] });
+const sample = (players) => ({ tick: 800, frame: 799, players, territory: null, unitMovements: [] });
 const player = (id, name, clientID) => ({ id, name, clientID, color: null, tiles: 10 });
 
 test('maps the actual ProCoachFinding fields and exact-time action evidence', () => {
-  const action = { frame: 80, turn: 4, seconds: 80, type: 'attack', label: 'Angriff', details: 'Befehl auf Rival', targetName: 'Rival', targetSmallID: 777 };
+  const action = { frame: 79, turn: 800, seconds: 80, type: 'attack', label: 'Angriff', details: 'Befehl auf Rival', targetName: 'Rival', targetSmallID: 777 };
   const result = toReplayCoachFindings([finding()], 'match-1', 'self-client', [action], [sample([
     player(1, 'Self', 'self-client'), player(2, 'Rival', 'rival-client'),
   ])]);

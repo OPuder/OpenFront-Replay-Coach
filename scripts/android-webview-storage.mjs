@@ -12,7 +12,8 @@ const expression = mode === "seed" ? `
   const playerId = "upgrade-regression-player";
   const gameId = "upgrade-regression-game";
   localStorage.setItem("ofrc:last-player-id", playerId);
-  localStorage.setItem("ofrc:update-regression-settings", JSON.stringify({ marker: "${marker}", theme: "dark", autoSyncEnabled: false }));
+  localStorage.setItem("openfront-coach-training-goal", JSON.stringify({ title: "Upgrade persistence goal", instruction: "Preserve real training focus", gameId, mapName: "Europe", createdAt: "2026-11-15T00:00:00.000Z", completed: false }));
+  localStorage.setItem("openfront-replay-coach.phase-history.v1", JSON.stringify([{ key: `${gameId}:7`, gameId, playedAt: "2026-11-15T00:00:00.000Z", playerName: "Upgrade Regression Player", mapName: "Europe", phases: [{ id: "early", label: "Early", rating: "Starke Phase", territory: 12, income: 34, territoryRate: 1.2, incomeRate: 3.4 }] }]));
   const db = await new Promise((resolve, reject) => {
     const request = indexedDB.open("openfront-replay-coach", 3);
     request.onupgradeneeded = () => {
@@ -50,9 +51,11 @@ const expression = mode === "seed" ? `
 (async () => {
   const playerId = "upgrade-regression-player";
   const gameId = "upgrade-regression-game";
-  const settings = JSON.parse(localStorage.getItem("ofrc:update-regression-settings") || "null");
+  const goal = JSON.parse(localStorage.getItem("openfront-coach-training-goal") || "null");
+  const phases = JSON.parse(localStorage.getItem("openfront-replay-coach.phase-history.v1") || "null");
   if (localStorage.getItem("ofrc:last-player-id") !== playerId) throw new Error("Last-player profile setting was lost");
-  if (!settings || settings.marker !== "${marker}" || settings.theme !== "dark") throw new Error("Local settings were not preserved");
+  if (!goal || goal.gameId !== gameId || goal.title !== "Upgrade persistence goal") throw new Error("Persisted training goal was not preserved");
+  if (!Array.isArray(phases) || phases[0]?.key !== `${gameId}:7` || phases[0]?.phases?.[0]?.rating !== "Starke Phase") throw new Error("Persisted longitudinal phase history was not preserved");
   const db = await new Promise((resolve, reject) => {
     const request = indexedDB.open("openfront-replay-coach", 3);
     request.onsuccess = () => resolve(request.result);
@@ -78,7 +81,7 @@ const expression = mode === "seed" ? `
   if (!profile || profile.name !== "Upgrade Regression Player") throw new Error("Player profile record was not preserved");
   if (!match || match.analysisStatus !== "verified" || match.simulation?.summary !== "upgrade-regression-analysis") throw new Error("Replay match or analysis result was not preserved");
   if (!replay || replay.record?.marker !== "${marker}" || replay.record?.turns?.[0]?.units !== 123) throw new Error("Raw replay payload was not preserved");
-  return { preserved: true, profile: true, replay: true, analysis: true, settings: true };
+  return { preserved: true, profile: true, replay: true, analysis: true, trainingGoal: true, phaseHistory: true };
 })()
 `;
 

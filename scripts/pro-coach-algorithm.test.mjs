@@ -178,3 +178,15 @@ test('summarizes very large action histories without min/max argument overflow',
   assert.equal(report.attackTroops.max, 9);
   assert.equal(report.attackTroops.total, 749_991);
 });
+test('summarizes very large action histories without min/max argument overflow', () => {
+  const actions = Array.from({ length: 150_000 }, (_, index) => ({
+    seconds: 0, type: 'attack', category: 'Militär', clientId: 'player-1',
+    details: 'Truppen: ' + String((index % 9) + 1),
+  }));
+  const report = analyzeDetailedActions(actions, 60);
+  assert.equal(report.attackTroops.count, 150_000);
+  assert.equal(report.attackTroops.min, 1);
+  assert.equal(report.attackTroops.max, 9);
+  assert.equal(report.attackTroops.total, 749_991);
+});
+

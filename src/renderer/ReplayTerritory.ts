@@ -49,7 +49,7 @@ export function selectTerritorySample<T extends { tick: number; territory?: Enco
   for (const sample of samples) {
     if (sample.tick <= targetTick && sample.territory && (!selected || sample.tick > selected.tick)) selected = sample;
   }
-  return selected ?? samples.find(sample => sample.territory) ?? null;
+  return selected;
 }
 
 export function tileCoordinates(tile: number, width: number, height: number): { x: number; y: number } | null {

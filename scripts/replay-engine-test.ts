@@ -403,7 +403,7 @@ window.__runBatchReplayTest = async (gameIds) => {
   // findings. Full reports remain in the renderer for longitudinal analysis.
   const coachingForAssertion = coachingResults.map(({ longitudinalInput: _longitudinalInput, ...report }) => ({
     gameId: report.gameId,
-    matchId: report.longitudinalInput.gameId,
+    matchId: _longitudinalInput.gameId,
     engineId: String(batchTestRecords.get(report.gameId)?.gitCommit ?? "unknown"),
     selectedPlayer: report.selectedPlayer,
     selectedClientId: report.selectedClientId,
@@ -428,7 +428,7 @@ window.__runBatchReplayTest = async (gameIds) => {
     })),
     selection: { primary: report.selection.primary.map((insight: any) => insight.id) },
     timeline: report.timeline.map((entry: any) => ({
-      id: entry.id, gameId: report.gameId, matchId: report.longitudinalInput.gameId, time: entry.time, title: entry.title,
+      id: entry.id, gameId: report.gameId, matchId: _longitudinalInput.gameId, time: entry.time, title: entry.title,
       detail: entry.detail, kind: entry.kind, turn: entry.turn,
       insight: entry.insight ? {
         id: entry.insight.id, evidence: entry.insight.evidence,

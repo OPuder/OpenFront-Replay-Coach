@@ -107,3 +107,40 @@
 .replay-viz-coach-uncertainty{color:#d6b77b!important;line-height:1.5}
 @media(max-width:720px){.replay-viz-priority-findings{grid-template-columns:1fr}.replay-viz-priority-card{padding:9px 10px}.replay-viz-priority-card>b{font-size:10px}}
 @media(prefers-reduced-motion:reduce){.replay-viz-priority-card{transition:none}}
+
+
+/* Coaching-first hierarchy and evidence clarity. */
+.replay-viz-priority-card{min-height:112px;transition:border-color .15s,background .15s}
+.replay-viz-priority-card>em{display:block;color:#c5d5e2;font-size:9px;font-style:normal;line-height:1.45}
+.replay-viz-priority-card.selected>em{color:#f1e2c3}
+.replay-viz-no-findings{display:flex;flex-direction:column;gap:5px;margin:0 0 12px;padding:13px 15px;border:1px dashed #42566b;border-radius:10px;background:#0d1d2c}
+.replay-viz-no-findings b{color:#dce9f4;font-size:11px}
+.replay-viz-no-findings span{color:#94aabd;font-size:9px;line-height:1.5}
+.replay-viz-transfer-summary{display:flex;flex-direction:column;gap:7px;padding:9px 11px;border-top:1px solid #21384d;background:#0a1724}
+.replay-viz-transfer-summary>b{color:#a9c5d9;font:800 8px 'Cascadia Code',monospace;letter-spacing:.06em;text-transform:uppercase}
+.replay-viz-transfer-summary>span{display:flex;align-items:center;gap:6px;min-width:0;color:#cbd9e5;font-size:9px}
+.replay-viz-transfer-summary>span>i{width:8px;height:8px;flex:none;border-radius:2px}
+.replay-viz-transfer-summary>span>b{color:#e8c77f}
+.replay-viz-transfer-summary>span>small{margin-left:auto;color:#a9c2d6;font:9px 'Cascadia Code',monospace;white-space:nowrap}
+.replay-viz-transfer-summary>small{color:#8da5ba;font-size:9px;line-height:1.4}
+.replay-viz-coach-assessment{padding:8px;border-left:2px solid #c49a55;background:#211d17}
+.replay-viz-coach-assessment>b{display:block;color:#e8c77f;font-size:9px}
+.replay-viz-coach-assessment>small{display:block;margin-top:3px;color:#c6b99f;font-size:8px;line-height:1.45}
+.replay-viz-engagement-note{color:#8fa8bd;font-size:8px;line-height:1.45}
+@media(max-width:720px){
+  .replay-viz-priority-findings{grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+  .replay-viz-priority-card{min-height:124px;padding:8px 7px;gap:5px}
+  .replay-viz-priority-card>span{font-size:7px;letter-spacing:0}
+  .replay-viz-priority-card>b{font-size:9px}
+  .replay-viz-priority-card>small,.replay-viz-priority-card>em{font-size:8px}
+}
+@media(max-width:440px){
+  .replay-viz-priority-findings{grid-template-columns:1fr}
+  .replay-viz-priority-card{min-height:0;padding:10px}
+  .replay-viz-priority-card>b{font-size:11px}
+  .replay-viz-priority-card>small,.replay-viz-priority-card>em{font-size:9px}
+  .replay-viz-transfer-summary>span{flex-wrap:wrap}
+  .replay-viz-transfer-summary>span>small{margin-left:0}
+  .replay-viz-map-head{padding:0 8px}
+  .replay-viz-map-head span:last-child{font-size:7px}
+}

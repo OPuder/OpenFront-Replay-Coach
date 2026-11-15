@@ -247,3 +247,22 @@ test('equal troop attrition without territory change is reported as an even trad
  assert.match(finding.consequence,/3 waren ausgeglichen/);
  assert.match(finding.title,/sichtbarer Gebietsreaktion/);
 });
+
+test('engine attack-response insight compares own and target troop losses',()=>{
+ const player={id:1,name:'Player',clientID:'p1',alive:true,gold:100,goldEarned:100,tradeGold:0,trainGold:0,piracyGold:0,troops:1000,tiles:100,units:0,unitCounts:{},unitTroops:{},unitsUnderConstruction:0,outgoingAttacks:0,incomingAttacks:0,outgoingAttackDetails:[],incomingAttackDetails:[],attackTroops:0,allies:0,alliances:0,targets:0,betrayals:0,isTraitor:false,isDecaying:false,inDoomsdayClock:false};
+ const review={playerName:'Player',clientID:'p1',startTiles:100,endTiles:100,tilesGained:0,startGold:100,endGold:100,startTroops:1000,endTroops:900,outgoingAttackSamples:3,longestNoExpansionSeconds:0};
+ const actions=[{
+   frame:100,turn:100,seconds:10,type:'attack',commandTroops:100,label:'Attack',details:'',targetId:'2',targetName:'Rival',targetSmallID:2,
+   before:null,after:null,delta:null,delta5s:null,
+   delta10s:{tiles:0,gold:0,troops:-80,goldEarned:0,tradeGold:0,trainGold:0,piracyGold:0},
+   delta30s:{tiles:0,gold:0,troops:-80,goldEarned:0,tradeGold:0,trainGold:0,piracyGold:0},
+   targetDelta10s:null,targetDelta30s:{tiles:0,gold:0,troops:-120,goldEarned:0,tradeGold:0,trainGold:0,piracyGold:0},
+   targetAliveBefore:true,targetAliveAt10s:true,targetAliveAt30s:true,ownFrontContextBefore:null,targetPressureBefore:null,activeAttack10s:null,activeAttack30s:null,
+ }];
+ const insights=buildEngineCoachInsights(review,actions,[{tick:0,frame:0,players:[player]},{tick:1000,frame:1000,players:[player]}]);
+ const attack=insights.find(item=>item.id==='attack-response-windows');
+ assert.ok(attack);
+ assert.match(attack.title,/Günstige Truppentausche/);
+ assert.match(attack.summary,/1 günstige Truppentausche/);
+ assert.match(attack.evidence,/eigene Truppen -80.*Zielgebiet 0.*Zieltruppen -120/);
+});

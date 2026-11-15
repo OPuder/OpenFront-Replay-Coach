@@ -71,6 +71,15 @@ window.__prepareLegacyMatchStore = async () => {
           analysisStatus: "pending",
           updatedAt: 1,
         });
+        // Seed a second v2-era profile so the v2 → v3 migration must index
+        // legacy records for players other than the migration-profile fixture.
+        tx.objectStore("matches").put({
+          playerId: "legacy-index-player",
+          game: { gameId: "legacy-index-game", map: "CI legacy", mode: "Free For All", type: "Private" },
+          status: "loaded",
+          analysisStatus: "pending",
+          updatedAt: 2,
+        });
         tx.oncomplete = () => { db.close(); resolve(); };
         tx.onerror = () => { db.close(); reject(tx.error ?? new Error("Could not seed IndexedDB v2 migration fixture")); };
         tx.onabort = () => { db.close(); reject(tx.error ?? new Error("IndexedDB v2 migration fixture was aborted")); };

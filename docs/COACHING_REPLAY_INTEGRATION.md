@@ -78,8 +78,10 @@ territory and movement.
 The adapter tests cover exact-time evidence references, target-name ambiguity,
 missing timestamps, match/player scoping, and the prohibition on treating
 `targetSmallID` as a territory owner ID. The real mixed-engine browser regression
-also passes both Europe and Levant engine outputs through the adapter and checks
-match scoping, evidence references, timestamp validity, priority and confidence.
+also selects the recorded `OligenOle` profile in both Europe and Levant, passes
+both verified engine outputs through the adapter, and checks deterministic
+findings, the decision-to-lesson chain, match scoping, evidence references,
+timestamp validity, priority and confidence.
 The Electron UI harness covers
 priority cards, selected-finding detail, affected-territory overlay, timeline
 synchronization, keyboard navigation, and 320/375/768/1440 px viewports.

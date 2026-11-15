@@ -513,36 +513,76 @@ window.__verifyPersistedProfileTest = async () => {
 };
 
 window.__verifyBatchStoreTest = async () => {
-  // The match index intentionally omits raw GameRecord payloads. Hydrate each
-  // record from the dedicated replay-records store before testing JSON export.
+  // Hydrate the raw replay payload and reconstruct coaching from the persisted
+  // simulation. The renderer report is derived data; rebuilding it proves that
+  // findings and timeline evidence survive a real reload without inventing or
+  // storing a second, potentially stale report copy.
   const index = await loadImportedMatches("ci-batch-player");
   const matches = await Promise.all(index.map(async item => ({
     item,
     hydrated: await loadImportedMatch("ci-batch-player", item.game.gameId),
   })));
-  return matches.map(({ item, hydrated }) => ({
-    gameId: item.game.gameId,
-    status: item.status,
-    analysisStatus: item.analysisStatus,
-    simulationStatus: item.simulation?.status,
-    sampleCount: item.simulation?.samples?.length ?? 0,
-    jsonExportRestored: (() => {
-      try {
-        const record = hydrated?.result?.record;
-        const recordGameId = String(record?.info?.gameID ?? record?.game?.info?.gameID ?? "");
-        if (!recordGameId) return false;
-        const raw = resolveReplayJsonExport(recordGameId, undefined, record, 750 * 1024 * 1024);
-        const restored = JSON.parse(raw);
-        return String(restored?.info?.gameID ?? restored?.game?.info?.gameID ?? "") === recordGameId;
-      } catch { return false; }
-    })(),
-  }));
-};
-
-window.__testAbortBatchReplay = async (gameId) => {
-  const record = batchTestRecords.get(gameId);
-  if (!record) return { aborted: false };
-  return window.__testAbort!(record);
+  return matches.map(({ item, hydrated }) => {
+    const record = hydrated?.result?.record as any;
+    const simulation = hydrated?.simulation as any;
+    const clientId = String(simulation?.playerReview?.clientID ?? "");
+    const findings = clientId && Array.isArray(simulation?.samples) && Array.isArray(simulation?.actionReviews)
+      ? buildProCoachReport(
+          simulation.samples as any,
+          simulation.actionReviews as any,
+          clientId,
+          Number(simulation.totalTicks ?? 0) / 10,
+        ).findings.map((finding: any) => ({
+          id: finding.id, priority: finding.priority, decision: finding.decision,
+          consequence: finding.consequence, alternative: finding.alternative,
+          trainingRule: finding.trainingRule, evidence: finding.evidence, seconds: finding.seconds,
+        }))
+      : [];
+    const engineInsights = clientId && simulation?.playerReview
+      ? buildEngineCoachInsights(
+          simulation.playerReview as any,
+          simulation.actionReviews as any,
+          simulation.samples as any,
+        ).map((insight: any) => ({
+          id: insight.id, kind: insight.kind, title: insight.title,
+          evidence: insight.evidence, nextStep: insight.nextStep,
+          limitation: insight.limitation, seconds: insight.seconds,
+        }))
+      : [];
+    const timeline = clientId && Array.isArray(simulation?.actionReviews)
+      ? buildReplayTimeline(simulation.actionReviews.map((action: any) => ({
+          time: action.seconds, title: action.label, detail: action.details,
+          kind: action.type, turn: action.turn,
+        })), engineInsights as any).map((entry: any) => ({
+          id: entry.id, time: entry.time, title: entry.title, kind: entry.kind,
+          turn: entry.turn, evidence: entry.insight?.evidence ?? null,
+        }))
+      : [];
+    const recordGameId = String(record?.info?.gameID ?? record?.game?.info?.gameID ?? "");
+    return {
+      gameId: item.game.gameId,
+      status: item.status,
+      analysisStatus: item.analysisStatus,
+      simulationStatus: simulation?.status,
+      sampleCount: simulation?.samples?.length ?? 0,
+      actionCount: simulation?.actionReviews?.length ?? 0,
+      clientId,
+      playerName: simulation?.playerReview?.playerName ?? null,
+      verifiedHashes: simulation?.verifiedHashes ?? 0,
+      findingCount: findings.length,
+      findings,
+      engineInsights,
+      timeline,
+      jsonExportRestored: (() => {
+        try {
+          if (!recordGameId) return false;
+          const raw = resolveReplayJsonExport(recordGameId, undefined, record, 750 * 1024 * 1024);
+          const restored = JSON.parse(raw);
+          return String(restored?.info?.gameID ?? restored?.game?.info?.gameID ?? "") === recordGameId;
+        } catch { return false; }
+      })(),
+    };
+  });
 };
 
 window.__verifyPlayerIndexTest = async () => {

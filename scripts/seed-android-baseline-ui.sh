@@ -110,7 +110,7 @@ PY
 }
 
 replay_count=0
-for attempt in $(seq 1 600); do
+for attempt in $(seq 1 300); do
   dump_ui || true
   replay_count="$(read_metric "REPLAYS GESPEICHERT")"
   if [[ "$replay_count" =~ ^[0-9]+$ ]] && (( replay_count >= 2 )); then break; fi
@@ -129,7 +129,9 @@ done
 [[ "$verified_count" =~ ^[0-9]+$ ]] && (( verified_count >= 1 )) || fail "No hash-verified replay analysis became visible in the real app UI."
 
 log "Opening a real match from the UI and saving its evidence-backed training goal."
-tap_text "Coach öffnen" 2
+adb -s emulator-5554 shell input swipe 520 1550 520 600 450
+sleep 2
+tap_text "Coach öffnen"
 training_goal=false
 for attempt in $(seq 1 600); do
   dump_ui || true
@@ -137,6 +139,7 @@ for attempt in $(seq 1 600); do
     training_goal=true
     break
   fi
+  if (( attempt % 5 == 0 )); then adb -s emulator-5554 shell input swipe 520 1550 520 600 450 >/dev/null 2>&1 || true; fi
   sleep 2
 done
 if [[ "$training_goal" == true ]]; then

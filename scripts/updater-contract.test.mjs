@@ -109,3 +109,14 @@ assert.match("OpenFront Replay Coach Setup 2.2.45.exe", installerAssetMatcher, "
 assert.match("OpenFront.Replay.Coach.Setup.2.2.44.exe", installerAssetMatcher, "Legacy published installer filenames must remain supported.");
 assert.ok(releaseWorkflow.includes("names.some(name => /-win\\.zip$/i.test(name))"), "Release verification must match the actual Windows portable ZIP filename.");
 assert.ok(releaseWorkflow.includes("names.some(name => /-Android\\.apk$/i.test(name))"), "Release verification must match the actual Android APK filename.");
+
+const engineCacheWorkflows = [
+  read(".github/workflows/build-windows.yml"),
+  read(".github/workflows/replay-compatibility.yml"),
+  read(".github/workflows/validate-engine.yml"),
+  read(".github/workflows/update-validation.yml"),
+  read(".github/workflows/release-on-main.yml"),
+];
+for (const workflow of engineCacheWorkflows) {
+  assert.match(workflow, /Restore exact historical engine Git objects[\\s\\S]*?actions\\/cache@v4[\\s\\S]*?path: \.git\\/modules[\\s\\S]*?github\.job/);
+}

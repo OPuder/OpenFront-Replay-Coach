@@ -126,6 +126,8 @@ jobs:
         run: |
           bash -n scripts/test-android-in-place-update.sh
           bash -n scripts/test-android-release-upgrade.sh
+          bash -n scripts/download-android-release-baseline.sh
+          bash -n scripts/verify-android-release-signing.sh
 
       - name: Set up Java
         uses: actions/setup-java@v4

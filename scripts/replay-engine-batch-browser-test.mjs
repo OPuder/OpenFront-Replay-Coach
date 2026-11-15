@@ -97,6 +97,32 @@ async function main() {
     cancelled: false,
   }, "One unsupported engine must not block other selected matches");
 
+  assert.equal(batch.coaching.length, 2, "Both real replays should produce coach reports");
+  for (const gameId of ["Europe", "Levant"]) {
+    const report = batch.coaching.find(item => item.gameId === gameId);
+    assert.ok(report, `${gameId} coach report missing`);
+    assert.equal(String(report.selectedPlayer).toLowerCase(), "oligenole");
+    assert.ok(report.clientId);
+    assert.ok(report.verifiedHashes > 0);
+    assert.ok(report.sampleCount > 0);
+    assert.equal(report.proReport.phases.length, 3);
+    assert.ok(report.proReport.dataCoverage.samples > 0);
+    assert.ok(report.engineInsights.length > 0);
+    assert.ok(report.timeline.length > 0);
+    assert.ok(report.selection.primary.length <= 3);
+    for (const entry of report.timeline.filter(item => item.id.startsWith("coach-"))) {
+      assert.ok(entry.insight.evidence);
+      assert.ok(entry.insight.nextStep);
+      assert.ok(entry.insight.limitation);
+    }
+    for (const action of report.timeline.filter(item => item.id.startsWith("event-"))) {
+      assert.equal(action.time, action.turn / 10);
+    }
+  }
+  assert.equal(batch.longitudinal.importedMatches, 2);
+  assert.equal(batch.longitudinal.verifiedMatches, 2);
+  assert.equal(batch.longitudinal.comparableMatches, 2);
+  assert.equal(batch.longitudinal.status, "ready");
   const europeResult = batch.outcomes.find(item => item.gameId === "Europe");
   const unsupportedResult = batch.outcomes.find(item => item.gameId === "unsupported-engine");
   const levantResult = batch.outcomes.find(item => item.gameId === "Levant");

@@ -4,18 +4,21 @@ on:
   # Main merges enter the fully gated release pipeline; manual dispatch remains available for retries.
   push:
     branches: [main]
+  pull_request:
+    branches: [main]
   workflow_dispatch:
 
 permissions:
   contents: write
 
 concurrency:
-  group: openfront-replay-coach-release-main-v2
+  group: ${{ github.event_name == 'pull_request' && format('openfront-replay-coach-release-pr-{0}', github.event.pull_request.number) || 'openfront-replay-coach-release-main-v2' }}
   cancel-in-progress: true
 
 jobs:
   prepare-release:
     name: Select and pin the next release version
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     outputs:
       skip: ${{ steps.version.outputs.skip }}
@@ -26,7 +29,7 @@ jobs:
       - name: Check out main history and all release tags
         uses: actions/checkout@v4
         with:
-          ref: main
+          ref: ${{ github.event.pull_request.head.sha || 'main' }}
           fetch-depth: 0
           persist-credentials: true
 
@@ -39,10 +42,459 @@ jobs:
         id: version
         shell: bash
         env:
-          EVENT_SHA: ${{ github.sha }}
+          EVENT_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+          EVENT_NAME: ${{ github.event_name }}
         run: |
           set -Eeuo pipefail
           git fetch origin main --tags --force
+
+          if [[ "$EVENT_NAME" == "pull_request" ]]; then
+            base_version="$(node -p "require('./package.json').version")"
+            latest_tag="$(git tag --list 'v[0-9]*' | grep -E '^v[0-9]+\\.[0-9]+\\.[0-9]+
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            echo "::notice::The triggering commit is no longer on the current main history."
+            exit 0
+          fi
+
+          latest_tag="$(git tag --list 'v[0-9]*' | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | sort -V | tail -n 1 || true)"
+          if [[ -n "$latest_tag" ]]; then
+            latest_tag_sha="$(git rev-list -n 1 "$latest_tag")"
+            if git merge-base --is-ancestor "$EVENT_SHA" "$latest_tag_sha"; then
+              echo "skip=true" >> "$GITHUB_OUTPUT"
+              echo "::notice::This commit is already included in $latest_tag. Skipping duplicate release."
+              exit 0
+            fi
+          fi
+
+          base_version="$(node -p "require('./package.json').version")"
+          if [[ ! "$base_version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::package.json must contain a stable x.y.z version (found: $base_version)"
+            exit 1
+          fi
+
+          if [[ -z "$latest_tag" ]]; then
+            next_version="$base_version"
+          else
+            latest_version="${latest_tag#v}"
+            if [[ "$base_version" == "$latest_version" ]]; then
+              IFS='.' read -r major minor patch <<< "$latest_version"
+              next_version="$major.$minor.$((patch + 1))"
+            elif [[ "$(printf '%s\n%s\n' "$latest_version" "$base_version" | sort -V | head -n 1)" == "$latest_version" ]]; then
+              next_version="$base_version"
+            else
+              IFS='.' read -r major minor patch <<< "$latest_version"
+              next_version="$major.$minor.$((patch + 1))"
+            fi
+          fi
+
+          while git rev-parse -q --verify "refs/tags/v$next_version" >/dev/null; do
+            IFS='.' read -r major minor patch <<< "$next_version"
+            next_version="$major.$minor.$((patch + 1))"
+          done
+
+          node scripts/set-release-version.mjs "$next_version"
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if ! git diff --quiet; then
+            git add package.json package-lock.json START_HERE.txt src/renderer/main.tsx
+            git commit -m "chore(release): prepare v$next_version [skip ci]"
+            git push origin HEAD:main
+          fi
+
+          release_sha="$(git rev-parse HEAD)"
+          echo "skip=false" >> "$GITHUB_OUTPUT"
+          echo "version=$next_version" >> "$GITHUB_OUTPUT"
+          echo "tag=v$next_version" >> "$GITHUB_OUTPUT"
+          echo "release_sha=$release_sha" >> "$GITHUB_OUTPUT"
+          echo "Selected v$next_version at $release_sha"
+
+  validate-engine:
+    name: Validate exact OpenFront engine revision
+    needs: prepare-release
+    if: (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && needs.prepare-release.outputs.skip != 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - name: Check out the release source
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.prepare-release.outputs.release_sha }}
+
+      - name: Set up Node.js and npm
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24.15.0"
+
+      - name: Set up pinned npm
+        run: npm install --global npm@12.1.0
+
+      - name: Prepare all exact historical OpenFront engines
+        run: npm run prepare:engines
+
+      - name: Build all exact replay engine workers
+        run: |
+          npm ci
+          npm run build:engine
+
+  validate-replay:
+    name: Validate real replay fixtures and mixed-engine analysis
+    needs: prepare-release
+    if: (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && needs.prepare-release.outputs.skip != 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Check out the exact release source
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.prepare-release.outputs.release_sha }}
+          submodules: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24.15.0"
+
+      - name: Set up pinned npm
+        run: npm install --global npm@12.1.0
+
+      - name: Install Coach dependencies
+        run: npm ci
+
+      - name: Prepare all exact historical OpenFront engines
+        run: npm run prepare:engines
+
+      - name: Build all exact replay engine worker bundles
+        run: npm run build:engine
+
+      - name: Verify source pin and engine checkout cannot drift
+        run: npm run validate:engine-pin
+
+      - name: Verify actual Europe replay and coaching regressions
+        env:
+          OPENFRONT_REPLAY_ID: c2R2JHZgUi
+          OPENFRONT_REPLAY_EXPECTED_COMMIT: 8b5d071eed95f07c701b32e4c64e95b03f8577c1
+          OPENFRONT_REPLAY_EXPECTED_MAP: Europe
+          OPENFRONT_REPLAY_EXPECTED_PLAYERS: "2"
+          OPENFRONT_REPLAY_EXPECTED_TURNS: "1334"
+          OPENFRONT_REPLAY_EXPECTED_HASHES: "1006"
+        run: npm run test:coach
+
+      - name: Verify actual Levant replay metadata
+        env:
+          OPENFRONT_REPLAY_ID: dLNCLHCvMK
+          OPENFRONT_REPLAY_EXPECTED_COMMIT: bc3e3334c573c4959ec6a6745df6826d07233b4d
+          OPENFRONT_REPLAY_EXPECTED_MAP: Levant
+        run: node --import ./vendor/OpenFrontIO/node_modules/tsx/dist/loader.mjs --test scripts/public-replay-compatibility.test.mjs
+
+      - name: Verify mixed-engine batch, hashes, cancellation and IndexedDB persistence
+        run: xvfb-run -a ./node_modules/.bin/electron --no-sandbox scripts/replay-engine-batch-browser-test.mjs
+
+  build-windows:
+    name: Build Windows installer and portable ZIP
+    needs: prepare-release
+    if: (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && needs.prepare-release.outputs.skip != 'true'
+    runs-on: windows-latest
+    timeout-minutes: 60
+    steps:
+      - name: Check out the versioned release source
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.prepare-release.outputs.release_sha }}
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24.15.0"
+
+      - name: Set up pinned npm
+        run: npm install --global npm@12.1.0
+
+      - name: Prepare all exact historical OpenFront engines
+        run: npm run prepare:engines
+
+      - name: Install Coach dependencies
+        run: npm ci
+
+      - name: Build the original replay engine and Windows application
+        run: npm run build
+
+      - name: Verify updater contract tests before packaging
+        run: node --test scripts/updater-contract.test.mjs
+
+      - name: Package the installer and portable ZIP
+        run: npx electron-builder --win nsis zip --publish never
+
+      - name: Smoke-test the packaged Windows renderer
+        run: node scripts/smoke-test-windows.mjs
+
+      - name: Test pro coaching analytics
+        run: npm run test:coach
+
+
+      - name: Upload Windows release files
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-windows
+          path: |
+            release/*.exe
+            release/*.zip
+          if-no-files-found: error
+          retention-days: 14
+
+  build-android:
+    name: Build installable Android APK
+    needs: prepare-release
+    if: (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && needs.prepare-release.outputs.skip != 'true'
+    runs-on: ubuntu-22.04
+    timeout-minutes: 90
+    outputs:
+      signing_mode: ${{ steps.apk.outputs.signing_mode }}
+    steps:
+      - name: Check out the versioned release source
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.prepare-release.outputs.release_sha }}
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24.15.0"
+          cache: npm
+
+      - name: Set up pinned npm
+        run: npm install --global npm@12.1.0
+
+      - name: Prepare all exact historical OpenFront engines
+        run: npm run prepare:engines
+
+      - name: Install Coach and Capacitor dependencies
+        run: npm ci
+
+      - name: Verify updater contract tests before APK packaging
+        run: node --test scripts/updater-contract.test.mjs
+
+      - name: Build the shared renderer and original replay engine
+        run: npm run build:web
+
+      - name: Smoke-test native Android configuration
+        run: node scripts/smoke-test-android-config.mjs
+
+      - name: Test pro coaching analytics
+        run: npm run test:coach
+
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v4
+        with:
+          packages: "platforms;android-36 build-tools;36.0.0"
+
+      - name: Add Android build tools to PATH
+        run: echo "$ANDROID_HOME/build-tools/36.0.0" >> "$GITHUB_PATH"
+
+      - name: Generate the native Android project
+        run: |
+          npx cap add android
+          npx cap sync android
+          node scripts/install-android-updater-plugin.mjs
+
+      - name: Generate branded Android launcher and splash assets
+        run: npx capacitor-assets generate --android --iconBackgroundColor "#0b1320" --splashBackgroundColor "#0b1320"
+
+      - name: Set the Android application version
+        env:
+          RELEASE_VERSION: ${{ needs.prepare-release.outputs.version }}
+        run: node scripts/set-android-version.mjs "$RELEASE_VERSION"
+
+      - name: Build permanently signed release APK
+        id: apk
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -Eeuo pipefail
+          if [[ -z "$ANDROID_KEYSTORE_BASE64" || -z "$ANDROID_KEYSTORE_PASSWORD" || -z "$ANDROID_KEY_ALIAS" || -z "$ANDROID_KEY_PASSWORD" ]]; then
+            echo "::error::A permanent Android release signing key is required. Refusing to publish an APK that cannot update existing installations."
+            exit 1
+          fi
+          keystore="$RUNNER_TEMP/openfront-replay-coach-release.jks"
+          printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$keystore"
+          test -s "$keystore"
+          export ANDROID_KEYSTORE_PATH="$keystore"
+          node scripts/configure-android-signing.mjs
+          node scripts/verify-android-keystore.mjs
+          (cd android && ./gradlew --no-daemon assembleRelease)
+          apk="android/app/build/outputs/apk/release/app-release.apk"
+          echo "signing_mode=permanent release key" >> "$GITHUB_OUTPUT"
+          test -s "$apk"
+          build_tools="$(find "$ANDROID_HOME/build-tools" -mindepth 1 -maxdepth 1 -type d | sort -V | tail -n 1)"
+          "$build_tools/apksigner" verify --verbose "$apk"
+          previous_tag="$(gh release list --limit 1 --json tagName --jq '.[0].tagName // empty')"
+          if [[ -z "$previous_tag" ]]; then
+            echo "::error::No previous published Android release is available to verify signing continuity."
+            exit 1
+          fi
+          previous_dir="$RUNNER_TEMP/previous-release"
+          mkdir -p "$previous_dir"
+          gh release download "$previous_tag" --pattern '*-Android.apk' --dir "$previous_dir"
+          previous_apk="$(find "$previous_dir" -type f -name '*.apk' -print -quit)"
+          if [[ -z "$previous_apk" ]]; then
+            echo "::error::The latest release $previous_tag has no Android APK; refusing an unverified signing transition."
+            exit 1
+          fi
+          current_cert_output="$("$build_tools/apksigner" verify --print-certs "$apk" 2>&1)" || { printf '%s\n' "$current_cert_output"; echo "::error::Could not read the configured APK signing certificate."; exit 1; }
+          previous_cert_output="$("$build_tools/apksigner" verify --print-certs "$previous_apk" 2>&1)" || { printf '%s\n' "$previous_cert_output"; echo "::error::Could not read the published APK signing certificate."; exit 1; }
+          extract_certificate_sha256() {
+            grep -Eo '[[:xdigit:]]{64}' <<< "$1" | tail -n 1 || true
+          }
+          current_cert="$(extract_certificate_sha256 "$current_cert_output")"
+          previous_cert="$(extract_certificate_sha256 "$previous_cert_output")"
+          if [[ -z "$current_cert" || -z "$previous_cert" || "$current_cert" != "$previous_cert" ]]; then
+            echo "::error::Android signing certificate changed. Existing installations could not update; release blocked. Published: $previous_cert; configured: $current_cert."
+            exit 1
+          fi
+          echo "Android signing certificate matches $previous_tag; in-place update identity preserved."
+          "$build_tools/aapt" dump badging "$apk" | tee /tmp/apk-badging.txt
+          grep -F "package: name='de.openfront.replaycoach'" /tmp/apk-badging.txt
+          grep -F "versionName='${{ needs.prepare-release.outputs.version }}'" /tmp/apk-badging.txt
+          mkdir -p release
+          cp "$apk" "release/OpenFront-Replay-Coach-${{ needs.prepare-release.outputs.version }}-Android.apk"
+
+      - name: Verify signed Android APK is a usable release package
+        run: |
+          set -Eeuo pipefail
+          apk="release/OpenFront-Replay-Coach-${{ needs.prepare-release.outputs.version }}-Android.apk"
+          test -s "$apk"
+          test "$(stat -c%s "$apk")" -gt 1000000
+          "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --verbose "$apk"
+          "$ANDROID_HOME/build-tools/36.0.0/aapt" dump badging "$apk" | grep -F "package: name='de.openfront.replaycoach'"
+
+      - name: Validate Android release-upgrade test script syntax
+        run: bash -n scripts/test-android-release-upgrade.sh
+
+      - name: Install previous published APK and upgrade to the exact signed release APK
+        timeout-minutes: 45
+        uses: reactivecircus/android-emulator-runner@v2
+        env:
+          RELEASE_VERSION: ${{ needs.prepare-release.outputs.version }}
+        with:
+          api-level: 34
+          target: google_apis
+          arch: x86_64
+          profile: pixel_2
+          cores: 2
+          emulator-boot-timeout: 1800
+          emulator-options: -no-window -no-audio -no-boot-anim -no-snapshot -no-metrics -gpu swiftshader_indirect -memory 2048 -partition-size 4096
+          script: bash scripts/test-android-release-upgrade.sh
+
+      - name: Upload Android APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-android
+          path: release/*-Android.apk
+          if-no-files-found: error
+          retention-days: 14
+
+  publish-release:
+    name: Publish Windows and Android editions as one GitHub Release
+    needs: [prepare-release, validate-engine, validate-replay, build-windows, build-android]
+    if: github.event_name != 'pull_request' && needs.prepare-release.outputs.skip != 'true' && needs.build-android.outputs.signing_mode == 'permanent release key'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download Windows installer and portable ZIP
+        uses: actions/download-artifact@v4
+        with:
+          name: release-windows
+          path: release
+
+      - name: Download Android APK
+        uses: actions/download-artifact@v4
+        with:
+          name: release-android
+          path: release
+
+      - name: Create one release with all three downloads
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ needs.prepare-release.outputs.tag }}
+          target_commitish: ${{ needs.prepare-release.outputs.release_sha }}
+          name: OpenFront Replay Coach ${{ needs.prepare-release.outputs.version }}
+          generate_release_notes: true
+          fail_on_unmatched_files: true
+          body: |
+            ## Drei Ausgaben – eine Version
+
+            - **Windows Installer:** normal installieren, Desktop-Verknüpfung inklusive.
+            - **Windows Portable:** ZIP entpacken und direkt starten, keine Installation.
+            - **Android APK:** Die App prüft beim Start auf Updates. Der Download wird nach Tippen auf Aktualisieren gestartet, vorgeprüft und anschließend Androids Installationsdialog geöffnet. Eine Bestätigung bleibt aus Sicherheitsgründen erforderlich. Keine Cloudflare-Anmeldung und kein Play-Store-Konto erforderlich.
+            Die Windows- und Android-Ausgaben enthalten die gemeinsame, getestete Coaching-Oberfläche. Android lädt öffentliche OpenFront-Daten über seine native HTTP-Schnittstelle.
+
+            **Android-Signierung:** ${{ needs.build-android.outputs.signing_mode }}. Für zuverlässige Updates muss der dauerhafte Schlüssel einmalig als vier GitHub-Actions-Secrets eingerichtet werden; siehe `docs/ANDROID_SIGNING.md`. Den privaten Schlüssel niemals ins Repository committen.
+
+            **Start:** siehe START_HERE.txt.
+          files: |
+            release/*.exe
+            release/*.zip
+            release/*-Android.apk
+
+      - name: Verify published release contains exactly three usable artifacts
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ needs.prepare-release.outputs.tag }}
+        run: |
+          set -Eeuo pipefail
+          gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --json assets | node -e '
+            let input = "";
+            process.stdin.setEncoding("utf8");
+            process.stdin.on("data", chunk => input += chunk);
+            process.stdin.on("end", () => {
+              const assets = JSON.parse(input).assets;
+              const names = assets.map(asset => asset.name);
+              const checks = [
+                names.length === 3,
+                names.some(name => /(?:\.Setup\.| Setup )[0-9.]+\.exe$/i.test(name)),
+                names.some(name => /-win\.zip$/i.test(name)),
+                names.some(name => /-Android\.apk$/i.test(name)),
+                assets.every(asset => asset.size > 1000000),
+                !names.some(name => /pwa|service.?worker|web.?zip/i.test(name))
+              ];
+              if (checks.some(ok => !ok)) {
+                console.error("Published release asset verification failed:", JSON.stringify(assets));
+                process.exit(1);
+              }
+              console.log("Verified exactly three release artifacts:", names.join(", "));
+            });
+          ' | sort -V | tail -n 1 || true)"
+            if [[ -n "$latest_tag" ]]; then
+              latest_version="${latest_tag#v}"
+              if [[ "$(printf '%s\\n%s\\n' "$latest_version" "$base_version" | sort -V | tail -n 1)" == "$latest_version" ]]; then
+                IFS='.' read -r major minor patch <<< "$latest_version"
+                next_version="$major.$minor.$((patch + 1))"
+              else
+                next_version="$base_version"
+              fi
+            else
+              next_version="$base_version"
+            fi
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+            echo "version=$next_version" >> "$GITHUB_OUTPUT"
+            echo "tag=pr-validation" >> "$GITHUB_OUTPUT"
+            echo "release_sha=$EVENT_SHA" >> "$GITHUB_OUTPUT"
+            echo "::notice::Validating the exact pull-request head with temporary Android version $next_version; no tag or release will be published."
+            exit 0
+          fi
+
           git checkout -B release-main origin/main
 
           if ! git merge-base --is-ancestor "$EVENT_SHA" HEAD; then

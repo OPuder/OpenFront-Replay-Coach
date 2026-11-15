@@ -116,6 +116,21 @@ function buildMatchReport(input: LongitudinalMatchInput): NormalizedMatch | null
     !Array.isArray(simulation.actionReviews)
   ) return null;
 
+  // Keep only structurally usable samples for this selected player. Real engine
+  // output is complete, but persisted/corrupt partial records must not crash review
+  // generation or be mistaken for evidence.
+  const samples = simulation.samples.flatMap((raw: any) => {
+    if (!raw || typeof raw !== "object" || !Number.isFinite(raw.tick) || !Array.isArray(raw.players)) return [];
+    const players = raw.players.filter((player: any) => player && typeof player === "object");
+    const player = players.find((candidate: any) => String(candidate.clientID ?? "") === clientId);
+    if (!player || typeof player.alive !== "boolean"
+      || ![player.tiles, player.gold, player.goldEarned, player.troops, player.allies, player.betrayals].every(Number.isFinite)
+      || !Array.isArray(player.outgoingAttackDetails) || !Array.isArray(player.incomingAttackDetails)
+      || !player.unitCounts || typeof player.unitCounts !== "object") return [];
+    return [{ ...raw, players }];
+  }) as ProCoachPlayerSample[];
+  if (samples.length < 2) return null;
+
   // Malformed or incomplete action records must not be silently assigned time 0.
   // That would fabricate an opening action and could distort longitudinal attack rates.
   const actions = simulation.actionReviews
@@ -134,12 +149,14 @@ function buildMatchReport(input: LongitudinalMatchInput): NormalizedMatch | null
       targetPressureBefore: raw.targetPressureBefore ?? null,
     }));
   const duration = Number(input.durationSeconds);
-  const report = buildProCoachReport(
-    simulation.samples as ProCoachPlayerSample[],
-    actions,
-    clientId,
-    Number.isFinite(duration) && duration > 0 ? duration : simulation.totalTicks / 10,
-  );
+  const totalTicks = Number(simulation.totalTicks);
+  const observedTicks = samples[samples.length - 1].tick - samples[0].tick;
+  const safeDuration = Number.isFinite(duration) && duration > 0
+    ? duration
+    : Number.isFinite(totalTicks) && totalTicks > 0
+      ? totalTicks / 10
+      : Number.isFinite(observedTicks) && observedTicks > 0 ? observedTicks / 10 : 1;
+  const report = buildProCoachReport(samples, actions, clientId, safeDuration);
   const playerReview = simulation.playerReview as Parameters<typeof buildEngineCoachInsights>[0];
   const hasCompleteReview = [
     playerReview.startTiles, playerReview.endTiles, playerReview.tilesGained,
@@ -156,7 +173,7 @@ function buildMatchReport(input: LongitudinalMatchInput): NormalizedMatch | null
     ? buildEngineCoachInsights(
         playerReview,
         validEngineActions as Parameters<typeof buildEngineCoachInsights>[1],
-        simulation.samples as Parameters<typeof buildEngineCoachInsights>[2],
+        samples as Parameters<typeof buildEngineCoachInsights>[2],
       ).filter(insight => insight.kind === "strength")
     : [];
   return { input, report, strengths, actions };

@@ -390,3 +390,40 @@ test('early mid and late phase reviews require real samples in each observed pha
   assert.ok(phases.mid!==null);
   assert.ok(phases.late!==null);
 });
+
+
+test('duplicate IDs cannot manufacture extra trend observations or alter their examples',()=>{
+  const makeTiles=(multiplier)=>makeSimulation({
+    samples:makeSimulation().samples.map(sample=>({...sample,players:sample.players.map(player=>({...player,tiles:player.tiles*multiplier}))})),
+    actionReviews:[],
+  });
+  const unique=[
+    ...['a','b','c'].map((id,i)=>match(id,{playedAt:`2026-07-0${i+1}T00:00:00Z`,simulation:makeTiles(1)})),
+    ...['d','e','f'].map((id,i)=>match(id,{playedAt:`2026-07-0${i+4}T00:00:00Z`,simulation:makeTiles(2)})),
+  ];
+  const duplicated=[...unique,...Array.from({length:8},()=>match('f',{playedAt:'2026-07-06T00:00:00Z',simulation:makeTiles(2)}))];
+  const baseline=buildLongitudinalCoachReport(unique);
+  const report=buildLongitudinalCoachReport(duplicated);
+  const baseTrend=baseline.metricTrends.find(item=>item.id==='territory');
+  const trend=report.metricTrends.find(item=>item.id==='territory');
+  assert.equal(report.importedMatches,6);
+  assert.equal(trend?.observations,baseTrend?.observations);
+  assert.equal(trend?.direction,baseTrend?.direction);
+  assert.deepEqual(trend?.previousExamples,baseTrend?.previousExamples);
+  assert.deepEqual(trend?.latestExamples,baseTrend?.latestExamples);
+});
+
+test('corrupt and partial sample rows are ignored without crashing verified match history',()=>{
+  const broken=makeSimulation({
+    samples:[null,{tick:NaN,players:[]},{tick:10,players:[null]},{tick:20,players:[{clientID:'p1',alive:true,tiles:1}]}],
+    playerReview:null,
+  });
+  const report=buildLongitudinalCoachReport([
+    match('broken',{simulation:broken}),
+    match('valid'),
+  ]);
+  assert.equal(report.importedMatches,2);
+  assert.equal(report.verifiedMatches,1);
+  assert.equal(report.comparableMatches,1);
+  assert.equal(report.matchProgress.length,1);
+});

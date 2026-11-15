@@ -172,6 +172,29 @@ export function buildEngineCoachInsights(
     });
   }
 
+  const diplomacyActions = actionReviews
+    .filter(action => ["allianceRequest", "allianceExtension", "breakAlliance", "allianceReject"].includes(action.type))
+    .sort((a, b) => a.seconds - b.seconds);
+  if (diplomacyActions.length > 0) {
+    const requests = diplomacyActions.filter(action => action.type === "allianceRequest").length;
+    const extensions = diplomacyActions.filter(action => action.type === "allianceExtension").length;
+    const breaks = diplomacyActions.filter(action => action.type === "breakAlliance").length;
+    const rejections = diplomacyActions.filter(action => action.type === "allianceReject").length;
+    findings.push({
+      id: "diplomacy-activity",
+      kind: "observation",
+      title: "Bündnisaktionen im Replay erfasst",
+      summary: requests + " Bündnisanfragen, " + extensions + " Verlängerungen, " + breaks + " Bündnisbrüche und " + rejections + " Ablehnungen sind als Spielerbefehle dokumentiert.",
+      evidence: diplomacyActions.slice(0, 6).map(action =>
+        clock(action.seconds) + " · " + action.type + " · " + (action.targetName ?? (action.targetId ? "Ziel " + action.targetId : "Partner nicht aufgelöst")),
+      ).join(" · "),
+      nextStep: "Prüfe nach Anfragen und Verlängerungen, ob der aktive Verbündetenstand tatsächlich stieg. Vergleiche Bündnisbrüche mit den folgenden Fronten und eingehenden Angriffen, bevor du ihren strategischen Nutzen bewertest.",
+      seconds: diplomacyActions[0].seconds,
+      confidence: diplomacyActions.length >= 3 ? "high" : "medium",
+      limitation: "Eine Anfrage oder Verlängerung ist keine bestätigte Allianz. Ein Bruchbefehl belegt die Aktion, aber weder Motivation noch strategischen Nutzen. Partnerzuordnung und Annahme können im Replay unvollständig sein.",
+    });
+  }
+
   const orderedSamples = [...samples].sort((a, b) => a.frame - b.frame);
   const firstOwnSample = orderedSamples.map(sample => sample.players.find(player => player.clientID === review.clientID)).find((player): player is EngineSamplePlayer => Boolean(player));
   const lastOwnSample = [...orderedSamples].reverse().map(sample => sample.players.find(player => player.clientID === review.clientID)).find((player): player is EngineSamplePlayer => Boolean(player));

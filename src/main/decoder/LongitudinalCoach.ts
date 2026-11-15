@@ -85,6 +85,11 @@ type NormalizedMatch = {
 const priorityRank = (value: ProCoachFinding["priority"]) =>
   value === "high" ? 0 : value === "medium" ? 1 : 2;
 
+const strategicClassRank = (finding: ProCoachFinding) =>
+  finding.strategicClass === "decision" ? 0
+    : finding.strategicClass === "pattern" ? 1
+      : finding.strategicClass === "context" ? 2 : 3;
+
 const median = (values: number[]): number | null => {
   if (!values.length) return null;
   const ordered = [...values].sort((a, b) => a - b);
@@ -330,7 +335,7 @@ export function buildLongitudinalCoachReport(
   const trainingGoals: LongitudinalTrainingGoal[] = [...findingGroups.entries()]
     .filter(([, values]) => values.length >= 2)
     .map(([id, values]) => {
-      const best = [...values].sort((a, b) => priorityRank(a.finding.priority) - priorityRank(b.finding.priority))[0].finding;
+      const best = [...values].sort((a, b) => priorityRank(a.finding.priority) - priorityRank(b.finding.priority) || strategicClassRank(a.finding) - strategicClassRank(b.finding))[0].finding;
       const frequency = values.length / Math.max(1, comparable.length);
       const hasFinding = (entry: NormalizedMatch) => (entry.report.allFindings ?? entry.report.findings).some(finding => finding.id === id && finding.priority !== "low");
       // Directional training status requires trustworthy chronology. Missing or
@@ -366,10 +371,14 @@ export function buildLongitudinalCoachReport(
     })
     .slice(0, 3);
 
+  const recurringClassRank = (id: string) => {
+    const finding = findingGroups.get(id)?.[0]?.finding;
+    return finding ? strategicClassRank(finding) : 3;
+  };
   const recurringFindings: LongitudinalFinding[] = [...findingGroups.entries()]
     .filter(([, values]) => values.length >= 2)
     .map(([id, values]) => {
-      const best = [...values].sort((a, b) => priorityRank(a.finding.priority) - priorityRank(b.finding.priority))[0].finding;
+      const best = [...values].sort((a, b) => priorityRank(a.finding.priority) - priorityRank(b.finding.priority) || strategicClassRank(a.finding) - strategicClassRank(b.finding))[0].finding;
       return {
         id,
         title: best.title,
@@ -385,7 +394,9 @@ export function buildLongitudinalCoachReport(
         })),
       };
     })
-    .sort((a, b) => b.occurrences - a.occurrences || priorityRank(a.priority) - priorityRank(b.priority))
+    .sort((a, b) => priorityRank(a.priority) - priorityRank(b.priority)
+      || recurringClassRank(a.id) - recurringClassRank(b.id)
+      || b.occurrences - a.occurrences)
     .slice(0, 3);
 
   const strengthGroups = new Map<string, Array<{ input: LongitudinalMatchInput; finding: EngineCoachInsight }>>();

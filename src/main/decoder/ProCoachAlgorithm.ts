@@ -54,6 +54,7 @@ export interface ProCoachFinding {
   evidence: string;
   seconds: number | null;
   caveat: string;
+  strategicClass?: 'decision' | 'pattern' | 'context' | 'phase';
 }
 export interface ProCoachOpening {
   confidence: ProCoachConfidence;
@@ -154,8 +155,8 @@ export function buildProCoachReport(
     assessment:openingSamples.length<2||openingSpan<60?'Zu wenig frühe Replay-Daten für eine belastbare Eröffnungsbewertung.':firstExpansion?'Frühe Expansion ist beobachtet. Prüfe, ob Einkommen und Truppenreserve parallel tragfähig blieben.':'Im beobachteten Eröffnungsfenster ist kein Gebietszuwachs nachweisbar. Prüfe Startdruck und erreichbare neutrale Gebiete.',
     limitation:spawnPosition?'Die Startposition nutzt die tatsächliche Besitzkarte des ersten Frames. Wasser, unbesetztes Land und unpassierbares Gelände sind im Owner-Grid nicht unterscheidbar; Distanz ist eine Näherung zwischen Gebiets-Schwerpunkten. Es werden nur tatsächlich gespielte Spawn-Positionen verglichen, keine freien Alternativfelder.':'Keine Startkarten-Geometrie im Replay-Sample verfügbar; eine räumliche Spawn-Bewertung ist nicht möglich.'
   };
-  if(spawnPosition&&spawnPosition.classification!=='unknown') findings.push({id:'spawn-position-review',priority:spawnPosition.classification==='contested'?'medium':'low',confidence:'medium',title:spawnPosition.classification==='contested'?'Startposition: früher Grenzdruck':'Startposition: relative Lage im Lobbyvergleich',decision:`Dein Startgebiet lag im Kartenraster bei (${fmt(spawnPosition.centerX)}, ${fmt(spawnPosition.centerY)}) und umfasste ${fmt(spawnPosition.startTiles)} Felder.`,consequence:spawnPosition.classification==='contested'?`Es gab ${spawnPosition.rivalBorderContacts} direkte Grenzkontakte zu ${spawnPosition.adjacentRivals.length} anderen Spielern; der nächste gegnerische Gebietsschwerpunkt lag etwa ${fmt(spawnPosition.nearestRivalDistance??0)} Rasterfelder entfernt.`:`Der nächste gegnerische Gebietsschwerpunkt lag etwa ${fmt(spawnPosition.nearestRivalDistance??0)} Rasterfelder entfernt; direkte gegnerische Grenzkontakte: ${spawnPosition.rivalBorderContacts}.`,alternative:spawnPosition.classification==='contested'?'Plane die erste Expansion weg von der direkten Kontaktgrenze, sichere einen Rückzugsraum und eröffne nicht gleichzeitig eine zweite Front.':'Nutze den räumlichen Abstand für kontrollierte Expansion und sichere früh die erreichbaren Anschlussflächen, bevor ein Gegner den Zugang schließt.',trainingRule:'Vergleiche vor dem ersten Angriff die Startlage, direkte Nachbargrenzen und die erste sichere Expansionsrichtung.',evidence:`Startfelder: ${fmt(spawnPosition.startTiles)} · direkte Rivalen-Grenzkontakte: ${fmt(spawnPosition.rivalBorderContacts)} · Nachbarn: ${spawnPosition.adjacentRivals.length} · Schwerpunktdistanz: ${spawnPosition.nearestRivalDistance===null?'unbekannt':fmt(spawnPosition.nearestRivalDistance)}.`,seconds:0,caveat:opening.limitation});
-  if(opening.confidence!=='low') findings.push({id:'opening-review',priority:opening.firstExpansionSeconds===null?'medium':'low',confidence:opening.confidence,title:'Eröffnung: erste Expansion und Reserve prüfen',decision:'Bewerte die ersten drei Minuten anhand der ersten beobachteten Expansion.',consequence:opening.territoryGainFirstThreeMinutes===null?'Für drei Minuten fehlen ausreichend Zustandsdaten.':'Gebietsänderung: '+fmt(opening.territoryGainFirstThreeMinutes)+', Einkommensänderung: '+fmt(opening.incomeGainFirstThreeMinutes??0)+', Truppenänderung: '+fmt(opening.troopChangeFirstThreeMinutes??0)+'.',alternative:'Sichere erreichbare neutrale Gebiete, wenn die Karte es zulässt, und behalte eine Reserve für frühe Bedrohungen. Vergleiche Expansion immer mit Einkommen und Truppenbestand.',trainingRule:'Prüfe in der nächsten Partie bei 1:00, 2:00 und 3:00 Gebiet, Goldentwicklung und Truppenreserve gemeinsam.',evidence:'Eröffnungsfenster '+clock(0)+'–'+clock(Math.min(180,openingSpan))+' · Erste Expansion: '+(opening.firstExpansionSeconds===null?'nicht beobachtet':clock(opening.firstExpansionSeconds))+' · Beobachtungsfenster: '+fmt(openingSpan)+' s.',seconds:opening.firstExpansionSeconds??0,caveat:opening.limitation});
+  if(spawnPosition&&spawnPosition.classification!=='unknown') findings.push({id:'spawn-position-review',strategicClass:'context',priority:spawnPosition.classification==='contested'?'medium':'low',confidence:'medium',title:spawnPosition.classification==='contested'?'Startposition: früher Grenzdruck':'Startposition: relative Lage im Lobbyvergleich',decision:`Dein Startgebiet lag im Kartenraster bei (${fmt(spawnPosition.centerX)}, ${fmt(spawnPosition.centerY)}) und umfasste ${fmt(spawnPosition.startTiles)} Felder.`,consequence:spawnPosition.classification==='contested'?`Es gab ${spawnPosition.rivalBorderContacts} direkte Grenzkontakte zu ${spawnPosition.adjacentRivals.length} anderen Spielern; der nächste gegnerische Gebietsschwerpunkt lag etwa ${fmt(spawnPosition.nearestRivalDistance??0)} Rasterfelder entfernt.`:`Der nächste gegnerische Gebietsschwerpunkt lag etwa ${fmt(spawnPosition.nearestRivalDistance??0)} Rasterfelder entfernt; direkte gegnerische Grenzkontakte: ${spawnPosition.rivalBorderContacts}.`,alternative:spawnPosition.classification==='contested'?'Plane die erste Expansion weg von der direkten Kontaktgrenze, sichere einen Rückzugsraum und eröffne nicht gleichzeitig eine zweite Front.':'Nutze den räumlichen Abstand für kontrollierte Expansion und sichere früh die erreichbaren Anschlussflächen, bevor ein Gegner den Zugang schließt.',trainingRule:'Vergleiche vor dem ersten Angriff die Startlage, direkte Nachbargrenzen und die erste sichere Expansionsrichtung.',evidence:`Startfelder: ${fmt(spawnPosition.startTiles)} · direkte Rivalen-Grenzkontakte: ${fmt(spawnPosition.rivalBorderContacts)} · Nachbarn: ${spawnPosition.adjacentRivals.length} · Schwerpunktdistanz: ${spawnPosition.nearestRivalDistance===null?'unbekannt':fmt(spawnPosition.nearestRivalDistance)}.`,seconds:0,caveat:opening.limitation});
+  if(opening.confidence!=='low') findings.push({id:'opening-review',strategicClass:'context',priority:opening.firstExpansionSeconds===null?'medium':'low',confidence:opening.confidence,title:'Eröffnung: erste Expansion und Reserve prüfen',decision:'Bewerte die ersten drei Minuten anhand der ersten beobachteten Expansion.',consequence:opening.territoryGainFirstThreeMinutes===null?'Für drei Minuten fehlen ausreichend Zustandsdaten.':'Gebietsänderung: '+fmt(opening.territoryGainFirstThreeMinutes)+', Einkommensänderung: '+fmt(opening.incomeGainFirstThreeMinutes??0)+', Truppenänderung: '+fmt(opening.troopChangeFirstThreeMinutes??0)+'.',alternative:'Sichere erreichbare neutrale Gebiete, wenn die Karte es zulässt, und behalte eine Reserve für frühe Bedrohungen. Vergleiche Expansion immer mit Einkommen und Truppenbestand.',trainingRule:'Prüfe in der nächsten Partie bei 1:00, 2:00 und 3:00 Gebiet, Goldentwicklung und Truppenreserve gemeinsam.',evidence:'Eröffnungsfenster '+clock(0)+'–'+clock(Math.min(180,openingSpan))+' · Erste Expansion: '+(opening.firstExpansionSeconds===null?'nicht beobachtet':clock(opening.firstExpansionSeconds))+' · Beobachtungsfenster: '+fmt(openingSpan)+' s.',seconds:opening.firstExpansionSeconds??0,caveat:opening.limitation});
   const playerStateBefore=(seconds:number)=>alive.filter(x=>x.sample.tick<=seconds*10).at(-1)?.player??null;
   const attackActions=actions.filter(a=>a.type==='attack'&&a.delta30s);
   // Missing target observations are unknown, not a zero territorial response.
@@ -205,7 +206,7 @@ export function buildProCoachReport(
     const exampleTroopShare=exampleBefore&&exampleBefore.troops>0?exampleOwnLoss/exampleBefore.troops:null;
     const exampleTileShare=exampleBefore&&exampleBefore.tiles>0?exampleOwnTileLoss/exampleBefore.tiles:null;
     findings.push({
-      id:'attack-follow-through',
+      id:'attack-follow-through',strategicClass:'decision',
       priority:severeNegative.length>0||negativeWindows.length>=Math.max(2,Math.ceil(evaluatedAttackActions.length*.35))?'high':'medium',
       confidence:confidenceFor(alive.length,evaluatedAttackActions.length),
       title:negativeWindows.length?'Angriffe mit ungünstigem Truppenverhältnis prüfen':mixedTrades.length?'Truppentausch mit eigenem Gebietsverlust prüfen':favorableTrades.length?'Beobachtete Truppentausche waren überwiegend günstig':'Angriffe mit sichtbarer Gebietsreaktion',
@@ -236,7 +237,7 @@ export function buildProCoachReport(
     const review=reviews.find(item=>item.severeOutcome)??reviews[0];
     const a=review.action,ctx=review.ctx;
     findings.push({
-      id:'front-load',priority:review.severeOutcome?'high':'medium',confidence:confidenceFor(alive.length,loadedFronts.length),
+      id:'front-load',strategicClass:'decision',priority:review.severeOutcome?'high':'medium',confidence:confidenceFor(alive.length,loadedFronts.length),
       title:'Angriffsziele parallel gebunden',
       decision:'Bei '+loadedFronts.length+' Angriffsbefehlen waren bereits eigene Zielbindungen oder eingehender Druck dokumentiert.',
       consequence:'Bei '+clock(a.seconds)+' liefen '+ctx.activeTargetCount+' eigene Zielbindungen und '+ctx.incomingAttackCount+' eingehende Angriffe; '+fmt(ctx.outgoingAttackTroops)+' eigene Truppen waren unterwegs.'+(a.delta30s&&a.targetDelta30s?' Im 30-Sekunden-Fenster: eigene Truppen '+fmt(a.delta30s.troops)+', Zieltruppen '+fmt(a.targetDelta30s.troops)+', eigenes Gebiet '+fmt(a.delta30s.tiles)+', Zielgebiet '+fmt(a.targetDelta30s.tiles)+'.':''),
@@ -248,7 +249,7 @@ export function buildProCoachReport(
   }
   const longPause=(()=>{let best:{from:number;to:number;seconds:number}|null=null;for(let i=1;i<alive.length;i++){const from=(alive[i-1].sample.tick-(first?.sample.tick??0))/10,to=(alive[i].sample.tick-(first?.sample.tick??0))/10;if(to-from>90&&(!best||to-from>best.seconds))best={from,to,seconds:to-from};}return best;})();
   if(longPause&&longPause.seconds>=120){
-    findings.push({id:'expansion-rhythm',priority:longPause.seconds>=240?'medium':'low',confidence:confidenceFor(alive.length,actions.length),title:'Lange Lücke zwischen beobachteten Zuständen',
+    findings.push({id:'expansion-rhythm',strategicClass:'pattern',priority:longPause.seconds>=240?'medium':'low',confidence:confidenceFor(alive.length,actions.length),title:'Lange Lücke zwischen beobachteten Zuständen',
       decision:`Zwischen ${clock(longPause.from)} und ${clock(longPause.to)} liegen ${fmt(longPause.seconds)} Sekunden zwischen erfassten Zuständen.`,
       consequence:'In diesem Intervall ist aus den vorliegenden Stichproben kein kontinuierlicher Expansionsverlauf ableitbar.',
       alternative:'Replay an beiden Endpunkten prüfen: Truppen sammeln, Verteidigung, Transport und fehlende erreichbare Ziele können die Pause erklären.',
@@ -260,7 +261,7 @@ export function buildProCoachReport(
   if(weakest&&phases.filter(p=>p.momentumIndex!==null&&p.activeSamples>=3).length>=2){
     const territoryShare=weakest.territoryPerMinute===null||peakTerritory<=0?null:Math.max(0,weakest.territoryPerMinute)/peakTerritory;
     const incomeShare=weakest.incomePerMinute===null||peakIncome<=0?null:Math.max(0,weakest.incomePerMinute)/peakIncome;
-    findings.push({id:'phase-focus',priority:'low',confidence:confidenceFor(alive.length,actions.length),title:weakest.label+': schwächster kombinierter Phasenimpuls',
+    findings.push({id:'phase-focus',strategicClass:'phase',priority:'low',confidence:confidenceFor(alive.length,actions.length),title:weakest.label+': schwächster kombinierter Phasenimpuls',
       decision:'Der normalisierte Phasenindex war in '+weakest.label+' am niedrigsten (70 % Gebietswachstum, 30 % Brutto-Gold; jeweils relativ zum stärksten Phasenwert).',
       consequence:'Gebiet '+(weakest.territoryPerMinute===null?'–':fmt(weakest.territoryPerMinute)+' / Min.'+(territoryShare===null?'':' ('+fmt(territoryShare*100)+' % des stärksten Phasenwerts)'))+' · Brutto-Gold '+(weakest.incomePerMinute===null?'–':fmt(weakest.incomePerMinute)+' / Min.'+(incomeShare===null?'':' ('+fmt(incomeShare*100)+' % des stärksten Phasenwerts)'))+'.',
       alternative:'Nutze den Phasenvergleich als Trainingshinweis: Prüfe die konkreten Bau-, Angriffs- und Verteidigungsentscheidungen in diesem Zeitfenster, bevor du eine Ursache annimmst.',
@@ -276,9 +277,11 @@ export function buildProCoachReport(
   // remains explicit and cannot be silently promoted.
   const impactWeight:Record<ProCoachFinding['priority'],number>={high:20,medium:10,low:1};
   const learningWeight=(finding:ProCoachFinding)=>finding.trainingRule.trim().length>=24&&finding.alternative.trim().length>=24?2:1;
+  const strategicClassWeight:Record<NonNullable<ProCoachFinding['strategicClass']>,number>={decision:8,pattern:4,context:1,phase:0};
   const ranked=[...findings].sort((a,b)=>{
     const utility=(finding:ProCoachFinding)=>impactWeight[finding.priority]*4
       +confidenceWeight[finding.confidence]*2+learningWeight(finding)
+      +strategicClassWeight[finding.strategicClass??'context']
       +(finding.seconds===null?0:Math.max(0,1-Math.min(1,finding.seconds/safeDuration)));
     return utility(b)-utility(a)||a.id.localeCompare(b.id);
   });

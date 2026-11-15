@@ -111,6 +111,14 @@ test('match coach exposes at most three high/medium engine reviews and keeps the
   assert.equal(result.ordered.length, insights.length);
 });
 
+test('match coach ranks explicit decision evidence ahead of generic reviews at equal priority', () => {
+  const result=selectPrimaryCoachInsights([
+    {id:'generic',kind:'review',priority:'high',title:'Generic',summary:'',evidence:'',nextStep:'Review the timeline',seconds:null,limitation:'',confidence:'medium'},
+    {id:'decision',kind:'review',priority:'high',title:'Decision',summary:'',evidence:'At 0:42',nextStep:'Compare the follow-up',seconds:42,limitation:'',confidence:'high',decision:'Attack opened a second target under incoming pressure',alternative:'Stabilize the threatened front first'},
+  ]);
+  assert.equal(result.primary[0].id,'decision');
+});
+
 test('match coach can promote a verified strength without promoting generic observations', () => {
   const insights = [
     { id: 'strength', kind: 'strength', priority: 'high', title: 'Strength' },
@@ -153,7 +161,7 @@ test('replay timeline keeps recorded moments before coach markers at the same ti
   assert.deepEqual(timeline.map(item => item.id), ['event-0', 'coach-coach']);
 });
 
-import { buildEngineCoachInsights } from '../src/main/decoder/EngineCoachInsights.ts';
+
 
 test('piracy coach reports cumulative piracy and trade income without claiming net profit',()=>{
  const base={id:1,name:'Player',clientID:'p1',alive:true,gold:100,goldEarned:100,tradeGold:20,trainGold:0,piracyGold:5,troops:100,tiles:50,units:0,unitCounts:{},unitTroops:{},unitsUnderConstruction:0,outgoingAttacks:0,incomingAttacks:0,outgoingAttackDetails:[],incomingAttackDetails:[],attackTroops:0,allies:1,alliances:1,targets:0,betrayals:0,isTraitor:false,isDecaying:false,inDoomsdayClock:false};
@@ -163,6 +171,19 @@ test('piracy coach reports cumulative piracy and trade income without claiming n
  assert.ok(piracy);
  assert.match(piracy.evidence,/Piraterie: \+80 Gold/);
  assert.match(piracy.limitation,/keine Nettorendite/);
+});
+
+test('diplomacy insight reports recorded alliance intents without claiming acceptance',()=>{
+ const base={id:1,name:'Player',clientID:'p1',alive:true,gold:100,goldEarned:100,tradeGold:20,trainGold:0,piracyGold:5,troops:100,tiles:50,units:0,unitCounts:{},unitTroops:{},unitsUnderConstruction:0,outgoingAttacks:0,incomingAttacks:0,outgoingAttackDetails:[],incomingAttackDetails:[],attackTroops:0,allies:1,alliances:1,targets:0,betrayals:0,isTraitor:false,isDecaying:false,inDoomsdayClock:false};
+ const review={playerName:'Player',clientID:'p1',startTiles:50,endTiles:60,tilesGained:10,startGold:100,endGold:200,startTroops:100,endTroops:120,outgoingAttackSamples:0,longestNoExpansionSeconds:0};
+ const action=(type,seconds)=>({frame:seconds*10,turn:seconds*10,seconds,type,commandTroops:null,label:type,details:'',targetId:'2',targetName:'Rival',targetSmallID:2,before:null,after:null,delta:null,delta5s:null,delta10s:null,delta30s:null,targetDelta10s:null,targetDelta30s:null,targetAliveBefore:null,targetAliveAt10s:null,targetAliveAt30s:null,ownFrontContextBefore:null,targetPressureBefore:null,activeAttack10s:null,activeAttack30s:null});
+ const insights=buildEngineCoachInsights(review,[action('allianceRequest',30),action('breakAlliance',60)],[{tick:0,frame:0,players:[base]},{tick:1000,frame:1000,players:[base]}]);
+ const diplomacy=insights.find(item=>item.id==='diplomacy-activity');
+ assert.ok(diplomacy);
+ assert.match(diplomacy.summary,/1 Bündnisanfragen, 0 Verlängerungen, 1 Bündnisbrüche/);
+ assert.match(diplomacy.evidence,/0:30 · allianceRequest · Rival/);
+ assert.match(diplomacy.limitation,/keine bestätigte Allianz/);
+ assert.equal(diplomacy.kind,'observation');
 });
 
 test('opening assessment reports observed expansion but not unsupported best spawn location',()=>{

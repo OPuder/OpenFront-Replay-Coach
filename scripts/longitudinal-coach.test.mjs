@@ -68,7 +68,7 @@ test('recurring findings use only fully verified matches in the same mode and ty
   assert.equal(report.recurringFindings.find(finding => finding.id === 'attack-follow-through')?.occurrences, 2);
 });
 
-test('longitudinal recurrence sees evidence-ranked findings below the per-match Top 3',()=>{
+test('longitudinal recurrence preserves repeated strategic decisions above context-only findings',()=>{
   const ticks=[0,500,1000,1500,2000,5000,5500,6000,6500,7000];
   const samples=ticks.map((tick,index)=>({
     tick,frame:tick,
@@ -104,8 +104,8 @@ test('longitudinal recurrence sees evidence-ranked findings below the per-match 
   const simulation=makeSimulation({samples,actionReviews:actions});
   const single=buildProCoachReport(samples,actions,'p1',700);
   assert.equal(single.findings.length,3);
-  assert.ok(!single.findings.some(item=>item.id==='attack-follow-through'));
-  assert.ok(single.allFindings?.some(item=>item.id==='attack-follow-through'));
+  assert.ok(single.findings.some(item=>item.id==='attack-follow-through'));
+  assert.ok(single.allFindings?.some(item=>!single.findings.some(top=>top.id===item.id)));
 
   const report=buildLongitudinalCoachReport([
     match('cohort-a',{playedAt:'2026-01-01T00:00:00Z',simulation}),

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { compactBatchMatchForUi } from '../src/renderer/AutoLibrarySync.ts';
+import { compactBatchMatchForUi, mergeReplayPlayerCounts, preferReplayPlayerCount } from '../src/renderer/AutoLibrarySync.ts';
 
 test('keeps full replay and simulation payloads out of the dashboard match list', () => {
   const entry = {
@@ -56,7 +56,6 @@ test('does not invent a simulation summary for imported but unanalyzed matches',
 });
 
 test('uses replay player count when match history incorrectly reports zero', async () => {
-  const { mergeReplayPlayerCounts, preferReplayPlayerCount } = await import('../src/renderer/AutoLibrarySync.ts');
   const page = {
     games: [
       { gameId: 'manifest-incomplete', totalPlayers: 0, result: 'incomplete' },

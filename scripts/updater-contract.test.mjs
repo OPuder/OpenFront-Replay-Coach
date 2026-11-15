@@ -147,6 +147,9 @@ assert.ok(releaseUpgradeScript.includes("versionCode"));
 assert.ok(releaseUpgradeScript.includes("cmd package resolve-activity"));
 assert.ok(releaseUpgradeScript.includes("am start -W -n"));
 assert.ok(releaseUpgradeScript.includes("pidof"));
+assert.ok(releaseUpgradeScript.includes("timeout 60s adb -s emulator-5554"));
+assert.ok(releaseUpgradeScript.includes("dumpsys activity activities"));
+assert.ok(releaseUpgradeScript.includes("FATAL EXCEPTION"));
 const androidValidationWorkflow = read(".github/workflows/update-validation.yml");
 assert.ok(androidValidationWorkflow.includes("bash -n scripts/test-android-release-upgrade.sh"));
 

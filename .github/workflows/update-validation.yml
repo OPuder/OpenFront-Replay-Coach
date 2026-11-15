@@ -188,17 +188,34 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: bash scripts/verify-android-release-signing.sh
 
-      - name: Build higher-version APK before emulator startup
+      - name: Preserve the permanently signed APK outside the generated Android project
+        if: steps.parse_apk.outcome == 'success'
         shell: bash
         run: |
-          set -euo pipefail
+          set -Eeuo pipefail
+          signed_apk="$RUNNER_TEMP/openfront-coach-permanent-key-release.apk"
+          test -s android/app/build/outputs/apk/release/app-release.apk
+          cp android/app/build/outputs/apk/release/app-release.apk "$signed_apk"
+          echo "CURRENT_RELEASE_APK=$signed_apk" >> "$GITHUB_ENV"
+          version="$(node -p "require('./package.json').version")"
+          mkdir -p release
+          cp "$signed_apk" "release/OpenFront-Replay-Coach-$version-Android.apk"
+          test -s "release/OpenFront-Replay-Coach-$version-Android.apk"
+
+      - name: Recreate an unsigned Android project for isolated debug upgrade tests
+        if: steps.parse_apk.outcome == 'success'
+        shell: bash
+        run: |
+          set -Eeuo pipefail
           apk="android/app/build/outputs/apk/debug/app-debug.apk"
           baseline="$RUNNER_TEMP/openfront-coach-before-update.apk"
           updated="$RUNNER_TEMP/openfront-coach-update.apk"
           test -s "$apk"
           cp "$apk" "$baseline"
-          # Do not carry the permanent release signing config into the debug upgrade build.
-          rm -f android/app/build.gradle
+          # Never edit or strip the release signing configuration. Discard the
+          # generated project and create a fresh, default unsigned debug project.
+          rm -rf android
+          npx cap add android
           npx cap sync android
           node scripts/install-android-updater-plugin.mjs
           current_version="$(node -p "require('./package.json').version")"
@@ -211,16 +228,6 @@ jobs:
           cp "$baseline" "$apk"
           test -s "$updated"
           echo "OPENFRONT_UPDATE_APK=$updated" >> "$GITHUB_ENV"
-
-      - name: Stage the permanently signed APK for audit before emulator testing
-        if: steps.parse_apk.outcome == 'success'
-        shell: bash
-        run: |
-          set -Eeuo pipefail
-          version="$(node -p "require('./package.json').version")"
-          mkdir -p release
-          cp android/app/build/outputs/apk/release/app-release.apk "release/OpenFront-Replay-Coach-$version-Android.apk"
-          test -s "release/OpenFront-Replay-Coach-$version-Android.apk"
 
       - name: Test debug data preservation and real published-APK update
         if: steps.parse_apk.outcome == 'success'

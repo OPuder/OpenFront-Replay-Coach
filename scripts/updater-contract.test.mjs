@@ -91,6 +91,7 @@ assert.match(releaseWorkflow, /verify-release-artifacts\.mjs verify/);
 
 const updateValidationWorkflow = read(".github/workflows/update-validation.yml");
 assert.match(updateValidationWorkflow, /Build higher-version APK before emulator startup[\s\S]*?assembleDebug[\s\S]*?Test debug data preservation and real published-APK update/);
+assert.match(updateValidationWorkflow, /rm -f android\/app\/build\.gradle[\s\S]*?npx cap sync android[\s\S]*?node scripts\/install-android-updater-plugin\.mjs[\s\S]*?assembleDebug/, "The debug upgrade APK must be rebuilt from a clean generated Gradle project, not the release-signed project without its keystore environment.");
 assert.match(androidUpdateRegression, /OPENFRONT_UPDATE_APK/);
 assert.doesNotMatch(androidUpdateRegression, /gradlew|assembleDebug/);
 assert.match(updateValidationWorkflow, /Test debug data preservation and real published-APK update[\s\S]*?if: steps\.parse_apk\.outcome == 'success'/);

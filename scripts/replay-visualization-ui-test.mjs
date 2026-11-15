@@ -29,7 +29,7 @@ async function main(){
     assert.ok(state.hasMovement,'Engine movement overlay missing at '+width+'px');
     assert.ok(state.hasTerritoryChanges,'Territory-change overlay missing at '+width+'px');
     assert.ok(state.hasTerritoryTransfer,'Actual owner transfer summary missing at '+width+'px');
-    assert.ok(state.hasPriorityCards,'Prioritized coaching card missing at '+width+'px');
+    assert.ok(state.hasPriorityCards,'All three prioritized coaching cards must render at '+width+'px (found '+state.priorityCardCount+')');
     assert.ok(state.hasConsequence,'Priority card must explain the consequence at '+width+'px');
     assert.ok(state.hasAlternative,'Priority card must show a better alternative at '+width+'px');
     assert.ok(state.hasAffectedPlayers,'Priority card must identify resolved affected players at '+width+'px');

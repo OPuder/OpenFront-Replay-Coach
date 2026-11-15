@@ -218,7 +218,12 @@ async function main() {
     'window.__testAbortBatchReplay("Europe")',
     true,
   );
-  assert.equal(abortResult.aborted, true, "An active batch simulation must be cancellable");
+  assert.equal(abortResult.simulationStarted, true,
+    "Abort must be triggered only after progress from the original-engine worker is received");
+  assert.equal(abortResult.cancelled, true, "The sequential batch runner must report cancellation");
+  assert.equal(abortResult.completed, 0, "An aborted simulation must not be counted as completed");
+  assert.equal(abortResult.failed, 0, "An intentional abort must not be misreported as a replay failure");
+  assert.equal(abortResult.aborted, true, "An active original-engine batch simulation must be cancellable");
   console.log("Batch engine cancellation: passed");
 
   await new Promise(resolve => {

@@ -142,6 +142,7 @@ for attempt in $(seq 1 240); do
 done
 if [[ "$training_goal" == true ]]; then
   tap_text "Als Trainingsziel übernehmen" 1 exact
+  sleep 3
   log "A training goal was created through the actual Coach UI."
 else
   fail "The real Coach UI did not expose an evidence-backed training goal after opening the verified replay."

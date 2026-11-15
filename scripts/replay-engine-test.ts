@@ -53,20 +53,27 @@ window.__prepareLegacyMatchStore = async () => {
         const db = request.result;
         db.createObjectStore("matches", { keyPath: ["playerId", "game.gameId"] });
         db.createObjectStore("profiles", { keyPath: "playerId" });
-        db.createObjectStore("replay-records", { keyPath: ["playerId", "gameId"] });
       };
       request.onsuccess = () => {
         const db = request.result;
-        const tx = db.transaction("matches", "readwrite");
+        const tx = db.transaction(["matches", "profiles"], "readwrite");
+        tx.objectStore("profiles").put({
+          playerId: "migration-player",
+          profile: { displayName: "OligenOle" },
+          games: [],
+          nextCursor: null,
+        });
         tx.objectStore("matches").put({
-          playerId: "legacy-index-player",
-          game: { gameId: "legacy-index-game", map: "CI", mode: "Free For All", type: "Private" },
+          playerId: "migration-player",
+          game: { gameId: "legacy-replay", map: "Europe", mode: "Free For All", type: "Private" },
+          result: { record: { info: { gameID: "legacy-replay" }, turns: [{ turnNumber: 0, hash: "legacy-hash" }] } },
           status: "loaded",
+          analysisStatus: "pending",
           updatedAt: 1,
         });
         tx.oncomplete = () => { db.close(); resolve(); };
-        tx.onerror = () => { db.close(); reject(tx.error ?? new Error("Could not seed legacy IndexedDB match row")); };
-        tx.onabort = () => { db.close(); reject(tx.error ?? new Error("Legacy IndexedDB seed was aborted")); };
+        tx.onerror = () => { db.close(); reject(tx.error ?? new Error("Could not seed IndexedDB v2 migration fixture")); };
+        tx.onabort = () => { db.close(); reject(tx.error ?? new Error("IndexedDB v2 migration fixture was aborted")); };
       };
       request.onerror = () => reject(request.error ?? new Error("Could not create legacy IndexedDB v2"));
       request.onblocked = () => reject(new Error("Legacy IndexedDB database deletion was blocked"));
@@ -74,6 +81,26 @@ window.__prepareLegacyMatchStore = async () => {
     deletion.onerror = () => reject(deletion.error ?? new Error("Could not reset IndexedDB for migration test"));
     deletion.onblocked = () => reject(new Error("IndexedDB reset was blocked by another connection"));
   });
+};
+
+window.__verifyLegacyMigration = async () => {
+  const profile = await loadPlayerLibrary("migration-player");
+  const match = await loadImportedMatch("migration-player", "legacy-replay");
+  const db = await new Promise<IDBDatabase>((resolve, reject) => {
+    const request = indexedDB.open("openfront-replay-coach");
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error ?? new Error("Could not read migrated database version"));
+  });
+  const version = db.version;
+  db.close();
+  return {
+    version,
+    profileName: profile?.profile?.displayName ?? null,
+    matchStatus: match?.status ?? null,
+    analysisStatus: match?.analysisStatus ?? null,
+    replayId: (match?.result?.record as any)?.info?.gameID ?? null,
+    replayHash: (match?.result?.record as any)?.turns?.[0]?.hash ?? null,
+  };
 };
 
 window.__runReplayTest = async (record, gameId) => {

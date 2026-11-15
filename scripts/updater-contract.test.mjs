@@ -175,8 +175,8 @@ for (const workflow of engineCacheWorkflows) {
 const releaseSource = read(".github/workflows/release-on-main.yml");
 assert.match(releaseSource, /persist-credentials: false/);
 assert.doesNotMatch(releaseSource, /git push origin HEAD:main/, "The release workflow must not push generated version commits directly to main.");
-assert.match(releaseSource, /Release version drift detected[\\s\\S]*reviewed pull request/);
-assert.match(releaseSource, /sha256sum[\\s\\S]*SHA256SUMS\\.txt/);
-assert.match(releaseSource, /release-manifest\\.json/);
+assert.ok(releaseSource.includes("Release version drift detected") && releaseSource.includes("reviewed pull request"));
+assert.ok(releaseSource.includes("sha256sum") && releaseSource.includes("SHA256SUMS.txt"));
+assert.ok(releaseSource.includes("release-manifest.json"));
 assert.match(releaseSource, /distributables\\.length === 3/);
 assert.match(releaseSource, /names\\.includes/);

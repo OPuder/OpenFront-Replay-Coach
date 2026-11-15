@@ -8,6 +8,32 @@ update_apk="${OPENFRONT_UPDATE_APK:-$RUNNER_TEMP/openfront-coach-update.apk}"
 
 log() { echo "::notice::[Android update regression] $*"; }
 fail() { echo "::error::[Android update regression] $*"; exit 1; }
+diagnostics() {
+  target="$1"
+  echo "::group::Android diagnostics for $target"
+  timeout 30s adb -s emulator-5554 shell dumpsys activity activities || true
+  timeout 30s adb -s emulator-5554 shell dumpsys activity processes || true
+  timeout 30s adb -s emulator-5554 shell pidof "$target" || true
+  timeout 30s adb -s emulator-5554 shell ps -A || true
+  timeout 30s adb -s emulator-5554 logcat -d -t 700 | grep -Ei 'FATAL EXCEPTION|AndroidRuntime|ANR in|not responding|Capacitor|chromium|WebView' | tail -n 180 || true
+  echo "::endgroup::"
+}
+launch_app() {
+  target="$1"
+  component="$(timeout 30s adb -s emulator-5554 shell "cmd package resolve-activity --brief -a android.intent.action.MAIN -c android.intent.category.LAUNCHER $target" | tr -d '\r' | tail -n 1)" || { diagnostics "$target"; fail "Could not resolve launcher activity."; }
+  [[ "$component" == "$target/"* ]] || { diagnostics "$target"; fail "Invalid launcher activity: $component"; }
+  output="$(timeout 120s adb -s emulator-5554 shell am start -W -n "$component" 2>&1)" || { printf '%s\n' "$output"; diagnostics "$target"; fail "ActivityManager failed to start app."; }
+  printf '%s\n' "$output"
+  grep -Eq 'Status: ok|Activity: ' <<< "$output" || { diagnostics "$target"; fail "ActivityManager did not confirm launch."; }
+  for attempt in $(seq 1 90); do
+    pid="$(timeout 10s adb -s emulator-5554 shell pidof "$target" 2>/dev/null | tr -d '\r' || true)"
+    resumed="$(timeout 15s adb -s emulator-5554 shell dumpsys activity activities 2>/dev/null | grep -E 'mResumedActivity|topResumedActivity' | tail -n 1 || true)"
+    if [[ -n "$pid" && "$resumed" == *"$target"* ]]; then log "$target foreground PID $pid"; return 0; fi
+    sleep 2
+  done
+  diagnostics "$target"
+  fail "App did not become live and resumed within 180 seconds."
+}
 
 test -s "$apk" || fail "Initial APK is missing."
 cp "$apk" "$before_apk"
@@ -35,7 +61,7 @@ done
 log "Emulator booted; installing baseline APK."
 timeout 120s adb -s emulator-5554 install "$before_apk" || fail "Could not install baseline APK."
 timeout 30s adb -s emulator-5554 shell "run-as $package_id sh -c 'mkdir -p files/update-regression && printf keep-this-data > files/update-regression/sentinel.txt'" || fail "Could not create app-data sentinel."
-timeout 30s adb -s emulator-5554 shell monkey -p "$package_id" 1 >/dev/null || fail "Could not launch baseline debug app for IndexedDB setup."
+launch_app "$package_id"
 node scripts/android-webview-storage.mjs seed || fail "Could not seed real WebView profile, replay, analysis and settings records."
 
 current_version="$(node -p "require('./package.json').version")"
@@ -46,7 +72,7 @@ log "Installing the prebuilt update APK for version $next_version."
 timeout 120s adb -s emulator-5554 install -r "$update_apk" || fail "Android rejected the in-place APK update."
 saved="$(timeout 30s adb -s emulator-5554 shell "run-as $package_id cat files/update-regression/sentinel.txt" | tr -d '\r')" || fail "Could not read the preserved app-data sentinel."
 [[ "$saved" == "keep-this-data" ]] || fail "App data was not preserved after adb -s emulator-5554 install -r."
-timeout 30s adb -s emulator-5554 shell monkey -p "$package_id" 1 >/dev/null || fail "Could not launch upgraded debug app for IndexedDB verification."
+launch_app "$package_id"
 node scripts/android-webview-storage.mjs verify || fail "Profile, replay, analysis or settings data was not preserved in IndexedDB/localStorage."
 expected_version_code="$((major * 1000000 + minor * 1000 + patch + 1))"
 installed_package="$(timeout 30s adb -s emulator-5554 shell dumpsys package "$package_id")" || fail "Could not inspect installed package metadata."
@@ -100,7 +126,7 @@ timeout --signal=INT --kill-after=15s 240s adb -s emulator-5554 install --no-str
 current_installed="$(timeout 30s adb -s emulator-5554 shell dumpsys package "$package_id")" || fail "Could not inspect the updated production installation."
 grep -F "versionCode=$current_release_code" <<< "$current_installed" >/dev/null || fail "Installed production package did not advance to versionCode $current_release_code."
 log "Launching the upgraded production APK."
-timeout 30s adb -s emulator-5554 shell monkey -p "$package_id" 1 >/dev/null || fail "Upgraded production APK could not be launched."
+launch_app "$package_id"
 production_pid=""
 for attempt in $(seq 1 30); do
   production_pid="$(timeout 10s adb -s emulator-5554 shell pidof "$package_id" 2>/dev/null | tr -d '\r' || true)"

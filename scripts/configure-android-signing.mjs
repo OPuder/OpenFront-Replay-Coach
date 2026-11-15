@@ -61,14 +61,14 @@ gradle = updateBuildType(gradle, "release", { signWithRelease: true, debuggable:
 if (upgradeTestBuild) {
   // Capacitor's generated app/build.gradle may omit an explicit debug block;
   // create one so the test APK is BuildConfig.DEBUG and uses the permanent key.
-  const hasDebugBlock = /buildTypes\\s*\\{[\\s\\S]*?\\bdebug\\s*\\{/.test(gradle);
+  const hasDebugBlock = /buildTypes\s*\{[\s\S]*?\bdebug\s*\{/.test(gradle);
   if (!hasDebugBlock) {
-    const buildTypesMatch = /buildTypes\\s*\\{/.exec(gradle);
+    const buildTypesMatch = /buildTypes\s*\{/.exec(gradle);
     if (!buildTypesMatch) throw new Error("Could not locate buildTypes to add the isolated test variant.");
     const buildTypesOpen = gradle.indexOf("{", buildTypesMatch.index);
     const buildTypesClose = findClosingBrace(gradle, buildTypesOpen, "buildTypes");
     gradle = gradle.slice(0, buildTypesClose)
-      + "\\n        debug {\\n            signingConfig signingConfigs.release\\n            debuggable true\\n        }\\n"
+      + "\n        debug {\n            signingConfig signingConfigs.release\n            debuggable true\n        }\n"
       + gradle.slice(buildTypesClose);
   }
   // The test variant is debuggable for WebView inspection but uses the exact

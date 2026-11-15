@@ -194,6 +194,10 @@ window.__runBatchReplayTest = async (gameIds) => {
         const sourceFrame = Number(turn?.turnNumber);
         if (Number.isInteger(sourceFrame)) sourceTurns.add(sourceFrame);
       }
+      const sampledFrames = simulation.samples
+        .map((sample: any) => Number(sample.frame))
+        .filter((frame: number) => Number.isInteger(frame))
+        .sort((left: number, right: number) => left - right);
       const intents = new Map<number, any[]>();
       for (const turn of Array.isArray(record.turns) ? record.turns : []) {
         const frame = Number(turn?.turnNumber);
@@ -220,8 +224,12 @@ window.__runBatchReplayTest = async (gameIds) => {
           expect.ok(Number.isFinite(entry.time) && entry.time >= 0 && entry.time <= simulation.totalTicks / 10);
           const secondsFrame = entry.time * 10;
           expect.ok(Number.isInteger(secondsFrame), `Timed coach marker is not aligned to an original 100ms game tick in ${item.gameId}`);
-          expect.ok(sourceTurns.has(secondsFrame),
-            `Timed coach marker at ${entry.time}s does not map to an original replay turn in ${item.gameId}`);
+          const lowerSample = sampledFrames.filter((frame: number) => frame / 10 <= entry.time).at(-1);
+          const upperSample = sampledFrames.find((frame: number) => frame / 10 >= entry.time);
+          expect.ok(lowerSample !== undefined && upperSample !== undefined,
+            `Timed coach marker at ${entry.time}s is outside the reconstructed replay sample range in ${item.gameId}`);
+          expect.ok(sourceTurns.has(Math.floor(secondsFrame)) || sourceTurns.has(Math.ceil(secondsFrame)),
+            `Timed coach marker at ${entry.time}s has no neighboring original replay turn in ${item.gameId}`);
           expect.equal(entry.insight?.seconds, entry.time,
             `Coach timeline marker time differs from its production evidence timestamp in ${item.gameId}`);
         }

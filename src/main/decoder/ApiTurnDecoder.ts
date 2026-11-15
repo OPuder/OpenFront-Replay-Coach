@@ -47,10 +47,12 @@ export function decodeApiGameRecord(record: any) {
 
   const actions: DecodedAction[] = [];
   for (const turn of turns) {
-    const turnNumber = Number(turn?.turnNumber ?? 0);
-    if (!Array.isArray(turn?.intents)) continue;
+    const turnNumber = Number(turn?.turnNumber);
+    if (!Number.isSafeInteger(turnNumber) || turnNumber < 0 || !Array.isArray(turn?.intents)) continue;
     for (const intent of turn.intents) {
-      const type = String(intent?.type ?? "unknown");
+      if (!intent || typeof intent !== "object" || Array.isArray(intent)) continue;
+      if (typeof intent.type !== "string" || !intent.type.trim()) continue;
+      const type = intent.type.trim();
       const meta = LABELS[type] ?? { category: "Sonstiges" as const, label: type };
       const detailParts: string[] = [];
       if (intent.unit) detailParts.push(`Typ: ${fmt(intent.unit)}`);

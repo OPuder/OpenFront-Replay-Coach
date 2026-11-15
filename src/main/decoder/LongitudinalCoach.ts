@@ -318,7 +318,7 @@ export function buildLongitudinalCoachReport(
 
   const findingGroups = new Map<string, Array<{ input: LongitudinalMatchInput; finding: ProCoachFinding }>>();
   for (const entry of comparable) {
-    for (const finding of entry.report.findings) {
+    for (const finding of (entry.report.allFindings ?? entry.report.findings)) {
       const values = findingGroups.get(finding.id) ?? [];
       if (!values.some(value => value.input.gameId === entry.input.gameId)) {
         values.push({ input: entry.input, finding });

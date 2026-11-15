@@ -66,8 +66,9 @@ const expression = mode === "seed" ? `
       tx.objectStore("replay-records").get([playerId, gameId])
     ];
     const results = [];
+    let completed = 0;
     requests.forEach((request, index) => {
-      request.onsuccess = () => { results[index] = request.result; if (results.filter(x => x !== undefined).length === 3) resolve(results); };
+      request.onsuccess = () => { results[index] = request.result; completed++; if (completed === requests.length) resolve(results); };
       request.onerror = () => reject(request.error);
     });
     tx.onerror = () => reject(tx.error);

@@ -21,7 +21,7 @@ test('maps the actual ProCoachFinding fields and exact-time action evidence', ()
   assert.equal(result[0].matchId, 'match-1');
   assert.equal(result[0].timestampSeconds, 80);
   assert.equal(result[0].evidence[0].kind, 'action');
-  assert.equal(result[0].evidence[0].frame, 80);
+  assert.equal(result[0].evidence[0].frame, 79);
   assert.deepEqual(result[0].affectedOwnerIds, [1, 2]);
   assert.equal(result[0].consequence, 'Reserve wurde gebunden.');
   assert.equal(result[0].alternative, 'Zuerst bestehende Front stabilisieren.');

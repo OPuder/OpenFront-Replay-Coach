@@ -42,6 +42,7 @@ if [[ -z "$previous_apk" ]]; then
 fi
 
 export ANDROID_KEYSTORE_PATH="$keystore"
+node scripts/set-android-version.mjs "$(node -p "require('./package.json').version")"
 node scripts/configure-android-signing.mjs
 (
   cd android

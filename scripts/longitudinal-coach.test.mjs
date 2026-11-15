@@ -467,3 +467,16 @@ test('undated or tied recent matches cannot mark a training goal improving or re
     assert.notEqual(goal.status,'regressing');
   }
 });
+
+test('longitudinal attack follow-through counts favorable relative troop trades',()=>{
+ const simulation=makeSimulation({actionReviews:Array.from({length:6},(_,i)=>({
+   seconds:30+i*40,type:'attack',label:'Attack',targetName:'Target',
+   delta10s:{tiles:0,gold:-10,troops:-80},
+   delta30s:{tiles:0,gold:-30,troops:-80},
+   targetDelta30s:{tiles:0,gold:0,troops:-120},
+   ownFrontContextBefore:null,targetPressureBefore:null,
+ }))});
+ const report=buildLongitudinalCoachReport([match('favorable-trades',{simulation})]);
+ assert.equal(report.matchProgress[0].attackFollowThroughSamples,6);
+ assert.equal(report.matchProgress[0].attackFollowThroughPercent,100);
+});

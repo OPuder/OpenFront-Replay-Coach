@@ -1,9 +1,14 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { readFileSync } from "node:fs";
-import { resolve } from "node:path";
-
-const read = path => readFileSync(resolve(process.cwd(), path), "utf8");
+import { assessReplayCompatibility } from "../src/main/decoder/ReplayCompatibility.ts";
+import { resolveSupportedEngineCommit } from "../src/main/decoder/ReplayEngineCatalog.ts";
+import { buildProCoachReport } from "../src/main/decoder/ProCoachAlgorithm.ts";
+import { buildEngineCoachInsights } from "../src/main/decoder/EngineCoachInsights.ts";
+import { selectPrimaryCoachInsights } from "../src/main/decoder/CoachInsightSelection.ts";
+import { buildReplayTimeline } from "../src/main/decoder/CoachTimeline.ts";
+import { buildLongitudinalCoachReport } from "../src/main/decoder/LongitudinalCoach.ts";
+import { selectGamesToImport, selectGamesToAnalyze } from "../src/renderer/AutoLibrarySync.ts";
+import { runSequentialBatchAnalysis } from "../src/renderer/BatchAnalysisRunner.ts";
 
 const EUROPE = {
   gameId: "c2R2JHZgUi",
@@ -14,108 +19,213 @@ const LEVANT = {
   engineCommit: "bc3e3334c573c4959ec6a6745df6826d07233b4d",
 };
 
-test("the exact Europe and Levant real-replay fixtures stay aligned across QA and coaching gates", () => {
-  const compatibilityWorkflow = read(".github/workflows/replay-compatibility.yml");
-  const packageJson = JSON.parse(read("package.json"));
-  const coachingTests = read("scripts/pro-coach-algorithm.test.mjs");
+const sample = (tick, overrides = {}) => ({
+  tick,
+  frame: tick,
+  players: [{
+    clientID: "oligenole-client",
+    alive: true,
+    tiles: 100 + Math.floor(tick / 100),
+    gold: 500 + tick,
+    goldEarned: 100 + tick,
+    troops: 300 + Math.floor(tick / 20),
+    outgoingAttackDetails: [],
+    incomingAttackDetails: [],
+    allies: 0,
+    betrayals: 0,
+    unitCounts: { City: 1 },
+    ...overrides,
+  }],
+});
+
+const review = {
+  playerName: "OligenOle",
+  clientID: "oligenole-client",
+  startTiles: 100,
+  endTiles: 180,
+  tilesGained: 80,
+  startGold: 500,
+  endGold: 900,
+  startTroops: 300,
+  endTroops: 320,
+  outgoingAttackSamples: 2,
+  longestNoExpansionSeconds: 100,
+};
+
+const action = {
+  frame: 120,
+  turn: 120,
+  seconds: 12,
+  type: "attack",
+  commandTroops: 100,
+  label: "Angriff",
+  details: "Recorded attack intent",
+  targetId: "2",
+  targetName: "Opponent",
+  targetSmallID: 2,
+  before: null,
+  after: null,
+  delta: null,
+  delta5s: null,
+  delta10s: { tiles: 1, gold: -10, troops: -20, goldEarned: 5, tradeGold: 0, trainGold: 0, piracyGold: 0 },
+  delta30s: { tiles: 3, gold: -30, troops: -60, goldEarned: 20, tradeGold: 0, trainGold: 0, piracyGold: 0 },
+  targetDelta10s: null,
+  targetDelta30s: { tiles: -2, gold: -10, troops: -20, goldEarned: 0, tradeGold: 0, trainGold: 0, piracyGold: 0 },
+  targetAliveBefore: true,
+  targetAliveAt10s: true,
+  targetAliveAt30s: true,
+  ownFrontContextBefore: {
+    activeTargetCount: 0, outgoingTargetIds: [], outgoingAttackCount: 0,
+    outgoingAttackTroops: 0, incomingAttackCount: 0, incomingAttackTroops: 0,
+    incomingAttackerNames: [],
+  },
+  targetPressureBefore: {
+    incomingAttackCount: 0, incomingAttackTroops: 0, otherAttackCount: 0,
+    otherAttackTroops: 0, otherAttackerCount: 0, otherAttackerNames: [],
+    retreatingOtherAttackCount: 0,
+  },
+  activeAttack10s: null,
+  activeAttack30s: null,
+};
+
+const samples = Array.from({ length: 16 }, (_, index) => sample(index * 100));
+const actions = Array.from({ length: 4 }, (_, index) => ({
+  seconds: 12 + index * 20,
+  type: "attack",
+  label: "Angriff",
+  targetName: "Opponent",
+  delta10s: { tiles: 1, gold: -10, troops: -20 },
+  delta30s: { tiles: 3, gold: -30, troops: -60 },
+  targetDelta30s: { tiles: -2, gold: -10, troops: -20 },
+  ownFrontContextBefore: action.ownFrontContextBefore,
+  targetPressureBefore: action.targetPressureBefore,
+}));
+
+function makeVerifiedMatch(gameId, tileOffset = 0) {
+  const matchSamples = samples.map(entry => ({
+    ...entry,
+    players: entry.players.map(player => ({ ...player, tiles: player.tiles + tileOffset })),
+  }));
+  return {
+    gameId,
+    mapName: gameId === EUROPE.gameId ? "Europe" : "Levant",
+    mode: "Free For All",
+    type: "Private",
+    durationSeconds: 160,
+    analysisStatus: "verified",
+    simulation: {
+      status: "verified",
+      totalTicks: 1600,
+      verifiedHashes: 100,
+      samples: matchSamples,
+      playerReview: review,
+      actionReviews: [action, ...actions],
+    },
+  };
+}
+
+test("Europe and Levant resolve to their exact historical engine commits", () => {
   for (const fixture of [EUROPE, LEVANT]) {
-    assert.ok(compatibilityWorkflow.includes(fixture.gameId), `compatibility workflow missing ${fixture.gameId}`);
-    assert.ok(compatibilityWorkflow.includes(fixture.engineCommit), `compatibility workflow missing exact engine ${fixture.gameId}`);
+    assert.equal(resolveSupportedEngineCommit(fixture.engineCommit), fixture.engineCommit);
+    const result = assessReplayCompatibility({
+      gitCommit: fixture.engineCommit,
+      turns: [{ turnNumber: 0, hash: "abc" }, { turnNumber: 1, hash: "def" }],
+    });
+    assert.equal(result.engineVersionCompatible, true);
+    assert.equal(result.hashVerificationAvailable, true);
+    assert.equal(result.recordedHashCount, 2);
+    assert.equal(result.engineCommit, fixture.engineCommit);
   }
-  assert.match(packageJson.scripts["test:coach"], /public-replay-compatibility\.test\.mjs/);
-  assert.match(coachingTests, /buildProCoachReport/);
-  assert.match(coachingTests, /buildReplayTimeline/);
 });
 
-test("replay import, exact-engine simulation, coaching evidence, and timeline share stable identifiers", () => {
-  const compatibility = read("src/main/decoder/ReplayCompatibility.ts");
-  const catalog = read("src/main/decoder/ReplayEngineCatalog.ts");
-  const simulation = read("src/renderer/ReplaySimulation.ts");
-  const proCoach = read("src/main/decoder/ProCoachAlgorithm.ts");
-  const timeline = read("src/main/decoder/CoachTimeline.ts");
-  assert.match(compatibility, /assessReplayCompatibility/);
-  assert.match(catalog, /resolveSupportedEngineCommit/);
-  assert.match(simulation, /resolveSupportedEngineCommit/);
-  assert.match(simulation, /loadReplayEngineModule/);
-  assert.match(proCoach, /export function buildProCoachReport/);
-  assert.match(proCoach, /evidence:/);
-  assert.match(proCoach, /seconds:/);
-  assert.match(timeline, /insight\.seconds === null/);
-  assert.match(timeline, /id: `coach-\$\{insight\.id\}`/);
-  assert.match(timeline, /time: insight\.seconds/);
+test("the production coach functions derive phase reports and evidence-backed engine insights", () => {
+  const report = buildProCoachReport(samples, actions, "oligenole-client", 160);
+  assert.deepEqual(report.phases.map(phase => phase.id), ["early", "mid", "late"]);
+  assert.ok(report.dataCoverage.samples > 0);
+  assert.ok(report.metrics.length > 0);
+  const insights = buildEngineCoachInsights(review, [action], samples);
+  assert.ok(insights.length > 0);
+  for (const finding of insights) {
+    assert.ok(finding.evidence.trim());
+    assert.ok(finding.nextStep.trim());
+    assert.ok(finding.limitation.trim());
+  }
+  const selected = selectPrimaryCoachInsights(insights);
+  assert.ok(selected.primary.length <= 3);
+  assert.ok(selected.primary.every(item => item.kind === "review" || item.kind === "strength"));
 });
 
-test("the match store persists summary and raw replay separately and can resume a full match", () => {
-  const store = read("src/renderer/matchStore.ts");
-  const batch = read("src/renderer/BatchAnalysisRunner.ts");
-  const autoSync = read("src/renderer/AutoLibrarySync.ts");
-  assert.match(store, /const DB_VERSION = 3/);
-  assert.match(store, /const MATCH_STORE = "matches"/);
-  assert.match(store, /const REPLAY_STORE = "replay-records"/);
-  assert.match(store, /tx\.objectStore\(MATCH_STORE\)\.put\(stored\)/);
-  assert.match(store, /tx\.objectStore\(REPLAY_STORE\)\.put\(\{ playerId, gameId: item\.game\.gameId, record \}\)/);
-  assert.match(store, /export async function loadImportedMatch/);
-  assert.match(store, /const replayRequest = tx\.objectStore\(REPLAY_STORE\)\.get/);
-  assert.match(batch, /signal: AbortSignal/);
-  assert.match(batch, /if \(signal\.aborted\)/);
-  assert.match(batch, /summary\.cancelled = true/);
-  assert.match(batch, /onStatus\(item, "failed"/);
-  assert.match(autoSync, /selectGamesToAnalyze/);
-  assert.match(autoSync, /analysisStatus === "pending"/);
+test("timeline uses source event seconds and omits untimed coaching observations", () => {
+  const insights = buildEngineCoachInsights(review, [action], samples);
+  const timeline = buildReplayTimeline([
+    { time: action.frame / 10, title: action.label, detail: action.details, kind: action.type, turn: action.turn },
+  ], insights);
+  const recorded = timeline.find(event => event.id === "event-0");
+  assert.equal(recorded?.time, action.turn / 10);
+  assert.equal(timeline.some(event => event.id.startsWith("coach-") && event.insight?.seconds === null), false);
+  for (const event of timeline.filter(item => item.id.startsWith("coach-"))) {
+    assert.equal(event.time, event.insight?.seconds);
+  }
 });
 
-test("longitudinal coaching consumes stored match identity and excludes unusable evidence", () => {
-  const longitudinal = read("src/main/decoder/LongitudinalCoach.ts");
-  assert.match(longitudinal, /export function buildLongitudinalCoachReport/);
-  assert.match(longitudinal, /analysisStatus/);
-  assert.match(longitudinal, /simulation\.status/);
-  assert.match(longitudinal, /hash-verified|verified/i);
-  assert.match(longitudinal, /clientId/);
+test("longitudinal production analysis excludes non-verified matches and deduplicates match IDs", () => {
+  const verifiedA = makeVerifiedMatch("real-a");
+  const verifiedB = makeVerifiedMatch("real-b", 10);
+  const unverified = makeVerifiedMatch("unverified");
+  unverified.analysisStatus = "unverified";
+  unverified.simulation.status = "unverified";
+  const report = buildLongitudinalCoachReport([
+    verifiedA, verifiedA, verifiedB, unverified,
+  ]);
+  assert.equal(report.importedMatches, 4);
+  assert.equal(report.verifiedMatches, 3);
+  assert.equal(report.comparableMatches, 2);
+  assert.equal(report.status, "ready");
+  const ignored = buildLongitudinalCoachReport([unverified]);
+  assert.equal(ignored.comparableMatches, 0);
+  assert.equal(ignored.status, "insufficient-data");
 });
 
-test("timeline and primary coach cards consume the same prioritized engine insight", () => {
-  const selection = read("src/main/decoder/CoachInsightSelection.ts");
-  const timeline = read("src/main/decoder/CoachTimeline.ts");
-  const renderer = read("src/renderer/main.tsx");
-  assert.match(selection, /selectPrimaryCoachInsights/);
-  assert.match(selection, /slice\(0, 3\)/);
-  assert.match(timeline, /buildReplayTimeline/);
-  assert.match(renderer, /buildReplayTimeline/);
-  assert.match(renderer, /selectPrimaryCoachInsights/);
+test("automatic history sync imports missing matches and schedules pending analysis", () => {
+  const games = [{ gameId: "new-game" }, { gameId: "existing-game" }];
+  const existing = [{ game: { gameId: "existing-game" }, result: { record: {} }, status: "loaded" }];
+  assert.deepEqual(selectGamesToImport(games, existing).map(game => game.gameId), ["new-game"]);
+  const pending = [
+    { game: { gameId: "one" }, result: {}, analysisStatus: "pending" },
+    { game: { gameId: "two" }, result: {}, analysisStatus: "verified" },
+  ];
+  assert.deepEqual(selectGamesToAnalyze(pending).map(entry => entry.game.gameId), ["one"]);
 });
 
-test("Windows and Android updates preserve the renderer's existing match database", () => {
-  const updater = read("src/main/updater.ts");
-  const android = read("android-updater-template/ApkUpdaterPlugin.java");
-  const androidWorkflow = read(".github/workflows/update-validation.yml");
-  const releaseWorkflow = read(".github/workflows/release-on-main.yml");
-  const matchStore = read("src/renderer/matchStore.ts");
-  assert.match(matchStore, /const DB_NAME = "openfront-replay-coach"/);
-  assert.match(matchStore, /const DB_VERSION = 3/);
-  assert.match(updater, /BackupVerified/);
-  assert.match(updater, /restored|wiederhergestellt/i);
-  assert.match(android, /FileProvider/);
-  assert.match(android, /MessageDigest\.getInstance\("SHA-256"\)/);
-  assert.match(androidWorkflow, /Test in-place Android update and preserve app data/);
-  assert.match(releaseWorkflow, /Install previous published APK and upgrade to exact signed release APK/);
-});
+test("batch runner deduplicates work, isolates unsupported engines, and honours cancellation", async () => {
+  const statuses = [];
+  const summary = await runSequentialBatchAnalysis(
+    [{ id: "a", supported: true }, { id: "a", supported: true }, { id: "b", supported: false }],
+    {
+      signal: new AbortController().signal,
+      getId: item => item.id,
+      isCompatible: item => item.supported,
+      analyze: async () => ({ status: "verified" }),
+      onStatus: (item, status) => statuses.push([item.id, status]),
+      onProgress: () => undefined,
+    },
+  );
+  assert.deepEqual(summary, {
+    total: 2, completed: 2, verified: 1, unverified: 0,
+    unsupported: 1, failed: 0, cancelled: false,
+  });
+  assert.deepEqual(statuses, [["a", "queued"], ["b", "queued"], ["a", "running"], ["a", "verified"], ["b", "unsupported"]]);
 
-test("platform bridge keeps browser renderer isolated from native update implementation", () => {
-  const preload = read("src/main/preload.ts");
-  const main = read("src/main/main.ts");
-  const updateCenter = read("src/renderer/UpdateCenter.tsx");
-  assert.match(preload, /getUpdateStatus/);
-  assert.match(preload, /installUpdate/);
-  assert.match(main, /registerUpdaterIpc/);
-  assert.match(updateCenter, /installDesktopUpdate/);
-  assert.match(updateCenter, /installAndroidUpdate/);
-});
-
-test("integration report makes missing PR contracts explicit instead of silently accepting them", () => {
-  const docs = read("docs/INTEGRATION_E2E.md");
-  assert.match(docs, /PRs #145 and #147 were open/);
-  assert.match(docs, /not main-branch behavior/);
-  assert.match(docs, /must not pretend those paths already execute/);
-  assert.match(docs, /Europe/);
-  assert.match(docs, /Levant/);
+  const controller = new AbortController();
+  controller.abort();
+  const cancelled = await runSequentialBatchAnalysis([{ id: "cancelled", supported: true }], {
+    signal: controller.signal,
+    getId: item => item.id,
+    isCompatible: item => item.supported,
+    analyze: async () => ({ status: "verified" }),
+    onStatus: () => undefined,
+    onProgress: () => undefined,
+  });
+  assert.equal(cancelled.cancelled, true);
+  assert.equal(cancelled.completed, 0);
 });

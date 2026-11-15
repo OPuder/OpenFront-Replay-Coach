@@ -46,7 +46,7 @@ export function toReplayCoachFindings(
     return [...samples].filter(sample => sample.tick <= targetTick)
       .sort((a, b) => b.tick - a.tick)[0] ?? null;
   };
-  return findings.slice(0, 3).map(finding => {
+  return findings.filter(finding => finding.priority !== 'low').slice(0, 3).map(finding => {
     const seconds = typeof finding.seconds === 'number' && Number.isFinite(finding.seconds) && finding.seconds >= 0
       ? finding.seconds : null;
     const matchingActions = seconds === null ? [] : actions.filter(action => action.seconds === seconds);

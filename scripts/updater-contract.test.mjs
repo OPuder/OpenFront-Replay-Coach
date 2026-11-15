@@ -172,6 +172,7 @@ for (const workflow of engineCacheWorkflows) {
   assert.match(workflow, /Restore exact historical engine Git objects[\s\S]*?actions\/cache@v4[\s\S]*?path: \.git\/modules[\s\S]*?github\.job/);
 }
 
+
 const releaseSource = read(".github/workflows/release-on-main.yml");
 assert.match(releaseSource, /persist-credentials: false/);
 assert.doesNotMatch(releaseSource, /git push origin HEAD:main/, "The release workflow must not push generated version commits directly to main.");
@@ -179,4 +180,5 @@ assert.ok(releaseSource.includes("Release version drift detected") && releaseSou
 assert.ok(releaseSource.includes("sha256sum") && releaseSource.includes("SHA256SUMS.txt"));
 assert.ok(releaseSource.includes("release-manifest.json"));
 assert.ok(releaseSource.includes("distributables.length === 3"));
-assert.ok(releaseSource.includes("names.includes"));
+assert.ok(releaseSource.includes('names.includes("SHA256SUMS.txt")'));
+assert.ok(releaseSource.includes('names.includes("release-manifest.json")'));

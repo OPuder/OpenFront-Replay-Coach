@@ -82,7 +82,10 @@ assert.ok(androidUpdateRegression.includes('timeout 30s adb -s emulator-5554 she
 assert.match(androidUpdateRegression, /install_apk\(\)\s*\{|adb -s emulator-5554 install -r/);
 assert.match(androidUpdateRegression, /keep-this-data/);
 assert.match(androidUpdateRegression, /versionCode=\$expected_version_code/);
-assert.ok(androidUpdateRegression.includes('timeout 30s adb -s emulator-5554 shell monkey -p "$package_id" 1'));
+assert.match(androidUpdateRegression, /launch_app "\\$package_id"/);
+assert.match(androidUpdateRegression, /am start -W -n/);
+assert.match(androidUpdateRegression, /dumpsys activity activities/);
+assert.match(androidUpdateRegression, /logcat -d -t 700/);
 // This smoke script launches with monkey; process survival is covered by the newer bounded emulator regression.
 
 
@@ -216,7 +219,9 @@ assert.match(androidReleaseUpgrade, /PREVIOUS_PUBLISHED_APK/);
 assert.match(androidReleaseUpgrade, /CURRENT_RELEASE_APK/);
 assert.match(androidReleaseUpgrade, /Published APK and current release APK do not have the same signing certificate/);
 assert.match(androidReleaseUpgrade, /install --no-streaming -r "\$current_release_apk"/);
-assert.match(androidReleaseUpgrade, /actual published APK versionCode/);
+assert.match(androidReleaseUpgrade, /copy_webview_storage "\\$seed_package_id" "\\$package_id"/);
+assert.match(androidReleaseUpgrade, /copy_webview_storage "\\$package_id" "\\$seed_package_id"/);
+assert.match(androidReleaseUpgrade, /Production APK upgrade did not preserve IndexedDB/);
 assert.match(androidReleaseUpgrade, /PREVIOUS_RELEASE_TAG/);
 assert.match(androidReleaseUpgrade, /previous_release_name/);
 const signingScript = read("scripts/verify-android-release-signing.sh");
@@ -247,3 +252,14 @@ assert.match(androidVersionScript, /Rewrite only the app version fields/);
 assert.match(androidVersionScript, /versionCode/);
 assert.match(androidVersionTests, /preserves compileSdk and permanent signing configuration/);
 assert.match(androidVersionTests, /signingConfig signingConfigs\\.release/);
+
+const windowsInPlace = read("scripts/verify-windows-in-place-updates.mjs");
+const windowsStorage = read("scripts/windows-webview-storage.mjs");
+assert.match(windowsInPlace, /OpenFront\\.Replay\\.Coach\\.Setup\\.2\\.2\\.51\\.exe/);
+assert.match(windowsInPlace, /OpenFront\\.Replay\\.Coach-2\\.2\\.51-win\\.zip/);
+assert.match(windowsInPlace, /WINDOWS_IN_PLACE_UPGRADE_OK/);
+assert.match(windowsInPlace, /--user-data-dir=/);
+assert.match(windowsStorage, /openfront-replay-coach/);
+assert.match(windowsStorage, /replay-records/);
+assert.match(windowsStorage, /upgrade-regression-analysis/);
+assert.match(windowsStorage, /last-player-id/);

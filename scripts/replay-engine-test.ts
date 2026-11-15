@@ -357,6 +357,8 @@ window.__runBatchReplayTest = async (gameIds) => {
     onStatus: async (item, status, result, error) => {
       outcomes.set(item.gameId, {
         gameId: item.gameId,
+        matchId: String(item.record?.info?.gameID ?? item.record?.gameId ?? item.gameId),
+        engineId: String(item.record?.gitCommit ?? "unknown"),
         status,
         verifiedHashes: result?.verifiedHashes ?? 0,
         recordedHashes: Array.isArray(item.record?.turns)
@@ -364,10 +366,14 @@ window.__runBatchReplayTest = async (gameIds) => {
           : 0,
         error: error ? String(error?.stack ?? error?.message ?? error) : null,
       });
-      if (status === "verified" || status === "unverified" || status === "unsupported" || status === "failed") {
+      // The unsupported-engine fixture is a deliberately mutated copy of the
+      // Europe replay, not a third match. Persisting it under an alias would
+      // hide a duplicate-key overwrite and would falsely inflate match counts.
+      if (item.gameId !== "unsupported-engine"
+        && (status === "verified" || status === "unverified" || status === "failed")) {
         await saveImportedMatch("ci-batch-player", {
           game: {
-            gameId: item.gameId,
+            gameId: String(item.record?.info?.gameID ?? item.record?.gameId ?? item.gameId),
             map: item.record?.info?.config?.gameMap ?? "Unknown",
             mode: item.record?.info?.config?.gameMode ?? "Free For All",
             type: item.record?.info?.config?.gameType ?? "Private",
@@ -397,6 +403,8 @@ window.__runBatchReplayTest = async (gameIds) => {
   // findings. Full reports remain in the renderer for longitudinal analysis.
   const coachingForAssertion = coachingResults.map(({ longitudinalInput: _longitudinalInput, ...report }) => ({
     gameId: report.gameId,
+    matchId: report.longitudinalInput.gameId,
+    engineId: String(batchTestRecords.get(report.gameId)?.gitCommit ?? "unknown"),
     selectedPlayer: report.selectedPlayer,
     selectedClientId: report.selectedClientId,
     clientId: report.clientId,
@@ -420,7 +428,7 @@ window.__runBatchReplayTest = async (gameIds) => {
     })),
     selection: { primary: report.selection.primary.map((insight: any) => insight.id) },
     timeline: report.timeline.map((entry: any) => ({
-      id: entry.id, gameId: report.gameId, time: entry.time, title: entry.title,
+      id: entry.id, gameId: report.gameId, matchId: report.longitudinalInput.gameId, time: entry.time, title: entry.title,
       detail: entry.detail, kind: entry.kind, turn: entry.turn,
       insight: entry.insight ? {
         id: entry.insight.id, evidence: entry.insight.evidence,

@@ -107,10 +107,11 @@ test('progression is chronological and only includes verified matches', () => {
     match('middle',{playedAt:'2026-02-04T00:00:00Z'}),
     match('earlier-2',{playedAt:'2026-02-02T00:00:00Z',simulation:makeSimulation({samples:makeSimulation().samples.map(sample=>({...sample,players:sample.players.map(player=>({...player,tiles:player.tiles*2,goldEarned:player.goldEarned*2}))}))})}),
     match('earlier-1',{playedAt:'2026-02-01T00:00:00Z',simulation:makeSimulation({samples:makeSimulation().samples.map(sample=>({...sample,players:sample.players.map(player=>({...player,tiles:player.tiles*2,goldEarned:player.goldEarned*2}))}))})}),
+    match('earlier-0',{playedAt:'2026-01-31T00:00:00Z',simulation:makeSimulation({samples:makeSimulation().samples.map(sample=>({...sample,players:sample.players.map(player=>({...player,tiles:player.tiles*2,goldEarned:player.goldEarned*2}))}))})}),
     match('ignored',{playedAt:'2026-02-07T00:00:00Z',analysisStatus:'unverified',simulation:makeSimulation({status:'unverified'})}),
   ]);
-  assert.deepEqual(report.matchProgress.map(item=>item.gameId),['earlier-1','earlier-2','middle','later','latest']);
-  assert.equal(report.matchProgress.length,5);
+  assert.deepEqual(report.matchProgress.map(item=>item.gameId),['earlier-0','earlier-1','earlier-2','middle','later','latest']);
+  assert.equal(report.matchProgress.length,6);
   assert.equal(report.metricTrends.length,3);
   assert.equal(report.metricTrends.find(item=>item.id==='territory')?.direction,'declined');
 });

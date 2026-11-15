@@ -1,3 +1,8 @@
+import React from "react";
+import { createRoot } from "react-dom/client";
+import { flushSync } from "react-dom";
+import { ReplayVisualization } from "../src/renderer/ReplayVisualization";
+import { selectTerritorySample } from "../src/renderer/ReplayTerritory";
 import { buildReplayEngineAssets, simulateReplay } from "../src/renderer/ReplaySimulation";
 import { decodeTileOwners, selectTerritorySample } from "../src/renderer/ReplayTerritory";
 import { loadImportedMatch, loadImportedMatches, saveImportedMatch } from "../src/renderer/matchStore";
@@ -168,6 +173,72 @@ window.__testAbort = async (record) => {
   }
 };
 
+
+/** Render verified real replay output through the production React replay component. */
+async function verifyRealReplayReactUi(gameId: string, record: any, result: any, findings: any[]) {
+  const container = document.createElement("div");
+  container.dataset.realReplayGameId = gameId;
+  document.body.appendChild(container);
+  const root = createRoot(container);
+  const events = findings.flatMap(finding => finding.timestampSeconds === null ? [] : [{
+    id: "pro-" + finding.id, title: finding.title, kind: "Strategisches Coaching",
+    detail: finding.consequence, time: finding.timestampSeconds, isCoach: true,
+  }]).sort((a, b) => a.time - b.time);
+  let selectedEventId: string | null = events[0]?.id ?? null;
+  const render = () => flushSync(() => root.render(React.createElement(ReplayVisualization, {
+    mapName: String(record?.info?.config?.gameMap ?? "Unbekannte Karte"),
+    durationSeconds: result.totalTicks / 10, samples: result.samples, findings, events,
+    selectedEventId, onSelectEvent: (id: string) => { selectedEventId = id; render(); },
+    onOpenReplay: () => undefined,
+  })));
+  const nextFrame = () => new Promise<void>(resolve => requestAnimationFrame(() => resolve()));
+  try {
+    render(); await nextFrame(); await nextFrame();
+    const cards = [...container.querySelectorAll<HTMLButtonElement>(".replay-viz-priority-card")];
+    if (cards.length !== findings.length) throw new Error(gameId + ": rendered card count differs from actual findings");
+    const checked: any[] = [];
+    for (let index = 0; index < findings.length; index++) {
+      const finding = findings[index], card = cards[index], cardText = card.textContent ?? "";
+      if (finding.matchId !== gameId) throw new Error(gameId + ": cross-match finding " + finding.id);
+      for (const [field, value] of [["title", finding.title], ["consequence", finding.consequence], ["alternative", finding.alternative]] as const)
+        if (!value || !cardText.includes(value)) throw new Error(gameId + "/" + finding.id + ": card omitted " + field);
+      if (finding.timestampSeconds === null) {
+        if (!card.disabled || !cardText.includes("Kein genauer Replay-Zeitpunkt"))
+          throw new Error(gameId + "/" + finding.id + ": missing timestamp is not visibly unavailable");
+        if ([...container.querySelectorAll(".replay-viz-marker")].some(node => node.getAttribute("aria-label")?.includes(finding.title)))
+          throw new Error(gameId + "/" + finding.id + ": missing timestamp created a timeline marker");
+        checked.push({ id: finding.id, timestampSeconds: null, disabled: true });
+        continue;
+      }
+      if (card.disabled) throw new Error(gameId + "/" + finding.id + ": valid timestamp card is disabled");
+      card.click(); await nextFrame(); await nextFrame();
+      const details = container.querySelector(".replay-viz-coach-detail")?.textContent ?? "";
+      for (const [field, value] of [["decision", finding.decision], ["context", finding.context], ["consequence", finding.consequence], ["alternative", finding.alternative], ["learning rule", finding.learningRule]] as const)
+        if (!value || !details.includes(value)) throw new Error(gameId + "/" + finding.id + ": selected detail omitted " + field);
+      const seconds = Math.max(0, Math.floor(finding.timestampSeconds));
+      const expectedTime = String(Math.floor(seconds / 60)).padStart(2, "0") + ":" + String(seconds % 60).padStart(2, "0");
+      const selectedTime = container.querySelector(".replay-viz-focus-head b")?.textContent;
+      if (selectedTime !== expectedTime) throw new Error(gameId + "/" + finding.id + ": timeline time mismatch");
+      const selectedSample = selectTerritorySample(result.samples, finding.timestampSeconds);
+      if (selectedSample?.territory) {
+        const frameText = container.querySelector(".replay-viz-map-head span:last-child")?.textContent;
+        if (frameText !== "Engine-Frame " + selectedSample.frame)
+          throw new Error(gameId + "/" + finding.id + ": map frame does not match actual engine sample");
+      } else if (!container.querySelector(".replay-viz-map-label"))
+        throw new Error(gameId + "/" + finding.id + ": missing territory sample is not shown as unavailable");
+      if (container.querySelectorAll(".replay-viz-marker.active").length !== 1)
+        throw new Error(gameId + "/" + finding.id + ": timeline selection is not unique");
+      const evidenceText = [...container.querySelectorAll(".replay-viz-coach-evidence small")].map(node => node.textContent ?? "").join(" ");
+      if (!finding.evidence.length || !finding.evidence.every((e: any) => evidenceText.includes(e.label) && evidenceText.includes(e.detail)))
+        throw new Error(gameId + "/" + finding.id + ": evidence references are missing from React UI");
+      if (!finding.evidence.every((e: any) => e.seconds === finding.timestampSeconds))
+        throw new Error(gameId + "/" + finding.id + ": evidence timestamp differs from finding timestamp");
+      checked.push({ id: finding.id, timestampSeconds: finding.timestampSeconds, selectedTime, selectedFrame: selectedSample?.frame ?? null, evidenceCount: finding.evidence.length });
+    }
+    return { gameId, map: record?.info?.config?.gameMap, renderedCards: cards.length, timelineMarkers: events.length, checked };
+  } finally { root.unmount(); container.remove(); }
+}
+
 window.__setBatchReplay = (gameId, record) => {
   batchTestRecords.set(gameId, record);
 };
@@ -216,6 +287,9 @@ window.__runBatchReplayTest = async (gameIds) => {
       const timelineFrameChecks = status === "verified" && result && ["Europe", "Levant"].includes(item.gameId)
         ? verifyActualTimelineFrameMapping(item.gameId, result.samples)
         : [];
+      const realReactUi = status === "verified" && result && ["Europe", "Levant"].includes(item.gameId)
+        ? await verifyRealReplayReactUi(item.gameId, item.record, result, coachingFindings)
+        : null;
       outcomes.set(item.gameId, {
         gameId: item.gameId,
         status,
@@ -235,6 +309,7 @@ window.__runBatchReplayTest = async (gameIds) => {
           affectedOwnerIds: finding.affectedOwnerIds,
         })),
         timelineFrameChecks,
+        realReactUi,
         verifiedHashes: result?.verifiedHashes ?? 0,
         recordedHashes: Array.isArray(item.record?.turns)
           ? item.record.turns.filter((turn: any) => turn?.hash !== null && turn?.hash !== undefined).length

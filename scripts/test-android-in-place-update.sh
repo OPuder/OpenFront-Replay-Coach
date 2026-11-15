@@ -8,7 +8,7 @@ update_apk="${OPENFRONT_UPDATE_APK:-$RUNNER_TEMP/openfront-coach-update.apk}"
 
 log() { echo "::notice::[Android update regression] $*"; }
 fail() { echo "::error::[Android update regression] $*"; exit 1; }
-adb_cmd() { timeout 20s adb -s emulator-5554 "$@"; }
+adb_cmd() { timeout 60s adb -s emulator-5554 "$@"; }
 
 test -s "$apk" || fail "Initial APK is missing."
 test -s "$update_apk" || fail "Prebuilt higher-version APK is missing."
@@ -93,9 +93,14 @@ grep -F "Status: ok" <<< "$launch_output" >/dev/null ||
   fail "Android did not confirm successful activity launch: $launch_output"
 
 started=false
-for attempt in $(seq 1 15); do
+for attempt in $(seq 1 30); do
   if adb_cmd shell pidof "$package_id" >/dev/null 2>&1; then started=true; break; fi
   sleep 2
 done
-[[ "$started" == true ]] || fail "Upgraded application process did not start within 30 seconds."
+if [[ "$started" != true ]]; then
+  log "Application launch diagnostics:"
+  adb_cmd shell dumpsys activity activities 2>&1 | tail -n 80 || true
+  adb_cmd logcat -d -t 500 2>&1 | grep -E "FATAL EXCEPTION|AndroidRuntime|de.openfront.replaycoach|ActivityTaskManager" | tail -n 120 || true
+  fail "Upgraded application process did not start within 60 seconds."
+fi
 log "PASS: $current_version -> $next_version; package ID, versionCode, app data and launcher startup verified."

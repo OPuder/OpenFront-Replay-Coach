@@ -2,7 +2,6 @@ import React from "react";
 import { createRoot } from "react-dom/client";
 import { flushSync } from "react-dom";
 import { ReplayVisualization } from "../src/renderer/ReplayVisualization";
-import { selectTerritorySample } from "../src/renderer/ReplayTerritory";
 import { buildReplayEngineAssets, simulateReplay } from "../src/renderer/ReplaySimulation";
 import { decodeTileOwners, selectTerritorySample } from "../src/renderer/ReplayTerritory";
 import { loadImportedMatch, loadImportedMatches, saveImportedMatch } from "../src/renderer/matchStore";

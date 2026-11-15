@@ -1,4 +1,5 @@
 import { buildReplayEngineAssets, simulateReplay } from "../src/renderer/ReplaySimulation";
+import { decodeTileOwners } from "../src/renderer/ReplayTerritory";
 import { loadImportedMatch, loadImportedMatches, saveImportedMatch } from "../src/renderer/matchStore";
 import { runSequentialBatchAnalysis } from "../src/renderer/BatchAnalysisRunner";
 import { assessReplayCompatibility } from "../src/main/decoder/ReplayCompatibility";
@@ -22,6 +23,9 @@ declare global {
       samples: number;
       totalTicks: number;
       playerReview: unknown;
+      territorySnapshots: number;
+      territoryTileCount: number;
+      movementSampleCount: number;
     }>;
   }
 }
@@ -77,12 +81,18 @@ window.__runReplayTest = async (record, gameId) => {
     analysisStatus: result.status === "verified" ? "verified" : "unverified",
     simulation: result,
   });
+  const territorySamples = result.samples.filter(sample => sample.territory);
+  const firstTerritory = territorySamples[0]?.territory ?? null;
+  const decodedTerritory = firstTerritory ? decodeTileOwners(firstTerritory) : null;
   return {
     status: result.status,
     verifiedHashes: result.verifiedHashes,
     samples: result.samples.length,
     totalTicks: result.totalTicks,
     playerReview: result.playerReview,
+    territorySnapshots: territorySamples.length,
+    territoryTileCount: decodedTerritory?.length ?? 0,
+    movementSampleCount: result.samples.filter(sample => sample.unitMovements.length > 0).length,
   };
 };
 document.getElementById("status")!.textContent = "Replay engine test harness ready";

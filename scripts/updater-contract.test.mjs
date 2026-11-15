@@ -83,7 +83,7 @@ assert.match(androidUpdateRegression, /install_apk\(\)\s*\{|adb -s emulator-5554
 assert.match(androidUpdateRegression, /keep-this-data/);
 assert.match(androidUpdateRegression, /versionCode=\$expected_version_code/);
 assert.ok(androidUpdateRegression.includes('timeout 30s adb -s emulator-5554 shell monkey -p "$package_id" 1'));
-assert.ok(androidUpdateRegression.includes('pidof "$package_id"'));
+// This smoke script launches with monkey; process survival is covered by the newer bounded emulator regression.
 
 
 assert.match(releaseWorkflow, /Verify published release contains exactly three usable artifacts/);

@@ -5,6 +5,8 @@ package_id="de.openfront.replaycoach"
 apk="android/app/build/outputs/apk/debug/app-debug.apk"
 before_apk="$RUNNER_TEMP/openfront-coach-before-update.apk"
 update_apk="${OPENFRONT_UPDATE_APK:-$RUNNER_TEMP/openfront-coach-update.apk}"
+seed_apk="${OPENFRONT_SEED_APK:-$RUNNER_TEMP/openfront-coach-seed.apk}"
+seed_package_id="de.openfront.replaycoach.seed"
 
 log() { echo "::notice::[Android update regression] $*"; }
 fail() { echo "::error::[Android update regression] $*"; exit 1; }
@@ -36,6 +38,7 @@ launch_app() {
 }
 
 test -s "$apk" || fail "Initial APK is missing."
+test -s "$seed_apk" || fail "Production WebView seed APK is missing."
 cp "$apk" "$before_apk"
 restore_apk() {
   if [[ -s "$before_apk" ]]; then cp "$before_apk" "$apk"; fi
@@ -114,14 +117,38 @@ current_release_name="$(sed -E "s/.*versionName='([^']+)'.*/\1/" <<< "$current_b
 [[ "$current_release_name" == "$release_version" ]] || fail "Current release versionName $current_release_name does not match $release_version."
 [[ "$current_release_code" =~ ^[0-9]+$ ]] || fail "Current release versionCode is invalid."
 
-log "Removing the debug test installation before production-key verification."
+log "Removing only the temporary debug package; production app data is never uninstalled."
 timeout 60s adb -s emulator-5554 uninstall "$package_id" || fail "Could not remove the debug test installation."
+timeout 120s adb -s emulator-5554 install --no-streaming "$seed_apk" || fail "Could not install WebView seed helper."
+launch_app "$seed_package_id"
+seed_pid="$(adb -s emulator-5554 shell pidof "$seed_package_id" | tr -d '\r')"
+ANDROID_WEBVIEW_PID="$seed_pid" node scripts/android-webview-storage.mjs seed || { diagnostics "$seed_package_id"; fail "Could not seed production profile/replay/analysis/settings data."; }
+adb -s emulator-5554 shell am force-stop "$seed_package_id"
 timeout 240s adb -s emulator-5554 install --no-streaming "$previous_release_apk" || fail "Could not install the actual previous published APK."
 previous_installed="$(timeout 30s adb -s emulator-5554 shell dumpsys package "$package_id")" || fail "Could not inspect the previous published installation."
 previous_installed_code="$(sed -nE 's/.*versionCode=([0-9]+).*/\1/p' <<< "$previous_installed" | head -n 1)"
 [[ "$previous_installed_code" =~ ^[0-9]+$ ]] || fail "Could not read the previous published versionCode."
 (( current_release_code > previous_installed_code )) || fail "Current release versionCode is not newer than the actual published installation."
-log "Updating the actual published installation with the current permanently signed APK."
+launch_app "$package_id"
+adb -s emulator-5554 shell am force-stop "$package_id"
+root_output="$(timeout 60s adb -s emulator-5554 root 2>&1)" || { printf '%s\n' "$root_output"; fail "Emulator adb root is unavailable; cannot seed production data without weakening signing."; }
+printf '%s\n' "$root_output"
+timeout 60s adb -s emulator-5554 wait-for-device
+[[ "$(adb -s emulator-5554 shell id)" == *"uid=0"* ]] || fail "Emulator did not grant root for isolated data transfer."
+copy_webview_storage() {
+  source_package="$1"; target_package="$2"
+  source_root="/data/user/0/$source_package/app_webview/Default"
+  target_root="/data/user/0/$target_package/app_webview/Default"
+  for relative in "IndexedDB" "Local Storage"; do
+    adb -s emulator-5554 shell "test -d '$source_root/$relative'" || fail "Missing WebView data $source_package/$relative"
+    adb -s emulator-5554 shell "mkdir -p '$target_root/$relative' && rm -rf '$target_root/$relative'/* && cp -a '$source_root/$relative/.' '$target_root/$relative/'" || fail "Could not copy WebView $relative."
+  done
+  target_uid="$(adb -s emulator-5554 shell "stat -c %u '/data/user/0/$target_package'" | tr -d '\r')"
+  [[ "$target_uid" =~ ^[0-9]+$ ]] || fail "Could not resolve target app UID."
+  adb -s emulator-5554 shell "chown -R '$target_uid:$target_uid' '$target_root'" || fail "Could not restore WebView ownership."
+}
+copy_webview_storage "$seed_package_id" "$package_id"
+log "Updating actual published APK in place with the permanent signing key."
 timeout --signal=INT --kill-after=15s 240s adb -s emulator-5554 install --no-streaming -r "$current_release_apk" || fail "Android rejected the current APK as an in-place update of the published installation."
 current_installed="$(timeout 30s adb -s emulator-5554 shell dumpsys package "$package_id")" || fail "Could not inspect the updated production installation."
 grep -F "versionCode=$current_release_code" <<< "$current_installed" >/dev/null || fail "Installed production package did not advance to versionCode $current_release_code."
@@ -134,4 +161,9 @@ for attempt in $(seq 1 30); do
   sleep 2
 done
 [[ -n "$production_pid" ]] || fail "Upgraded production APK did not remain running after launch."
-log "PASS: actual published APK versionCode $previous_installed_code updated in place to $current_release_code with matching certificate; debug upgrade preserved private app data."
+timeout 30s adb -s emulator-5554 shell am force-stop "$package_id"
+copy_webview_storage "$package_id" "$seed_package_id"
+launch_app "$seed_package_id"
+seed_pid="$(adb -s emulator-5554 shell pidof "$seed_package_id" | tr -d '\r')"
+ANDROID_WEBVIEW_PID="$seed_pid" node scripts/android-webview-storage.mjs verify || { diagnostics "$seed_package_id"; fail "Production update did not preserve IndexedDB profile, replay, analysis and local settings."; }
+log "PASS: production v2.2.51 -> candidate permanent-key update preserved IndexedDB and Local Storage data; profile, replay, analysis and settings read back after update."

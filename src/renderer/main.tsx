@@ -755,7 +755,7 @@ function CoachPanel({apiResult,preferredPlayerPublicId,decodedActions,simulation
   const playerScoped=Boolean(selectedClientId);
   const selectedPlayerReview = simulationResult?.playerReview?.clientID === selectedClientId ? simulationResult.playerReview : null;
   const selectedActionReviews = selectedPlayerReview ? (simulationResult?.actionReviews ?? []) : [];
-  const spawnPositionReport = simulationResult?.spawnPositions ?? [];
+  
   const selectedSpawnPosition = spawnPositionReport.find(position => position.clientID === selectedClientId) ?? null;
   const spawnAlternatives = selectedSpawnPosition && simulationResult?.spawnAlternativesPlayerId === selectedSpawnPosition.id
     ? simulationResult.spawnAlternatives ?? []

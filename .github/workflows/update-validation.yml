@@ -148,7 +148,10 @@ jobs:
           packages: "platforms;android-36 build-tools;36.0.0"
 
       - name: Build renderer with test-only Android storage inspector
-        run: VITE_ANDROID_UPGRADE_TEST=1 npm run build:web
+        run: |
+          set -Eeuo pipefail
+          VITE_ANDROID_UPGRADE_TEST=1 npm run build:web
+          grep -R "__OFRC_ANDROID_UPGRADE_TEST__" dist >/dev/null || { echo "Test-only storage inspector was not bundled."; exit 1; }
 
       - name: Generate Android project and updater plugin
         run: |
@@ -259,7 +262,13 @@ jobs:
             echo "Production APK unexpectedly contains the debuggable flag." >&2
             exit 1
           fi
-          echo "Production APK SHA-256: $(sha256sum "$production_apk" | awk '{print $1}')"
+          if grep -R "__OFRC_ANDROID_UPGRADE_TEST__" dist >/dev/null; then
+            echo "Production renderer unexpectedly contains the test-only storage inspector." >&2
+            exit 1
+          fi
+          production_sha256="$(sha256sum "$production_apk" | awk '{print $1}')"
+          echo "Production APK SHA-256: $production_sha256"
+          echo "OPENFRONT_PRODUCTION_SHA256=$production_sha256" >> "$GITHUB_ENV"
 
       - name: Verify permanent Android release signing key and continuity
         if: always() && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
@@ -275,10 +284,31 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: bash scripts/verify-android-release-signing.sh
 
-      - name: Upload validated APK
+      - name: Upload validated production APK
         uses: actions/upload-artifact@v4
         with:
           name: updater-validation-android
           path: android/app/build/outputs/apk/release/app-release.apk
           if-no-files-found: error
           retention-days: 7
+
+      - name: Download uploaded APK for byte-for-byte verification
+        uses: actions/download-artifact@v4
+        with:
+          name: updater-validation-android
+          path: ${{ runner.temp }}/verified-android-artifact
+
+      - name: Verify uploaded production APK hash and signature
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          uploaded_apk="$RUNNER_TEMP/verified-android-artifact/app-release.apk"
+          test -s "$uploaded_apk"
+          uploaded_sha256="$(sha256sum "$uploaded_apk" | awk '{print $1}')"
+          [[ "$uploaded_sha256" == "$OPENFRONT_PRODUCTION_SHA256" ]] || {
+            echo "Uploaded APK hash does not match the locally validated production APK." >&2
+            exit 1
+          }
+          build_tools="$(find "$ANDROID_HOME/build-tools" -mindepth 1 -maxdepth 1 -type d | sort -V | tail -n 1)"
+          "$build_tools/apksigner" verify --verbose "$uploaded_apk"
+          echo "Uploaded production APK byte-for-byte verified: $uploaded_sha256"

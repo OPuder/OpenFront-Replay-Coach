@@ -107,8 +107,8 @@ assert.ok(renderer.includes(String.raw`/(?:\.Setup\.| Setup )[\d.]+\.exe$/i`), "
 const installerAssetMatcher = /(?:\.Setup\.| Setup )[\d.]+\.exe$/i;
 assert.match("OpenFront Replay Coach Setup 2.2.45.exe", installerAssetMatcher, "The current electron-builder NSIS filename must be detected.");
 assert.match("OpenFront.Replay.Coach.Setup.2.2.44.exe", installerAssetMatcher, "Legacy published installer filenames must remain supported.");
-assert.match(read("scripts/verify-release-artifacts.mjs"), /OpenFront Replay Coach-.*-win\\.zip/);
-assert.match(read("scripts/verify-release-artifacts.mjs"), /OpenFront-Replay-Coach-.*-Android\\.apk/);
+assert.match(read("scripts/verify-release-artifacts.mjs"), /OpenFront Replay Coach-.*-win\.zip/);
+assert.match(read("scripts/verify-release-artifacts.mjs"), /OpenFront-Replay-Coach-.*-Android\.apk/);
 
 
 const matchStore = read("src/renderer/matchStore.ts");
@@ -186,8 +186,8 @@ assert.ok(releaseSource.includes('names.includes("release-manifest.json")'));
 const artifactVerifier = read("scripts/verify-release-artifacts.mjs");
 const artifactVerifierTests = read("scripts/verify-release-artifacts.test.mjs");
 const windowsDistributionVerifier = read("scripts/verify-windows-distributions.mjs");
-assert.match(artifactVerifier, /SHA256SUMS\\.txt/);
-assert.match(artifactVerifier, /release-manifest\\.json/);
+assert.match(artifactVerifier, /SHA256SUMS\.txt/);
+assert.match(artifactVerifier, /release-manifest\.json/);
 assert.match(artifactVerifier, /exactly the three correctly named distributables/);
 assert.match(artifactVerifier, /Manifest SHA-256 mismatch/);
 assert.match(artifactVerifier, /Manifest byte size mismatch/);
@@ -199,7 +199,7 @@ assert.match(windowsDistributionVerifier, /Installing the NSIS distribution/);
 assert.match(windowsDistributionVerifier, /Extracting the independent portable ZIP/);
 assert.match(windowsDistributionVerifier, /installed NSIS/);
 assert.match(windowsDistributionVerifier, /portable ZIP/);
-assert.match(windowsDistributionVerifier, /resources.*app\\.asar/);
+assert.match(windowsDistributionVerifier, /resources.*app\.asar/);
 
 const androidReleaseUpgrade = read("scripts/test-android-in-place-update.sh");
 assert.match(androidReleaseUpgrade, /keep-this-data/);
@@ -215,13 +215,13 @@ assert.match(signingScript, /CURRENT_RELEASE_APK=/);
 
 const validationWorkflow = read(".github/workflows/update-validation.yml");
 assert.match(validationWorkflow, /release-artifact-download-audit/);
-assert.match(validationWorkflow, /actions\\/download-artifact@v4/);
-assert.match(validationWorkflow, /verify-release-artifacts\\.mjs generate/);
-assert.match(validationWorkflow, /verify-windows-distributions\\.mjs/);
+assert.match(validationWorkflow, /actions\/download-artifact@v4/);
+assert.match(validationWorkflow, /verify-release-artifacts\.mjs generate/);
+assert.match(validationWorkflow, /verify-windows-distributions\.mjs/);
 assert.match(validationWorkflow, /Test debug data preservation and real published-APK update/);
 assert.match(validationWorkflow, /verify-android-release-signing\\.sh/);
 const windowsWorkflow = read(".github/workflows/build-windows.yml");
 assert.match(windowsWorkflow, /verify-windows-distributions\\.mjs/);
 const releaseWorkflowUpdated = read(".github/workflows/release-on-main.yml");
 assert.match(releaseWorkflowUpdated, /Download published release and verify every byte/);
-assert.match(releaseWorkflowUpdated, /verify-release-artifacts\\.mjs verify/);
+assert.match(releaseWorkflowUpdated, /verify-release-artifacts\.mjs verify/);

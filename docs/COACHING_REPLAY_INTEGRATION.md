@@ -85,3 +85,14 @@ timestamp validity, priority and confidence.
 The Electron UI harness covers
 priority cards, selected-finding detail, affected-territory overlay, timeline
 synchronization, keyboard navigation, and 320/375/768/1440 px viewports.
+
+
+## Replay frame and timestamp convention (verified against pinned OpenFront source)
+
+OpenFront `ReplayProcessor` emits one encoded frame after each executed game tick. The tick counter starts at 1 (`tick: i + 1`), while `ReplayReader` starts with frame index -1 and its first decoded frame is index 0. Therefore a recorded replay `turnNumber` is a one-based simulation tick, not a zero-based ReplayReader frame:
+
+- `recordedTick = turnNumber`
+- `ReplayReader frame = recordedTick - 1`
+- `game seconds = recordedTick / 10` (10 ticks per second)
+
+The conversion is performed once when replay action reviews are built. Action evidence exposes the zero-based engine frame; the displayed timestamp continues to use the recorded one-based tick. Before/after samples and delayed outcome windows are relative to the converted engine frame. The real Europe/Levant browser regression asserts this mapping against the actual `ReplayReader` sample's own `tick` and `frame`, not a synthetic fixture.

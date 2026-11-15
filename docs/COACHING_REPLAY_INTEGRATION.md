@@ -95,4 +95,6 @@ OpenFront `ReplayProcessor` emits one encoded frame after each executed game tic
 - `ReplayReader frame = recordedTick - 1`
 - `game seconds = recordedTick / 10` (10 ticks per second)
 
-The conversion is performed once when replay action reviews are built. Action evidence exposes the zero-based engine frame; the displayed timestamp continues to use the recorded one-based tick. Before/after samples and delayed outcome windows are relative to the converted engine frame. The real Europe/Levant browser regression asserts this mapping against the actual `ReplayReader` sample's own `tick` and `frame`, not a synthetic fixture.
+The conversion is performed once when replay action reviews are built. Action evidence exposes the zero-based engine frame; the displayed timestamp continues to use the recorded one-based tick. The sampler stores the exact action frame as well as the immediate before/after frames and delayed outcome windows (+50/+100/+300 frames). A `Set` deduplicates overlaps with the regular cadence and neighboring actions; the additional work is limited to distinct requested frames within the replay's frame range.
+
+The real Europe/Levant regression requires a `ReplayReader` sample for every action-review frame and every in-range before/after/delayed observation frame. It checks each sample's own `tick === frame + 1`, each action's `frame === turnNumber - 1`, and each action timestamp's `seconds === turnNumber / 10`. Missing samples fail the regression; no optional sample lookup or synthetic frame fixture is accepted.

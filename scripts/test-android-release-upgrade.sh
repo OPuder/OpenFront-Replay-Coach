@@ -55,11 +55,18 @@ install_apk() {
   local output=""
   for attempt in 1 2 3; do
     if [[ "$replace" == "true" ]]; then
-      output="$(timeout 90s adb -s emulator-5554 install -r "$apk" 2>&1)" && { log "$output"; return 0; }
+      output="$(timeout --signal=INT --kill-after=15s 240s adb -s emulator-5554 install --no-streaming -r "$apk" 2>&1)" && { log "$output"; return 0; }
     else
-      output="$(timeout 90s adb -s emulator-5554 install "$apk" 2>&1)" && { log "$output"; return 0; }
+      output="$(timeout --signal=INT --kill-after=15s 240s adb -s emulator-5554 install --no-streaming "$apk" 2>&1)" && { log "$output"; return 0; }
     fi
-    log "APK install failed (attempt $attempt/3): $output"
+    log "APK install failed (attempt $attempt/3; exit $?): ${output:-no output from adb install}"
+    if [[ "$attempt" -eq 3 ]]; then
+      log "Collecting emulator diagnostics after APK installation failure."
+      timeout 20s adb -s emulator-5554 get-state 2>&1 || true
+      timeout 20s adb -s emulator-5554 shell df -h /data 2>&1 || true
+      timeout 20s adb -s emulator-5554 shell cmd package list packages 2>&1 | tail -n 40 || true
+      timeout 20s adb -s emulator-5554 logcat -d -t 400 2>&1 | grep -E "PackageManager|installd|vold|INSTALL_|FATAL EXCEPTION|AndroidRuntime" | tail -n 100 || true
+    fi
     [[ "$attempt" -lt 3 ]] && sleep 5
   done
   fail "Android could not install $apk after retries: $output"

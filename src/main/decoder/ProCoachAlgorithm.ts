@@ -167,12 +167,12 @@ export function buildProCoachReport(
   const favorableTrades=evaluatedAttackActions.filter(a=>{
     const ownLoss=Math.max(0,-(a.delta30s?.troops??0));
     const targetLoss=Math.max(0,-(a.targetDelta30s?.troops??0));
-    return ownLoss>0&&targetLoss>ownLoss&&(a.delta30s?.tiles??0)<=0&&(a.targetDelta30s?.tiles??0)>=0;
+    return ownLoss>0&&targetLoss>ownLoss&&(a.delta30s?.tiles??0)>=0&&(a.targetDelta30s?.tiles??0)>=0;
   });
   const evenTrades=evaluatedAttackActions.filter(a=>{
     const ownLoss=Math.max(0,-(a.delta30s?.troops??0));
     const targetLoss=Math.max(0,-(a.targetDelta30s?.troops??0));
-    return ownLoss>0&&targetLoss===ownLoss&&(a.delta30s?.tiles??0)<=0&&(a.targetDelta30s?.tiles??0)>=0;
+    return ownLoss>0&&targetLoss===ownLoss&&(a.delta30s?.tiles??0)>=0&&(a.targetDelta30s?.tiles??0)>=0;
   });
   const negativeWindows=evaluatedAttackActions.filter(a=>{
     const ownLoss=Math.max(0,-(a.delta30s?.troops??0));

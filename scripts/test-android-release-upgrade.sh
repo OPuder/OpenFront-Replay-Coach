@@ -88,7 +88,7 @@ launch_output="$(adb_cmd shell am start -W -n "$launcher" 2>&1)" || launch_statu
 log "Release launcher response (exit $launch_status): ${launch_output:-no output}"
 started=false
 for attempt in $(seq 1 60); do
-  process_id="$(adb_cmd shell pidof "$package_id" 2>/dev/null | tr -d '\\r' || true)"
+  process_id="$(adb_cmd shell pidof "$package_id" 2>/dev/null | tr -d '\r' || true)"
   if [[ -n "$process_id" ]]; then
     activity_state="$(adb_cmd shell dumpsys activity activities 2>&1 || true)"
     if grep -E "mResumedActivity|topResumedActivity" <<< "$activity_state" | grep -F "$launcher" >/dev/null; then

@@ -113,7 +113,7 @@ export function buildProCoachReport(
   const phaseDurationSeconds=safeDuration;
   const phasesBase = phaseDefs.map(def=>{
     const start=timelineStartSeconds+def.from*phaseDurationSeconds, end=timelineStartSeconds+def.to*phaseDurationSeconds;
-    const subset=alive.filter(x=>{const sec=x.sample.tick/10;return sec>=start && sec<end;});
+    const subset=alive.filter(x=>{const sec=x.sample.tick/10;return sec>=start && (def.id==='late'?sec<=end:sec<end);});
     const a=subset[0],b=subset.at(-1);
     // Use the interval actually covered by observations, not the nominal phase length.
     const observedMinutes=a&&b?Math.max(0,(b.sample.tick-a.sample.tick)/600):0;

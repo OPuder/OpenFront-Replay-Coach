@@ -33,7 +33,7 @@ const expression = mode === "seed" ? `
   });
   await new Promise((resolve, reject) => {
     const tx = db.transaction(["profiles", "matches", "replay-records"], "readwrite");
-    tx.objectStore("profiles").put({ playerId, name: "Upgrade Regression Player", games: [], savedAt: 1770000000000 });
+    tx.objectStore("profiles").put({ playerId, name: "Upgrade Regression Player", games: [{ gameId }], savedAt: 1770000000000 });
     tx.objectStore("matches").put({
       playerId, game: { gameId, map: "Regression Map", startedAt: 1770000000000 },
       result: { playerCount: 2, engineCompatibility: { engineVersionCompatible: true } },
@@ -79,9 +79,9 @@ const expression = mode === "seed" ? `
   });
   db.close();
   const [profile, match, replay] = values;
-  if (!profile || profile.name !== "Upgrade Regression Player") throw new Error("Player profile record was not preserved");
-  if (!match || match.analysisStatus !== "verified" || match.simulation?.summary !== "upgrade-regression-analysis") throw new Error("Replay match or analysis result was not preserved");
-  if (!replay || replay.record?.marker !== "${marker}" || replay.record?.turns?.[0]?.units !== 123) throw new Error("Raw replay payload was not preserved");
+  if (!profile || profile.playerId !== playerId || profile.name !== "Upgrade Regression Player" || !profile.games?.some(game => game.gameId === gameId)) throw new Error("Player profile record or profile-to-match relationship was not preserved");
+  if (!match || match.playerId !== playerId || match.game?.gameId !== gameId || match.analysisStatus !== "verified" || match.simulation?.summary !== "upgrade-regression-analysis") throw new Error("Replay match, profile relationship or analysis result was not preserved");
+  if (!replay || replay.playerId !== playerId || replay.gameId !== match.game.gameId || replay.record?.marker !== "${marker}" || replay.record?.turns?.[0]?.units !== 123) throw new Error("Raw replay payload or match relationship was not preserved");
   return { preserved: true, profile: true, replay: true, analysis: true, trainingGoal: true, phaseHistory: true };
 })()
 `;

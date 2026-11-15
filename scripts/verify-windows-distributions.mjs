@@ -27,7 +27,6 @@ assert.equal(readFileSync(portable).subarray(0, 2).toString("ascii"), "PK", "Por
 assert.notEqual(installerName, portableName, "Installer and portable distribution names must be distinct.");
 
 const temp = process.env.RUNNER_TEMP ?? os.tmpdir();
-const installDir = path.join(temp, `ofrc-installer-${version}`);
 const portableDir = path.join(temp, `ofrc-portable-${version}`);
 rmSync(installDir, { recursive: true, force: true });
 rmSync(portableDir, { recursive: true, force: true });
@@ -92,6 +91,7 @@ for (let attempt = 1; attempt <= installerAttempts; attempt++) {
   const crashWindowStart = new Date(Date.now() - 30_000).toISOString();
   const invocation = { attempt, executable: installer, arguments: ["/S", `/D=${installDir}`], cwd: root, timeoutMs: 180_000 };
   console.log("NSIS_INSTALL_ATTEMPT_START", JSON.stringify(invocation));
+  const attemptStartedAt = Date.now();
   const install = spawnSync(installer, ["/S", `/D=${installDir}`], { encoding: "utf8", windowsHide: true, timeout: 180_000 });
   if (install.error || install.status !== 0) {
     const exitCode = install.status == null ? null : install.status >>> 0;
@@ -120,7 +120,7 @@ for (let attempt = 1; attempt <= installerAttempts; attempt++) {
   const installedAsar = path.join(installDir, "resources", "app.asar");
   assert.ok(existsSync(installedExe) && statSync(installedExe).size > 1_000_000, `NSIS attempt ${attempt} did not install a runnable application executable.`);
   assert.ok(existsSync(installedAsar) && statSync(installedAsar).size > 1_000, `NSIS attempt ${attempt} is missing resources/app.asar.`);
-  console.log("NSIS_INSTALL_ATTEMPT_OK", JSON.stringify({ attempt, elapsedMs: Date.now(), installDir, installedExeBytes: statSync(installedExe).size, appAsarBytes: statSync(installedAsar).size }));
+  console.log("NSIS_INSTALL_ATTEMPT_OK", JSON.stringify({ attempt, elapsedMs: Date.now() - attemptStartedAt, installDir, installedExeBytes: statSync(installedExe).size, appAsarBytes: statSync(installedAsar).size }));
   runRendererSmoke(`installed NSIS attempt ${attempt}`, installedExe);
 }
 

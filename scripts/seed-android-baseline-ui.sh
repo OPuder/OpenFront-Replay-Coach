@@ -30,6 +30,9 @@ for node in root.iter("node"):
     if mode == "edit":
         if attrs.get("class") != "android.widget.EditText":
             continue
+    elif mode == "exact":
+        if attrs.get("text", "").strip().lower() != needle.lower():
+            continue
     elif needle.lower() not in text.lower():
         continue
     bounds = attrs.get("bounds", "")
@@ -51,10 +54,11 @@ PY
 tap_text() {
   local needle="$1"
   local occurrence="${2:-1}"
+  local mode="${3:-text}"
   local coords=""
   for attempt in $(seq 1 20); do
     dump_ui || true
-    coords="$(find_bounds "$needle" text "$occurrence" || true)"
+    coords="$(find_bounds "$needle" "$mode" "$occurrence" || true)"
     if [[ -n "$coords" ]]; then
       read -r x y <<< "$coords"
       adb -s emulator-5554 shell input tap "$x" "$y"
@@ -89,7 +93,7 @@ done
 [[ "$profile_ready" == true ]] || fail "The real UI did not finish loading the archived player's public profile."
 log "The public profile loaded through the app UI. Waiting for automatic import of full replay records."
 
-tap_text "Partien"
+tap_text "Partien" 1 exact
 read_metric() {
   local label="$1"
   python3 - "$ui_xml" "$label" <<'PY'
@@ -125,7 +129,7 @@ adb -s emulator-5554 shell input swipe 520 1550 520 600 450
 sleep 1
 adb -s emulator-5554 shell input swipe 520 1550 520 600 450
 sleep 2
-tap_text "Coach öffnen"
+tap_text "Coach öffnen" 1 exact
 training_goal=false
 for attempt in $(seq 1 240); do
   dump_ui || true
@@ -137,7 +141,7 @@ for attempt in $(seq 1 240); do
   sleep 2
 done
 if [[ "$training_goal" == true ]]; then
-  tap_text "Als Trainingsziel übernehmen"
+  tap_text "Als Trainingsziel übernehmen" 1 exact
   log "A training goal was created through the actual Coach UI."
 else
   fail "The real Coach UI did not expose an evidence-backed training goal after opening the verified replay."

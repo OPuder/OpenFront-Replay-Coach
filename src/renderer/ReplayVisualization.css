@@ -60,3 +60,23 @@
 @media(max-width:900px){.replay-viz-grid{grid-template-columns:1fr}.replay-viz-focus{min-height:220px}.replay-viz-map-canvas{height:220px}}
 @media(max-width:560px){.replay-viz{padding:12px}.replay-viz-top{flex-direction:column}.replay-viz-status{align-self:flex-start}.replay-viz-map-canvas{height:190px}.replay-viz-focus-foot{align-items:flex-start;flex-direction:column}.replay-viz-phase small{display:none}.replay-viz-phase{align-items:center;padding:5px 2px}.replay-viz-phase b{font-size:8px}.replay-viz-timeline{padding:10px}.replay-viz-open{padding:6px}.replay-viz-timeline-footer{font-size:7px}}
 @media(prefers-reduced-motion:reduce){.replay-viz-marker{transition:none}}
+
+.replay-viz-map-canvas{position:relative;overflow:hidden;background:#081522}
+.replay-viz-map-canvas>img{position:absolute;inset:0;width:100%;height:100%;object-fit:fill}
+.replay-viz-territory,.replay-viz-movements{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+.replay-viz-territory{image-rendering:pixelated;mix-blend-mode:screen}
+.replay-viz-movements{overflow:visible}
+.replay-viz-legend{display:flex;flex-wrap:wrap;gap:7px;padding:10px 11px;border-top:1px solid #21384d}
+.replay-viz-legend span{display:grid;grid-template-columns:8px auto;column-gap:5px;align-items:center;min-width:calc(50% - 4px)}
+.replay-viz-legend i{width:8px;height:8px;border-radius:2px;grid-row:span 2}
+.replay-viz-legend b{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#c7d8e7;font-size:9px}
+.replay-viz-legend small{color:#839bb0;font-size:8px}
+.replay-viz-engagements{display:flex;flex-direction:column;gap:8px;margin-top:15px;padding-top:12px;border-top:1px solid #253c52}
+.replay-viz-engagements>b{color:#a8c3d9;font:8px 'Cascadia Code',monospace;letter-spacing:.08em;text-transform:uppercase}
+.replay-viz-engagements>span{display:grid;grid-template-columns:14px 1fr;align-items:center;gap:4px;color:#d7e5f0;font-size:9px}
+.replay-viz-engagements>span svg{color:#e7bd6b}
+.replay-viz-engagements>span small{grid-column:2;color:#8da5ba;font-size:8px}
+.replay-viz-engagements>small{color:#839bb0;font-size:9px}
+.replay-viz-movement-count{margin-top:8px;color:#9fc6d8;font-size:8px}
+.replay-viz-seek-note{max-width:440px;text-align:center;line-height:1.4;color:#a0b3c4}
+@media(max-width:560px){.replay-viz-legend span{min-width:100%}.replay-viz-engagements>span{font-size:10px}.replay-viz-seek-note{max-width:150px}}

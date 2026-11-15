@@ -276,14 +276,14 @@ async function main() {
     })), gameId + " timeline markers and timestamps must survive reload");
     assert.equal(item?.jsonExportRestored, true, gameId + " must export its persisted original JSON after renderer reload");
   }
+  const unsupportedStored = persisted.find(entry => entry.gameId === "unsupported-engine");
+  assert.equal(unsupportedStored?.status, "engine-mismatch");
+  assert.equal(unsupportedStored?.analysisStatus, "unsupported");
   const hashMismatchStored = persisted.find(entry => entry.gameId === "hash-mismatch");
   assert.equal(hashMismatchStored?.analysisStatus, "failed");
   const malformedStored = persisted.find(entry => entry.gameId === "malformed-replay");
   assert.equal(malformedStored?.analysisStatus, "failed");
   console.log("Multi-match IndexedDB persistence after refresh:", JSON.stringify(persisted));
-  const unsupportedStored = persisted.find(entry => entry.gameId === "unsupported-engine");
-  assert.equal(unsupportedStored?.status, "engine-mismatch");
-  assert.equal(unsupportedStored?.analysisStatus, "unsupported");
   assert.equal(hashMismatchStored?.status, "loaded");
   assert.equal(malformedStored?.status, "loaded");
   assert.equal(persisted.every(entry => entry.jsonExportRestored), true,

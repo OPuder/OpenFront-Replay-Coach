@@ -50,7 +50,33 @@ jobs:
 
           if [[ "$EVENT_NAME" == "pull_request" ]]; then
             base_version="$(node -p "require('./package.json').version")"
-            latest_tag="$(git tag --list 'v[0-9]*' | grep -E '^v[0-9]+\\.[0-9]+\\.[0-9]+
+            if [[ ! "$base_version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+              echo "::error::package.json must contain a stable x.y.z version (found: $base_version)"
+              exit 1
+            fi
+            latest_tag="$(git tag --list 'v[0-9]*' | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | sort -V | tail -n 1 || true)"
+            if [[ -n "$latest_tag" ]]; then
+              latest_version="${latest_tag#v}"
+              if [[ "$(printf '%s\n%s\n' "$latest_version" "$base_version" | sort -V | tail -n 1)" == "$latest_version" ]]; then
+                IFS='.' read -r major minor patch <<< "$latest_version"
+                next_version="$major.$minor.$((patch + 1))"
+              else
+                next_version="$base_version"
+              fi
+            else
+              next_version="$base_version"
+            fi
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+            echo "version=$next_version" >> "$GITHUB_OUTPUT"
+            echo "tag=pr-validation" >> "$GITHUB_OUTPUT"
+            echo "release_sha=$EVENT_SHA" >> "$GITHUB_OUTPUT"
+            echo "::notice::Validating the exact pull-request head with temporary Android version $next_version; no tag or release will be published."
+            exit 0
+          fi
+
+          git checkout -B release-main origin/main
+
+          if ! git merge-base --is-ancestor "$EVENT_SHA" HEAD; then
             echo "skip=true" >> "$GITHUB_OUTPUT"
             echo "::notice::The triggering commit is no longer on the current main history."
             exit 0

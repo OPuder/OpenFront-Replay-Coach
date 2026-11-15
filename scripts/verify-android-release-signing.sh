@@ -26,7 +26,16 @@ fi
 previous_dir="$directory/previous"
 mkdir -p "$previous_dir"
 gh release download "$previous_tag" --pattern '*-Android.apk' --dir "$previous_dir"
-previous_apk="$(find "$previous_dir" -type f -name '*.apk' -print -quit)"
+mapfile -t previous_apks < <(find "$previous_dir" -maxdepth 1 -type f -name '*.apk' -print)
+if [[ \${#previous_apks[@]} -ne 1 ]]; then
+  echo "::error::Expected exactly one Android APK in previous release $previous_tag; found \${#previous_apks[@]}."
+  exit 1
+fi
+previous_apk="\${previous_apks[0]}"
+persisted_previous_apk="$RUNNER_TEMP/openfront-previous-published-android.apk"
+cp "$previous_apk" "$persisted_previous_apk"
+echo "PREVIOUS_PUBLISHED_APK=$persisted_previous_apk" >> "$GITHUB_ENV"
+echo "PREVIOUS_RELEASE_TAG=$previous_tag" >> "$GITHUB_ENV"
 if [[ -z "$previous_apk" ]]; then
   echo "::error::The latest release $previous_tag has no Android APK; refusing an unverified signing transition."
   exit 1
@@ -40,6 +49,7 @@ node scripts/configure-android-signing.mjs
 ) || { echo "::error::A release APK could not be built with the permanent signing key."; exit 1; }
 current_apk="android/app/build/outputs/apk/release/app-release.apk"
 test -s "$current_apk"
+echo "CURRENT_RELEASE_APK=$GITHUB_WORKSPACE/$current_apk" >> "$GITHUB_ENV"
 build_tools="$(find "$ANDROID_HOME/build-tools" -mindepth 1 -maxdepth 1 -type d | sort -V | tail -n 1)"
 apksigner="$build_tools/apksigner"
 "$apksigner" verify --verbose "$previous_apk"

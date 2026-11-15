@@ -232,6 +232,13 @@ async function verifyRealReplayReactUi(gameId: string, record: any, result: any,
         throw new Error(gameId + "/" + finding.id + ": evidence references are missing from React UI");
       if (!finding.evidence.every((e: any) => e.seconds === finding.timestampSeconds))
         throw new Error(gameId + "/" + finding.id + ": evidence timestamp differs from finding timestamp");
+      for (const evidence of finding.evidence) {
+        if (evidence.frame !== null) {
+          if (!evidenceText.includes("Frame " + evidence.frame) ||
+              !result.actionReviews.some((action: any) => action.seconds === finding.timestampSeconds && action.frame === evidence.frame))
+            throw new Error(gameId + "/" + finding.id + ": rendered evidence frame is not the exact recorded replay action frame");
+        }
+      }
       checked.push({ id: finding.id, timestampSeconds: finding.timestampSeconds, selectedTime, selectedFrame: selectedSample?.frame ?? null, evidenceCount: finding.evidence.length });
     }
     return { gameId, map: record?.info?.config?.gameMap, renderedCards: cards.length, timelineMarkers: events.length, checked };

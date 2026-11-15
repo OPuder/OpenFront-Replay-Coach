@@ -39,6 +39,8 @@ jobs:
 
       - name: Verify updater contract tests
         run: node --test scripts/updater-contract.test.mjs
+      - name: Validate Android update smoke-test shell syntax
+        run: bash -n scripts/test-android-in-place-update.sh
 
       - name: Run full coaching and replay regression suite
         run: npm run test:coach

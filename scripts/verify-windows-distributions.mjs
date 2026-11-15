@@ -39,6 +39,7 @@ const peOffset = installerBytes.readUInt32LE(0x3c);
 assert.equal(installerBytes.toString("ascii", peOffset, peOffset + 4), "PE\\0\\0", "Installer has no valid PE header.");
 const machine = installerBytes.readUInt16LE(peOffset + 4);
 const architecture = ({ 0x014c: "x86", 0x8664: "x64", 0xaa64: "arm64" })[machine] ?? `unknown (0x${machine.toString(16)})`;
+assert.equal(architecture, "x64", `Expected the Windows installer to target x64, received ${architecture}.`);
 const installerSha256 = createHash("sha256").update(installerBytes).digest("hex");
 console.log(JSON.stringify({
   installer: {
@@ -51,7 +52,7 @@ console.log(JSON.stringify({
 
 const dumpDir = path.join(temp, "ofrc-nsis-crash-dumps");
 mkdirSync(dumpDir, { recursive: true });
-const werKey = "HKCU\\Software\\Microsoft\\Windows\\Windows Error Reporting\\LocalDumps\\OpenFront Replay Coach Setup 2.2.52.exe";
+const werKey = `HKCU\\Software\\Microsoft\\Windows\\Windows Error Reporting\\LocalDumps\\${path.basename(installer)}`;
 const werSetup = spawnSync("reg.exe", ["add", werKey, "/v", "DumpFolder", "/t", "REG_EXPAND_SZ", "/d", dumpDir, "/f"], { encoding: "utf8", windowsHide: true });
 if (werSetup.status === 0) {
   spawnSync("reg.exe", ["add", werKey, "/v", "DumpType", "/t", "REG_DWORD", "/d", "2", "/f"], { encoding: "utf8", windowsHide: true });

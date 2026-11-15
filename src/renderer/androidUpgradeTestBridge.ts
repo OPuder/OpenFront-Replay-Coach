@@ -3,7 +3,7 @@ const DATABASE_NAME = "openfront-replay-coach";
 type StoreSnapshot = {
   name: string;
   count: number;
-  records: Array<{ key: string; sha256: string; fields: string[] }>;
+  records: Array<{ key: string; sha256: string; fields: string[]; metadata?: Record<string, unknown> }>;
 };
 
 function stableValue(value: unknown): unknown {
@@ -79,11 +79,43 @@ export async function installAndroidUpgradeTestBridge(): Promise<void> {
       for (const name of Array.from(db.objectStoreNames).sort()) {
         const { values, keys } = await readStore(db, name);
         raw.set(name, values);
-        const records = await Promise.all(values.map(async (value, index) => ({
-          key: keyText(keys[index]),
-          sha256: await sha256(value),
-          fields: fieldPaths(value),
-        })));
+        const records = await Promise.all(values.map(async (value, index) => {
+          const item = value as Record<string, any>;
+          let metadata: Record<string, unknown> | undefined;
+          if (name === "matches") {
+            metadata = {
+              playerId: item.playerId ?? null,
+              gameId: item.game?.gameId ?? null,
+              status: item.status ?? null,
+              analysisStatus: item.analysisStatus ?? null,
+              simulationStatus: item.simulation?.status ?? null,
+              sampleCount: Array.isArray(item.simulation?.samples) ? item.simulation.samples.length : 0,
+              actionReviewCount: Array.isArray(item.simulation?.actionReviews) ? item.simulation.actionReviews.length : 0,
+              replayCommit: item.result?.engineCompatibility?.replayCommit ?? null,
+            };
+          } else if (name === "profiles") {
+            metadata = {
+              playerId: item.playerId ?? null,
+              username: item.profile?.username ?? item.profile?.displayName ?? null,
+              gameCount: Array.isArray(item.games) ? item.games.length : 0,
+            };
+          } else if (name === "replay-records") {
+            const record = item.record as Record<string, any> | undefined;
+            metadata = {
+              playerId: item.playerId ?? null,
+              gameId: item.gameId ?? null,
+              recordGameId: record?.info?.gameID ?? record?.game?.info?.gameID ?? null,
+              engineCommit: record?.gitCommit ?? null,
+              turnCount: Array.isArray(record?.turns) ? record.turns.length : 0,
+            };
+          }
+          return {
+            key: keyText(keys[index]),
+            sha256: await sha256(value),
+            fields: fieldPaths(value),
+            ...(metadata ? { metadata } : {}),
+          };
+        }));
         stores.push({ name, count: values.length, records });
       }
 

@@ -142,17 +142,25 @@ try {
   while (Date.now() < idleDeadline) {
     await delay(Math.min(30000, idleDeadline - Date.now()));
     if (child.exitCode !== null) {
-      throw new Error("App-Prozess wurde während des fünfminütigen Idle-Tests beendet: " + child.exitCode);
+      throw new Error("App-Prozess wurde während des fünfminütigen Idle-Tests beendet: " + child.exitCode +
+        ". Renderer-Diagnose: " + diagnostics.slice(-20).join(" | "));
     }
-    const result = await command(
-      "Runtime.evaluate",
-      {
-        expression: "({title:document.title,readyState:document.readyState,rootChildren:document.querySelector('#root')?.childElementCount ?? 0})",
-        returnByValue: true,
-        awaitPromise: true,
-      },
-      30000,
-    );
+    let result;
+    try {
+      result = await command(
+        "Runtime.evaluate",
+        {
+          expression: "({title:document.title,readyState:document.readyState,rootChildren:document.querySelector('#root')?.childElementCount ?? 0})",
+          returnByValue: true,
+          awaitPromise: true,
+        },
+        30000,
+      );
+    } catch (error) {
+      throw new Error("Renderer wurde während des Idle-Tests unerreichbar: " +
+        (error instanceof Error ? error.message : String(error)) +
+        ". Renderer-Diagnose: " + diagnostics.slice(-20).join(" | "));
+    }
     idleState = result?.result?.value ?? null;
     if (!idleState || idleState.rootChildren < 1 || idleState.readyState !== "complete") {
       throw new Error("Renderer blieb während des Idle-Tests nicht erreichbar: " + JSON.stringify(idleState));

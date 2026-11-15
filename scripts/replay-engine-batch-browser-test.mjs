@@ -68,6 +68,8 @@ async function main() {
     await new Promise(resolve => setTimeout(resolve, 250));
   }
 
+  await window.webContents.executeJavaScript("window.__prepareLegacyMatchStore()", true);
+
   const fixtures = [
     ["Europe", europe],
     ["unsupported-engine", unsupported],
@@ -143,6 +145,7 @@ async function main() {
     indexPresent: true,
     playerAMatches: ["index-a-1", "index-a-2"],
     playerBMatches: ["index-b-1"],
+    legacyMatches: ["legacy-index-game"],
   }, "Player library reads must use the player index and never leak other profiles' matches");
   console.log("Indexed per-player match library:", JSON.stringify(playerIndex));
 

@@ -56,8 +56,9 @@ territory and movement.
 - Each timestamped strategic finding becomes a `pro-<finding-id>` timeline
   event. Selecting its card or timeline marker selects the same game second;
   the map uses the latest stored engine snapshot at or before that second.
-- The selected finding's resolved player territories receive a restrained
-  highlight. The existing ownership, territory-change, and movement overlays
+- The selected finding's resolved player-owned territory receives a restrained
+  highlight. This marks the players' full owned area, not a fabricated local
+  target zone. The existing ownership, territory-change, and movement overlays
   remain intact.
 - The first three prioritized findings are shown as compact cards. No additional
   metric dashboard is introduced.

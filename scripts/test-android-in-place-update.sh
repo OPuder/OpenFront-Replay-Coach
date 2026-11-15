@@ -123,6 +123,7 @@ timeout 120s adb -s emulator-5554 install --no-streaming "$seed_apk" || fail "Co
 launch_app "$seed_package_id"
 seed_pid="$(adb -s emulator-5554 shell pidof "$seed_package_id" | tr -d '\r')"
 ANDROID_WEBVIEW_PID="$seed_pid" node scripts/android-webview-storage.mjs seed || { diagnostics "$seed_package_id"; fail "Could not seed production profile/replay/analysis/settings data."; }
+ANDROID_WEBVIEW_PID="$seed_pid" node scripts/android-webview-storage.mjs verify || fail "Seeded upgrade data could not be read before update."
 adb -s emulator-5554 shell am force-stop "$seed_package_id"
 timeout 240s adb -s emulator-5554 install --no-streaming "$previous_release_apk" || fail "Could not install the actual previous published APK."
 previous_installed="$(timeout 30s adb -s emulator-5554 shell dumpsys package "$package_id")" || fail "Could not inspect the previous published installation."

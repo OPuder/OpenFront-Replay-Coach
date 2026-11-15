@@ -188,7 +188,7 @@ async function main() {
   assert.equal(batch.longitudinal.comparableMatches, 1,
     "Only one match belongs to the selected shared mode/type comparison cohort");
   assert.equal(batch.longitudinal.comparableGroup, "Free For All · Private");
-  assert.deepEqual(batch.longitudinal.matchProgressIds, ["c2R2JHZgUi"]);
+  assert.deepEqual(batch.bridgeDiagnostics.longitudinal.matchProgressIds, ["c2R2JHZgUi"]);
   assert.equal(batch.longitudinal.status, "ready");
   assert.deepEqual(batch.bridgeDiagnostics.reportIdentities.map(item => ({
     gameId: item.gameId, sourceMatchId: item.sourceMatchId, reportMatchId: item.reportMatchId,

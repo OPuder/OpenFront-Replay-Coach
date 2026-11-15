@@ -9,8 +9,11 @@ const releaseDir = path.resolve(process.env.RELEASE_DIR ?? "release");
 const version = process.env.RELEASE_VERSION ?? JSON.parse(readFileSync(path.join(root, "package.json"), "utf8")).version;
 const installerName = `OpenFront Replay Coach Setup ${version}.exe`;
 const portableName = `OpenFront Replay Coach-${version}-win.zip`;
-const entries = readdirSync(releaseDir).sort();
-assert.deepEqual(entries, [installerName, portableName].sort(), "Windows release directory must contain exactly one correctly named NSIS installer and one portable ZIP.");
+const entries = readdirSync(releaseDir, { withFileTypes: true });
+const packageFiles = entries.filter(entry => entry.isFile()).map(entry => entry.name).sort();
+const unexpectedDirectories = entries.filter(entry => entry.isDirectory() && entry.name !== "win-unpacked").map(entry => entry.name);
+assert.deepEqual(packageFiles, [installerName, portableName].sort(), "Windows release directory must contain exactly one correctly named NSIS installer and one portable ZIP, with no additional files.");
+assert.deepEqual(unexpectedDirectories, [], "Windows release directory contains an unexpected directory.");
 const installer = path.join(releaseDir, installerName);
 const portable = path.join(releaseDir, portableName);
 for (const file of [installer, portable]) {

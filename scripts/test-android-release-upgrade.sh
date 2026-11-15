@@ -115,7 +115,8 @@ if [[ "$started" != true ]]; then
 fi
 log "Inspecting every LocalStorage and IndexedDB record through the test-build-only WebView bridge."
 node scripts/inspect-android-upgrade-data.mjs "$RUNNER_TEMP/after-valid-upgrade-storage.json"
-log "Capturing the post-upgrade WebView storage tables."
+log "Stopping the upgraded app before the post-upgrade WebView storage snapshot."
+adb_cmd shell am force-stop "$package_id" >/dev/null 2>&1 || true
 bash scripts/snapshot-android-web-storage.sh after
 node scripts/compare-android-web-storage.mjs
 
@@ -141,6 +142,7 @@ adb_cmd shell monkey -p "$package_id" 1 >/dev/null || fail "The valid signed app
 sleep 5
 adb_cmd shell pidof "$package_id" >/dev/null || fail "The valid signed app did not remain running after the negative install."
 node scripts/inspect-android-upgrade-data.mjs "$RUNNER_TEMP/after-negative-test-storage.json"
+adb_cmd shell am force-stop "$package_id" >/dev/null 2>&1 || true
 bash scripts/snapshot-android-web-storage.sh after
 node scripts/compare-android-web-storage.mjs
 node scripts/compare-android-upgrade-snapshots.mjs "$RUNNER_TEMP/after-valid-upgrade-storage.json" "$RUNNER_TEMP/after-negative-test-storage.json"

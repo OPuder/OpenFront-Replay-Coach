@@ -32,6 +32,16 @@ jobs:
         with:
           node-version-file: .node-version
           cache: npm
+      # Historical OpenFront lockfiles explicitly require npm >=12.1 <13.
+      # Node 24.15.0 alone ships npm 11 on the hosted runner.
+      - name: Set up pinned npm
+        run: npm install --global npm@12.1.0
+      - name: Verify pinned Node and npm toolchain
+        run: |
+          node --version
+          npm --version
+          node -e "const major = Number(process.versions.node.split('.')[0]); if (major !== 24) throw new Error('Expected Node 24');"
+          npm exec --yes --package=npm@12.1.0 -- npm --version
       - run: npm ci
       - name: Prepare exact historical replay engines
         run: npm run prepare:engines

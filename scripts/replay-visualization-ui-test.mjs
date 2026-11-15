@@ -28,7 +28,9 @@ async function main(){
     assert.ok(state.hasTerritory,'Territory overlay missing at '+width+'px');
     assert.ok(state.hasMovement,'Engine movement overlay missing at '+width+'px');
     assert.ok(state.hasTerritoryChanges,'Territory-change overlay missing at '+width+'px');
+    assert.ok(state.hasTerritoryTransfer,'Actual owner transfer summary missing at '+width+'px');
     assert.ok(state.hasPriorityCards,'Prioritized coaching card missing at '+width+'px');
+    assert.ok(state.hasConsequence,'Priority card must explain the consequence at '+width+'px');
     assert.ok(state.hasAffectedOverlay,'Affected-territory overlay missing at '+width+'px');
     assert.ok(state.buttons.every(button=>button.name.length>0),'Unlabelled button at '+width+'px');
     results.push({width,scrollWidth:state.scrollWidth,buttons:state.buttons.length,territory:state.hasTerritory,movement:state.hasMovement,territoryChanges:state.hasTerritoryChanges});
@@ -37,6 +39,7 @@ async function main(){
   const coached=await window.webContents.executeJavaScript('window.__uiTest()');
   assert.equal(coached.selectedTime,'00:10','Selecting a prioritized finding must synchronize the map/timeline playhead');
   assert.ok(coached.hasDecision,'Selected finding must expose its decision context');
+  assert.ok(coached.hasEvidenceSeparation,'Replay evidence and coach assessment must be visibly distinguished');
   await window.webContents.executeJavaScript("document.querySelector('.replay-viz-marker[aria-label^="00:15"]').click()");
   const selected=await window.webContents.executeJavaScript("window.__uiTest()");
   assert.equal(selected.selectedTime,'00:15','Selecting a timeline marker must update the coaching time');

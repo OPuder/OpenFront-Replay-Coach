@@ -49,6 +49,15 @@ for attempt in $(seq 1 9); do
 done
 [[ "$package_manager_ready" == true ]] || fail "Android Package Manager did not become ready within 90 seconds."
 
+# Keep the emulator display awake throughout the foreground idle soak. Without
+# this, a headless emulator can suspend the activity and make a healthy app
+# look as if it exited while the test host is sleeping.
+log "Keeping the Android emulator awake for the upgrade and idle-soak checks."
+adb_cmd shell svc power stayon true || fail "Could not keep the Android emulator awake."
+adb_cmd shell settings put system screen_off_timeout 2147483647 || fail "Could not extend the Android screen timeout."
+adb_cmd shell input keyevent 224 >/dev/null 2>&1 || true
+adb_cmd shell wm dismiss-keyguard >/dev/null 2>&1 || true
+
 install_apk() {
   local apk="$1"
   local replace="$2"
@@ -109,8 +118,13 @@ log "Running a five-minute foreground idle soak on the upgraded signed release."
 sleep 300
 if ! adb_cmd shell pidof "$package_id" >/dev/null 2>&1; then
   log "Release app exited during the five-minute idle soak; collecting diagnostics."
-  adb_cmd shell dumpsys activity activities 2>&1 | tail -n 80 || true
-  adb_cmd logcat -d -t 500 2>&1 | grep -E "FATAL EXCEPTION|AndroidRuntime|de.openfront.replaycoach|ActivityTaskManager" | tail -n 120 || true
-  fail "Upgraded signed release app exited during the five-minute idle soak."
+  log "ApplicationExitInfo for the upgraded package:"
+  adb_cmd shell dumpsys activity exit-info "$package_id" 2>&1 | tail -n 140 || true
+  log "Activity and process state after the idle soak:"
+  adb_cmd shell dumpsys activity activities 2>&1 | tail -n 100 || true
+  adb_cmd shell dumpsys activity processes 2>&1 | grep -C 4 -F "$package_id" | tail -n 100 || true
+  log "Relevant Android system, WebView and application logcat:"
+  adb_cmd logcat -d -t 2000 2>&1 | grep -E "FATAL EXCEPTION|AndroidRuntime|de.openfront.replaycoach|ActivityTaskManager|ActivityManager|chromium|lmkd|lowmemorykiller|am_proc_died|ProcessList|Capacitor" | tail -n 240 || true
+  fail "Upgraded signed release app exited during the five-minute idle soak; see ApplicationExitInfo and process diagnostics above."
 fi
 log "PASS: previous published APK versionCode $previous_version_code upgraded to release $version (versionCode $current_version_code), launched and survived five minutes idle."

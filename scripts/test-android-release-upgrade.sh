@@ -17,8 +17,9 @@ apksigner="$build_tools/apksigner"
 aapt="$build_tools/aapt"
 "$apksigner" verify --verbose "$previous_apk" >/dev/null || fail "Previous published APK signature is invalid."
 "$apksigner" verify --verbose "$current_apk" >/dev/null || fail "Current release APK signature is invalid."
-previous_badging="$("$aapt" dump badging "$previous_apk" | head -n 1)"
-current_badging="$("$aapt" dump badging "$current_apk" | head -n 1)"
+previous_badging_all="$("$aapt" dump badging "$previous_apk")"
+current_badging_all="$("$aapt" dump badging "$current_apk")"
+previous_badging="${previous_badging_all%%
 previous_package="$(sed -n "s/.*package: name='\\([^']*\\)'.*/\\1/p" <<< "$previous_badging")"
 current_package="$(sed -n "s/.*package: name='\\([^']*\\)'.*/\\1/p" <<< "$current_badging")"
 previous_version_code="$(sed -n "s/.*versionCode='\\([0-9]*\\)'.*/\\1/p" <<< "$previous_badging")"
@@ -33,7 +34,7 @@ timeout 30s adb devices -l || fail "Android Debug Bridge server did not respond.
 timeout 90s adb -s emulator-5554 wait-for-device || fail "Android emulator did not connect to ADB."
 booted=false
 for attempt in $(seq 1 60); do
-  state="$(timeout 15s adb -s emulator-5554 shell getprop sys.boot_completed 2>/dev/null | tr -d '\\r' || true)"
+  state="$(timeout 15s adb -s emulator-5554 shell getprop sys.boot_completed 2>/dev/null | tr -d '\r' || true)"
   if [[ "$state" == "1" ]]; then booted=true; break; fi
   sleep 3
 done
@@ -46,7 +47,86 @@ timeout 300s adb -s emulator-5554 install -r "$current_apk" || fail "Android cou
 
 installed="$(timeout 30s adb -s emulator-5554 shell dumpsys package "$package_id")" || fail "Could not inspect the upgraded Android package."
 grep -F "versionCode=$current_version_code" <<< "$installed" >/dev/null || fail "Installed package does not report release versionCode $current_version_code."
-launcher="$(timeout 30s adb -s emulator-5554 shell cmd package resolve-activity --brief -a android.intent.action.MAIN -c android.intent.category.LAUNCHER "$package_id" | tr -d '\\r' | tail -n 1)"
+launcher="$(timeout 30s adb -s emulator-5554 shell cmd package resolve-activity --brief -a android.intent.action.MAIN -c android.intent.category.LAUNCHER "$package_id" | tr -d '\r' | tail -n 1)"
+[[ "$launcher" == */* ]] || fail "Could not resolve the current release APK launcher activity."
+launch_output="$(timeout 90s adb -s emulator-5554 shell am start -W -n "$launcher" 2>&1)" || fail "Upgraded release APK could not be launched: $launch_output"
+grep -F "Status: ok" <<< "$launch_output" >/dev/null || fail "Android did not report a successful release-app launch: $launch_output"
+started=false
+for attempt in $(seq 1 30); do
+  if timeout 10s adb -s emulator-5554 shell pidof "$package_id" >/dev/null 2>&1; then started=true; break; fi
+  sleep 2
+done
+[[ "$started" == true ]] || fail "Current release app process did not start after the upgrade."
+log "PASS: previous published APK versionCode $previous_version_code upgraded to release $version (versionCode $current_version_code) and launched."
+\\n'*}"
+current_badging="${current_badging_all%%
+previous_package="$(sed -n "s/.*package: name='\\([^']*\\)'.*/\\1/p" <<< "$previous_badging")"
+current_package="$(sed -n "s/.*package: name='\\([^']*\\)'.*/\\1/p" <<< "$current_badging")"
+previous_version_code="$(sed -n "s/.*versionCode='\\([0-9]*\\)'.*/\\1/p" <<< "$previous_badging")"
+current_version_code="$(sed -n "s/.*versionCode='\\([0-9]*\\)'.*/\\1/p" <<< "$current_badging")"
+[[ "$previous_package" == "$package_id" && "$current_package" == "$package_id" ]] || fail "Published APK package identity does not match $package_id."
+[[ "$previous_version_code" =~ ^[0-9]+$ && "$current_version_code" =~ ^[0-9]+$ ]] || fail "Could not read APK versionCode metadata."
+(( current_version_code > previous_version_code )) || fail "Release versionCode $current_version_code is not newer than published versionCode $previous_version_code."
+
+log "Starting ADB and waiting for the release emulator."
+timeout 30s adb start-server || fail "Android Debug Bridge server could not be started."
+timeout 30s adb devices -l || fail "Android Debug Bridge server did not respond."
+timeout 90s adb -s emulator-5554 wait-for-device || fail "Android emulator did not connect to ADB."
+booted=false
+for attempt in $(seq 1 60); do
+  state="$(timeout 15s adb -s emulator-5554 shell getprop sys.boot_completed 2>/dev/null | tr -d '\r' || true)"
+  if [[ "$state" == "1" ]]; then booted=true; break; fi
+  sleep 3
+done
+[[ "$booted" == true ]] || fail "Android emulator did not finish booting within 3 minutes."
+
+log "Installing previous published APK (versionCode $previous_version_code)."
+timeout 300s adb -s emulator-5554 install "$previous_apk" || fail "Android could not parse/install the previous published APK."
+log "Upgrading directly to current release APK (versionCode $current_version_code)."
+timeout 300s adb -s emulator-5554 install -r "$current_apk" || fail "Android could not parse or upgrade to the current release APK."
+
+installed="$(timeout 30s adb -s emulator-5554 shell dumpsys package "$package_id")" || fail "Could not inspect the upgraded Android package."
+grep -F "versionCode=$current_version_code" <<< "$installed" >/dev/null || fail "Installed package does not report release versionCode $current_version_code."
+launcher="$(timeout 30s adb -s emulator-5554 shell cmd package resolve-activity --brief -a android.intent.action.MAIN -c android.intent.category.LAUNCHER "$package_id" | tr -d '\r' | tail -n 1)"
+[[ "$launcher" == */* ]] || fail "Could not resolve the current release APK launcher activity."
+launch_output="$(timeout 90s adb -s emulator-5554 shell am start -W -n "$launcher" 2>&1)" || fail "Upgraded release APK could not be launched: $launch_output"
+grep -F "Status: ok" <<< "$launch_output" >/dev/null || fail "Android did not report a successful release-app launch: $launch_output"
+started=false
+for attempt in $(seq 1 30); do
+  if timeout 10s adb -s emulator-5554 shell pidof "$package_id" >/dev/null 2>&1; then started=true; break; fi
+  sleep 2
+done
+[[ "$started" == true ]] || fail "Current release app process did not start after the upgrade."
+log "PASS: previous published APK versionCode $previous_version_code upgraded to release $version (versionCode $current_version_code) and launched."
+\\n'*}"
+previous_package="$(sed -n "s/.*package: name='\\([^']*\\)'.*/\\1/p" <<< "$previous_badging")"
+current_package="$(sed -n "s/.*package: name='\\([^']*\\)'.*/\\1/p" <<< "$current_badging")"
+previous_version_code="$(sed -n "s/.*versionCode='\\([0-9]*\\)'.*/\\1/p" <<< "$previous_badging")"
+current_version_code="$(sed -n "s/.*versionCode='\\([0-9]*\\)'.*/\\1/p" <<< "$current_badging")"
+[[ "$previous_package" == "$package_id" && "$current_package" == "$package_id" ]] || fail "Published APK package identity does not match $package_id."
+[[ "$previous_version_code" =~ ^[0-9]+$ && "$current_version_code" =~ ^[0-9]+$ ]] || fail "Could not read APK versionCode metadata."
+(( current_version_code > previous_version_code )) || fail "Release versionCode $current_version_code is not newer than published versionCode $previous_version_code."
+
+log "Starting ADB and waiting for the release emulator."
+timeout 30s adb start-server || fail "Android Debug Bridge server could not be started."
+timeout 30s adb devices -l || fail "Android Debug Bridge server did not respond."
+timeout 90s adb -s emulator-5554 wait-for-device || fail "Android emulator did not connect to ADB."
+booted=false
+for attempt in $(seq 1 60); do
+  state="$(timeout 15s adb -s emulator-5554 shell getprop sys.boot_completed 2>/dev/null | tr -d '\r' || true)"
+  if [[ "$state" == "1" ]]; then booted=true; break; fi
+  sleep 3
+done
+[[ "$booted" == true ]] || fail "Android emulator did not finish booting within 3 minutes."
+
+log "Installing previous published APK (versionCode $previous_version_code)."
+timeout 300s adb -s emulator-5554 install "$previous_apk" || fail "Android could not parse/install the previous published APK."
+log "Upgrading directly to current release APK (versionCode $current_version_code)."
+timeout 300s adb -s emulator-5554 install -r "$current_apk" || fail "Android could not parse or upgrade to the current release APK."
+
+installed="$(timeout 30s adb -s emulator-5554 shell dumpsys package "$package_id")" || fail "Could not inspect the upgraded Android package."
+grep -F "versionCode=$current_version_code" <<< "$installed" >/dev/null || fail "Installed package does not report release versionCode $current_version_code."
+launcher="$(timeout 30s adb -s emulator-5554 shell cmd package resolve-activity --brief -a android.intent.action.MAIN -c android.intent.category.LAUNCHER "$package_id" | tr -d '\r' | tail -n 1)"
 [[ "$launcher" == */* ]] || fail "Could not resolve the current release APK launcher activity."
 launch_output="$(timeout 90s adb -s emulator-5554 shell am start -W -n "$launcher" 2>&1)" || fail "Upgraded release APK could not be launched: $launch_output"
 grep -F "Status: ok" <<< "$launch_output" >/dev/null || fail "Android did not report a successful release-app launch: $launch_output"

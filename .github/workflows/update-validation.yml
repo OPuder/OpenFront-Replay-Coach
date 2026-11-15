@@ -130,6 +130,7 @@ jobs:
           bash -n scripts/test-android-release-upgrade.sh
           bash -n scripts/test-android-in-place-update.sh
           bash -n scripts/verify-android-release-signing.sh
+          node --test scripts/set-android-version.test.mjs
 
       - name: Set up Java
         uses: actions/setup-java@v4

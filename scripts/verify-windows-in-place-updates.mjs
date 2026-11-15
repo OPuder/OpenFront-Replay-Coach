@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
-import { createReadStream, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync } from "node:fs";
+import { copyFileSync, createReadStream, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync } from "node:fs";
 import { spawn, spawnSync, execFileSync } from "node:child_process";
 import { createServer } from "node:http";
 import path from "node:path";
@@ -267,11 +267,70 @@ async function verifyPortableUpdater() {
   }
 }
 
+
+async function verifyPortableRollback() {
+  const portableDirectory = path.join(temp, "ofrc-portable-rollback");
+  const dataDirectory = path.join(temp, "ofrc-portable-rollback-user-data");
+  const candidateSourceDirectory = path.join(temp, "ofrc-rollback-candidate-source");
+  const invalidRoot = path.join(temp, "ofrc-invalid-portable-package");
+  const invalidZip = path.join(temp, "ofrc-invalid-portable-update.zip");
+  for (const directory of [portableDirectory, dataDirectory, candidateSourceDirectory, invalidRoot]) {
+    rmSync(directory, { recursive: true, force: true });
+  }
+  try { rmSync(invalidZip, { force: true }); } catch {}
+  const baseline = extract(portableBaselineZip, portableDirectory);
+  const candidateSource = extract(path.join(current, newPortable), candidateSourceDirectory);
+  mkdirSync(invalidRoot, { recursive: true });
+  // A valid ZIP and executable, but deliberately no resources/app.asar. The
+  // detached updater starts copying, detects that the archive did not change,
+  // and must restore the verified backup before relaunching the old app.
+  copyFileSync(candidateSource.executable, path.join(invalidRoot, appName));
+  run("powershell.exe", ["-NoProfile", "-NonInteractive", "-Command",
+    "$ErrorActionPreference='Stop'; Compress-Archive -Path (Join-Path $env:OFRC_BAD_ROOT '*') -DestinationPath $env:OFRC_BAD_ZIP -Force"
+  ], { ...process.env, OFRC_BAD_ROOT: invalidRoot, OFRC_BAD_ZIP: invalidZip });
+  assert.ok(existsSync(invalidZip) && statSync(invalidZip).size > 1000000, "Rollback fixture ZIP is missing or implausibly small.");
+  const server = await startLocalReleaseServer(invalidZip);
+  const testEnv = { OFRC_UPDATE_TEST_MODE: "1", OFRC_UPDATE_TEST_RELEASE_URL: server.releaseUrl };
+  let baselineSession;
+  let restoredSession;
+  try {
+    baselineSession = await launch(baseline.executable, dataDirectory, 9233, "seed", testEnv, true);
+    const before = attachContext(baselineSession.helperResult.snapshot, baselineSession, dataDirectory);
+    assertFixtureRelationships(before, "baseline");
+    const beforeArchiveHash = digest(baseline.archive);
+    const beforeExecutableHash = digest(baseline.executable);
+    reportSnapshot("PORTABLE_ROLLBACK_BEFORE", before);
+    const scheduled = await invokeHelper("update", 9233, portableDirectory);
+    assert.equal(scheduled.result?.scheduled, true, "Portable updater did not schedule the deliberately invalid package: " + JSON.stringify(scheduled));
+    await waitFor(() => baselineSession.child.exitCode !== null, 30000, "portable app to exit before rollback test");
+    const updateLog = path.join(before.electron.userDataPath, "update-install.log");
+    await waitFor(() => existsSync(updateLog) && readFileSync(updateLog, "utf8").includes("Rollback erfolgreich; vorherige Version wurde wiederhergestellt."),
+      120000, "the detached updater to reject the incomplete package and verify rollback");
+    await waitFor(() => isExecutableRunning(baseline.executable), 30000, "the restored portable application to restart");
+    stopExecutable(baseline.executable);
+    restoredSession = await launch(baseline.executable, dataDirectory, 9233, "snapshot", testEnv, true);
+    const after = attachContext(restoredSession.helperResult.snapshot, restoredSession, dataDirectory);
+    reportSnapshot("PORTABLE_ROLLBACK_AFTER", after);
+    assertContextContinuity(before, after);
+    assertFixtureRelationships(after, "updated");
+    assertUpgradeSnapshotsEqual(before, after);
+    assert.equal(digest(baseline.archive), beforeArchiveHash, "Rollback did not restore the original app.asar SHA-256.");
+    assert.equal(digest(baseline.executable), beforeExecutableHash, "Rollback did not restore the original application executable.");
+    console.log("WINDOWS_PORTABLE_ROLLBACK_OK invalid ZIP passed SHA-256 download verification, updater rejected incomplete app.asar, restored original executable/archive and retained full LocalStorage/IndexedDB records.");
+  } finally {
+    if (baselineSession) stop(baselineSession.child);
+    if (restoredSession) stop(restoredSession.child);
+    try { server.server.close(); } catch {}
+  }
+}
+
 await verifyNsisUpdate();
 await verifyPortableUpdater();
+await verifyPortableRollback();
 console.log("WINDOWS_IN_PLACE_UPGRADE_SUITE_OK " + JSON.stringify({
   publishedNsisBaseline: "v2.2.51",
   portableUpdaterBaseline: "same-source updater-enabled v2.2.51 test package",
+  portableRollback: "invalid but SHA-256-valid ZIP triggers detached updater rollback and full storage verification",
   candidate: version,
   nsis: "actual silent installer update in the same install directory",
   portable: "actual Update Center -> verified download -> detached PowerShell updater -> same portable directory",

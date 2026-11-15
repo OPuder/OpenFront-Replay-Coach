@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { buildProCoachReport } from '../src/main/decoder/ProCoachAlgorithm.ts';
+import { analyzeDetailedActions } from '../src/main/decoder/DetailedAnalysis.ts';
 import { selectPrimaryCoachInsights } from '../src/main/decoder/CoachInsightSelection.ts';
 import { buildReplayTimeline } from '../src/main/decoder/CoachTimeline.ts';
 
@@ -163,4 +164,17 @@ test('match coach creates a spawn-position lesson from first-frame spatial evide
  assert.equal(report.opening.spawnPosition.classification,'contested');
  assert.ok(report.findings.some(x=>x.id==='spawn-position-review'));
  assert.match(report.opening.limitation,/Owner-Grid/);
+});
+
+
+test('summarizes very large action histories without min/max argument overflow', () => {
+  const actions = Array.from({ length: 150_000 }, (_, index) => ({
+    seconds: 0, type: 'attack', category: 'Militär', clientId: 'player-1',
+    details: 'Truppen: ' + String((index % 9) + 1),
+  }));
+  const report = analyzeDetailedActions(actions, 60);
+  assert.equal(report.attackTroops.count, 150_000);
+  assert.equal(report.attackTroops.min, 1);
+  assert.equal(report.attackTroops.max, 9);
+  assert.equal(report.attackTroops.total, 749_991);
 });

@@ -56,8 +56,8 @@ log "PASS: debug APK update preserved private app data and advanced the installe
 
 # Verify production update with the exact APK downloaded from the latest
 # published GitHub Release and the candidate APK signed with the permanent key.
-previous_release_apk="${PREVIOUS_PUBLISHED_APK:-}"
-current_release_apk="${CURRENT_RELEASE_APK:-}"
+previous_release_apk="${PREVIOUS_PUBLISHED_APK:-$RUNNER_TEMP/openfront-previous-published-android.apk}"
+current_release_apk="${CURRENT_RELEASE_APK:-$GITHUB_WORKSPACE/android/app/build/outputs/apk/release/app-release.apk}"
 release_version="${RELEASE_VERSION:-$current_version}"
 [[ -s "$previous_release_apk" ]] || fail "Previous published, permanently signed APK is missing."
 [[ -s "$current_release_apk" ]] || fail "Current permanently signed release APK is missing."

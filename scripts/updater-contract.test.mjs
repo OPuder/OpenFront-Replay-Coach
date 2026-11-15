@@ -209,7 +209,7 @@ assert.match(artifactVerifier, /Release directory contains missing, unexpected o
 assert.match(artifactVerifierTests, /rejects unexpected additional files/);
 assert.match(artifactVerifierTests, /rejects malformed package names/);
 assert.match(artifactVerifierTests, /modified package after metadata generation/);
-assert.match(windowsDistributionVerifier, /Installing the NSIS distribution/);
+assert.match(windowsDistributionVerifier, /NSIS_INSTALL_ATTEMPT_START/);
 assert.match(windowsDistributionVerifier, /Extracting the independent portable ZIP/);
 assert.match(windowsDistributionVerifier, /installed NSIS/);
 assert.match(windowsDistributionVerifier, /portable ZIP/);

@@ -145,7 +145,9 @@ export function buildProCoachReport(
   // Missing target observations are unknown, not a zero territorial response.
   const evaluatedAttackActions=attackActions.filter(a=>(a.delta30s?.tiles??0)>0||a.targetDelta30s!=null);
   const positiveWindows=evaluatedAttackActions.filter(a=>(a.delta30s?.tiles??0)>0||(a.targetDelta30s?.tiles??0)<0);
-  const negativeWindows=evaluatedAttackActions.filter(a=>(a.delta30s?.troops??0)<0&&(a.delta30s?.tiles??0)<=0&&a.targetDelta30s!=null&&(a.targetDelta30s?.tiles??0)>=0);
+  // A troop trade is not automatically a failed attack: if the target also lost troops,
+  // the 30-second window cannot establish that the commitment was wasteful.
+  const negativeWindows=evaluatedAttackActions.filter(a=>(a.delta30s?.troops??0)<0&&(a.delta30s?.tiles??0)<=0&&a.targetDelta30s!=null&&(a.targetDelta30s?.tiles??0)>=0&&(a.targetDelta30s?.troops??0)>=0);
   if(evaluatedAttackActions.length>=3){
     const ratio=positiveWindows.length/evaluatedAttackActions.length;
     const worst=negativeWindows[0]??evaluatedAttackActions.find(a=>(a.delta30s?.tiles??0)<=0);

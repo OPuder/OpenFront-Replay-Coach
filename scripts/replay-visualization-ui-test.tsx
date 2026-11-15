@@ -32,6 +32,9 @@ createRoot(document.getElementById('root')!).render(<TestApp/>);
   hasAffectedOverlay:!!document.querySelector('canvas.replay-viz-territory-affected'),
   hasDecision:document.querySelector('.replay-viz-coach-detail')?.textContent?.includes('Zweites Ziel eröffnet')??false,
   hasTerritoryChanges:!!document.querySelector('canvas.replay-viz-territory-changes'),
+  hasTerritoryTransfer:document.querySelector('.replay-viz-transfer-summary')?.textContent?.includes('Alpha') && document.querySelector('.replay-viz-transfer-summary')?.textContent?.includes('Bravo'),
+  hasEvidenceSeparation:!!document.querySelector('.replay-viz-coach-evidence') && !!document.querySelector('.replay-viz-coach-assessment'),
+  hasConsequence:document.querySelector('.replay-viz-priority-card')?.textContent?.includes('Truppen wurden parallel gebunden')??false,
   hasMovement:!!document.querySelector('.replay-viz-movements line'),
   selectedTime:document.querySelector('.replay-viz-focus-head b')?.textContent,
 });

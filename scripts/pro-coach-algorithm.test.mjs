@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { buildProCoachReport } from '../src/main/decoder/ProCoachAlgorithm.ts';
+import { buildEngineCoachInsights } from '../src/main/decoder/EngineCoachInsights.ts';
 import { selectPrimaryCoachInsights } from '../src/main/decoder/CoachInsightSelection.ts';
 import { buildReplayTimeline } from '../src/main/decoder/CoachTimeline.ts';
 
@@ -265,6 +266,34 @@ test('attack with worse own attrition is flagged only when target losses are low
  assert.match(finding.title,/ungünstigem Truppenverhältnis/);
  assert.match(finding.consequence,/3 zeigten höhere eigene Truppenverluste ohne Gebietsreaktion/);
  assert.match(finding.evidence,/beobachtete Verluste: du 120, Ziel 60/);
+});
+
+test('engine insights do not call a troop-favorable exchange good when own territory was lost',()=>{
+ const review={playerName:'Player',clientID:'p1',startTiles:100,endTiles:95,tilesGained:-5,startGold:500,endGold:480,startTroops:1000,endTroops:920,outgoingAttackSamples:1,longestNoExpansionSeconds:0};
+ const actionReview={frame:100,turn:10,seconds:10,type:'attack',commandTroops:100,label:'Attack',details:'',targetId:'target',targetName:'Target',targetSmallID:1,
+  before:null,after:null,delta:null,delta5s:null,
+  delta10s:{tiles:0,gold:-10,troops:-20,goldEarned:0,tradeGold:0,trainGold:0,piracyGold:0},
+  delta30s:{tiles:-5,gold:-20,troops:-80,goldEarned:0,tradeGold:0,trainGold:0,piracyGold:0},
+  targetDelta10s:null,targetDelta30s:{tiles:0,gold:0,troops:-120,goldEarned:0,tradeGold:0,trainGold:0,piracyGold:0},
+  targetAliveBefore:true,targetAliveAt10s:true,targetAliveAt30s:true,ownFrontContextBefore:null,targetPressureBefore:null,activeAttack10s:null,activeAttack30s:null};
+ const insight=buildEngineCoachInsights(review,[actionReview]).find(item=>item.id==='attack-response-windows');
+ assert.ok(insight);
+ assert.match(insight.summary,/1 gemischte Tauschfenster mit eigenem Gebietsverlust/);
+ assert.match(insight.summary,/0 günstige Truppentausche ohne eigenen Gebietsverlust/);
+});
+
+test('engine insights count a favorable troop exchange only when own territory is not lost',()=>{
+ const review={playerName:'Player',clientID:'p1',startTiles:100,endTiles:100,tilesGained:0,startGold:500,endGold:480,startTroops:1000,endTroops:920,outgoingAttackSamples:1,longestNoExpansionSeconds:0};
+ const actionReview={frame:100,turn:10,seconds:10,type:'attack',commandTroops:100,label:'Attack',details:'',targetId:'target',targetName:'Target',targetSmallID:1,
+  before:null,after:null,delta:null,delta5s:null,
+  delta10s:{tiles:0,gold:-10,troops:-20,goldEarned:0,tradeGold:0,trainGold:0,piracyGold:0},
+  delta30s:{tiles:0,gold:-20,troops:-80,goldEarned:0,tradeGold:0,trainGold:0,piracyGold:0},
+  targetDelta10s:null,targetDelta30s:{tiles:0,gold:0,troops:-120,goldEarned:0,tradeGold:0,trainGold:0,piracyGold:0},
+  targetAliveBefore:true,targetAliveAt10s:true,targetAliveAt30s:true,ownFrontContextBefore:null,targetPressureBefore:null,activeAttack10s:null,activeAttack30s:null};
+ const insight=buildEngineCoachInsights(review,[actionReview]).find(item=>item.id==='attack-response-windows');
+ assert.ok(insight);
+ assert.match(insight.summary,/1 günstige Truppentausche ohne eigenen Gebietsverlust/);
+ assert.match(insight.summary,/0 gemischte Tauschfenster mit eigenem Gebietsverlust/);
 });
 
 test('one catastrophic attack is high impact even when it is not a repeated pattern',()=>{

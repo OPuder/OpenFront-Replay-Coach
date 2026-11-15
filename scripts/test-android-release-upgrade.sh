@@ -2,7 +2,7 @@
 set -Eeuo pipefail
 
 package_id="de.openfront.replaycoach"
-version="${RELEASE_VERSION:?RELEASE_VERSION is required}"
+version="${RELEASE_VERSION:-$(node -p "require('./package.json').version")}"
 current_apk="${OPENFRONT_CURRENT_APK:-release/OpenFront-Replay-Coach-${version}-Android.apk}"
 previous_apk="${PREVIOUS_APK:?PREVIOUS_APK is required}"
 

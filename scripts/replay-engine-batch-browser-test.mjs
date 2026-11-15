@@ -112,6 +112,21 @@ async function main() {
     cancelled: false,
   }, "One unsupported engine must not block other selected matches");
 
+  console.log("Coaching result bridge diagnostics:", JSON.stringify({
+    summary: batch.summary,
+    bridgeDiagnostics: batch.bridgeDiagnostics ?? null,
+    reports: Array.isArray(batch.coaching) ? batch.coaching.map(report => ({
+      gameId: report.gameId,
+      selectedPlayer: report.selectedPlayer,
+      clientId: report.clientId,
+      verifiedHashes: report.verifiedHashes,
+      sampleCount: report.sampleCount,
+      actionCount: report.actionCount,
+      findingCount: report.proReport?.findings?.length ?? 0,
+      engineFindingCount: report.engineInsights?.length ?? 0,
+      timelineCount: report.timeline?.length ?? 0,
+    })) : null,
+  }));
   assert.equal(batch.coaching.length, 2, "Both real replays should produce coach reports");
   for (const gameId of ["Europe", "Levant"]) {
     const report = batch.coaching.find(item => item.gameId === gameId);

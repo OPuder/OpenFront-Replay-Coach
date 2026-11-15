@@ -179,7 +179,7 @@ export function ReplayVisualization({
     </div> : <div className="replay-viz-no-findings"><b>Keine belastbaren Coaching-Erkenntnisse verfügbar</b><span>Für diese Partie liegen aktuell keine priorisierten strategischen Entscheidungen vor. Es werden keine Fehler ergänzt oder vermutet.</span></div>}
     <div className="replay-viz-grid">
       <div className="replay-viz-map">
-        <div className="replay-viz-map-head"><span><MapIcon size={14}/> {mapName || 'Unbekannte Karte'}</span><span>{sample ? `Engine-Frame ${sample.frame}` : 'Kein Engine-Snapshot'}</span></div>
+        <div className="replay-viz-map-head"><span><MapIcon size={14}/> {mapName || 'Unbekannte Karte'}</span><span>{sample && territory ? `Engine-Frame ${sample.frame}` : 'Kein Engine-Snapshot'}</span></div>
         <div className="replay-viz-map-canvas" style={{aspectRatio: territory ? `${territory.width} / ${territory.height}` : '16 / 9'}}>
           {mapPreview && <img src={mapPreview} alt={`Kartenbasis ${mapName}`} loading="lazy"/>}
           {territory && <canvas ref={territoryCanvas} className="replay-viz-territory" aria-label="Territoriumsbesitz aus Replay-Engine-Snapshot"/>}

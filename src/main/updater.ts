@@ -34,8 +34,18 @@ function reportProgress(phase: string, percent: number) {
     if (!window.isDestroyed()) window.webContents.send('updates:progress', { phase, percent });
   }
 }
+function resolveReleaseApiUrl(): string {
+  const testUrl = process.env.OFRC_UPDATE_TEST_RELEASE_URL;
+  if (process.env.OFRC_UPDATE_TEST_MODE !== '1' || !testUrl) return RELEASE_API;
+  let parsed: URL;
+  try { parsed = new URL(testUrl); } catch { throw new Error('Ungültige lokale Update-Test-URL.'); }
+  if (parsed.protocol !== 'http:' || parsed.hostname !== '127.0.0.1') {
+    throw new Error('Der Update-Testmodus akzeptiert ausschließlich einen lokalen HTTP-Server auf 127.0.0.1.');
+  }
+  return parsed.toString();
+}
 async function getLatestRelease(): Promise<Release> {
-  const response = await fetch(RELEASE_API, {
+  const response = await fetch(resolveReleaseApiUrl(), {
     headers: { Accept: 'application/vnd.github+json', 'User-Agent': 'OpenFront-Replay-Coach/' + app.getVersion() },
     cache: 'no-store', signal: AbortSignal.timeout(15000),
   });

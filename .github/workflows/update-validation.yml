@@ -14,7 +14,7 @@ jobs:
   updater-contract-and-build:
     name: Updater contracts, typecheck and Windows packaging
     runs-on: windows-latest
-    timeout-minutes: 60
+    timeout-minutes: 90
     steps:
       - name: Check out source
         uses: actions/checkout@v4
@@ -43,7 +43,7 @@ jobs:
         run: npm ci
 
       - name: Verify updater contract tests and syntax
-        run: node --check scripts/verify-windows-in-place-updates.mjs && node --check scripts/windows-webview-storage.mjs && node --test scripts/updater-contract.test.mjs && node --import ./vendor/OpenFrontIO/node_modules/tsx/dist/loader.mjs --test scripts/update-preferences.test.mjs
+        run: node --check scripts/verify-windows-in-place-updates.mjs && node --check scripts/windows-webview-storage.mjs && node --check scripts/android-webview-storage.mjs && node --check scripts/windows-upgrade-fixture.mjs && node --check scripts/windows-upgrade-storage-contract.mjs && node --test scripts/updater-contract.test.mjs scripts/windows-upgrade-storage-contract.test.mjs && node --import ./vendor/OpenFrontIO/node_modules/tsx/dist/loader.mjs --test scripts/update-preferences.test.mjs
 
       - name: Run full coaching and replay regression suite
         run: npm run test:coach
@@ -86,11 +86,38 @@ jobs:
           if (-not (Test-Path (Join-Path $previous 'OpenFront.Replay.Coach.Setup.2.2.51.exe'))) { throw 'Published v2.2.51 installer missing.' }
           if (-not (Test-Path (Join-Path $previous 'OpenFront.Replay.Coach-2.2.51-win.zip'))) { throw 'Published v2.2.51 portable ZIP missing.' }
 
+      - name: Build updater-enabled portable baseline for the real updater regression
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $candidateVersion = node -p "require('./package.json').version"
+          $candidatePackages = Join-Path $env:RUNNER_TEMP 'candidate-release-packages'
+          $releasePackages = Join-Path (Resolve-Path release).Path 'packages'
+          if (-not (Test-Path -LiteralPath $releasePackages)) { throw 'Candidate Windows packages are missing before portable updater baseline build.' }
+          New-Item -ItemType Directory -Path $candidatePackages -Force | Out-Null
+          Copy-Item -Path (Join-Path $releasePackages '*') -Destination $candidatePackages -Recurse -Force
+          try {
+            node scripts/set-release-version.mjs 2.2.51
+            npm run build
+            npx electron-builder --win zip --publish never
+            $baseline = Join-Path $env:RUNNER_TEMP 'portable-updater-baseline.zip'
+            $built = Join-Path (Resolve-Path release).Path 'OpenFront Replay Coach-2.2.51-win.zip'
+            if (-not (Test-Path -LiteralPath $built)) { throw 'Updater-enabled portable baseline package was not created.' }
+            Copy-Item -LiteralPath $built -Destination $baseline -Force
+            if ((Get-Item -LiteralPath $baseline).Length -lt 1000000) { throw 'Updater-enabled portable baseline package is implausibly small.' }
+          } finally {
+            node scripts/set-release-version.mjs $candidateVersion
+            if (Test-Path -LiteralPath $releasePackages) { Remove-Item -LiteralPath $releasePackages -Recurse -Force }
+            New-Item -ItemType Directory -Path $releasePackages -Force | Out-Null
+            Copy-Item -Path (Join-Path $candidatePackages '*') -Destination $releasePackages -Recurse -Force
+          }
+
       - name: Test Windows in-place upgrades and user data retention
-        timeout-minutes: 25
+        timeout-minutes: 35
         env:
           PREVIOUS_RELEASE_DIR: ${{ runner.temp }}\previous-windows-release
           CURRENT_RELEASE_DIR: release/packages
+          PORTABLE_UPDATE_BASELINE: ${{ runner.temp }}\portable-updater-baseline.zip
         run: node scripts/verify-windows-in-place-updates.mjs
 
       - name: Upload verified Windows packages

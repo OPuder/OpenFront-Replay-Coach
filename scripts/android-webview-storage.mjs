@@ -86,29 +86,43 @@ const expression = mode === "seed" ? `
 `;
 
 let socket = "";
-const expectedPid = process.env.ANDROID_WEBVIEW_PID ?? "";
-for (let attempt = 0; attempt < 120; attempt++) {
-  try {
-    const sockets = adb("shell", "cat", "/proc/net/unix").split(/\r?\n/).map(line => line.match(/webview_devtools_remote_(\d+)/)?.[1]).filter(Boolean);
-    socket = expectedPid ? (sockets.find(pid => pid === expectedPid) ?? "") : (sockets.at(-1) ?? "");
-    if (socket) break;
-  } catch {}
-  await sleep(1000);
-}
-assert.ok(socket, "Debug WebView DevTools socket was not exposed within 120 seconds; IndexedDB preservation cannot be verified.");
-try { adb("forward", "--remove", "tcp:9222"); } catch {}
-adb("forward", "tcp:9222", `localabstract:${socket}`);
 let target;
-for (let attempt = 0; attempt < 120; attempt++) {
+let observedSockets = [];
+let observedTargets = [];
+const expectedPids = (process.env.ANDROID_WEBVIEW_PID ?? "").split(/\s+/).filter(Boolean);
+const expectedWebViewUrl = url => /^https?:\/\/localhost(?::\d+)?(?:\/|$)/i.test(url) || /^file:\/\/\/android_asset\//i.test(url);
+for (let attempt = 0; attempt < 120 && !target; attempt++) {
   try {
-    const response = await fetch("http://127.0.0.1:9222/json");
-    const targets = await response.json();
-    target = targets.find(item => item.type === "page" && item.webSocketDebuggerUrl);
-    if (target) break;
+    const sockets = [...new Set(adb("shell", "cat", "/proc/net/unix").split(/\r?\n/).map(line => line.match(/(webview_devtools_remote_\d+)/)?.[1]).filter(Boolean))];
+    observedSockets = sockets;
+    const orderedSockets = [
+      ...sockets.filter(value => expectedPids.includes(value.slice("webview_devtools_remote_".length))),
+      ...sockets.filter(value => !expectedPids.includes(value.slice("webview_devtools_remote_".length))),
+    ];
+    for (const candidateSocket of orderedSockets) {
+      try { adb("forward", "--remove", "tcp:9222"); } catch {}
+      try { adb("forward", "tcp:9222", "localabstract:" + candidateSocket); }
+      catch { continue; }
+      for (const endpoint of ["/json/list", "/json"]) {
+        try {
+          const response = await fetch("http://127.0.0.1:9222" + endpoint, { signal: AbortSignal.timeout(3000) });
+          if (!response.ok) continue;
+          const targets = await response.json();
+          if (!Array.isArray(targets)) continue;
+          observedTargets = targets.map(item => ({ type: item.type, url: item.url, title: item.title }));
+          target = targets.find(item =>
+            item.type === "page" && item.webSocketDebuggerUrl &&
+            typeof item.url === "string" && expectedWebViewUrl(item.url)
+          );
+          if (target) { socket = candidateSocket; break; }
+        } catch {}
+      }
+      if (target) break;
+    }
   } catch {}
-  await sleep(1000);
+  if (!target) await sleep(1000);
 }
-assert.ok(target, "Could not discover the running app WebView debugging target.");
+assert.ok(target, "CONTEXT_ERROR: Could not discover the initialized Coach WebView target. Forwarded full socket names=" + JSON.stringify(observedSockets) + "; DevTools targets=" + JSON.stringify(observedTargets));
 const ws = new WebSocket(target.webSocketDebuggerUrl);
 await new Promise((resolve, reject) => {
   ws.addEventListener("open", resolve, { once: true });
@@ -125,10 +139,21 @@ ws.addEventListener("message", event => {
   else if (message.result?.exceptionDetails) reject(new Error(message.result.exceptionDetails.text || "WebView evaluation failed"));
   else resolve(message.result?.result?.value);
 });
-const result = await new Promise((resolve, reject) => {
+const evaluate = source => new Promise((resolve, reject) => {
   const id = ++nextId;
   pending.set(id, { resolve, reject });
-  ws.send(JSON.stringify({ id, method: "Runtime.evaluate", params: { expression, awaitPromise: true, returnByValue: true } }));
+  ws.send(JSON.stringify({ id, method: "Runtime.evaluate", params: { expression: source, awaitPromise: true, returnByValue: true } }));
 });
+let renderer;
+for (let attempt = 0; attempt < 60; attempt++) {
+  renderer = await evaluate("({href:location.href,origin:location.origin,title:document.title,readyState:document.readyState,rootChildren:document.querySelector('#root')?.children.length??0})");
+  if (renderer?.title === "OpenFront Replay Coach" && renderer.readyState === "complete" && renderer.rootChildren > 0) break;
+  await sleep(1000);
+}
+if (renderer?.title !== "OpenFront Replay Coach" || renderer.readyState !== "complete" || renderer.rootChildren < 1) {
+  ws.close();
+  throw new Error("CONTEXT_ERROR: DevTools connected to a WebView that is not the initialized Coach renderer: " + JSON.stringify({target: target.url, renderer}));
+}
+const result = await evaluate(expression);
 ws.close();
-console.log(JSON.stringify({ mode, result }));
+console.log(JSON.stringify({ mode, socket, targetUrl: target.url, renderer, result }));

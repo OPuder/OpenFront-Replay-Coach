@@ -220,7 +220,7 @@ jobs:
         uses: reactivecircus/android-emulator-runner@v2
         env:
           PREVIOUS_APK: ${{ runner.temp }}/ofrc-android-baseline/OpenFront-Replay-Coach-2.2.51-Android.apk
-          OPENFRONT_CURRENT_APK: android/app/build/outputs/apk/release/app-release.apk
+          OPENFRONT_CURRENT_APK: ${{ runner.temp }}/openfront-coach-android-upgrade-test.apk
         with:
           api-level: 34
           target: google_apis

@@ -16,7 +16,7 @@ test('does not invent a match score or tactical finding without verified samples
 });
 
 test('calculates per-phase territory and gross income rates from the selected player only',()=>{
- const samples=[sample(0,{tiles:100,goldEarned:100}),sample(1800,{tiles:160,goldEarned:700}),sample(4200,{tiles:220,goldEarned:1300}),sample(6000,{tiles:250,goldEarned:1700})];
+ const samples=[sample(0,{tiles:100,goldEarned:100}),sample(1700,{tiles:160,goldEarned:700}),sample(3000,{tiles:180,goldEarned:900}),sample(4100,{tiles:220,goldEarned:1300}),sample(5000,{tiles:230,goldEarned:1500}),sample(5900,{tiles:250,goldEarned:1700})];
  const report=buildProCoachReport(samples,[],'p1',600);
  assert.equal(report.phases.length,3);
  assert.ok(report.phases[0].territoryPerMinute!==null);
@@ -42,6 +42,43 @@ test('front overload is distinguished from proof of a bad attack',()=>{
  assert.match(report.findings.find(x=>x.id==='front-load').caveat,/nicht zwingend getrennte geografische Fronten/);
 });
 
+
+test('phase labels use full replay duration after the selected player is eliminated',()=>{
+ const samples=[
+  sample(0,{tiles:100,goldEarned:100}),
+  sample(1000,{tiles:120,goldEarned:150}),
+  sample(1790,{tiles:140,goldEarned:200}),
+  sample(3000,{tiles:160,goldEarned:280}),
+  sample(4190,{tiles:180,goldEarned:360}),
+  sample(5000,{alive:false,tiles:0,goldEarned:0}),
+  sample(6000,{alive:false,tiles:0,goldEarned:0}),
+ ];
+ const report=buildProCoachReport(samples,[],'p1',600);
+ const late=report.phases.find(phase=>phase.id==='late');
+ assert.equal(report.phases.find(phase=>phase.id==='early')?.activeSamples,3);
+ assert.equal(report.phases.find(phase=>phase.id==='mid')?.activeSamples,2);
+ assert.equal(late?.fromSeconds,420);
+ assert.equal(late?.toSeconds,600);
+ assert.equal(late?.activeSamples,0);
+ assert.equal(late?.territoryPerMinute,null);
+ assert.equal(late?.incomePerMinute,null);
+});
+
+test('phase momentum normalizes territory and gross income separately',()=>{
+ const samples=[
+  sample(0,{tiles:100,goldEarned:100}),
+  sample(1700,{tiles:160,goldEarned:700}),
+  sample(3000,{tiles:180,goldEarned:900}),
+  sample(4100,{tiles:220,goldEarned:1300}),
+  sample(5000,{tiles:230,goldEarned:1500}),
+  sample(5900,{tiles:250,goldEarned:1700}),
+ ];
+ const report=buildProCoachReport(samples,[],'p1',600);
+ assert.ok(report.phases.every(phase=>phase.momentumIndex===null||phase.momentumIndex>=0&&phase.momentumIndex<=100));
+ assert.match(report.scoreExplanation,/70 %/);
+ assert.ok(report.allFindings?.some(item=>item.id==='phase-focus'));
+ assert.ok(!report.findings.some(item=>item.id==='phase-focus'),'Phase summaries must not displace decision-level Top-3 findings');
+});
 
 test('uses the observed sample interval for phase rates instead of the nominal phase length',()=>{
  const samples=[sample(0,{tiles:100,goldEarned:100}),sample(100,{tiles:120,goldEarned:160}),sample(200,{tiles:140,goldEarned:220}),sample(300,{tiles:160,goldEarned:280}),sample(400,{tiles:180,goldEarned:340}),sample(500,{tiles:200,goldEarned:400})];
@@ -140,7 +177,7 @@ test('opening assessment reports observed expansion but not unsupported best spa
  assert.equal(report.opening.firstExpansionSeconds,30);
  assert.equal(report.opening.territoryGainFirstThreeMinutes,50);
  assert.match(report.opening.limitation,/Startkarten-Geometrie/);
- assert.ok(report.findings.some(x=>x.id==='opening-review'));
+ assert.ok(report.allFindings?.some(x=>x.id==='opening-review'));
 });
 
 import { analyzeSpawnPositions } from '../src/renderer/SpawnPositionAnalysis.ts';
@@ -235,6 +272,20 @@ test('attack with worse own attrition is flagged only when target losses are low
  assert.match(finding.title,/ungünstigem Truppenverhältnis/);
  assert.match(finding.consequence,/3 zeigten höhere eigene Truppenverluste ohne Gebietsreaktion/);
  assert.match(finding.evidence,/beobachtete Verluste: du 120, Ziel 60/);
+});
+
+test('one catastrophic attack is high impact even when it is not a repeated pattern',()=>{
+ const samples=Array.from({length:15},(_,i)=>sample(i*500,{tiles:1000+i*5,goldEarned:100+i*20,troops:1000}));
+ const actions=[
+  action(30,{delta30s:{tiles:-120,gold:-30,troops:-350},targetDelta30s:{tiles:0,gold:0,troops:-20}}),
+  action(70,{delta30s:{tiles:0,gold:-30,troops:-20},targetDelta30s:{tiles:0,gold:0,troops:-100}}),
+  action(110,{delta30s:{tiles:0,gold:-30,troops:-20},targetDelta30s:{tiles:0,gold:0,troops:-100}}),
+ ];
+ const report=buildProCoachReport(samples,actions,'p1',700);
+ const finding=report.findings.find(item=>item.id==='attack-follow-through');
+ assert.ok(finding);
+ assert.equal(finding.priority,'high');
+ assert.match(finding.evidence,/35 % des vorher beobachteten eigenen Truppenbestands/);
 });
 
 test('equal troop attrition without territory change is reported as an even trade, not a failed attack',()=>{

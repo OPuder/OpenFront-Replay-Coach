@@ -1,5 +1,5 @@
 import { buildReplayEngineAssets, simulateReplay } from "../src/renderer/ReplaySimulation";
-import { loadImportedMatches, saveImportedMatch } from "../src/renderer/matchStore";
+import { loadImportedMatch, loadImportedMatches, saveImportedMatch } from "../src/renderer/matchStore";
 import { runSequentialBatchAnalysis } from "../src/renderer/BatchAnalysisRunner";
 import { assessReplayCompatibility } from "../src/main/decoder/ReplayCompatibility";
 import { resolveReplayJsonExport } from "../src/main/decoder/ReplayJsonExport";
@@ -128,8 +128,14 @@ window.__runBatchReplayTest = async (gameIds) => {
 };
 
 window.__verifyBatchStoreTest = async () => {
-  const matches = await loadImportedMatches("ci-batch-player");
-  return matches.map(item => ({
+  // The match index intentionally omits raw GameRecord payloads. Hydrate each
+  // record from the dedicated replay-records store before testing JSON export.
+  const index = await loadImportedMatches("ci-batch-player");
+  const matches = await Promise.all(index.map(async item => ({
+    item,
+    hydrated: await loadImportedMatch("ci-batch-player", item.game.gameId),
+  })));
+  return matches.map(({ item, hydrated }) => ({
     gameId: item.game.gameId,
     status: item.status,
     analysisStatus: item.analysisStatus,
@@ -137,9 +143,10 @@ window.__verifyBatchStoreTest = async () => {
     sampleCount: item.simulation?.samples?.length ?? 0,
     jsonExportRestored: (() => {
       try {
-        const recordGameId = String(item.result?.record?.info?.gameID ?? item.result?.record?.game?.info?.gameID ?? "");
+        const record = hydrated?.result?.record;
+        const recordGameId = String(record?.info?.gameID ?? record?.game?.info?.gameID ?? "");
         if (!recordGameId) return false;
-        const raw = resolveReplayJsonExport(recordGameId, undefined, item.result?.record, 750 * 1024 * 1024);
+        const raw = resolveReplayJsonExport(recordGameId, undefined, record, 750 * 1024 * 1024);
         const restored = JSON.parse(raw);
         return String(restored?.info?.gameID ?? restored?.game?.info?.gameID ?? "") === recordGameId;
       } catch { return false; }

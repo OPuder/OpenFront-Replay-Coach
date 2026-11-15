@@ -85,3 +85,25 @@
 .replay-viz-front-change{display:block;margin-top:4px;color:#e8c77f;font-size:8px;font-weight:700}
 
 .replay-viz-phase-note{margin:7px 0 0;color:#7f98af;font-size:8px;line-height:1.45}
+
+
+/* Compact strategic finding switcher: three cards, no extra statistics panel. */
+.replay-viz-territory-changes,.replay-viz-territory-affected{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;image-rendering:pixelated;mix-blend-mode:screen}
+.replay-viz-priority-findings{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:0 0 12px}
+.replay-viz-priority-card{display:flex;min-width:0;flex-direction:column;align-items:flex-start;gap:6px;padding:10px 12px;border:1px solid #31485d;border-radius:10px;background:#102235;color:#dceaf5;text-align:left;cursor:pointer;touch-action:manipulation}
+.replay-viz-priority-card>span{color:#e7bd6b;font:800 8px 'Cascadia Code',monospace;letter-spacing:.07em}
+.replay-viz-priority-card>b{font-size:11px;line-height:1.35}
+.replay-viz-priority-card>small{color:#91a9bd;font-size:9px}
+.replay-viz-priority-card.priority-high{border-left:3px solid #e7a36b}
+.replay-viz-priority-card.priority-medium{border-left:3px solid #80b9d1}
+.replay-viz-priority-card.selected{border-color:#f0c66f;background:#1b3044;box-shadow:0 0 0 1px #f0c66f55}
+.replay-viz-priority-card:disabled{opacity:.65;cursor:not-allowed}
+.replay-viz-priority-card:focus-visible{outline:2px solid #e9f5ff;outline-offset:3px}
+.replay-viz-coach-detail{display:flex;flex-direction:column;gap:8px;margin-top:12px;padding:10px;border:1px solid #334a60;border-radius:9px;background:#0a1928}
+.replay-viz-coach-detail>div>b{display:block;color:#e8c77f;font-size:9px}
+.replay-viz-coach-detail p{margin:3px 0 0;color:#c3d4e2;font-size:9px;line-height:1.5}
+.replay-viz-coach-evidence{padding-top:7px;border-top:1px solid #2a4055}
+.replay-viz-coach-evidence small{display:block;margin-top:4px;color:#a9c2d6;font-size:8px;line-height:1.5}
+.replay-viz-coach-uncertainty{color:#d6b77b!important;line-height:1.5}
+@media(max-width:720px){.replay-viz-priority-findings{grid-template-columns:1fr}.replay-viz-priority-card{padding:9px 10px}.replay-viz-priority-card>b{font-size:10px}}
+@media(prefers-reduced-motion:reduce){.replay-viz-priority-card{transition:none}}

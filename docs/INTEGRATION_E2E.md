@@ -42,6 +42,17 @@ player's actual recorded intents. The longitudinal report is built from the two
 verified simulation results; unverified matches are excluded by the production
 longitudinal module.
 
+## Explicit longitudinal integration boundary
+
+The current base snapshot's `LongitudinalCoach` excludes unverified matches and
+selects a comparable mode/type cohort, but it still includes duplicate game IDs
+in `matchProgress` and its metric observations. The match-ID deduplication and
+chronology/window guarantees described by PR #147 are not present on this branch.
+The integration unit test records this current behavior explicitly; it does not
+claim the stronger deduplication contract has passed. Re-run the duplicate-ID,
+consecutive-window, ambiguous-time, and evidence-ranked trend cases when PR #147
+is available in a shared integration base. PR #147 and its branch remain untouched.
+
 ## Explicit map integration boundary
 
 The territory owner-grid / selected-time map implementation and responsive map

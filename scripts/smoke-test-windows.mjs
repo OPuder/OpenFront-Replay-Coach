@@ -136,6 +136,29 @@ try {
   if (!/OpenFront Replay Coach/i.test(state.title)) {
     throw new Error("Unerwarteter Fenstertitel: " + state.title);
   }
+  const idleSoakMs = 5 * 60 * 1000;
+  const idleDeadline = Date.now() + idleSoakMs;
+  let idleState = state;
+  while (Date.now() < idleDeadline) {
+    await delay(Math.min(30000, idleDeadline - Date.now()));
+    if (child.exitCode !== null) {
+      throw new Error("App-Prozess wurde während des fünfminütigen Idle-Tests beendet: " + child.exitCode);
+    }
+    const result = await command(
+      "Runtime.evaluate",
+      {
+        expression: "({title:document.title,readyState:document.readyState,rootChildren:document.querySelector('#root')?.childElementCount ?? 0})",
+        returnByValue: true,
+        awaitPromise: true,
+      },
+      30000,
+    );
+    idleState = result?.result?.value ?? null;
+    if (!idleState || idleState.rootChildren < 1 || idleState.readyState !== "complete") {
+      throw new Error("Renderer blieb während des Idle-Tests nicht erreichbar: " + JSON.stringify(idleState));
+    }
+  }
+  console.log("WINDOWS_IDLE_SOAK_OK", JSON.stringify({ durationMs: idleSoakMs, state: idleState }));
   console.log("WINDOWS_SMOKE_TEST_OK", JSON.stringify(state));
 } finally {
   try { socket?.close(); } catch {}

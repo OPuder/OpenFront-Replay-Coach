@@ -28,7 +28,7 @@ jobs:
         with:
           ref: main
           fetch-depth: 0
-          persist-credentials: true
+          persist-credentials: false
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
@@ -89,12 +89,9 @@ jobs:
 
           node scripts/set-release-version.mjs "$next_version"
 
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           if ! git diff --quiet; then
-            git add package.json package-lock.json START_HERE.txt src/renderer/main.tsx
-            git commit -m "chore(release): prepare v$next_version [skip ci]"
-            git push origin HEAD:main
+            echo "::error::Release version drift detected. Update package.json and package-lock.json through a reviewed pull request before publishing."
+            exit 1
           fi
 
           release_sha="$(git rev-parse HEAD)"
@@ -455,7 +452,40 @@ jobs:
           name: release-android
           path: release
 
-      - name: Create one release with all three downloads
+      - name: Generate artifact manifest and SHA-256 checksums
+        shell: bash
+        env:
+          RELEASE_VERSION: ${{ needs.prepare-release.outputs.version }}
+        run: |
+          set -Eeuo pipefail
+          test -d release
+          mapfile -t installers < <(find release -maxdepth 1 -type f -name '*.exe' -printf '%f\n')
+          mapfile -t portable < <(find release -maxdepth 1 -type f -name '*.zip' -printf '%f\n')
+          mapfile -t apks < <(find release -maxdepth 1 -type f -name '*-Android.apk' -printf '%f\n')
+          [[ ${#installers[@]} -eq 1 && ${#portable[@]} -eq 1 && ${#apks[@]} -eq 1 ]] || { echo '::error::Release must contain one installer, one portable ZIP and one APK.'; exit 1; }
+          for file in "${installers[@]}" "${portable[@]}" "${apks[@]}"; do
+            size="$(stat -c%s "release/$file")"
+            [[ "$size" -gt 1000000 ]] || { echo "::error::Artifact too small: $file ($size bytes)"; exit 1; }
+          done
+          (cd release && sha256sum "${installers[0]}" "${portable[0]}" "${apks[0]}" > SHA256SUMS.txt)
+          node --input-type=module -e '
+            import fs from "node:fs";
+            import crypto from "node:crypto";
+            const dir = "release";
+            const names = [process.env.INSTALLER, process.env.PORTABLE, process.env.APK];
+            const artifacts = names.map(name => {
+              const bytes = fs.readFileSync(`${dir}/${name}`);
+              return { name, size: bytes.length, sha256: crypto.createHash("sha256").update(bytes).digest("hex") };
+            });
+            fs.writeFileSync(`${dir}/release-manifest.json`, JSON.stringify({ schemaVersion: 1, version: process.env.RELEASE_VERSION, artifacts }, null, 2) + "\n");
+          '
+        env:
+          RELEASE_VERSION: ${{ needs.prepare-release.outputs.version }}
+          INSTALLER: ${{ '' }}
+          PORTABLE: ${{ '' }}
+          APK: ${{ '' }}
+
+      - name: Create one release with all three downloads and integrity manifest
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ needs.prepare-release.outputs.tag }}

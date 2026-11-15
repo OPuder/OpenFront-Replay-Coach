@@ -72,6 +72,8 @@ test('uses the declared frame count and ignores malformed turn numbers', () => {
     { turnNumber: 10 }, { turnNumber: -1 }, { turnNumber: 'invalid' }, { turnNumber: null }, null, {},
   ] }), 250);
   assert.equal(getTotalRecordedFrames({ info: { num_turns: 'invalid' }, turns: [{ turnNumber: 4 }] }), 5);
+  assert.equal(getTotalRecordedFrames({ info: { num_turns: true }, turns: [{ turnNumber: true }, { turnNumber: '8' }, { turnNumber: 4 }] }), 5);
+  assert.equal(getTotalRecordedFrames({ info: { num_turns: -4 }, turns: [{ turnNumber: -1 }, { turnNumber: 3 }] }), 4);
   assert.equal(getTotalRecordedFrames(null), 0);
 });
 

@@ -149,3 +149,5 @@ assert.match(releaseUpgradeScript, /adb -s emulator-5554 install -r/);
 assert.match(releaseUpgradeScript, /versionCode/);
 assert.match(releaseUpgradeScript, /cmd package resolve-activity/);
 assert.match(releaseUpgradeScript, /am start -W -n/);
+const androidValidationWorkflow = read(".github/workflows/update-validation.yml");
+assert.match(androidValidationWorkflow, /Validate Android update smoke-test shell syntax[\s\S]*?bash -n scripts\/test-android-release-upgrade.sh/);

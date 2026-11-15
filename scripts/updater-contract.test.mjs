@@ -132,18 +132,24 @@ assert.match(appRenderer, /function navigateTo\([\s\S]*?engineReviewRunId\.curre
 
 const releaseUpgradeWorkflow = read(".github/workflows/release-on-main.yml");
 const releaseUpgradeScript = read("scripts/test-android-release-upgrade.sh");
-assert.match(releaseUpgradeWorkflow, /Install previous published APK and upgrade to exact signed release APK[\\s\\S]*?reactivecircus\\/android-emulator-runner@v2[\\s\\S]*?script: bash scripts\\/test-android-release-upgrade.sh/);
-assert.match(releaseUpgradeWorkflow, /Validate signed Android release-upgrade script syntax[\\s\\S]*?bash -n scripts\\/test-android-release-upgrade.sh/);
-assert.match(releaseUpgradeWorkflow, /timeout-minutes: 15[\\s\\S]*?emulator-boot-timeout: 600/);
-assert.match(releaseUpgradeScript, /previous-release/);
-assert.match(releaseUpgradeScript, /function install_apk|install_apk\(\)\\s\\*\\{/);
-assert.match(releaseUpgradeScript, /adb -s emulator-5554 install -r/);
-assert.match(releaseUpgradeScript, /versionCode/);
-assert.match(releaseUpgradeScript, /cmd package resolve-activity/);
-assert.match(releaseUpgradeScript, /am start -W -n/);
-assert.match(releaseUpgradeScript, /pidof/);
+assert.ok(releaseUpgradeWorkflow.includes("Download latest published APK for upgrade regression"));
+assert.ok(releaseUpgradeWorkflow.includes("Install previous published APK and upgrade to exact signed release APK"));
+assert.ok(releaseUpgradeWorkflow.includes("script: bash scripts/test-android-release-upgrade.sh"));
+assert.ok(releaseUpgradeWorkflow.includes("timeout-minutes: 45"));
+assert.ok(releaseUpgradeWorkflow.includes("emulator-boot-timeout: 1800"));
+assert.ok(!releaseUpgradeWorkflow.includes("disable-animations: true"));
+assert.ok(releaseUpgradeScript.includes("previous-release"));
+assert.ok(releaseUpgradeScript.includes("for attempt in 1 2 3"));
+assert.ok(releaseUpgradeScript.includes("timeout 90s adb -s emulator-5554 install"));
+assert.ok(releaseUpgradeScript.includes("seq 1 9"));
+assert.ok(releaseUpgradeScript.includes("timeout 8s adb -s emulator-5554 shell cmd package list packages"));
+assert.ok(releaseUpgradeScript.includes("versionCode"));
+assert.ok(releaseUpgradeScript.includes("cmd package resolve-activity"));
+assert.ok(releaseUpgradeScript.includes("am start -W -n"));
+assert.ok(releaseUpgradeScript.includes("pidof"));
 const androidValidationWorkflow = read(".github/workflows/update-validation.yml");
-assert.match(androidValidationWorkflow, /Validate signed Android release-upgrade script syntax|test-android-release-upgrade/);
+assert.ok(androidValidationWorkflow.includes("bash -n scripts/test-android-release-upgrade.sh"));
+
 
 const engineCacheWorkflows = [
   read(".github/workflows/build-windows.yml"),

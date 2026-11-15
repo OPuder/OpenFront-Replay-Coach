@@ -8,6 +8,7 @@ destination="${RUNNER_TEMP:-/tmp}/ofrc-android-storage-$phase"
 log() { echo "::notice::[Android storage snapshot] $*"; }
 fail() { echo "::error::[Android storage snapshot] $*"; exit 1; }
 
+rm -rf "$destination"
 mkdir -p "$destination"
 adb root >/dev/null 2>&1 || fail "The Android emulator does not permit root access; release app storage cannot be inspected safely."
 timeout 60s adb -s emulator-5554 wait-for-device || fail "ADB did not reconnect after enabling emulator root."

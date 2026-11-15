@@ -61,7 +61,7 @@ async function main() {
 
   for (let attempt = 0; attempt < 80; attempt++) {
     const ready = await window.webContents.executeJavaScript(
-      "typeof window.__setBatchReplay === 'function' && typeof window.__runBatchReplayTest === 'function'",
+      "typeof window.__setBatchReplay === 'function' && typeof window.__runBatchReplayTest === 'function' && typeof window.__testAbortBatchReplay === 'function'",
     );
     if (ready) break;
     if (attempt === 79) throw new Error("Multi-match browser harness did not initialize");

@@ -260,9 +260,10 @@ export async function simulateReplay(
   let lastSampledFrame = -1;
   const turns: any[] = Array.isArray(record.turns) ? record.turns : [];
   const recordedHashCount = turns.reduce((count: number, turn: any) => count + (turn?.hash !== null && turn?.hash !== undefined ? 1 : 0), 0);
-  // Keep the regular overview cadence, but also capture the frames immediately
-  // before and after every action by the selected player. The action frame
-  // itself is not read by the outcome evaluator, so omit that redundant sample.
+  // Keep the regular overview cadence and capture each selected-player action
+  // frame plus its immediate before/after and delayed outcome observations.
+  // A Set deduplicates overlaps with the cadence and between nearby actions,
+  // so the extra cost is bounded by the number of distinct requested frames.
   const sampleFrames = new Set<number>();
   const replayPlayers = Array.isArray(record?.info?.players) ? record.info.players : [];
   const selectedPlayerMeta = preferredClientId
@@ -286,6 +287,9 @@ export async function simulateReplay(
       const actionFrame = recordedTick - 1;
       if (Number.isInteger(recordedTick) && recordedTick >= 1 && actionFrame < totalRecordedFrames &&
           (turn?.intents ?? []).some((intent: any) => String(intent?.clientID ?? "") === selectedClientId)) {
+        // The exact action frame is required for evidence-to-Reader verification.
+        // Set membership avoids a duplicate when cadence/another action already requested it.
+        sampleFrames.add(actionFrame);
         sampleFrames.add(Math.max(0, actionFrame - 1));
         sampleFrames.add(Math.min(totalRecordedFrames - 1, actionFrame + 1));
         // Capture delayed outcome windows as well as the immediate state.

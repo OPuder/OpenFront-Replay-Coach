@@ -13,6 +13,23 @@ import { toReplayCoachFindings } from "../src/renderer/ReplayCoachIntegration";
 
 const batchTestRecords = new Map<string, any>();
 
+function verifyRecordedActionFrameConvention(gameId: string, result: any) {
+  const samplesByFrame = new Map<number, any>(result.samples.map((sample: any) => [sample.frame, sample]));
+  const checked = result.actionReviews.filter((action: any) => Number.isInteger(action.turn) && action.turn >= 1);
+  if (checked.length === 0) throw new Error(gameId + ": no recorded actions available for frame convention verification");
+  for (const action of checked) {
+    const expectedEngineFrame = action.turn - 1;
+    if (action.frame !== expectedEngineFrame)
+      throw new Error(gameId + ": recorded tick " + action.turn + " must map to zero-based ReplayReader frame " + expectedEngineFrame + ", got " + action.frame);
+    const sample = samplesByFrame.get(expectedEngineFrame);
+    if (sample && sample.tick !== action.turn)
+      throw new Error(gameId + ": ReplayReader frame " + expectedEngineFrame + " carries tick " + sample.tick + ", expected recorded tick " + action.turn);
+    if (action.seconds !== action.turn / 10)
+      throw new Error(gameId + ": action timestamp must be recorded tick / 10 seconds");
+  }
+  return { recordedActions: checked.length, convention: "turnNumber=tick (1-based); ReplayReader frame=turnNumber-1 (0-based)", checked: checked.length };
+}
+
 function verifyActualTimelineFrameMapping(gameId: string, samples: any[]) {
   const territorySamples = samples.filter(sample =>
     sample?.territory && Number.isInteger(sample.tick) && sample.tick >= 0 && sample.tick % 10 === 0 &&
@@ -320,6 +337,9 @@ window.__runBatchReplayTest = async (gameIds) => {
       const coachingFindings = report && selectedClientId && result
         ? toReplayCoachFindings(report.findings, item.gameId, selectedClientId, result.actionReviews, result.samples)
         : [];
+      const actionFrameConvention = status === "verified" && result && ["Europe", "Levant"].includes(item.gameId)
+        ? verifyRecordedActionFrameConvention(item.gameId, result)
+        : null;
       const timelineFrameChecks = status === "verified" && result && ["Europe", "Levant"].includes(item.gameId)
         ? verifyActualTimelineFrameMapping(item.gameId, result.samples)
         : [];
@@ -346,6 +366,7 @@ window.__runBatchReplayTest = async (gameIds) => {
           affectedOwnerIds: finding.affectedOwnerIds,
         })),
         timelineFrameChecks,
+        actionFrameConvention,
         realReactUi,
         unavailableReactUi,
         verifiedHashes: result?.verifiedHashes ?? 0,

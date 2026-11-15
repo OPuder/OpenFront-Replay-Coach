@@ -37,13 +37,13 @@ export function selectGamesToAnalyze<TEntry extends AutoSyncEntry>(entries: read
 export function compactBatchMatchForUi<T extends object>(entry: T): T {
   const value = entry as T & {
     result?: { record?: unknown; decodedActions?: unknown };
-    simulation?: { samples?: unknown[]; actionReviews?: unknown[] };
+    simulation?: { samples?: unknown[]; actionReviews?: unknown[]; spawnAlternatives?: unknown[] | null };
   };
   const result = value.result
     ? { ...value.result, record: undefined, decodedActions: undefined }
     : value.result;
   const simulation = value.simulation
-    ? { ...value.simulation, samples: [], actionReviews: [] }
+    ? { ...value.simulation, samples: [], actionReviews: [], spawnAlternatives: undefined }
     : value.simulation;
   return { ...value, result, simulation } as T;
 }

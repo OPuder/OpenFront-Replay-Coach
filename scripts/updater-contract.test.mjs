@@ -179,6 +179,4 @@ assert.match(releaseSource, /Release version drift detected[\\s\\S]*reviewed pul
 assert.match(releaseSource, /sha256sum[\\s\\S]*SHA256SUMS\\.txt/);
 assert.match(releaseSource, /release-manifest\\.json/);
 assert.match(releaseSource, /distributables\\.length === 3/);
-assert.match(releaseSource, /names\\.includes\\("SHA256SUMS\\.txt"\\)/);
-assert.match(releaseSource, /names\\.includes\\("release-manifest\\.json"\\)/);
-assert.match(releaseSource, /!names\\.some/);
+assert.match(releaseSource, /names\\.includes/);

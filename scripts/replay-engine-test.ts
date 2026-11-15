@@ -405,6 +405,8 @@ window.__runBatchReplayTest = async (gameIds) => {
     gameId: report.gameId,
     matchId: _longitudinalInput.gameId,
     engineId: String(batchTestRecords.get(report.gameId)?.gitCommit ?? "unknown"),
+    mode: report.longitudinalInput.mode,
+    type: report.longitudinalInput.type,
     selectedPlayer: report.selectedPlayer,
     selectedClientId: report.selectedClientId,
     clientId: report.clientId,
@@ -439,6 +441,36 @@ window.__runBatchReplayTest = async (gameIds) => {
   }));
   const verifiedGameIds = [...coaching.keys()];
   const longitudinalMatchIds = coachingResults.map(item => item.longitudinalInput.gameId);
+  const expectedMatchIds: Record<string, string> = {
+    Europe: "c2R2JHZgUi",
+    Levant: "dLNCLHCvMK",
+  };
+  const reportIdentities = coachingResults.map(item => {
+    const sourceRecord = batchTestRecords.get(item.gameId);
+    const sourceMatchId = String(sourceRecord?.info?.gameID ?? sourceRecord?.gameId ?? "");
+    return {
+      gameId: item.gameId,
+      sourceMatchId,
+      reportMatchId: item.longitudinalInput.gameId,
+      engineId: String(sourceRecord?.gitCommit ?? "unknown"),
+      clientId: item.clientId,
+      selectedClientId: item.selectedClientId,
+      mode: item.longitudinalInput.mode,
+      type: item.longitudinalInput.type,
+    };
+  });
+  for (const identity of reportIdentities) {
+    if (expectedMatchIds[identity.gameId] !== identity.sourceMatchId
+      || identity.reportMatchId !== identity.sourceMatchId) {
+      throw new Error(`Coaching match identity mismatch before Electron bridge: ${JSON.stringify(identity)}`);
+    }
+    if (!identity.clientId || identity.selectedClientId !== identity.clientId) {
+      throw new Error(`Coaching player identity mismatch before Electron bridge: ${JSON.stringify(identity)}`);
+    }
+  }
+  if (new Set(reportIdentities.map(identity => identity.sourceMatchId)).size !== 2) {
+    throw new Error(`Real coaching reports do not map to two unique source matches: ${JSON.stringify(reportIdentities)}`);
+  }
   if (coachingForAssertion.length !== summary.verified) {
     throw new Error(`Coaching collection mismatch before Electron bridge: verified=${summary.verified}, reports=${coachingForAssertion.length}, gameIds=${verifiedGameIds.join(",")}`);
   }
@@ -456,6 +488,15 @@ window.__runBatchReplayTest = async (gameIds) => {
       longitudinalMatchIds,
       reportCount: coachingForAssertion.length,
       longitudinalImportedMatches: longitudinal.importedMatches,
+      reportIdentities,
+      longitudinal: {
+        importedMatches: longitudinal.importedMatches,
+        verifiedMatches: longitudinal.verifiedMatches,
+        excludedMatches: longitudinal.excludedMatches,
+        comparableMatches: longitudinal.comparableMatches,
+        comparableGroup: longitudinal.comparableGroup,
+        matchProgressIds: longitudinal.matchProgress.map(item => item.gameId),
+      },
     },
   };
 };

@@ -144,23 +144,42 @@ export function buildProCoachReport(
   const attackActions=actions.filter(a=>a.type==='attack'&&a.delta30s);
   // Missing target observations are unknown, not a zero territorial response.
   const evaluatedAttackActions=attackActions.filter(a=>(a.delta30s?.tiles??0)>0||a.targetDelta30s!=null);
-  const positiveWindows=evaluatedAttackActions.filter(a=>(a.delta30s?.tiles??0)>0||(a.targetDelta30s?.tiles??0)<0);
-  // A troop trade is not automatically a failed attack: if the target also lost troops,
-  // the 30-second window cannot establish that the commitment was wasteful.
-  const negativeWindows=evaluatedAttackActions.filter(a=>(a.delta30s?.troops??0)<0&&(a.delta30s?.tiles??0)<=0&&a.targetDelta30s!=null&&(a.targetDelta30s?.tiles??0)>=0&&(a.targetDelta30s?.troops??0)>=0);
+  const territorialWins=evaluatedAttackActions.filter(a=>(a.delta30s?.tiles??0)>0||(a.targetDelta30s?.tiles??0)<0);
+  // Compare observed troop attrition on both sides instead of treating every own loss
+  // as waste. A target loss greater than the player's loss is a favorable exchange,
+  // but remains a short-window association because other attacks can overlap.
+  const favorableTrades=evaluatedAttackActions.filter(a=>{
+    const ownLoss=Math.max(0,-(a.delta30s?.troops??0));
+    const targetLoss=Math.max(0,-(a.targetDelta30s?.troops??0));
+    return ownLoss>0&&targetLoss>ownLoss&&(a.delta30s?.tiles??0)<=0&&(a.targetDelta30s?.tiles??0)>=0;
+  });
+  const evenTrades=evaluatedAttackActions.filter(a=>{
+    const ownLoss=Math.max(0,-(a.delta30s?.troops??0));
+    const targetLoss=Math.max(0,-(a.targetDelta30s?.troops??0));
+    return ownLoss>0&&targetLoss===ownLoss&&(a.delta30s?.tiles??0)<=0&&(a.targetDelta30s?.tiles??0)>=0;
+  });
+  const negativeWindows=evaluatedAttackActions.filter(a=>{
+    const ownLoss=Math.max(0,-(a.delta30s?.troops??0));
+    const targetLoss=Math.max(0,-(a.targetDelta30s?.troops??0));
+    return ownLoss>targetLoss&&(a.delta30s?.tiles??0)<=0&&(a.targetDelta30s?.tiles??0)>=0;
+  });
+  const productiveWindows=evaluatedAttackActions.filter(a=>territorialWins.includes(a)||favorableTrades.includes(a));
   if(evaluatedAttackActions.length>=3){
-    const ratio=positiveWindows.length/evaluatedAttackActions.length;
-    const worst=negativeWindows[0]??evaluatedAttackActions.find(a=>(a.delta30s?.tiles??0)<=0);
+    const ratio=productiveWindows.length/evaluatedAttackActions.length;
+    const example=negativeWindows[0]??favorableTrades[0]??evenTrades[0]??evaluatedAttackActions.find(a=>(a.delta30s?.tiles??0)<=0);
+    const exampleOwnLoss=Math.max(0,-(example?.delta30s?.troops??0));
+    const exampleTargetLoss=Math.max(0,-(example?.targetDelta30s?.troops??0));
     findings.push({
       id:'attack-follow-through',priority:negativeWindows.length>=Math.max(2,Math.ceil(evaluatedAttackActions.length*.35))?'high':'medium',
-      confidence:confidenceFor(alive.length,evaluatedAttackActions.length),title:negativeWindows.length?'Angriffe mit hoher Truppenbindung prüfen':'Angriffe mit sichtbarer Gebietsreaktion',
-      decision:`${evaluatedAttackActions.length} von ${attackActions.length} Angriffen hatten auswertbare 30-Sekunden-Gebietsdaten.`,
-      consequence:`${positiveWindows.length} von ${evaluatedAttackActions.length} auswertbaren Fenstern zeigten eigenen Gebietszuwachs oder Gebietsverlust beim Ziel; ${negativeWindows.length} zeigten Truppenrückgang ohne entsprechende Gebietsreaktion.`,
-      alternative:'Vor einem weiteren Befehl kurz Zielzustand, eigene aktive Angriffe und eingehenden Druck vergleichen. Bei hoher Bindung erst laufende Angriffe auswerten, statt automatisch ein weiteres Ziel zu öffnen.',
-      trainingRule:'Vor jedem Folgeangriff: gebundene Truppen + eingehenden Druck prüfen und nur dann ein weiteres Ziel öffnen, wenn die Reserve danach noch tragfähig ist.',
-      evidence:worst?`${clock(worst.seconds)} · ${worst.targetName??'Ziel nicht benannt'} · eigene Truppen ${fmt(worst.delta30s?.troops??0)} · eigenes Gebiet ${fmt(worst.delta30s?.tiles??0)} · Zielgebiet ${fmt(worst.targetDelta30s?.tiles??0)}`:`${fmt(ratio*100)} % der auswertbaren Folgefenster zeigten eine positive Gebietsreaktion.`,
-      seconds:worst?.seconds??attackActions[0]?.seconds??null,
-      caveat:'30 Sekunden sind ein Beobachtungsfenster, kein vollständiger Kampfabschluss. Andere Angriffe, passive Eroberungen und Reisezeiten wirken mit; daraus folgt keine sichere Kausalität.'
+      confidence:confidenceFor(alive.length,evaluatedAttackActions.length),
+      title:negativeWindows.length?'Angriffe mit ungünstigem Truppenverhältnis prüfen':favorableTrades.length?'Beobachtete Truppentausche waren überwiegend günstig':'Angriffe mit sichtbarer Gebietsreaktion',
+      decision:\`\${evaluatedAttackActions.length} von \${attackActions.length} Angriffen hatten auswertbare 30-Sekunden-Ziel- oder Gebietsdaten.\`,
+      consequence:\`\${territorialWins.length} zeigten eine positive Gebietsreaktion; \${favorableTrades.length} weitere einen höheren beobachteten Truppenverlust beim Ziel als bei dir; \${evenTrades.length} waren ausgeglichen; \${negativeWindows.length} zeigten höhere eigene Truppenverluste ohne Gebietsreaktion.\`,
+      alternative:negativeWindows.length?'Vor einem Folgeangriff Zielzustand, eigene aktive Angriffe und eingehenden Druck vergleichen. Bei ungünstigem Truppenverhältnis erst Reserve und Front stabilisieren.':'Nutze günstige Truppentausche nur dann als Anlass zum Nachsetzen, wenn die eigene Reserve und die übrigen Fronten stabil bleiben; prüfe das Ziel erneut vor dem nächsten Befehl.',
+      trainingRule:'Vergleiche nach jedem Angriff im gleichen Beobachtungsfenster eigene und gegnerische Truppenänderung sowie Gebietsänderung. Öffne erst dann ein weiteres Ziel, wenn der Tausch und die verbleibende Reserve tragfähig sind.',
+      evidence:example?\`\${clock(example.seconds)} · \${example.targetName??'Ziel nicht benannt'} · eigene Truppen \${fmt(example.delta30s?.troops??0)} · Zieltruppen \${fmt(example.targetDelta30s?.troops??0)} · eigenes Gebiet \${fmt(example.delta30s?.tiles??0)} · Zielgebiet \${fmt(example.targetDelta30s?.tiles??0)} · beobachtete Verluste: du \${fmt(exampleOwnLoss)}, Ziel \${fmt(exampleTargetLoss)}\`:\`\${fmt(ratio*100)} % der auswertbaren Fenster zeigten Gebietsfortschritt oder einen günstigen Truppentausch.\`,
+      seconds:example?.seconds??attackActions[0]?.seconds??null,
+      caveat:'30 Sekunden sind ein Beobachtungsfenster, kein vollständiger Kampfabschluss. Andere Angriffe, passive Eroberungen und Reisezeiten können die Truppenänderungen beeinflussen; das Verhältnis ist kein sicherer Kausalnachweis.'
     });
   }
   const loadedFronts=actions.filter(a=>a.type==='attack'&&a.ownFrontContextBefore&&((a.ownFrontContextBefore.activeTargetCount>=2)||(a.ownFrontContextBefore.incomingAttackCount>=1)));

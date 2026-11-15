@@ -27,6 +27,41 @@ therefore integration candidates, not main-branch behavior. The tests must not
 pretend those paths already execute on main. Re-run the gate against the merged
 integration candidate once those PRs are integrated.
 
+## Implemented integration coverage on this branch
+
+The integration workflow now runs real production-module calls and an Electron
+browser scenario. The browser scenario downloads the public Europe and Levant
+records, selects the player named OligenOle, runs both exact historical engines,
+compares every recorded hash, derives coaching reports from reconstructed engine
+samples and intents, builds the replay timeline, reruns the same replay to check
+deterministic coach output, and verifies the match/profile IndexedDB records after
+a renderer reload.
+
+Action timestamps are checked against the source replay turns and the selected
+player's actual recorded intents. The longitudinal report is built from the two
+verified simulation results; unverified matches are excluded by the production
+longitudinal module.
+
+## Explicit map integration boundary
+
+The territory owner-grid / selected-time map implementation and responsive map
+UI belong to PR #145 and are not part of this branch's source tree. This gate
+therefore does not claim to validate territory snapshots, tile-owner deltas,
+map-to-timeline selection, or missing-map-snapshot behavior. It validates only
+the timeline events and engine-backed coaching markers available on this branch.
+Once PR #145 is integrated into a common branch, extend the same real replay
+browser harness to assert the exact ReplayReader tileState snapshots and
+time-selection behavior; do not infer territory from aggregate tile counts.
+
+## Update-data boundary
+
+This integration job validates the renderer store interfaces and profile/replay
+round-trip on IndexedDB. It does not simulate Windows installer replacement or
+Android package replacement. Those destructive-in-practice platform transitions
+remain covered by the separate Windows packaging/smoke and Android in-place APK
+upgrade workflows, which must pass independently before platform data retention
+can be declared.
+
 ## Real replay regression fixtures
 
 - Europe: `c2R2JHZgUi`, engine

@@ -7,7 +7,7 @@ import { pathToFileURL } from "node:url";
 const MIN_PACKAGE_BYTES = 1_000_000;
 
 export function expectedReleaseNames(version) {
-  if (!/^\\d+\\.\\d+\\.\\d+$/.test(version)) throw new Error("RELEASE_VERSION must be a stable x.y.z version.");
+  if (!/^\d+\.\d+\.\d+$/.test(version)) throw new Error("RELEASE_VERSION must be a stable x.y.z version.");
   return {
     installer: `OpenFront Replay Coach Setup ${version}.exe`,
     portable: `OpenFront Replay Coach-${version}-win.zip`,
@@ -45,8 +45,8 @@ export async function generateReleaseMetadata(directory, version) {
     assert.ok(size > MIN_PACKAGE_BYTES, `Release package is empty or implausibly small: ${name} (${size} bytes)`);
     artifacts.push({ name, size, sha256: await digestFile(filePath) });
   }
-  await writeFile(path.join(directory, names.checksums), artifacts.map(item => `${item.sha256}  ${item.name}`).join("\\n") + "\\n", "utf8");
-  await writeFile(path.join(directory, names.manifest), JSON.stringify({ schemaVersion: 1, version, artifacts }, null, 2) + "\\n", "utf8");
+  await writeFile(path.join(directory, names.checksums), artifacts.map(item => `${item.sha256}  ${item.name}`).join("\n") + "\n", "utf8");
+  await writeFile(path.join(directory, names.manifest), JSON.stringify({ schemaVersion: 1, version, artifacts }, null, 2) + "\n", "utf8");
   return verifyReleaseArtifacts(directory, version);
 }
 
@@ -67,7 +67,7 @@ export async function verifyReleaseArtifacts(directory, version) {
   assert.equal(new Set(manifestNames).size, packageNames.length, "Manifest contains duplicate package names.");
 
   const checksumText = await readFile(path.join(directory, names.checksums), "utf8");
-  const checksumLines = checksumText.trimEnd().split(/\\r?\\n/);
+  const checksumLines = checksumText.trimEnd().split(/\r?\n/);
   assert.equal(checksumLines.length, packageNames.length, "SHA256SUMS.txt must contain exactly three checksum entries.");
   const checksums = new Map();
   for (const line of checksumLines) {

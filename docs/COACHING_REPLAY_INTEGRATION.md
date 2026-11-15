@@ -19,7 +19,9 @@ The integration consumes the actual structures produced by the coaching engine o
   movement targets.
 
 The current PR #147 report returns a maximum of three prioritized findings in
-`report.findings`. Those are the source for the three strategic cards. Its
+`report.findings`, excluding low-priority context-only findings from the primary
+set. The adapter retains that impact threshold and those findings are the source
+for the three strategic cards. Its
 `seconds` value is game time in seconds, not a wall-clock timestamp.
 
 ## Stable view contract

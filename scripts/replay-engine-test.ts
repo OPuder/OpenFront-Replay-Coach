@@ -391,9 +391,65 @@ window.__runBatchReplayTest = async (gameIds) => {
   } as any);
   const coachingResults = [...coaching.entries()].map(([gameId, value]) => ({ gameId, ...value }));
   const longitudinal = buildLongitudinalCoachReport(coachingResults.map(item => item.longitudinalInput));
-  // Keep the full simulation in the renderer for longitudinal analysis, but do not serialize it a second time across Electron's test bridge.
-  const coachingForAssertion = coachingResults.map(({ longitudinalInput: _longitudinalInput, ...report }) => report);
-  return { summary, outcomes: [...outcomes.values()], coaching: coachingForAssertion, longitudinal };
+
+  // Diagnose every boundary independently. The Electron test bridge must carry
+  // a compact assertion projection, not duplicate large per-match timelines and
+  // findings. Full reports remain in the renderer for longitudinal analysis.
+  const coachingForAssertion = coachingResults.map(({ longitudinalInput: _longitudinalInput, ...report }) => ({
+    gameId: report.gameId,
+    selectedPlayer: report.selectedPlayer,
+    selectedClientId: report.selectedClientId,
+    clientId: report.clientId,
+    verifiedHashes: report.verifiedHashes,
+    totalTicks: report.totalTicks,
+    sampleCount: report.sampleCount,
+    actionCount: report.actionCount,
+    proReport: {
+      phases: report.proReport.phases,
+      dataCoverage: report.proReport.dataCoverage,
+      findings: report.proReport.findings.map((finding: any) => ({
+        id: finding.id, priority: finding.priority, decision: finding.decision,
+        consequence: finding.consequence, alternative: finding.alternative,
+        trainingRule: finding.trainingRule, evidence: finding.evidence, seconds: finding.seconds,
+      })),
+    },
+    engineInsights: report.engineInsights.map((insight: any) => ({
+      id: insight.id, kind: insight.kind, title: insight.title,
+      evidence: insight.evidence, nextStep: insight.nextStep,
+      limitation: insight.limitation, seconds: insight.seconds,
+    })),
+    selection: { primary: report.selection.primary.map((insight: any) => insight.id) },
+    timeline: report.timeline.map((entry: any) => ({
+      id: entry.id, gameId: report.gameId, time: entry.time, title: entry.title,
+      detail: entry.detail, kind: entry.kind, turn: entry.turn,
+      insight: entry.insight ? {
+        id: entry.insight.id, evidence: entry.insight.evidence,
+        nextStep: entry.insight.nextStep, limitation: entry.insight.limitation,
+        seconds: entry.insight.seconds,
+      } : null,
+    })),
+  }));
+  const verifiedGameIds = [...coaching.keys()];
+  const longitudinalMatchIds = coachingResults.map(item => item.longitudinalInput.gameId);
+  if (coachingForAssertion.length !== summary.verified) {
+    throw new Error(`Coaching collection mismatch before Electron bridge: verified=${summary.verified}, reports=${coachingForAssertion.length}, gameIds=${verifiedGameIds.join(",")}`);
+  }
+  if (longitudinal.importedMatches !== coachingForAssertion.length) {
+    throw new Error(`Longitudinal input mismatch before Electron bridge: reports=${coachingForAssertion.length}, imported=${longitudinal.importedMatches}, matchIds=${longitudinalMatchIds.join(",")}`);
+  }
+  return {
+    summary,
+    outcomes: [...outcomes.values()],
+    coaching: coachingForAssertion,
+    longitudinal,
+    bridgeDiagnostics: {
+      verifiedGameIds,
+      reportGameIds: coachingForAssertion.map(item => item.gameId),
+      longitudinalMatchIds,
+      reportCount: coachingForAssertion.length,
+      longitudinalImportedMatches: longitudinal.importedMatches,
+    },
+  };
 };
 
 window.__verifyPersistedProfileTest = async () => {

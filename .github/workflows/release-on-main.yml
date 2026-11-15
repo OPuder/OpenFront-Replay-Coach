@@ -408,6 +408,22 @@ jobs:
       - name: Validate signed Android release-upgrade script syntax
         run: bash -n scripts/test-android-release-upgrade.sh
 
+      - name: Download latest published APK for upgrade regression
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -Eeuo pipefail
+          previous_tag="$(gh release list --limit 1 --json tagName,isDraft,isPrerelease --jq '.[] | select(.isDraft == false and .isPrerelease == false) | .tagName' | head -n 1)"
+          if [[ -z "$previous_tag" ]]; then
+            echo "::error::No previously published stable release is available for the Android upgrade regression."
+            exit 1
+          fi
+          mkdir -p "$RUNNER_TEMP/previous-release"
+          gh release download "$previous_tag" --pattern '*-Android.apk' --dir "$RUNNER_TEMP/previous-release"
+          previous_apk="$(find "$RUNNER_TEMP/previous-release" -type f -name '*-Android.apk' -print -quit)"
+          test -s "$previous_apk"
+          echo "Downloaded previous APK from $previous_tag: $(basename "$previous_apk")"
+
       - name: Install previous published APK and upgrade to exact signed release APK
         timeout-minutes: 15
         uses: reactivecircus/android-emulator-runner@v2

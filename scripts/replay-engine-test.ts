@@ -193,6 +193,60 @@ window.__runBatchReplayTest = async (gameIds) => {
           assert.ok(Number.isFinite(entry.time) && entry.time >= 0 && entry.time <= simulation.totalTicks / 10);
         }
       }
+      // Run the identical immutable replay twice and compare stable coaching outputs.
+      // This is intentionally per-replay; different maps/players are not expected to share scores.
+      const repeated = await simulateReplay(record, buildReplayEngineAssets(record), () => undefined, 50, clientId, signal);
+      if (repeated.status !== "verified" || repeated.verifiedHashes !== simulation.verifiedHashes) {
+        throw new Error(`Repeated simulation verification differs for ${item.gameId}`);
+      }
+      const repeatedSamples = repeated.samples.map((sample: any) => ({
+        tick: sample.tick, frame: sample.frame,
+        players: sample.players.map((player: any) => ({
+          clientID: player.clientID, alive: player.alive, tiles: player.tiles,
+          gold: player.gold, goldEarned: player.goldEarned, troops: player.troops,
+          outgoingAttackDetails: player.outgoingAttackDetails, incomingAttackDetails: player.incomingAttackDetails,
+          allies: player.allies, betrayals: player.betrayals, unitCounts: player.unitCounts,
+        })),
+      }));
+      const repeatedActions = repeated.actionReviews.map((action: any) => ({
+        seconds: action.seconds, type: action.type, label: action.label, targetName: action.targetName,
+        delta10s: action.delta10s ? { tiles: action.delta10s.tiles, gold: action.delta10s.gold, troops: action.delta10s.troops } : null,
+        delta30s: action.delta30s ? { tiles: action.delta30s.tiles, gold: action.delta30s.gold, troops: action.delta30s.troops } : null,
+        targetDelta30s: action.targetDelta30s ? { tiles: action.targetDelta30s.tiles, gold: action.targetDelta30s.gold, troops: action.targetDelta30s.troops } : null,
+        ownFrontContextBefore: action.ownFrontContextBefore, targetPressureBefore: action.targetPressureBefore,
+      }));
+      const repeatedProReport = buildProCoachReport(repeatedSamples, repeatedActions, clientId, repeated.totalTicks / 10);
+      const repeatedInsights = buildEngineCoachInsights(repeated.playerReview as any, repeated.actionReviews as any, repeated.samples as any);
+      const repeatedTimeline = buildReplayTimeline(repeated.actionReviews.map((action: any) => ({
+        time: action.seconds, title: action.label, detail: action.details, kind: action.type, turn: action.turn,
+      })), repeatedInsights);
+      const stableCoachProjection = (value: any) => ({
+        confidence: value.confidence,
+        phases: value.phases.map((phase: any) => ({
+          id: phase.id, territoryPerMinute: phase.territoryPerMinute,
+          incomePerMinute: phase.incomePerMinute, troopChangePerMinute: phase.troopChangePerMinute,
+        })),
+        findings: value.findings.map((finding: any) => ({
+          id: finding.id, priority: finding.priority, decision: finding.decision,
+          consequence: finding.consequence, alternative: finding.alternative,
+          trainingRule: finding.trainingRule, evidence: finding.evidence, seconds: finding.seconds,
+        })),
+      });
+      const stableInsightProjection = (value: any[]) => value.map(insight => ({
+        id: insight.id, kind: insight.kind, title: insight.title,
+        evidence: insight.evidence, seconds: insight.seconds, nextStep: insight.nextStep,
+        limitation: insight.limitation,
+      }));
+      const stableTimelineProjection = (value: any[]) => value.map(event => ({
+        id: event.id, time: event.time, title: event.title, kind: event.kind,
+        turn: event.turn, evidence: event.insight?.evidence ?? null,
+      }));
+      if (JSON.stringify(stableCoachProjection(proReport)) !== JSON.stringify(stableCoachProjection(repeatedProReport))
+        || JSON.stringify(stableInsightProjection(engineInsights)) !== JSON.stringify(stableInsightProjection(repeatedInsights))
+        || JSON.stringify(stableTimelineProjection(timeline)) !== JSON.stringify(stableTimelineProjection(repeatedTimeline))) {
+        throw new Error(`Replay-to-coaching output is not deterministic for ${item.gameId}`);
+      }
+
       const longitudinalInput = {
         gameId: String(record.info?.gameID ?? record.gameId ?? item.gameId),
         mapName: String(record.info?.config?.gameMap ?? "Unknown"),

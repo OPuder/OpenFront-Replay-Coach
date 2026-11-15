@@ -115,6 +115,7 @@ test('longitudinal recurrence sees evidence-ranked findings below the per-match 
   const recurring=report.recurringFindings.find(item=>item.id==='attack-follow-through');
   assert.ok(recurring,'A repeated pattern below the individual Top 3 must remain visible longitudinally');
   assert.equal(recurring.occurrences,3);
+  assert.ok(!report.recurringFindings.some(item=>item.id==='phase-focus'),'Low-priority phase summaries must not become recurring strategic errors');
 });
 
 test('one verified match never becomes a recurring coaching claim', () => {

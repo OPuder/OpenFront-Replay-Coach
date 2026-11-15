@@ -82,7 +82,14 @@ assert.ok(androidUpdateRegression.includes('adb -s emulator-5554 shell "run-as $
 assert.match(androidUpdateRegression, /adb -s emulator-5554 install -r/);
 assert.match(androidUpdateRegression, /keep-this-data/);
 assert.match(androidUpdateRegression, /versionCode=\$expected_version_code/);
-assert.match(androidUpdateRegression, /adb -s emulator-5554 shell monkey/);
+assert.match(androidUpdateRegression, /adb start-server/);
+assert.match(androidUpdateRegression, /sys\.boot_completed=1 within 150 seconds/);
+assert.match(androidUpdateRegression, /Package Manager did not become ready within 90 seconds/);
+assert.match(androidUpdateRegression, /function install_apk\(/);
+assert.match(androidUpdateRegression, /cmd package resolve-activity/);
+assert.match(androidUpdateRegression, /am start -W -n/);
+assert.match(androidUpdateRegression, /pidof/);
+assert.doesNotMatch(androidUpdateRegression, /seq -s 1 60/);
 
 
 assert.match(releaseWorkflow, /Verify published release contains exactly three usable artifacts/);

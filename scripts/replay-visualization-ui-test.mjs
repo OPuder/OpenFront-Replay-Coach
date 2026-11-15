@@ -4,6 +4,11 @@ import { app, BrowserWindow } from 'electron';
 
 const port=5187;
 let server, window;
+const watchdog=setTimeout(()=>{
+  console.error('Replay visualization UI test exceeded its 120-second watchdog');
+  process.exit(124);
+},120000);
+watchdog.unref();
 const wait=async url=>{for(let i=0;i<80;i++){try{const r=await fetch(url);if(r.ok)return;}catch{}await new Promise(resolve=>setTimeout(resolve,250));}throw new Error('Vite UI test server did not start');};
 async function main(){
   app.commandLine.appendSwitch('no-sandbox');app.commandLine.appendSwitch('disable-gpu');await app.whenReady();
@@ -33,9 +38,12 @@ async function main(){
     assert.ok(state.hasConsequence,'Priority card must explain the consequence at '+width+'px');
     assert.ok(state.hasAlternative,'Priority card must show a better alternative at '+width+'px');
     assert.ok(state.hasAffectedPlayers,'Priority card must identify resolved affected players at '+width+'px');
+    assert.ok(state.hasMissingTimestampLabel,'A finding without a timestamp must be explicitly labelled at '+width+'px');
+    assert.ok(state.missingTimestampCardDisabled,'A finding without a timestamp must not trigger an invented timeline jump at '+width+'px');
+    assert.ok(state.hasNoMissingTimestampMarker,'A finding without a timestamp must not create a timeline marker at '+width+'px');
     assert.ok(state.hasAffectedOverlay,'Affected-territory overlay missing at '+width+'px');
     assert.ok(state.buttons.every(button=>button.name.length>0),'Unlabelled button at '+width+'px');
-    results.push({width,scrollWidth:state.scrollWidth,buttons:state.buttons.length,territory:state.hasTerritory,movement:state.hasMovement,territoryChanges:state.hasTerritoryChanges});
+    results.push({width,scrollWidth:state.scrollWidth,buttons:state.buttons.length,territory:state.hasTerritory,movement:state.hasMovement,territoryChanges:state.hasTerritoryChanges,missingTimestampLabel:state.hasMissingTimestampLabel,missingTimestampDisabled:state.missingTimestampCardDisabled});
   }
   await window.webContents.executeJavaScript("document.querySelector('.replay-viz-priority-card').click()");
   const coached=await window.webContents.executeJavaScript('window.__uiTest()');
@@ -43,7 +51,7 @@ async function main(){
   assert.equal(coached.selectedFrame,'Engine-Frame 100','Selecting a finding must show the engine map snapshot at that finding time');
   assert.ok(coached.hasDecision,'Selected finding must expose its decision context');
   assert.ok(coached.hasEvidenceSeparation,'Replay evidence and coach assessment must be visibly distinguished');
-  await window.webContents.executeJavaScript("document.querySelector('.replay-viz-marker[aria-label^="00:15"]').click()");
+  await window.webContents.executeJavaScript(`document.querySelector('.replay-viz-marker[aria-label^="00:15"]').click()`);
   const selected=await window.webContents.executeJavaScript("window.__uiTest()");
   assert.equal(selected.selectedTime,'00:15','Selecting a timeline marker must update the coaching time');
   assert.equal(selected.selectedFrame,'Engine-Frame 150','Selecting a later timeline marker must advance the rendered map snapshot');
@@ -57,6 +65,6 @@ async function main(){
   const focus=await window.webContents.executeJavaScript("({tag:document.activeElement?.tagName,role:document.activeElement?.getAttribute('role'),label:document.activeElement?.getAttribute('aria-label')||document.activeElement?.textContent?.trim()})");
   assert.equal(focus.tag,'BUTTON','Keyboard Tab must focus an interactive control');
   console.log(JSON.stringify({responsiveViewports:results,keyboardFocus:focus},null,2));
-  window.destroy();server.kill();app.quit();
+  window.destroy();server.kill();app.exit(0);process.exit(0);
 }
-main().catch(error=>{console.error(error);if(window)window.destroy();if(server)server.kill();app.exit(1);});
+main().catch(error=>{console.error(error);if(window)window.destroy();if(server)server.kill();app.exit(1);process.exit(1);});

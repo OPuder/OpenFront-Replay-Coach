@@ -1,5 +1,5 @@
 import { buildReplayEngineAssets, simulateReplay } from "../src/renderer/ReplaySimulation";
-import { decodeTileOwners } from "../src/renderer/ReplayTerritory";
+import { decodeTileOwners, selectTerritorySample } from "../src/renderer/ReplayTerritory";
 import { loadImportedMatch, loadImportedMatches, saveImportedMatch } from "../src/renderer/matchStore";
 import { runSequentialBatchAnalysis } from "../src/renderer/BatchAnalysisRunner";
 import { assessReplayCompatibility } from "../src/main/decoder/ReplayCompatibility";
@@ -8,6 +8,50 @@ import { buildProCoachReport } from "../src/main/decoder/ProCoachAlgorithm";
 import { toReplayCoachFindings } from "../src/renderer/ReplayCoachIntegration";
 
 const batchTestRecords = new Map<string, any>();
+
+function verifyActualTimelineFrameMapping(gameId: string, samples: any[]) {
+  const territorySamples = samples.filter(sample =>
+    sample?.territory && Number.isInteger(sample.tick) && sample.tick >= 0 && sample.tick % 10 === 0 &&
+    Number.isInteger(sample.frame) && sample.frame >= 0
+  );
+  const tickGroups = new Map<number, any[]>();
+  for (const sample of territorySamples) {
+    const group = tickGroups.get(sample.tick) ?? [];
+    group.push(sample);
+    tickGroups.set(sample.tick, group);
+  }
+  const uniqueTimeSamples = [...tickGroups.values()]
+    .filter(group => group.length === 1)
+    .map(group => group[0])
+    .sort((a, b) => a.tick - b.tick);
+  if (uniqueTimeSamples.length < 2) {
+    throw new Error(gameId + ": fewer than two unambiguous real territory samples are available for timeline-to-frame verification");
+  }
+  const indices = uniqueTimeSamples.length >= 3
+    ? [0, Math.floor((uniqueTimeSamples.length - 1) / 2), uniqueTimeSamples.length - 1]
+    : [0, uniqueTimeSamples.length - 1];
+  const checks = [...new Set(indices)].map(index => {
+    const source = uniqueTimeSamples[index];
+    // Replay ticks are ten per second. Use the tick captured by ReplayReader,
+    // not a synthetic fixture time or an inferred frame number.
+    const timelineSeconds = source.tick / 10;
+    const selected = selectTerritorySample(samples, timelineSeconds);
+    if (!selected || selected.tick !== source.tick || selected.frame !== source.frame) {
+      throw new Error(
+        gameId + ": timeline " + timelineSeconds + "s selected " +
+        (selected ? "tick " + selected.tick + " / frame " + selected.frame : "no engine sample") +
+        " instead of actual tick " + source.tick + " / frame " + source.frame
+      );
+    }
+    return { timelineSeconds, sourceTick: source.tick, sourceFrame: source.frame,
+      selectedTick: selected.tick, selectedFrame: selected.frame };
+  });
+  if (checks.length < 2 || new Set(checks.map(check => check.sourceTick)).size < 2) {
+    throw new Error(gameId + ": timeline verification did not cover two distinct real replay times");
+  }
+  return checks;
+}
+
 
 declare global {
   interface Window {
@@ -169,6 +213,9 @@ window.__runBatchReplayTest = async (gameIds) => {
       const coachingFindings = report && selectedClientId && result
         ? toReplayCoachFindings(report.findings, item.gameId, selectedClientId, result.actionReviews, result.samples)
         : [];
+      const timelineFrameChecks = status === "verified" && result && ["Europe", "Levant"].includes(item.gameId)
+        ? verifyActualTimelineFrameMapping(item.gameId, result.samples)
+        : [];
       outcomes.set(item.gameId, {
         gameId: item.gameId,
         status,
@@ -181,8 +228,13 @@ window.__runBatchReplayTest = async (gameIds) => {
           priority: finding.priority,
           confidence: finding.confidence,
           evidenceReferences: finding.evidence.length,
+          evidence: finding.evidence.map(reference => ({
+            kind: reference.kind, seconds: reference.seconds, frame: reference.frame,
+          })),
+          uncertainty: finding.uncertainty,
           affectedOwnerIds: finding.affectedOwnerIds,
         })),
+        timelineFrameChecks,
         verifiedHashes: result?.verifiedHashes ?? 0,
         recordedHashes: Array.isArray(item.record?.turns)
           ? item.record.turns.filter((turn: any) => turn?.hash !== null && turn?.hash !== undefined).length

@@ -111,15 +111,35 @@ async function main() {
     assert.ok(Array.isArray(outcome?.coachingFindings), gameId + " must pass its verified engine result through the coaching/replay adapter");
     assert.equal(outcome.coachingPlayerName, "OligenOle", gameId + " must coach the exact OligenOle profile, not merely any player");
     assert.ok(outcome.detectedFindingCount > 0 && outcome.coachingFindings.length > 0, gameId + " must produce actionable strategic findings for the selected player");
+    assert.ok(Array.isArray(outcome.timelineFrameChecks) && outcome.timelineFrameChecks.length >= 2,
+      gameId + " must prove timeline-to-engine-frame mapping with at least two actual simulated territory samples");
+    for (const check of outcome.timelineFrameChecks) {
+      assert.ok(Number.isFinite(check.timelineSeconds) && check.timelineSeconds >= 0);
+      assert.equal(check.timelineSeconds * 10, check.sourceTick,
+        gameId + " timeline time must be derived from the actual replay tick");
+      assert.equal(check.selectedTick, check.sourceTick,
+        gameId + " timeline selection must resolve the exact actual replay tick");
+      assert.equal(check.selectedFrame, check.sourceFrame,
+        gameId + " timeline selection must display the corresponding actual engine frame");
+    }
     for (const finding of outcome.coachingFindings) {
       assert.equal(finding.matchId, gameId, gameId + " finding must remain scoped to its source match");
       assert.ok(finding.evidenceReferences > 0, gameId + " finding must retain its replay evidence reference");
       assert.ok(finding.timestampSeconds === null || (Number.isFinite(finding.timestampSeconds) && finding.timestampSeconds >= 0));
+      if (finding.timestampSeconds === null) {
+        assert.ok(finding.evidence.every(reference => reference.seconds === null && reference.frame === null),
+          gameId + " missing timestamp must not expose a fabricated evidence time or frame");
+        assert.match(finding.uncertainty, /Kein belastbarer Replay-Zeitstempel/,
+          gameId + " missing timestamp must be explicitly labelled as unavailable");
+      } else {
+        assert.ok(finding.evidence.every(reference => reference.seconds === finding.timestampSeconds),
+          gameId + " evidence timestamp must match the actual finding timestamp");
+      }
       assert.ok(["high", "medium"].includes(finding.priority), "Primary replay cards must exclude low-priority context-only findings");
       assert.ok(["high", "medium", "low"].includes(finding.confidence));
     }
   }
-  console.log("Mixed-engine multi-match batch + strategic coaching contract:", JSON.stringify({ summary: batch.summary, outcomes: batch.outcomes }));
+  console.log("Mixed-engine multi-match batch + real replay timeline/frame mapping + strategic coaching contract:", JSON.stringify({ summary: batch.summary, outcomes: batch.outcomes }));
 
   const abortResult = await window.webContents.executeJavaScript(
     'window.__testAbortBatchReplay("Europe")',

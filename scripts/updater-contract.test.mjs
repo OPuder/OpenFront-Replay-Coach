@@ -82,7 +82,10 @@ assert.ok(androidUpdateRegression.includes('adb -s emulator-5554 shell "run-as $
 assert.match(androidUpdateRegression, /adb -s emulator-5554 install -r/);
 assert.match(androidUpdateRegression, /keep-this-data/);
 assert.match(androidUpdateRegression, /versionCode=\$expected_version_code/);
-assert.match(androidUpdateRegression, /adb -s emulator-5554 shell monkey/);
+assert.match(androidUpdateRegression, /adb start-server/);
+assert.match(androidUpdateRegression, /cmd package resolve-activity/);
+assert.match(androidUpdateRegression, /am start -W -n/);
+assert.match(androidUpdateRegression, /pidof/);
 
 
 assert.match(releaseWorkflow, /Verify published release contains exactly three usable artifacts/);

@@ -1,6 +1,7 @@
 import { unwrapGameRecord } from "../main/decoder/GameRecordShape";
 import { resolveSupportedEngineCommit } from "../main/decoder/ReplayEngineCatalog";
 import { loadReplayEngineModule } from "./engineRegistry";
+import { encodeTileOwners } from "./ReplayTerritory";
 import {
   analyzeAlternativeSpawnPositions,
   analyzeSpawnPositions,
@@ -324,23 +325,7 @@ export async function simulateReplay(
     const mapWidth = Number(reader.header.mapWidth ?? 0);
     const mapHeight = Number(reader.header.mapHeight ?? 0);
     const tileState = state.tileState as Uint16Array | undefined;
-    let territory: ReplayStateSample["territory"] = null;
-    if (tileState && mapWidth > 0 && mapHeight > 0 && tileState.length === mapWidth * mapHeight) {
-      const ownerRuns: number[] = [];
-      let previousOwner = tileState[0] & 0x0fff;
-      let runLength = 0;
-      for (let index = 0; index < tileState.length; index++) {
-        const owner = tileState[index] & 0x0fff;
-        if (owner === previousOwner && runLength < 0x7fffffff) runLength++;
-        else {
-          ownerRuns.push(previousOwner, runLength);
-          previousOwner = owner;
-          runLength = 1;
-        }
-      }
-      if (runLength) ownerRuns.push(previousOwner, runLength);
-      territory = { width: mapWidth, height: mapHeight, ownerRuns };
-    }
+    const territory = tileState ? encodeTileOwners(tileState, mapWidth, mapHeight) : null;
     const unitMovements = [...state.units.values()].flatMap((unit: any) => {
       const fromTile = Number(unit.pos);
       const targetTile = Number(unit.targetTile);

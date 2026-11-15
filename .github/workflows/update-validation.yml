@@ -43,7 +43,7 @@ jobs:
         run: npm ci
 
       - name: Verify updater contract tests and syntax
-        run: node --check scripts/verify-windows-in-place-updates.mjs && node --check scripts/windows-webview-storage.mjs && node --test scripts/updater-contract.test.mjs
+        run: node --check scripts/verify-windows-in-place-updates.mjs && node --check scripts/windows-webview-storage.mjs && node --test scripts/updater-contract.test.mjs && node --import ./vendor/OpenFrontIO/node_modules/tsx/dist/loader.mjs --test scripts/update-preferences.test.mjs
 
       - name: Run full coaching and replay regression suite
         run: npm run test:coach

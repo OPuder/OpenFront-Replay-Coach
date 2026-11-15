@@ -158,6 +158,16 @@ jobs:
           node scripts/set-android-version.mjs "$version"
           echo "RELEASE_VERSION=$version" >> "$GITHUB_ENV"
 
+      - name: Verify permanent Android release signing key and continuity
+        if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          GH_TOKEN: ${{ github.token }}
+        run: bash scripts/verify-android-release-signing.sh
+
       - name: Build debug APK for package validation
         run: |
           cd android
@@ -197,15 +207,15 @@ jobs:
           test -s "$updated"
           echo "OPENFRONT_UPDATE_APK=$updated" >> "$GITHUB_ENV"
 
-      - name: Verify permanent Android release signing key and continuity
-        if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
-        env:
-          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
-          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
-          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
-          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
-          GH_TOKEN: ${{ github.token }}
-        run: bash scripts/verify-android-release-signing.sh
+      - name: Stage the permanently signed APK for audit before emulator testing
+        if: steps.parse_apk.outcome == 'success'
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          version="$(node -p "require('./package.json').version")"
+          mkdir -p release
+          cp android/app/build/outputs/apk/release/app-release.apk "release/OpenFront-Replay-Coach-$version-Android.apk"
+          test -s "release/OpenFront-Replay-Coach-$version-Android.apk"
 
       - name: Test debug data preservation and real published-APK update
         if: steps.parse_apk.outcome == 'success'
@@ -221,15 +231,6 @@ jobs:
           emulator-options: -no-window -no-audio -no-boot-anim -no-snapshot -no-metrics -gpu swiftshader_indirect -memory 4096 -partition-size 4096
           disable-animations: true
           script: bash scripts/test-android-in-place-update.sh
-
-      - name: Stage the permanently signed APK for artifact audit
-        shell: bash
-        run: |
-          set -Eeuo pipefail
-          version="$(node -p "require('./package.json').version")"
-          mkdir -p release
-          cp android/app/build/outputs/apk/release/app-release.apk "release/OpenFront-Replay-Coach-$version-Android.apk"
-          test -s "release/OpenFront-Replay-Coach-$version-Android.apk"
 
       - name: Upload validated permanent-key APK
         uses: actions/upload-artifact@v4

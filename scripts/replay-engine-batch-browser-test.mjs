@@ -107,7 +107,17 @@ async function main() {
   assert.equal(levantResult?.status, "verified");
   assert.equal(levantResult?.recordedHashes, 626);
   assert.equal(levantResult?.verifiedHashes, 626);
-  console.log("Mixed-engine multi-match batch:", JSON.stringify({ summary: batch.summary, outcomes: batch.outcomes }));
+  for (const [gameId, outcome] of [["Europe", europeResult], ["Levant", levantResult]]) {
+    assert.ok(Array.isArray(outcome?.coachingFindings), gameId + " must pass its verified engine result through the coaching/replay adapter");
+    for (const finding of outcome.coachingFindings) {
+      assert.equal(finding.matchId, gameId, gameId + " finding must remain scoped to its source match");
+      assert.ok(finding.evidenceReferences > 0, gameId + " finding must retain its replay evidence reference");
+      assert.ok(finding.timestampSeconds === null || (Number.isFinite(finding.timestampSeconds) && finding.timestampSeconds >= 0));
+      assert.ok(["high", "medium"].includes(finding.priority), "Primary replay cards must exclude low-priority context-only findings");
+      assert.ok(["high", "medium", "low"].includes(finding.confidence));
+    }
+  }
+  console.log("Mixed-engine multi-match batch + strategic coaching contract:", JSON.stringify({ summary: batch.summary, outcomes: batch.outcomes }));
 
   const abortResult = await window.webContents.executeJavaScript(
     'window.__testAbortBatchReplay("Europe")',

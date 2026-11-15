@@ -10,7 +10,7 @@ assert.match(android, /Manifest-und-DEX-vorhanden/);
 assert.match(android, /Android kann die geprüfte APK nicht als Installationspaket lesen/);
 const enginePreparation = read("scripts/prepare-engines.mjs");
 assert.match(enginePreparation, /encoding: "utf8"/);
-assert.match(enginePreparation, /maxBuffer: 32 \\* 1024 \\* 1024/);
+assert.ok(enginePreparation.includes("maxBuffer: 32 * 1024 * 1024"));
 assert.match(enginePreparation, /Dependency installation failed for lockfile group/);
 
 const installer = read("scripts/install-android-updater-plugin.mjs");

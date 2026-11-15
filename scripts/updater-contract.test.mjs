@@ -132,13 +132,14 @@ assert.match(appRenderer, /function navigateTo\([\s\S]*?engineReviewRunId\.curre
 
 const releaseUpgradeWorkflow = read(".github/workflows/release-on-main.yml");
 const releaseUpgradeScript = read("scripts/test-android-release-upgrade.sh");
-assert.ok(releaseUpgradeWorkflow.includes("Download latest published APK for upgrade regression"));
+assert.ok(releaseUpgradeWorkflow.includes('echo "previous_apk=$previous_apk" >> "$GITHUB_OUTPUT"'));
+assert.ok(releaseUpgradeWorkflow.includes("PREVIOUS_APK: ${{ steps.apk.outputs.previous_apk }}"));
 assert.ok(releaseUpgradeWorkflow.includes("Install previous published APK and upgrade to exact signed release APK"));
 assert.ok(releaseUpgradeWorkflow.includes("script: bash scripts/test-android-release-upgrade.sh"));
 assert.ok(releaseUpgradeWorkflow.includes("timeout-minutes: 45"));
 assert.ok(releaseUpgradeWorkflow.includes("emulator-boot-timeout: 1800"));
 assert.ok(!releaseUpgradeWorkflow.includes("disable-animations: true"));
-assert.ok(releaseUpgradeScript.includes("previous-release"));
+assert.ok(releaseUpgradeScript.includes("PREVIOUS_APK"));
 assert.ok(releaseUpgradeScript.includes("for attempt in 1 2 3"));
 assert.ok(releaseUpgradeScript.includes("timeout 90s adb -s emulator-5554 install"));
 assert.ok(releaseUpgradeScript.includes("seq 1 9"));

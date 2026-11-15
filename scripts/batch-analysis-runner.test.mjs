@@ -292,3 +292,85 @@ test('parallel ETA accounts for partially completed active workers before the fi
   assert.ok(inFlight.estimatedRemainingMs > 0, 'ETA should be available before the first replay completes');
   assert.equal(summary.completed, 4);
 });
+
+
+test('large replay batches isolate malformed matches and resume only unfinished work', async () => {
+  const controller = new AbortController();
+  const records = Array.from({ length: 120 }, (_, index) => ({
+    id: `large-${index}`,
+    result: {},
+    analysisStatus: 'pending',
+    fail: index === 37,
+  }));
+  const persisted = new Map();
+  const first = await runSequentialBatchAnalysis(records, {
+    signal: controller.signal,
+    getId: item => item.id,
+    isCompatible: () => true,
+    analyze: async item => {
+      if (item.fail) throw new Error('corrupt replay fixture');
+      return { status: 'verified' };
+    },
+    onStatus: (item, status) => persisted.set(item.id, status),
+    onProgress: () => undefined,
+  });
+  assert.deepEqual(first, {
+    total: 120, completed: 120, verified: 119, unverified: 0,
+    unsupported: 0, failed: 1, cancelled: false,
+  });
+  assert.equal(persisted.get('large-37'), 'failed');
+  assert.equal(persisted.get('large-38'), 'verified');
+  const restartEntries = records.map(item => ({
+    game: { gameId: item.id },
+    result: {},
+    analysisStatus: persisted.get(item.id),
+  }));
+  const resumeQueue = selectGamesToAnalyze(restartEntries);
+  assert.deepEqual(resumeQueue.map(item => item.game.gameId), ['large-37']);
+  const retry = await runSequentialBatchAnalysis(resumeQueue, {
+    signal: new AbortController().signal,
+    getId: item => item.game.gameId,
+    isCompatible: () => true,
+    analyze: async () => ({ status: 'verified' }),
+    onStatus: (item, status) => persisted.set(item.game.gameId, status),
+    onProgress: () => undefined,
+  });
+  assert.equal(retry.verified, 1);
+  assert.equal(persisted.get('large-37'), 'verified');
+});
+
+test('aborted large batch can resume after restart without reprocessing verified entries', async () => {
+  const items = Array.from({ length: 40 }, (_, index) => ({ id: `resume-${index}` }));
+  const controller = new AbortController();
+  const persisted = new Map();
+  const first = await runSequentialBatchAnalysis(items, {
+    signal: controller.signal,
+    getId: item => item.id,
+    isCompatible: () => true,
+    analyze: async item => {
+      if (item.id === 'resume-7') {
+        controller.abort();
+        const error = new Error('cancelled');
+        error.name = 'AbortError';
+        throw error;
+      }
+      return { status: 'verified' };
+    },
+    onStatus: (item, status) => persisted.set(item.id, status),
+    onProgress: () => undefined,
+  });
+  assert.equal(first.cancelled, true);
+  assert.equal(first.verified, 7);
+  const pending = items.filter(item => persisted.get(item.id) !== 'verified');
+  const second = await runSequentialBatchAnalysis(pending, {
+    signal: new AbortController().signal,
+    getId: item => item.id,
+    isCompatible: () => true,
+    analyze: async () => ({ status: 'verified' }),
+    onStatus: (item, status) => persisted.set(item.id, status),
+    onProgress: () => undefined,
+  });
+  assert.equal(second.verified, 33);
+  assert.equal(persisted.size, 40);
+  assert.ok([...persisted.values()].every(status => status === 'verified'));
+});

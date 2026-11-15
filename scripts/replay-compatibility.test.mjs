@@ -160,3 +160,73 @@ test('cached unsupported compatibility is invalidated when an exact engine is ad
   };
   assert.equal(isReplayCompatibilityCurrent(record, previous), false);
 });
+
+test('malformed turn entries and non-object checkpoints are ignored safely', () => {
+  const result = assessReplayCompatibility(matchingRecord({
+    turns: [null, undefined, 42, 'turn', [], {}, { hash: null }, { hash: 0 }, { hash: '' }],
+  }));
+  assert.equal(result.recordedHashCount, 2);
+  assert.equal(result.hashVerificationAvailable, true);
+});
+
+test('empty and structurally invalid replay envelopes never throw', () => {
+  for (const input of [null, undefined, 0, false, '', [], {}, { data: null }, { game: [] }, { result: 42 }]) {
+    assert.doesNotThrow(() => assessReplayCompatibility(input));
+    const result = assessReplayCompatibility(input);
+    assert.equal(result.status, 'missing-engine-version');
+    assert.equal(result.engineVersionCompatible, false);
+  }
+});
+
+test('nested API envelopes resolve only a recognizable game record', () => {
+  const record = matchingRecord();
+  const wrapped = { result: { game: record } };
+  const result = assessReplayCompatibility(wrapped);
+  assert.equal(result.replayCommit, PINNED_OPENFRONT_COMMIT);
+  assert.equal(result.recordedHashCount, 1);
+});
+
+test('malformed map identifiers are rejected before constructing terrain URLs', () => {
+  for (const gameMap of ['', ' ', '!', 'x'.repeat(100)]) {
+    assert.throws(() => buildReplayEngineAssets({
+      gitCommit: PINNED_OPENFRONT_COMMIT,
+      info: { config: { gameMap } },
+      turns: [],
+    }), /Karten-ID/);
+  }
+});
+
+test('missing and malformed engine commit input cannot produce asset URLs', () => {
+  for (const gitCommit of [undefined, null, '', 'not-a-commit', 'deadbee']) {
+    assert.throws(() => buildReplayEngineAssets({
+      gitCommit,
+      info: { config: { gameMap: 'World' } },
+      turns: [],
+    }), /Original-Build/);
+  }
+});
+
+
+
+test('missing and malformed hash checkpoints are counted as unavailable rather than valid hashes', () => {
+  const result = assessReplayCompatibility(matchingRecord({
+    turns: [
+      { turnNumber: 0, hash: null },
+      { turnNumber: 1 },
+      { turnNumber: 2, hash: undefined },
+      { turnNumber: 3, hash: 0 },
+      { turnNumber: 4, hash: 123 },
+    ],
+  }));
+  assert.equal(result.recordedHashCount, 2);
+  assert.equal(result.hashVerificationAvailable, true);
+});
+
+test('a replay with only incomplete hash checkpoints remains explicitly unverified', () => {
+  const result = assessReplayCompatibility(matchingRecord({
+    turns: [{ turnNumber: 0, hash: null }, { turnNumber: 10 }, { turnNumber: 20, hash: undefined }],
+  }));
+  assert.equal(result.status, 'version-compatible-no-hashes');
+  assert.equal(result.recordedHashCount, 0);
+  assert.equal(result.hashVerificationAvailable, false);
+});

@@ -180,7 +180,7 @@ test('empty and structurally invalid replay envelopes never throw', () => {
 
 test('nested API envelopes resolve only a recognizable game record', () => {
   const record = matchingRecord();
-  const wrapped = { result: { data: { game: { record } } } };
+  const wrapped = { result: { game: record } };
   const result = assessReplayCompatibility(wrapped);
   assert.equal(result.replayCommit, PINNED_OPENFRONT_COMMIT);
   assert.equal(result.recordedHashCount, 1);

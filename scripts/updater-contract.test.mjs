@@ -86,30 +86,29 @@ assert.ok(androidUpdateRegression.includes('timeout 30s adb -s emulator-5554 she
 // This smoke script launches with monkey; process survival is covered by the newer bounded emulator regression.
 
 
-assert.match(releaseWorkflow, /Verify published release contains exactly three usable artifacts/);
-assert.match(releaseWorkflow, /distributables\.length === 3/);
-assert.match(releaseWorkflow, /-Android\.apk/);
+assert.match(releaseWorkflow, /Download published release and verify every byte/);
+assert.match(releaseWorkflow, /verify-release-artifacts\.mjs verify/);
 
 const updateValidationWorkflow = read(".github/workflows/update-validation.yml");
-assert.match(updateValidationWorkflow, /Build higher-version APK before emulator startup[\s\S]*?assembleDebug[\s\S]*?Test in-place Android update and preserve app data/);
+assert.match(updateValidationWorkflow, /Build higher-version APK before emulator startup[\s\S]*?assembleDebug[\s\S]*?Test debug data preservation and real published-APK update/);
 assert.match(androidUpdateRegression, /OPENFRONT_UPDATE_APK/);
 assert.doesNotMatch(androidUpdateRegression, /gradlew|assembleDebug/);
-assert.match(updateValidationWorkflow, /Test in-place Android update and preserve app data[\s\S]*?if: always\(\) && steps\.parse_apk\.outcome == 'success'/);
+assert.match(updateValidationWorkflow, /Test debug data preservation and real published-APK update[\s\S]*?if: steps\.parse_apk\.outcome == 'success'/);
 
 assert.ok(
-  updateValidationWorkflow.indexOf("Test in-place Android update and preserve app data") <
-    updateValidationWorkflow.indexOf("Verify permanent Android release signing key and continuity"),
-  "The debug emulator update test must run before the signing gate modifies generated Gradle configuration."
+  updateValidationWorkflow.indexOf("Verify permanent Android release signing key and continuity") <
+    updateValidationWorkflow.indexOf("Test debug data preservation and real published-APK update"),
+  "The permanent release APK and previous published APK must be prepared before the combined emulator test."
 );
 
-assert.ok(releaseWorkflow.includes("names.some(name => /(?:\\.Setup\\.| Setup )[0-9.]+\\.exe$/i.test(name))"), "Release verification must match both legacy dotted and actual spaced NSIS installer filenames.");
+assert.match(read("scripts/verify-release-artifacts.mjs"), /OpenFront Replay Coach Setup/);
 assert.ok(updater.includes(String.raw`/(?:\.Setup\.| Setup )[\d.]+\.exe$/i`), "The main-process updater must recognize the current and legacy installer names.");
 assert.ok(renderer.includes(String.raw`/(?:\.Setup\.| Setup )[\d.]+\.exe$/i`), "The Update Center must recognize the current and legacy installer names.");
 const installerAssetMatcher = /(?:\.Setup\.| Setup )[\d.]+\.exe$/i;
 assert.match("OpenFront Replay Coach Setup 2.2.45.exe", installerAssetMatcher, "The current electron-builder NSIS filename must be detected.");
 assert.match("OpenFront.Replay.Coach.Setup.2.2.44.exe", installerAssetMatcher, "Legacy published installer filenames must remain supported.");
-assert.ok(releaseWorkflow.includes("names.some(name => /-win\\.zip$/i.test(name))"), "Release verification must match the actual Windows portable ZIP filename.");
-assert.ok(releaseWorkflow.includes("names.some(name => /-Android\\.apk$/i.test(name))"), "Release verification must match the actual Android APK filename.");
+assert.match(read("scripts/verify-release-artifacts.mjs"), /OpenFront Replay Coach-.*-win\\.zip/);
+assert.match(read("scripts/verify-release-artifacts.mjs"), /OpenFront-Replay-Coach-.*-Android\\.apk/);
 
 
 const matchStore = read("src/renderer/matchStore.ts");

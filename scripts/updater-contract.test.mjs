@@ -127,7 +127,8 @@ assert.match(startupUpdater, /Installation wartet auf Bestätigung im Update Cen
 assert.doesNotMatch(startupUpdater, /scheduleWindowsInstall\(/);
 
 const replaySimulation = read("src/renderer/ReplaySimulation.ts");
-assert.match(replaySimulation, /const totalRecordedFrames = turns\.reduce\(/);
+assert.match(replaySimulation, /export function getTotalRecordedFrames\(record: unknown\)/);
+assert.match(replaySimulation, /const totalRecordedFrames = getTotalRecordedFrames\(record\);/);
 assert.doesNotMatch(replaySimulation, /\.\.\.turns\.map/);
 assert.match(appRenderer, /engineReviewAbort\.current\?\.abort\(\)/);
 assert.match(appRenderer, /controller\.signal/);

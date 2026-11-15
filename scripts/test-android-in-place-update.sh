@@ -44,7 +44,6 @@ log "Installing the prebuilt update APK for version $next_version."
 timeout 120s adb -s emulator-5554 install -r "$update_apk" || fail "Android rejected the in-place APK update."
 saved="$(timeout 30s adb -s emulator-5554 shell "run-as $package_id cat files/update-regression/sentinel.txt" | tr -d '\r')" || fail "Could not read the preserved app-data sentinel."
 [[ "$saved" == "keep-this-data" ]] || fail "App data was not preserved after adb -s emulator-5554 install -r."
-
 expected_version_code="$((major * 1000000 + minor * 1000 + patch + 1))"
 installed_package="$(timeout 30s adb -s emulator-5554 shell dumpsys package "$package_id")" || fail "Could not inspect installed package metadata."
 grep -F "versionCode=$expected_version_code" <<< "$installed_package" >/dev/null || fail "Installed package does not have expected versionCode $expected_version_code."
@@ -53,9 +52,6 @@ timeout 30s adb -s emulator-5554 shell monkey -p "$package_id" 1 >/dev/null || f
 log "PASS: $current_version -> $next_version; package identity, signature, versionCode and app data preserved."
 
 log "PASS: debug APK update preserved private app data and advanced the installed version."
-
-# Verify production update with the exact APK downloaded from the latest
-# published GitHub Release and the candidate APK signed with the permanent key.
 previous_release_apk="${PREVIOUS_PUBLISHED_APK:-$RUNNER_TEMP/openfront-previous-published-android.apk}"
 current_release_apk="${CURRENT_RELEASE_APK:-$GITHUB_WORKSPACE/android/app/build/outputs/apk/release/app-release.apk}"
 release_version="${RELEASE_VERSION:-$current_version}"
@@ -73,7 +69,6 @@ certificate_sha256() { grep -Eo '[[:xdigit:]]{64}' <<< "$1" | tail -n 1 || true;
 previous_cert="$(certificate_sha256 "$previous_cert_output")"
 current_cert="$(certificate_sha256 "$current_cert_output")"
 [[ -n "$previous_cert" && "$previous_cert" == "$current_cert" ]] || fail "Published APK and current release APK do not have the same signing certificate."
-
 previous_badging="$("$aapt" dump badging "$previous_release_apk" | sed -n '1p')"
 current_badging="$("$aapt" dump badging "$current_release_apk" | sed -n '1p')"
 previous_release_tag="${PREVIOUS_RELEASE_TAG:-}"
@@ -96,7 +91,6 @@ previous_installed="$(timeout 30s adb -s emulator-5554 shell dumpsys package "$p
 previous_installed_code="$(sed -nE 's/.*versionCode=([0-9]+).*/\1/p' <<< "$previous_installed" | head -n 1)"
 [[ "$previous_installed_code" =~ ^[0-9]+$ ]] || fail "Could not read the previous published versionCode."
 (( current_release_code > previous_installed_code )) || fail "Current release versionCode is not newer than the actual published installation."
-
 log "Updating the actual published installation with the current permanently signed APK."
 timeout --signal=INT --kill-after=15s 240s adb -s emulator-5554 install --no-streaming -r "$current_release_apk" || fail "Android rejected the current APK as an in-place update of the published installation."
 current_installed="$(timeout 30s adb -s emulator-5554 shell dumpsys package "$package_id")" || fail "Could not inspect the updated production installation."
@@ -111,4 +105,3 @@ for attempt in $(seq 1 30); do
 done
 [[ -n "$production_pid" ]] || fail "Upgraded production APK did not remain running after launch."
 log "PASS: actual published APK versionCode $previous_installed_code updated in place to $current_release_code with matching certificate; debug upgrade preserved private app data."
-

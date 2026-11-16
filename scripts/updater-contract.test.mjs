@@ -242,6 +242,8 @@ assert.match(androidReleaseUpgrade, /android_prepare_emulator/);
 assert.match(androidReleaseUpgrade, /android_launch_package/);
 assert.doesNotMatch(androidReleaseUpgrade, /sleep 300/);
 assert.match(androidBaselineUiSeed, /android_launch_package/);
+assert.match(androidBaselineUiSeed, /timeout 20s adb -s emulator-5554 shell uiautomator dump/);
+assert.doesNotMatch(androidBaselineUiSeed, /dump_ui \\|\\| true/);
 assert.match(androidReleaseUpgrade, /install_apk "\$current_apk" true[\s\S]*?am force-stop "\$package_id"[\s\S]*?android_launch_package/);
 assert.match(androidReleaseUpgrade, /unsigned-APK rejection[\s\S]*?android_launch_package/);
 assert.match(androidReleaseUpgrade, /wrong-signer rejection[\s\S]*?android_launch_package/);

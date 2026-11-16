@@ -194,8 +194,9 @@ android_launch_package() {
     sleep 2
   done
 
-  local crash=""
-  crash="$(timeout 15s adb -s emulator-5554 logcat -d -t 900 2>&1 | grep -E 'FATAL EXCEPTION|AndroidRuntime|Process: .*de\.openfront\.replaycoach' | tail -n 80 || true)"
+  local crash_context="" crash=""
+  crash_context="$(timeout 15s adb -s emulator-5554 logcat -d -t 1200 2>&1 | grep -B 8 -A 18 -F "Process: $package_id" | tail -n 100 || true)"
+  if grep -Eqi "FATAL EXCEPTION|Fatal signal" <<<"$crash_context"; then crash="$crash_context"; fi
   android_capture_diagnostics "app-launch-not-resumed"
   if [[ -n "$crash" ]]; then
     android_diag_log "CLASSIFICATION=APP_CRASH for $description; fatal runtime evidence follows: $crash"

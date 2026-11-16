@@ -262,9 +262,18 @@ jobs:
           emulator-options: -no-window -no-audio -no-boot-anim -no-snapshot -no-metrics -gpu swiftshader_indirect -memory 3072 -partition-size 4096
           disable-animations: true
           script: bash scripts/test-android-in-place-update.sh && bash scripts/test-android-signature-mismatch.sh
-          env:
-            BASELINE_APK: ${{ env.BASELINE_APK }}
-            CANDIDATE_APK: ${{ env.CANDIDATE_APK }}
+        env:
+          BASELINE_APK: ${{ env.BASELINE_APK }}
+          CANDIDATE_APK: ${{ env.CANDIDATE_APK }}
+
+      - name: Upload Android signature-mismatch runtime evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-signature-mismatch-runtime-evidence
+          path: ${{ runner.temp }}/android-signature-mismatch/signature-mismatch.log
+          if-no-files-found: warn
+          retention-days: 14
 
       - name: Verify permanent Android release signing key and continuity
         if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository

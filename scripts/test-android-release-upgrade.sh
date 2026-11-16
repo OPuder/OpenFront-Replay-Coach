@@ -75,6 +75,16 @@ bash scripts/snapshot-android-web-storage.sh before
 log "Upgrading in place from the exact published $previous_version_code APK to the permanent-key test candidate (versionCode $current_version_code)."
 install_apk "$current_apk" true
 
+# An in-place package update may leave the previous process alive. Force-stop it
+# and prove the newly installed version can cold-start before inspecting its data.
+adb_cmd shell am force-stop "$package_id" >/dev/null 2>&1 || fail "Could not stop the old app process after the in-place update."
+for attempt in 1 2 3 4 5; do
+  old_pid="$(adb_cmd shell pidof "$package_id" 2>/dev/null | tr -d '\r' || true)"
+  [[ -z "$old_pid" ]] && break
+  sleep 2
+done
+[[ -z "${old_pid:-}" ]] || fail "The pre-update app process remained alive after force-stop; a cold-start update test would be invalid."
+
 # Keep the upgrade offline after the baseline was seeded. This prevents background
 # profile refresh from introducing unrelated records while storage integrity is checked.
 adb_cmd shell svc wifi disable >/dev/null 2>&1 || true
@@ -82,8 +92,8 @@ adb_cmd shell svc data disable >/dev/null 2>&1 || true
 
 installed="$(adb_cmd shell dumpsys package "$package_id")" || fail "Could not inspect the upgraded Android package."
 grep -F "versionCode=$current_version_code" <<< "$installed" >/dev/null || fail "Installed package does not report release versionCode $current_version_code."
-log "Launching the upgraded app with separate ADB, ActivityManager and process-crash classification."
-android_launch_package "$package_id" "the upgraded release APK" || fail "Upgraded app did not launch successfully; diagnostics classify ADB, activity-start and app-crash outcomes separately."
+log "Cold-starting the upgraded APK with separate ADB, ActivityManager and process-crash classification."
+android_launch_package "$package_id" "the upgraded release APK after force-stop" || fail "Upgraded app did not cold-start successfully; diagnostics classify ADB, activity-start and app-crash outcomes separately."
 log "Inspecting every LocalStorage/ and IndexedDB record through the test-build-only WebView bridge."
 node scripts/inspect-android-upgrade-data.mjs "$RUNNER_TEMP/after-valid-upgrade-storage.json"
 log "Stopping the upgraded app before the post-upgrade WebView storage snapshot."
@@ -117,9 +127,7 @@ fi
 installed_after_negative="$(adb_cmd shell dumpsys package "$package_id")" || fail "Could not inspect the valid package after the negative test."
 grep -F "versionCode=$current_version_code" <<< "$installed_after_negative" >/dev/null || fail "The failed negative install replaced or damaged the valid package."
 adb_cmd shell am force-stop "$package_id" >/dev/null 2>&1 || true
-adb_cmd shell monkey -p "$package_id" 1 >/dev/null || fail "The valid signed app could not be launched after the Package Manager rejected the negative APK."
-sleep 5
-adb_cmd shell pidof "$package_id" >/dev/null || fail "The valid signed app did not remain running after the negative install."
+android_launch_package "$package_id" "the valid signed app after unsigned-APK rejection" || fail "The valid signed app could not be cold-started after Android rejected the unsigned APK."
 node scripts/inspect-android-upgrade-data.mjs "$RUNNER_TEMP/after-negative-test-storage.json"
 adb_cmd shell am force-stop "$package_id" >/dev/null 2>&1 || true
 bash scripts/snapshot-android-web-storage.sh after
@@ -159,9 +167,7 @@ grep -F "INSTALL_FAILED_UPDATE_INCOMPATIBLE" <<<"$mismatch_output" >/dev/null ||
 installed_after_mismatch="$(adb_cmd shell dumpsys package "$package_id")" || fail "Could not inspect the installed app after signer-mismatch rejection."
 grep -F "versionCode=$current_version_code" <<<"$installed_after_mismatch" >/dev/null || fail "The failed signer-mismatch update replaced or damaged the installed app."
 adb_cmd shell am force-stop "$package_id" >/dev/null 2>&1 || true
-adb_cmd shell monkey -p "$package_id" 1 >/dev/null || fail "The original signed app could not be launched after signer-mismatch rejection."
-sleep 5
-adb_cmd shell pidof "$package_id" >/dev/null || fail "The original signed app did not remain running after signer-mismatch rejection."
+android_launch_package "$package_id" "the original signed app after wrong-signer rejection" || fail "The original signed app could not be cold-started after Android rejected the valid wrong-signer APK."
 node scripts/inspect-android-upgrade-data.mjs "$RUNNER_TEMP/after-signature-mismatch-storage.json"
 node scripts/compare-android-upgrade-snapshots.mjs "$RUNNER_TEMP/after-negative-test-storage.json" "$RUNNER_TEMP/after-signature-mismatch-storage.json"
 adb_cmd shell am force-stop "$package_id" >/dev/null 2>&1 || true

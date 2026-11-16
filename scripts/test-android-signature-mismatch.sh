@@ -17,7 +17,7 @@ base_meta="$("$bt/aapt" dump badging "$baseline_apk"|sed -n '1p')"; cand_meta="$
 grep -F "package: name='$package_id'" <<<"$base_meta" >/dev/null || fail "Baseline package identity mismatch"
 grep -F "package: name='$package_id'" <<<"$cand_meta" >/dev/null || fail "Candidate package identity mismatch"
 base_code="$(sed -E "s/.*versionCode='([0-9]+)'.*/\1/" <<<"$base_meta")"; cand_code="$(sed -E "s/.*versionCode='([0-9]+)'.*/\1/" <<<"$cand_meta")"
-grep -F "versionName=\x272.2.51\x27" <<<"$base_meta" >/dev/null || fail "Baseline APK is not versionName 2.2.51"
+grep -F "versionName='2.2.51'" <<<"$base_meta" >/dev/null || fail "Baseline APK is not versionName 2.2.51"
 ((cand_code>base_code)) || fail "Candidate versionCode is not newer"
 adb start-server; adb -s emulator-5554 wait-for-device
 for i in $(seq 1 60); do [[ "$(adb_cmd shell getprop sys.boot_completed|tr -d '\r')" == 1 ]] && break; sleep 2; done

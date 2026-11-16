@@ -58,6 +58,14 @@ test("classifies a different Electron userData profile as a context error", () =
   assert.throws(() => assertUpgradeSnapshotsEqual(before, after), UpgradeContextError);
 });
 
+test("tracks the Chromium userData profile, not the OS-wide appData root", () => {
+  const before = snapshot(), after = snapshot();
+  // Legacy and candidate Electron processes can resolve the roaming appData
+  // root differently; that root is not the LocalStorage/IndexedDB profile.
+  after.electron.appDataPath = "C:\\Users\\RunnerAdmin\\AppData\\Roaming";
+  assert.equal(assertUpgradeSnapshotsEqual(before, after), true);
+});
+
 test("classifies a changed IndexedDB database identity as a context error", () => {
   const before = snapshot(), after = snapshot();
   after.indexedDB.name = "other-database";

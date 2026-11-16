@@ -126,10 +126,18 @@ for (let attempt = 0; attempt < 120 && !target; attempt++) {
   if (!target) await sleep(1000);
 }
 if (!target) {
-  throw new Error("CONTEXT_ERROR: No initialized Coach renderer was exposed by the exact foreground PID " + expectedAppPid +
+  throw new Error("CONTEXT_ERROR: No application WebView target was exposed by the exact foreground PID " + expectedAppPid +
     ". Required socket=" + expectedSocketName + "; observed sockets=" + JSON.stringify(observedSockets) +
     "; targets=" + JSON.stringify(observedTargets));
 }
+console.log("ANDROID_WEBVIEW_TARGET " + JSON.stringify({
+  expectedAppPid,
+  adbDeviceState: adb("get-state"),
+  process: adb("shell", "ps", "-A").split(/\\r?\\n/).filter(line => line.includes(expectedAppPid)).slice(0, 5),
+  socket: socket,
+  socketPid: assertWebViewSocketPid(socket, expectedAppPid),
+  target: { type: target.type, title: target.title ?? null, url: target.url, hasWebSocketDebuggerUrl: Boolean(target.webSocketDebuggerUrl) },
+}));
 const ws = new WebSocket(target.webSocketDebuggerUrl);
 await new Promise((resolve, reject) => {
   ws.addEventListener("open", resolve, { once: true });

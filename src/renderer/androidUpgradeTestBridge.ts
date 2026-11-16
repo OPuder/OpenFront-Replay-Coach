@@ -1,3 +1,5 @@
+import { loadImportedMatch } from "./matchStore";
+
 const DATABASE_NAME = "openfront-replay-coach";
 
 type StoreSnapshot = {
@@ -135,11 +137,40 @@ export async function installAndroidUpgradeTestBridge(): Promise<void> {
       const profileIds = profiles.map(value => String((value as Record<string, unknown>).playerId ?? "")).sort();
       const profileRelations = [...new Set(matches.map(value => String((value as Record<string, unknown>).playerId ?? "")))].sort();
 
+      // Exercise the production matchStore hydration path, not only raw IndexedDB reads.
+      // A match is reusable only when its saved replay payload is reattached by loadImportedMatch.
+      const reusableMatches = await Promise.all(matches
+        .filter(value => Boolean((value as Record<string, any>).result))
+        .map(async value => {
+          const item = value as Record<string, any>;
+          const playerId = String(item.playerId ?? "");
+          const gameId = String(item.game?.gameId ?? "");
+          const loaded = playerId && gameId ? await loadImportedMatch(playerId, gameId) : null;
+          const record = loaded?.result?.record as Record<string, any> | undefined;
+          return {
+            playerId,
+            gameId,
+            loaded: Boolean(loaded),
+            replayRestored: Boolean(record),
+            recordGameId: record?.info?.gameID ?? record?.game?.info?.gameID ?? null,
+            engineCommit: record?.gitCommit ?? null,
+            turnCount: Array.isArray(record?.turns) ? record.turns.length : 0,
+            analysisStatus: loaded?.analysisStatus ?? null,
+          };
+        }));
+
       return {
         schema: "ofrc-android-upgrade-snapshot-v1",
         appVersion: typeof __APP_VERSION__ === "string" ? __APP_VERSION__ : "unknown",
         capturedAt: new Date().toISOString(),
         localStorage: { count: localStorageEntries.length, entries: localStorageEntries, hashes: localStorageHashes },
+        rehydration: {
+          attempted: reusableMatches.length,
+          loaded: reusableMatches.filter(item => item.loaded).length,
+          replayRestored: reusableMatches.filter(item => item.replayRestored
+            && item.recordGameId === item.gameId && Boolean(item.engineCommit) && item.turnCount > 0).length,
+          matches: reusableMatches,
+        },
         indexedDb: {
           name: db.name,
           version: db.version,

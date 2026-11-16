@@ -292,6 +292,27 @@ jobs:
           echo "OPENFRONT_UPDATE_APK=$updated" >> "$GITHUB_ENV"
           echo "OPENFRONT_SEED_APK=$seed" >> "$GITHUB_ENV"
 
+      - name: Preinstall Android 34 emulator image with transient-download retries
+        if: steps.parse_apk.outcome == 'success'
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          image="system-images;android-34;google_apis;x86_64"
+          image_dir="$ANDROID_HOME/system-images/android-34/google_apis/x86_64"
+          installed=false
+          for attempt in 1 2 3; do
+            if sdkmanager --install "$image" --channel=0 && test -s "$image_dir/source.properties"; then
+              installed=true
+              break
+            fi
+            echo "Android emulator image download/verification failed (attempt $attempt/3); clearing only the incomplete image and SDK download cache."
+            rm -rf "$image_dir" "$ANDROID_HOME/temp" "$HOME/.android/cache"
+            sleep "$((attempt * 10))"
+          done
+          [[ "$installed" == true ]] || { echo "Android 34 Google APIs x86_64 image could not be installed after three verified attempts."; exit 1; }
+          test -s "$image_dir/source.properties"
+          echo "Verified Android emulator image: $image_dir"
+
       - name: Test debug data preservation and real published-APK update
         if: steps.parse_apk.outcome == 'success'
         timeout-minutes: 60
@@ -301,9 +322,9 @@ jobs:
           target: google_apis
           arch: x86_64
           profile: pixel_2
-          cores: 2
+          cores: 4
           emulator-boot-timeout: 1800
-          emulator-options: -no-window -no-audio -no-boot-anim -no-metrics -gpu swiftshader -memory 3072 -partition-size 4096
+          emulator-options: -no-window -no-audio -no-boot-anim -no-metrics -no-snapshot -gpu swiftshader -memory 4096 -partition-size 4096
           disable-animations: true
           script: bash scripts/test-android-in-place-update.sh
 

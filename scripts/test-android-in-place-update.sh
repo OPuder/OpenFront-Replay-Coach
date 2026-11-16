@@ -66,8 +66,8 @@ timeout 120s adb -s emulator-5554 install "$before_apk" || fail "Could not insta
 timeout 30s adb -s emulator-5554 shell "run-as $package_id sh -c 'mkdir -p files/update-regression && printf keep-this-data > files/update-regression/sentinel.txt'" || fail "Could not create app-data sentinel."
 launch_app "$package_id"
 debug_pid="$(adb -s emulator-5554 shell pidof "$package_id" | tr -d '\r')"
-ANDROID_WEBVIEW_PID="$debug_pid" node scripts/android-webview-storage.mjs seed || fail "Could not seed real WebView profile, replay, analysis and settings records."
-ANDROID_WEBVIEW_PID="$debug_pid" node scripts/android-webview-storage.mjs verify || fail "Seeded debug profile/replay/analysis/settings data could not be read before update."
+ANDROID_WEBVIEW_PID="$debug_pid" node scripts/android-webview-storage.mjs seed || { diagnostics "$package_id"; fail "Could not seed real WebView profile, replay, analysis and settings records."; }
+ANDROID_WEBVIEW_PID="$debug_pid" node scripts/android-webview-storage.mjs verify || { diagnostics "$package_id"; fail "Seeded debug profile/replay/analysis/settings data could not be read before update."; }
 
 current_version="$(node -p "require('./package.json').version")"
 IFS='.' read -r major minor patch <<< "$current_version"
@@ -79,7 +79,7 @@ saved="$(timeout 30s adb -s emulator-5554 shell "run-as $package_id cat files/up
 [[ "$saved" == "keep-this-data" ]] || fail "App data was not preserved after adb -s emulator-5554 install -r."
 launch_app "$package_id"
 debug_pid="$(adb -s emulator-5554 shell pidof "$package_id" | tr -d '\r')"
-ANDROID_WEBVIEW_PID="$debug_pid" node scripts/android-webview-storage.mjs verify || fail "Profile, replay, analysis or settings data was not preserved in IndexedDB/localStorage."
+ANDROID_WEBVIEW_PID="$debug_pid" node scripts/android-webview-storage.mjs verify || { diagnostics "$package_id"; fail "Profile, replay, analysis or settings data was not preserved in IndexedDB/localStorage."; }
 expected_version_code="$((major * 1000000 + minor * 1000 + patch + 1))"
 installed_package="$(timeout 30s adb -s emulator-5554 shell dumpsys package "$package_id")" || fail "Could not inspect installed package metadata."
 grep -F "versionCode=$expected_version_code" <<< "$installed_package" >/dev/null || fail "Installed package does not have expected versionCode $expected_version_code."
@@ -126,7 +126,7 @@ timeout 120s adb -s emulator-5554 install --no-streaming "$seed_apk" || fail "Co
 launch_app "$seed_package_id"
 seed_pid="$(adb -s emulator-5554 shell pidof "$seed_package_id" | tr -d '\r')"
 ANDROID_WEBVIEW_PID="$seed_pid" node scripts/android-webview-storage.mjs seed || { diagnostics "$seed_package_id"; fail "Could not seed production profile/replay/analysis/settings data."; }
-ANDROID_WEBVIEW_PID="$seed_pid" node scripts/android-webview-storage.mjs verify || fail "Seeded upgrade data could not be read before update."
+ANDROID_WEBVIEW_PID="$seed_pid" node scripts/android-webview-storage.mjs verify || { diagnostics "$seed_package_id"; fail "Seeded upgrade data could not be read before update."; }
 adb -s emulator-5554 shell am force-stop "$seed_package_id"
 timeout 240s adb -s emulator-5554 install --no-streaming "$previous_release_apk" || fail "Could not install the actual previous published APK."
 previous_installed="$(timeout 30s adb -s emulator-5554 shell dumpsys package "$package_id")" || fail "Could not inspect the previous published installation."

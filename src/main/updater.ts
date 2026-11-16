@@ -275,6 +275,13 @@ export function registerUpdaterIpc(): void {
 }
 export async function autoUpdateOnStartup(): Promise<boolean> {
   if (process.platform !== 'win32' || !app.isPackaged) return false;
+  // The integration test invokes the explicit Update Center IPC against its
+  // loopback release server. Suppress the unrelated startup check so it cannot
+  // race or consume the same test endpoint before the user-triggered install.
+  if (process.env.OFRC_UPDATE_TEST_MODE === '1') {
+    console.info('[ReplayCoach] Update test mode: automatic startup check suppressed.');
+    return false;
+  }
   try {
     const release = await getLatestRelease();
     const version = release.tag_name.replace(/^v/i, '');

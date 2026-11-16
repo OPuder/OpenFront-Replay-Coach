@@ -235,6 +235,7 @@ assert.match(androidEmulatorDiagnostics, /android_capture_diagnostics/);
 assert.match(androidEmulatorDiagnostics, /CLASSIFICATION=ADB_CONNECTION_FAILURE/);
 assert.match(androidEmulatorDiagnostics, /CLASSIFICATION=ACTIVITY_START_FAILURE/);
 assert.match(androidEmulatorDiagnostics, /CLASSIFICATION=APP_CRASH/);
+assert.match(androidEmulatorDiagnostics, /CLASSIFICATION=SYSTEM_ANR/);
 assert.match(androidEmulatorDiagnostics, /FATAL EXCEPTION/);
 assert.match(androidEmulatorDiagnostics, /screencap -p/);
 assert.match(androidEmulatorDiagnostics, /am start -W -n/);

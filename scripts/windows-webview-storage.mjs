@@ -204,10 +204,10 @@ try{
     // buffers unflushed, making a valid persisted player ID disappear on the
     // next launch and invalidating the in-place-upgrade test itself.
     const closed = new Promise((resolve, reject) => {
-      const timer = setTimeout(() => reject(new UpgradeContextError("Chromium did not close cleanly after Browser.close.")), 15000);
+      const timer = setTimeout(() => reject(new UpgradeContextError("Chromium did not close cleanly after Page.close.")), 15000);
       ws.addEventListener("close", () => { clearTimeout(timer); resolve(true); }, { once: true });
     });
-    ws.send(JSON.stringify({ id: ++nextId, method: "Browser.close", params: {} }));
+    ws.send(JSON.stringify({ id: ++nextId, method: "Page.close", params: {} }));
     await closed;
     console.log(JSON.stringify({mode,targetUrl:target.url,renderer,closed:true}));
   } else {

@@ -110,7 +110,7 @@ assert.doesNotMatch(androidWebViewStorageTest, /`\$\{gameId\}:7`/);
 assert.match(androidWebViewStorageTest, /webview_devtools_remote_/);
 assert.match(androidWebViewStorageTest, /localabstract:" \+ candidateSocket/);
 assert.match(androidWebViewStorageTest, /selectCoachWebViewTarget/);
-assert.match(androidWebViewStorageTest, /CONTEXT_ERROR: No initialized Coach renderer/);
+assert.match(androidWebViewStorageTest, /CONTEXT_ERROR: No application WebView target/);
 assert.match(androidWebViewStorageTest, /profile-to-match relationship/);
 assert.match(androidWebViewStorageTest, /Raw replay payload or match relationship/);
 const androidWebViewTarget = read("scripts/android-webview-target.mjs");

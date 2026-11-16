@@ -1,4 +1,4 @@
-param([string]$Installer,[string]$PortableZip,[string]$Helper)
+param([string]$Installer,[string]$PortableZip,[string]$PreviousInstaller,[string]$PreviousPortableZip,[string]$Helper)
 $ErrorActionPreference='Stop'; $root=Join-Path $env:RUNNER_TEMP ('ofrc-rollback-'+[guid]::NewGuid().ToString('N')); New-Item -ItemType Directory $root|Out-Null
 function Start-Check($exe,$label){$p=Start-Process -FilePath $exe -PassThru; Start-Sleep 8; if($p.HasExited){throw "$label failed to start after rollback"}; Stop-Process -Id $p.Id -Force; Write-Host "ROLLBACK_RESTART_OK $label"}
 function Prepare-UserData($exe,$appDataRoot,$label){
@@ -14,7 +14,7 @@ function Prepare-UserData($exe,$appDataRoot,$label){
 }
 try{
  $it=Join-Path $root 'installer'
- $p=Start-Process -FilePath $Installer -ArgumentList @('/S',"/D=$it") -Wait -PassThru; if($p.ExitCode -ne 0){throw "Baseline installer failed: $($p.ExitCode)"}
+ $p=Start-Process -FilePath $PreviousInstaller -ArgumentList @('/S',"/D=$it") -Wait -PassThru; if($p.ExitCode -ne 0){throw "Baseline installer failed: $($p.ExitCode)"}
  $ie=Join-Path $it 'OpenFront Replay Coach.exe'; if(!(Test-Path $ie)){throw 'Baseline installer exe missing'}
  $installerDataFile=Prepare-UserData $ie (Join-Path $root 'installer-appdata') 'installer'
  Set-Content (Join-Path $it 'test-extra-sentinel') 'preserve-me'; $ilog=Join-Path $root 'installer.log'
@@ -25,7 +25,7 @@ try{
  if((Get-Content $installerDataFile -Raw).Trim() -ne 'installer-user-data-preserved'){throw 'Installer user data changed'}
  if(!(Select-String -LiteralPath $ilog -Pattern 'ROLLBACK_VERIFIED' -Quiet)){throw 'Installer complete manifest/hash proof missing'}
  Start-Check $ie 'Windows Installer'; Write-Host "WINDOWS_INSTALLER_ROLLBACK_OK log=$ilog"
- $pt=Join-Path $root 'portable'; New-Item -ItemType Directory $pt|Out-Null; Expand-Archive $PortableZip $pt
+ $pt=Join-Path $root 'portable'; New-Item -ItemType Directory $pt|Out-Null; Expand-Archive $PreviousPortableZip $pt
  $peItem=Get-ChildItem $pt -Filter 'OpenFront Replay Coach.exe' -File -Recurse|Select-Object -First 1; if(!$peItem){throw 'Portable executable missing'}
  $pe=$peItem.FullName; $pr=$peItem.Directory.FullName; Set-Content (Join-Path $pr 'test-extra-sentinel') 'preserve-me'
  $portableDataFile=Prepare-UserData $pe (Join-Path $root 'portable-appdata') 'portable'; $plog=Join-Path $root 'portable.log'

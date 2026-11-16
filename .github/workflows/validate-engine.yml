@@ -8,6 +8,7 @@ on:
       - "vendor/**"
       - "engine-build/**"
       - "package.json"
+      - "scripts/updater-contract.test.mjs"
       - ".github/workflows/validate-engine.yml"
   push:
     branches: [main]

@@ -150,6 +150,11 @@ android_launch_package() {
     return 31
   fi
   resolve_output="$(timeout 20s adb -s emulator-5554 shell cmd package resolve-activity --brief -a android.intent.action.MAIN -c android.intent.category.LAUNCHER "$package_id" 2>&1)" || {
+    if ! timeout 10s adb -s emulator-5554 get-state 2>/dev/null | grep -qx device; then
+      android_capture_diagnostics "adb-lost-during-activity-resolution"
+      android_diag_log "CLASSIFICATION=ADB_CONNECTION_FAILURE while resolving the launcher for $description."
+      return 31
+    fi
     android_capture_diagnostics "activity-resolution-failed"
     android_diag_log "CLASSIFICATION=ACTIVITY_RESOLUTION_FAILURE for $description: $resolve_output"
     return 32
@@ -164,6 +169,11 @@ android_launch_package() {
   start_output="$(timeout 30s adb -s emulator-5554 shell am start -W -n "$launcher" 2>&1)" || start_status=$?
   android_diag_log "Activity start for $description returned exit=$start_status: ${start_output:-<empty>}"
   if [[ "$start_status" -ne 0 ]] || grep -Eqi 'Status: error|Error:|Exception' <<<"$start_output"; then
+    if ! timeout 10s adb -s emulator-5554 get-state 2>/dev/null | grep -qx device; then
+      android_capture_diagnostics "adb-lost-during-activity-start"
+      android_diag_log "CLASSIFICATION=ADB_CONNECTION_FAILURE during ActivityManager start for $description."
+      return 31
+    fi
     android_capture_diagnostics "activity-start-command-failed"
     android_diag_log "CLASSIFICATION=ACTIVITY_START_FAILURE for $description."
     return 34

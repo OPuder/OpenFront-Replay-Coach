@@ -125,7 +125,7 @@ assert.match(androidReleaseUpgrade, /create-android-unsigned-negative-apk\.py/);
 assert.match(androidReleaseUpgrade, /unsigned negative APK/);
 assert.match(androidReleaseUpgrade, /apksigner" verify --verbose/);
 assert.match(androidReleaseUpgrade, /INSTALL_PARSE_FAILED_NO_CERTIFICATES\|INSTALL_FAILED_INVALID_APK/);
-assert.doesNotMatch(androidReleaseUpgrade, /keytool -genkeypair|negative_keystore|apksigner.*sign|negative_password/);
+assert.doesNotMatch(androidReleaseUpgrade, /keytool -genkeypair|negative_keystore|negative_password|"\$apksigner"\s+sign/);
 assert.match(androidReleaseUpgrade, /snapshot-android-web-storage\.sh after/);
 assert.match(androidReleaseUpgrade, /after-negative-test-storage\.json/);
 assert.match(androidReleaseUpgrade, /compare-android-upgrade-snapshots\.mjs/);

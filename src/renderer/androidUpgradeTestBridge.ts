@@ -141,6 +141,7 @@ export async function installAndroidUpgradeTestBridge(): Promise<void> {
       // A match is reusable only when its saved replay payload is reattached by loadImportedMatch.
       const reusableMatches = await Promise.all(matches
         .filter(value => Boolean((value as Record<string, any>).result))
+        .slice(0, 2)
         .map(async value => {
           const item = value as Record<string, any>;
           const playerId = String(item.playerId ?? "");

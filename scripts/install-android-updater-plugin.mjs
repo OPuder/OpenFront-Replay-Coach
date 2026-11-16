@@ -33,17 +33,19 @@ if (!activity.includes("import android.webkit.WebView;")) {
     "import android.os.Bundle;\nimport android.webkit.WebView;"
   );
 }
-if (!activity.includes("WebView.setWebContentsDebuggingEnabled(BuildConfig.DEBUG)")) {
+if (!activity.includes("ApplicationInfo.FLAG_DEBUGGABLE")) {
   const onCreatePattern = /public void onCreate\(Bundle savedInstanceState\)\s*\{/;
   if (!onCreatePattern.test(activity)) {
     throw new Error("Capacitor MainActivity besitzt keine erwartete onCreate-Methode für die Debug-WebView-Konfiguration.");
   }
   activity = activity.replace(
     onCreatePattern,
-    match => match + "\n        WebView.setWebContentsDebuggingEnabled(BuildConfig.DEBUG);"
+    match => match + "\n        if ((getApplicationInfo().flags & android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE) != 0) {
+            WebView.setWebContentsDebuggingEnabled(true);
+        }"
   );
 }
-if (!activity.includes("WebView.setWebContentsDebuggingEnabled(BuildConfig.DEBUG)")) {
+if (!activity.includes("ApplicationInfo.FLAG_DEBUGGABLE")) {
   throw new Error("Capacitor MainActivity konnte WebView-Inspektion für Debug-Builds nicht sicher aktivieren.");
 }
 await writeFile(activityPath, activity);

@@ -66,8 +66,9 @@ async function main(){
   assert.equal(keyboardReady,true,'Electron window and document must own focus before dispatching Tab');
   await window.webContents.sendInputEvent({type:'keyDown',keyCode:'TAB'});
   await window.webContents.sendInputEvent({type:'keyUp',keyCode:'TAB'});
-  const focus=await window.webContents.executeJavaScript("({tag:document.activeElement?.tagName,role:document.activeElement?.getAttribute('role'),label:document.activeElement?.getAttribute('aria-label')||document.activeElement?.textContent?.trim()})");
+  const focus=await window.webContents.executeJavaScript("(() => { const first=document.querySelector('.replay-viz-priority-card'); const active=document.activeElement; return {tag:active?.tagName,role:active?.getAttribute('role'),label:active?.getAttribute('aria-label')||active?.textContent?.trim(),isFirstIntendedButton:active===first}; })()");
   assert.equal(focus.tag,'BUTTON','Keyboard Tab must focus an interactive control');
+  assert.equal(focus.isFirstIntendedButton,true,'Keyboard Tab must focus the first intended coaching button in DOM order');
   console.log(JSON.stringify({responsiveViewports:results,keyboardFocus:focus},null,2));
   window.destroy();server.kill();app.exit(0);process.exit(0);
 }

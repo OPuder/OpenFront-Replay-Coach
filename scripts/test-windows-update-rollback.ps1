@@ -68,8 +68,13 @@ try{
  & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $Helper -Mode Installer -Target $it -Executable $ie -PackagePath $Installer -LogPath $ilog -FailAfterMutation
  if($LASTEXITCODE -ne 1){throw "Installer rollback exit was $LASTEXITCODE"}
  if((Get-AppVersion $it) -ne $installerVersion){throw 'Installer rollback did not restore old application version'}
- if(!(Select-String -LiteralPath $ilog -Pattern 'REGISTRY_BACKUP_VERIFIED.*displayVersion=2.2.51' -Quiet)){throw 'Installer rollback did not capture the baseline uninstall registry metadata'}
- if(!(Select-String -LiteralPath $ilog -Pattern 'REGISTRY_ROLLBACK_VERIFIED displayVersion=2.2.51' -Quiet)){throw 'Installer rollback did not restore the baseline uninstall registry metadata'}
+ $registryWasAbsent=Select-String -LiteralPath $ilog -Pattern 'REGISTRY_BASELINE_NONE' -Quiet
+ if($registryWasAbsent){
+  if(!(Select-String -LiteralPath $ilog -Pattern 'REGISTRY_ROLLBACK_VERIFIED baseline=none' -Quiet)){throw 'Installer rollback did not preserve the baseline absence of uninstall registry metadata'}
+ }else{
+  if(!(Select-String -LiteralPath $ilog -Pattern 'REGISTRY_BACKUP_VERIFIED' -Quiet)){throw 'Installer rollback did not capture the baseline uninstall registry metadata'}
+  if(!(Select-String -LiteralPath $ilog -Pattern 'REGISTRY_ROLLBACK_VERIFIED displayVersion=' -Quiet)){throw 'Installer rollback did not restore the baseline uninstall registry metadata'}
+ }
  if(Test-Path (Join-Path $it '__ROLLBACK_TEST_EXTRA_FILE__.txt')){throw 'Installer left injected extra file'}
  if(Test-Path (Join-Path $it '__ROLLBACK_TEST_EXTRA_DIRECTORY__')){throw 'Installer left injected extra directory'}
  if((Get-Content (Join-Path $it 'test-extra-sentinel') -Raw).Trim() -ne 'preserve-me'){throw 'Installer did not restore extra baseline file'}

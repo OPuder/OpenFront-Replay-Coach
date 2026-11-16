@@ -21,6 +21,37 @@ function Mirror([string]$from,[string]$to){
  & robocopy.exe $from $to /MIR /COPY:DAT /DCOPY:DAT /R:1 /W:1 /NFL /NDL /NJH /NJS /NP
  if($LASTEXITCODE -ge 8){throw "robocopy failed: $LASTEXITCODE"}
 }
+function Find-UninstallEntries {
+ $roots=@(
+  [pscustomobject]@{path='HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall';native='HKCU\Software\Microsoft\Windows\CurrentVersion\Uninstall'},
+  [pscustomobject]@{path='HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall';native='HKLM\Software\Microsoft\Windows\CurrentVersion\Uninstall'},
+  [pscustomobject]@{path='HKLM:\Software\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall';native='HKLM\Software\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall'}
+ )
+ $entries=@()
+ foreach($root in $roots){
+  foreach($key in @(Get-ChildItem -LiteralPath $root.path -ErrorAction SilentlyContinue)){
+   $props=Get-ItemProperty -LiteralPath $key.PSPath -ErrorAction SilentlyContinue
+   if(!$props){continue}
+   $installLocation=[string]$props.InstallLocation
+   $uninstallString=[string]$props.UninstallString
+   $displayIcon=[string]$props.DisplayIcon
+   $targetReference=$false
+   if($installLocation){
+    try{if([IO.Path]::GetFullPath($installLocation).TrimEnd('\') -ieq $Target.TrimEnd('\')){$targetReference=$true}}catch{}
+   }
+   foreach($value in @($uninstallString,$displayIcon)){
+    if($value -and $value.IndexOf($Target,[StringComparison]::OrdinalIgnoreCase) -ge 0){$targetReference=$true}
+   }
+   if($targetReference){
+    $entries+=,[pscustomobject]@{
+     path=$key.PSPath; name=$key.PSChildName; version=[string]$props.DisplayVersion
+     nativeKey=($root.native+'\'+$key.PSChildName); displayName=[string]$props.DisplayName
+    }
+   }
+  }
+ }
+ return ,$entries
+}
 function Stop-AppProcesses {
  Get-Process -Name 'OpenFront Replay Coach' -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
  Start-Sleep -Milliseconds 500
@@ -36,27 +67,17 @@ try{
  $baselineAsar=$baseline | Where-Object { $_.path -eq 'resources/app.asar' -and $_.type -eq 'file' } | Select-Object -First 1
  if(!$baselineAsar){throw 'Baseline resources/app.asar missing'}
  if($Mode -eq 'Installer'){
-  $uninstallRoots=@(
-   [pscustomobject]@{path='HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall';native='HKCU\Software\Microsoft\Windows\CurrentVersion\Uninstall'},
-   [pscustomobject]@{path='HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall';native='HKLM\Software\Microsoft\Windows\CurrentVersion\Uninstall'},
-   [pscustomobject]@{path='HKLM:\Software\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall';native='HKLM\Software\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall'}
-  )
-  $matches=@(foreach($root in $uninstallRoots){Get-ChildItem -LiteralPath $root.path -ErrorAction SilentlyContinue | ForEach-Object {
-   $props=Get-ItemProperty -LiteralPath $_.PSPath -ErrorAction SilentlyContinue
-   if($props.DisplayName -eq 'OpenFront Replay Coach'){
-    $installLocation=[string]$props.InstallLocation; $uninstallString=[string]$props.UninstallString; $displayIcon=[string]$props.DisplayIcon
-    $targetReference=($installLocation -and ([IO.Path]::GetFullPath($installLocation).TrimEnd('\') -ieq $Target.TrimEnd('\'))) -or
-     ($uninstallString -and $uninstallString.IndexOf($Target,[StringComparison]::OrdinalIgnoreCase) -ge 0) -or
-     ($displayIcon -and $displayIcon.IndexOf($Target,[StringComparison]::OrdinalIgnoreCase) -ge 0)
-    if($targetReference){[pscustomobject]@{path=$_.PSPath;name=$_.PSChildName;version=$props.DisplayVersion;nativeKey=($root.native+'\'+$_.PSChildName)}}
-   }
-  }})
-  if($matches.Count -ne 1){throw "Expected exactly one uninstall registry entry referencing $Target; found $($matches.Count)"}
-  $registryKeyPath=$matches[0].path; $registryDisplayVersion=[string]$matches[0].version
-  $nativeKey=$matches[0].nativeKey
-  & reg.exe export $nativeKey $registryBackup /y | Out-Null
-  if($LASTEXITCODE -ne 0 -or !(Test-Path -LiteralPath $registryBackup)){throw 'Could not create installer uninstall-registry backup'}
-  Log "REGISTRY_BACKUP_VERIFIED key=$nativeKey displayVersion=$registryDisplayVersion"
+  $registryEntries=@(Find-UninstallEntries)
+  if($registryEntries.Count -gt 1){throw "Expected at most one uninstall registry entry referencing $Target; found $($registryEntries.Count)"}
+  if($registryEntries.Count -eq 1){
+   $registryKeyPath=$registryEntries[0].path; $registryDisplayVersion=[string]$registryEntries[0].version
+   $nativeKey=$registryEntries[0].nativeKey
+   & reg.exe export $nativeKey $registryBackup /y | Out-Null
+   if($LASTEXITCODE -ne 0 -or !(Test-Path -LiteralPath $registryBackup)){throw 'Could not create installer uninstall-registry backup'}
+   Log "REGISTRY_BACKUP_VERIFIED key=$nativeKey displayVersion=$registryDisplayVersion"
+  }else{
+   Log 'REGISTRY_BASELINE_NONE no uninstall entry referenced the isolated install directory'
+  }
  }
  $baseline | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath ($LogPath+'.baseline-manifest.json')
  Mirror $Target $backup; $backupManifest=Manifest $backup
@@ -105,13 +126,23 @@ try{
    Mirror $backup $Target
    $restoredManifest=Manifest $Target
    Assert-Manifest $baseline $restoredManifest 'Restored tree verification failed'
+   $currentRegistryEntries=@(Find-UninstallEntries)
+   foreach($entry in $currentRegistryEntries){
+    Remove-Item -LiteralPath $entry.path -Recurse -Force
+    Log "REGISTRY_REMOVED_UPDATE_ENTRY key=$($entry.nativeKey)"
+   }
    if($registryKeyPath){
-    if(Test-Path -LiteralPath $registryKeyPath){Remove-Item -LiteralPath $registryKeyPath -Recurse -Force}
     & reg.exe import $registryBackup | Out-Null
     if($LASTEXITCODE -ne 0){throw 'Could not restore previous Windows uninstall registry metadata'}
+    $restoredEntries=@(Find-UninstallEntries)
+    if($restoredEntries.Count -ne 1){throw "Expected one restored uninstall registry entry; found $($restoredEntries.Count)"}
     $restoredRegistry=Get-ItemProperty -LiteralPath $registryKeyPath
     if([string]$restoredRegistry.DisplayVersion -ne $registryDisplayVersion){throw 'Restored uninstall registry DisplayVersion does not match baseline'}
     Log "REGISTRY_ROLLBACK_VERIFIED displayVersion=$($restoredRegistry.DisplayVersion)"
+   }else{
+    $remainingEntries=@(Find-UninstallEntries)
+    if($remainingEntries.Count -ne 0){throw "Rollback left $($remainingEntries.Count) new uninstall registry entries"}
+    Log 'REGISTRY_ROLLBACK_VERIFIED baseline=none'
    }
    $restored=$true
    $restoredManifest | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath ($LogPath+'.restored-manifest.json')

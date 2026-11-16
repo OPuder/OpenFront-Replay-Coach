@@ -104,6 +104,24 @@ jobs:
           Write-Host "Portable: $($portable.Name) ($($portable.Length) bytes)"
           Write-Host "Packaged app.asar: $($appAsar.Length) bytes"
 
+      - name: Exercise real Windows Installer and Portable rollback after file mutations
+        shell: pwsh
+        timeout-minutes: 20
+        run: |
+          $installer = Get-ChildItem release -Filter '*.exe' -File | Select-Object -First 1
+          $portable = Get-ChildItem release -Filter '*.zip' -File | Select-Object -First 1
+          if (-not $installer -or -not $portable) { throw 'Rollback test packages are missing.' }
+          ./scripts/test-windows-update-rollback.ps1 -Installer $installer.FullName -PortableZip $portable.FullName -Helper (Resolve-Path scripts/windows-update-rollback.ps1).Path
+
+      - name: Upload Windows rollback logs and manifests
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-rollback-runtime-evidence
+          path: ${{ runner.temp }}/ofrc-rollback-*/*.log
+          if-no-files-found: warn
+          retention-days: 14
+
       - name: Launch packaged Windows app and verify renderer
         run: node scripts/smoke-test-windows.mjs
 
@@ -155,6 +173,8 @@ jobs:
 
       - name: Validate signed Android release-upgrade script syntax
         run: bash -n scripts/test-android-release-upgrade.sh
+      - name: Validate Android signature-mismatch test syntax
+        run: bash -n scripts/test-android-signature-mismatch.sh
 
       - name: Set up Java
         uses: actions/setup-java@v4
@@ -166,6 +186,16 @@ jobs:
         uses: android-actions/setup-android@v4
         with:
           packages: "platforms;android-36 build-tools;36.0.0"
+
+      - name: Download and verify the published v2.2.51 Android baseline
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          baseline="$RUNNER_TEMP/OpenFront-Replay-Coach-2.2.51-Android.apk"
+          curl --fail --location --retry 3 --output "$baseline" "https://github.com/OPuder/OpenFront-Replay-Coach/releases/download/v2.2.51/OpenFront-Replay-Coach-2.2.51-Android.apk"
+          echo "8b2da877f5e4788c29e13f7788aaca34d07e969e1f03a0f1aff8e0cdc6c030fd  $baseline" | sha256sum --check
+          echo "BASELINE_APK=$baseline" >> "$GITHUB_ENV"
+          echo "CANDIDATE_APK=android/app/build/outputs/apk/debug/app-debug.apk" >> "$GITHUB_ENV"
 
       - name: Build renderer
         run: npm run build:web
@@ -231,7 +261,10 @@ jobs:
           emulator-boot-timeout: 1800
           emulator-options: -no-window -no-audio -no-boot-anim -no-snapshot -no-metrics -gpu swiftshader_indirect -memory 3072 -partition-size 4096
           disable-animations: true
-          script: bash scripts/test-android-in-place-update.sh
+          script: bash scripts/test-android-in-place-update.sh && bash scripts/test-android-signature-mismatch.sh
+          env:
+            BASELINE_APK: ${{ env.BASELINE_APK }}
+            CANDIDATE_APK: ${{ env.CANDIDATE_APK }}
 
       - name: Verify permanent Android release signing key and continuity
         if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository

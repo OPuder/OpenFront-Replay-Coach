@@ -8,13 +8,13 @@ function Manifest([string]$root){
  $base=[IO.Path]::GetFullPath($root).TrimEnd('\')+'\'
  return ,@(Get-ChildItem -LiteralPath $root -Force -Recurse | ForEach-Object {
   $rel=$_.FullName.Substring($base.Length).Replace('\','/')
-  if($_.PSIsContainer){[pscustomobject]@{path=$rel;type='dir';length=0;hash=''}}
-  else{[pscustomobject]@{path=$rel;type='file';length=$_.Length;hash=(Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant()}}
+  if($_.PSIsContainer){[pscustomobject]@{path=$rel;type='dir';length=0;hash='';attributes=$_.Attributes.ToString();lastWriteUtc=$_.LastWriteTimeUtc.ToString('o')}}
+  else{[pscustomobject]@{path=$rel;type='file';length=$_.Length;hash=(Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant();attributes=$_.Attributes.ToString();lastWriteUtc=$_.LastWriteTimeUtc.ToString('o')}}
  } | Sort-Object path)
 }
 function Assert-Manifest($a,$b,[string]$where){
  $x=ConvertTo-Json -InputObject @($a) -Depth 5 -Compress; $y=ConvertTo-Json -InputObject @($b) -Depth 5 -Compress
- if($x -cne $y){$d=Compare-Object $a $b -Property path,type,length,hash | Out-String; throw "$where manifest mismatch: $d"}
+ if($x -cne $y){$d=Compare-Object $a $b -Property path,type,length,hash,attributes,lastWriteUtc | Out-String; throw "$where manifest mismatch: $d"}
 }
 function Mirror([string]$from,[string]$to){
  New-Item -ItemType Directory -Path $to -Force|Out-Null

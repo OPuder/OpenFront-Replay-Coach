@@ -91,16 +91,25 @@ assert.match(releaseWorkflow, /names\.length === 3/);
 assert.match(releaseWorkflow, /-Android\.apk/);
 
 const updateValidationWorkflow = read(".github/workflows/update-validation.yml");
-assert.match(updateValidationWorkflow, /Build higher-version APK before emulator startup[\s\S]*?assembleDebug[\s\S]*?Test in-place Android update and preserve app data/);
+const androidReleaseUpgradeScript = read("scripts/test-android-release-upgrade.sh");
+const buildCandidateStep = updateValidationWorkflow.indexOf("Build higher-version candidate with the permanent release key");
+const emulatorUpgradeStep = updateValidationWorkflow.indexOf("Test genuine published-APK in-place upgrade on Android emulator");
+const productionApkStep = updateValidationWorkflow.indexOf("Build separate non-debuggable production APK without test inspector");
+assert.ok(buildCandidateStep >= 0 && emulatorUpgradeStep > buildCandidateStep && productionApkStep > emulatorUpgradeStep,
+  "The permanent-key test APK must be built before the genuine v2.2.51 emulator upgrade, and the production APK only afterwards.");
+assert.match(updateValidationWorkflow, /ANDROID_UPGRADE_TEST_BUILD: "1"/);
+assert.match(updateValidationWorkflow, /script: bash scripts\\/test-android-release-upgrade\\.sh/);
+assert.match(updateValidationWorkflow, /bash -n scripts\\/test-android-release-upgrade\\.sh/);
+assert.match(androidReleaseUpgradeScript, /seed-android-baseline-ui\\.sh/);
+assert.match(androidReleaseUpgradeScript, /snapshot-android-web-storage\\.sh before/);
+assert.match(androidReleaseUpgradeScript, /snapshot-android-web-storage\\.sh after/);
+assert.match(androidReleaseUpgradeScript, /INSTALL_FAILED_UPDATE_INCOMPATIBLE/);
+assert.match(androidReleaseUpgradeScript, /negative_cert.*candidate_cert/);
+assert.match(androidReleaseUpgradeScript, /after-negative-test-storage\\.json/);
+assert.match(androidReleaseUpgradeScript, /compare-android-upgrade-snapshots\\.mjs/);
+assert.match(androidReleaseUpgradeScript, /compare-android-web-storage\\.mjs/);
 assert.match(androidUpdateRegression, /OPENFRONT_UPDATE_APK/);
 assert.doesNotMatch(androidUpdateRegression, /gradlew|assembleDebug/);
-assert.match(updateValidationWorkflow, /Test in-place Android update and preserve app data[\s\S]*?if: always\(\) && steps\.parse_apk\.outcome == 'success'/);
-
-assert.ok(
-  updateValidationWorkflow.indexOf("Test in-place Android update and preserve app data") <
-    updateValidationWorkflow.indexOf("Verify permanent Android release signing key and continuity"),
-  "The debug emulator update test must run before the signing gate modifies generated Gradle configuration."
-);
 
 assert.ok(releaseWorkflow.includes("names.some(name => /(?:\\.Setup\\.| Setup )[0-9.]+\\.exe$/i.test(name))"), "Release verification must match both legacy dotted and actual spaced NSIS installer filenames.");
 assert.ok(updater.includes(String.raw`/(?:\.Setup\.| Setup )[\d.]+\.exe$/i`), "The main-process updater must recognize the current and legacy installer names.");

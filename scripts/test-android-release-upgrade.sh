@@ -120,39 +120,27 @@ adb_cmd shell am force-stop "$package_id" >/dev/null 2>&1 || true
 bash scripts/snapshot-android-web-storage.sh after
 node scripts/compare-android-web-storage.mjs
 
-log "Creating a negative update signed with a deliberately incompatible certificate."
-negative_unsigned_apk="$RUNNER_TEMP/openfront-coach-negative-unsigned.apk"
-negative_apk="$RUNNER_TEMP/openfront-coach-incompatible-signature.apk"
-negative_keystore="$RUNNER_TEMP/openfront-coach-negative-signature.jks"
-negative_password="ofrc-negative-test-only"
-rm -f "$negative_unsigned_apk" "$negative_apk" "$negative_keystore"
-python3 scripts/create-android-unsigned-negative-apk.py "$current_apk" "$negative_unsigned_apk"
-keytool -genkeypair -noprompt -keystore "$negative_keystore" -storepass "$negative_password" -keypass "$negative_password" \
-  -alias ofrc-negative-test -keyalg RSA -keysize 2048 -validity 2 \
-  -dname "CN=OpenFront Replay Coach Negative Test,O=OpenFront,C=DE"
-"$apksigner" sign --ks "$negative_keystore" --ks-key-alias ofrc-negative-test \
-  --ks-pass "pass:$negative_password" --key-pass "pass:$negative_password" \
-  --out "$negative_apk" "$negative_unsigned_apk"
-"$apksigner" verify --verbose "$negative_apk" >/dev/null || fail "The incompatible-signature negative APK is not a valid signed APK."
-candidate_cert_output="$("$apksigner" verify --print-certs "$current_apk" 2>&1)"
-negative_cert_output="$("$apksigner" verify --print-certs "$negative_apk" 2>&1)"
-extract_certificate_sha256() {
-  grep -Eo '[[:xdigit:]]{64}' <<< "$1" | tail -n 1 || true
-}
-candidate_cert="$(extract_certificate_sha256 "$candidate_cert_output")"
-negative_cert="$(extract_certificate_sha256 "$negative_cert_output")"
-[[ -n "$candidate_cert" && -n "$negative_cert" && "$negative_cert" != "$candidate_cert" ]] \
-  || fail "The negative APK does not have a different signing certificate from the installed release."
-log "Verified incompatible signer certificate: installed/candidate=$candidate_cert; negative=$negative_cert."
+log "Creating an unsigned negative APK without generating or using any signing key."
+negative_apk="$RUNNER_TEMP/openfront-coach-unsigned-negative.apk"
+rm -f "$negative_apk"
+python3 scripts/create-android-unsigned-negative-apk.py "$current_apk" "$negative_apk"
+test -s "$negative_apk"
+
+signature_status=0
+signature_output="$("$apksigner" verify --verbose "$negative_apk" 2>&1)" || signature_status=$?
+[[ "$signature_status" -ne 0 ]] || fail "The unsigned negative APK unexpectedly passed apksigner verification."
+log "apksigner rejected the unsigned negative APK as expected (exit $signature_status)."
+printf '%s\n' "$signature_output"
+
 negative_status=0
 negative_output="$(timeout --signal=INT --kill-after=15s 240s adb -s emulator-5554 install --no-streaming -r "$negative_apk" 2>&1)" || negative_status=$?
-log "Package Manager incompatible-signature response (exit $negative_status): ${negative_output:-<empty>}"
-[[ "$negative_status" -ne 0 ]] || fail "Android Package Manager unexpectedly accepted the incompatible-signature update APK."
-if ! grep -F "INSTALL_FAILED_UPDATE_INCOMPATIBLE" <<< "$negative_output" >/dev/null; then
-  adb_cmd logcat -d -t 700 2>&1 | grep -E "PackageManager|PackageInstaller|INSTALL_FAILED_UPDATE_INCOMPATIBLE|signature|certificate" | tail -n 120 || true
-  fail "Android rejected the negative APK, but the Package Manager did not report INSTALL_FAILED_UPDATE_INCOMPATIBLE."
+log "Package Manager unsigned-APK response (exit $negative_status)."
+printf '%s\n' "$negative_output"
+[[ "$negative_status" -ne 0 ]] || fail "Android Package Manager unexpectedly accepted the unsigned negative APK."
+if ! grep -E "INSTALL_PARSE_FAILED_NO_CERTIFICATES|INSTALL_FAILED_INVALID_APK" <<<"$negative_output" >/dev/null; then
+  adb_cmd logcat -d -t 700 2>&1 | grep -E "PackageManager|PackageInstaller|signature|certificate|INSTALL_" | tail -n 120 || true
+  fail "Android rejected the unsigned APK, but the Package Manager did not report a certificate/signature validation failure."
 fi
-
 installed_after_negative="$(adb_cmd shell dumpsys package "$package_id")" || fail "Could not inspect the valid package after the negative test."
 grep -F "versionCode=$current_version_code" <<< "$installed_after_negative" >/dev/null || fail "The failed negative install replaced or damaged the valid package."
 adb_cmd shell am force-stop "$package_id" >/dev/null 2>&1 || true

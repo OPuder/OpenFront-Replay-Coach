@@ -8,7 +8,7 @@ fail(){ echo "::error::[Android signature rollback] $*"; exit 1; }
 test -s "$baseline_apk" || fail "Published v2.2.51 baseline APK missing"
 test -s "$candidate_apk" || fail "Higher-version candidate APK missing"
 bt="$(find "$ANDROID_HOME/build-tools" -mindepth 1 -maxdepth 1 -type d | sort -V | tail -n 1)"
-tmp="$RUNNER_TEMP/android-signature-mismatch"; mkdir -p "$tmp"; key="$tmp/incompatible-test-key.jks"; candidate="$tmp/incompatible-signature-update.apk"
+tmp="$RUNNER_TEMP/android-signature-mismatch"; mkdir -p "$tmp"; exec > >(tee "$tmp/signature-mismatch.log") 2>&1; key="$tmp/incompatible-test-key.jks"; candidate="$tmp/incompatible-signature-update.apk"
 keytool -genkeypair -noprompt -keystore "$key" -storepass test-only-password -keypass test-only-password -alias incompatible -keyalg RSA -keysize 2048 -validity 2 -dname "CN=OpenFront CI Incompatible Test,O=OpenFront CI,C=DE"
 cp "$candidate_apk" "$candidate"
 "$bt/apksigner" sign --ks "$key" --ks-pass pass:test-only-password --key-pass pass:test-only-password --ks-key-alias incompatible "$candidate"
@@ -17,10 +17,11 @@ base_meta="$("$bt/aapt" dump badging "$baseline_apk"|sed -n '1p')"; cand_meta="$
 grep -F "package: name='$package_id'" <<<"$base_meta" >/dev/null || fail "Baseline package identity mismatch"
 grep -F "package: name='$package_id'" <<<"$cand_meta" >/dev/null || fail "Candidate package identity mismatch"
 base_code="$(sed -E "s/.*versionCode='([0-9]+)'.*/\1/" <<<"$base_meta")"; cand_code="$(sed -E "s/.*versionCode='([0-9]+)'.*/\1/" <<<"$cand_meta")"
-((base_code==20251)) || fail "Baseline is not v2.2.51 (versionCode=$base_code)"
+grep -F "versionName=\x272.2.51\x27" <<<"$base_meta" >/dev/null || fail "Baseline APK is not versionName 2.2.51"
 ((cand_code>base_code)) || fail "Candidate versionCode is not newer"
 adb start-server; adb -s emulator-5554 wait-for-device
 for i in $(seq 1 60); do [[ "$(adb_cmd shell getprop sys.boot_completed|tr -d '\r')" == 1 ]] && break; sleep 2; done
+adb_cmd uninstall "$package_id" >/dev/null 2>&1 || true
 adb_cmd install "$baseline_apk" || fail "Could not install v2.2.51"
 adb_cmd shell "run-as $package_id mkdir -p files/rollback-test"
 adb_cmd shell "run-as $package_id sh -c 'printf %s android-data-preserved > files/rollback-test/sentinel.txt'"

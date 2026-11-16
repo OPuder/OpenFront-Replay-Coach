@@ -29,9 +29,16 @@ test("never selects a target from a socket belonging to another PID", () => {
   assert.throws(() => selectCoachWebViewTarget([target], "webview_devtools_remote_9999", "1234"), /CONTEXT_ERROR/);
 });
 
-test("selects only the titled Coach page with a supported application URL", () => {
+test("selects the initialized Coach page by title and application URL", () => {
   assert.equal(selectCoachWebViewTarget([target], "webview_devtools_remote_1234", "1234"), target);
   assert.equal(selectCoachWebViewTarget([{ ...target, title: "Other app" }], "webview_devtools_remote_1234", "1234"), undefined);
   assert.equal(selectCoachWebViewTarget([{ ...target, url: "https://example.invalid/" }], "webview_devtools_remote_1234", "1234"), undefined);
   assert.equal(selectCoachWebViewTarget([{ ...target, type: "worker" }], "webview_devtools_remote_1234", "1234"), undefined);
+});
+
+test("retains a matching application page with an empty title for renderer diagnostics", () => {
+  const blankTitle = { ...target, title: "" };
+  assert.equal(selectCoachWebViewTarget([blankTitle], "webview_devtools_remote_1234", "1234"), blankTitle);
+  assert.equal(selectCoachWebViewTarget([{ ...target, title: null }], "webview_devtools_remote_1234", "1234")?.title, null);
+  assert.equal(selectCoachWebViewTarget([{ ...target, title: "Unrelated page" }, blankTitle], "webview_devtools_remote_1234", "1234"), blankTitle);
 });

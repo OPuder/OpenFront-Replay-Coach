@@ -78,7 +78,7 @@ android_prepare_emulator() {
   if [[ "$state" != "device" ]]; then
     android_diag_log "Emulator transport state is '$state'; requesting one controlled reconnect."
     timeout 10s adb reconnect offline >/dev/null 2>&1 || true
-    timeout 90s adb -s emulator-5554 wait-for-device || true
+    timeout 60s adb -s emulator-5554 wait-for-device || true
   fi
 
   for attempt in 1 2 3; do
@@ -101,13 +101,13 @@ android_prepare_emulator() {
   fi
 
   android_diag_log "ADB device emulator-5554 is online; checking Android boot completion separately."
-  for attempt in $(seq 1 48); do
-    state="$(timeout 8s adb -s emulator-5554 shell getprop sys.boot_completed 2>/dev/null | tr -d '\r' || true)"
+  for attempt in $(seq 1 30); do
+    state="$(timeout 4s adb -s emulator-5554 shell getprop sys.boot_completed 2>/dev/null | tr -d '\r' || true)"
     if [[ "$state" == "1" ]]; then boot_ok=true; break; fi
     if (( attempt % 6 == 0 )); then
       android_diag_log "Android boot not complete yet (attempt $attempt/48; sys.boot_completed=${state:-empty})."
     fi
-    sleep 5
+    sleep 3
   done
   if [[ "$boot_ok" != true ]]; then
     android_capture_diagnostics "emulator-boot-incomplete"
@@ -116,7 +116,7 @@ android_prepare_emulator() {
 
   local pm_ready=false
   for attempt in 1 2 3 4 5 6; do
-    if timeout 10s adb -s emulator-5554 shell cmd package list packages 2>/dev/null | grep -q '^package:'; then
+    if timeout 5s adb -s emulator-5554 shell cmd package list packages 2>/dev/null | grep -q '^package:'; then
       pm_ready=true
       break
     fi
@@ -179,14 +179,14 @@ android_launch_package() {
     return 34
   fi
 
-  for attempt in $(seq 1 30); do
-    if ! timeout 8s adb -s emulator-5554 get-state 2>/dev/null | grep -qx device; then
+  for attempt in $(seq 1 20); do
+    if ! timeout 4s adb -s emulator-5554 get-state 2>/dev/null | grep -qx device; then
       android_capture_diagnostics "adb-lost-during-launch"
       android_diag_log "CLASSIFICATION=ADB_CONNECTION_FAILURE while launching $description."
       return 31
     fi
-    pid="$(timeout 8s adb -s emulator-5554 shell pidof "$package_id" 2>/dev/null | tr -d '\r' || true)"
-    activity="$(timeout 8s adb -s emulator-5554 shell dumpsys activity activities 2>/dev/null | grep -E 'mResumedActivity|topResumedActivity' | tail -n 2 || true)"
+    pid="$(timeout 4s adb -s emulator-5554 shell pidof "$package_id" 2>/dev/null | tr -d '\r' || true)"
+    activity="$(timeout 4s adb -s emulator-5554 shell dumpsys activity activities 2>/dev/null | grep -E 'mResumedActivity|topResumedActivity' | tail -n 2 || true)"
     if [[ -n "$pid" ]] && grep -F "$launcher" <<<"$activity" >/dev/null; then
       android_diag_log "Activity $launcher is resumed and process $pid is running for $description."
       return 0

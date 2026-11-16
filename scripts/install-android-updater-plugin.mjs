@@ -40,12 +40,15 @@ if (!activity.includes("ApplicationInfo.FLAG_DEBUGGABLE")) {
   }
   activity = activity.replace(
     onCreatePattern,
-    match => match + "\n        if ((getApplicationInfo().flags & android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE) != 0) {
-            WebView.setWebContentsDebuggingEnabled(true);
-        }"
+    match => [
+      match,
+      "        if ((getApplicationInfo().flags & android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE) != 0) {",
+      "            WebView.setWebContentsDebuggingEnabled(true);",
+      "        }"
+    ].join("\n")
   );
 }
-if (!activity.includes("ApplicationInfo.FLAG_DEBUGGABLE")) {
+if (!activity.includes("ApplicationInfo.FLAG_DEBUGGABLE") || !activity.includes("WebView.setWebContentsDebuggingEnabled(true)")) {
   throw new Error("Capacitor MainActivity konnte WebView-Inspektion für Debug-Builds nicht sicher aktivieren.");
 }
 await writeFile(activityPath, activity);

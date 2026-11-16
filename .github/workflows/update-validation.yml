@@ -301,7 +301,8 @@ jobs:
           script: bash scripts/test-android-signature-mismatch.sh
         env:
           BASELINE_APK: ${{ env.BASELINE_APK }}
-          CANDIDATE_APK: ${{ env.CANDIDATE_APK }}
+          # Use the separately built higher-version APK, not the restored baseline APK.
+          CANDIDATE_APK: ${{ env.OPENFRONT_UPDATE_APK }}
 
       - name: Upload Android signature-mismatch runtime evidence
         if: always()

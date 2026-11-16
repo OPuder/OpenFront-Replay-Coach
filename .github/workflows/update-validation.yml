@@ -153,10 +153,18 @@ jobs:
         with:
           packages: "platforms;android-36 build-tools;36.0.0"
 
-      - name: Install GNU timeout and checksum utilities for Android test scripts
+      - name: Install and verify GNU timeout and checksum utilities
+        shell: bash
         run: |
-          brew install coreutils
-          echo "$(brew --prefix coreutils)/libexec/gnubin" >> "$GITHUB_PATH"
+          set -Eeuo pipefail
+          sudo apt-get update
+          sudo apt-get install --no-install-recommends -y coreutils
+          command -v timeout
+          command -v sha256sum
+          timeout --version | head -n 1
+          sha256sum --version | head -n 1
+          timeout 2s bash -c 'sleep 0.1'
+          printf 'gnu-tools-verified=true\\n' | tee "$RUNNER_TEMP/ofrc-gnu-tools.log"
 
       - name: Build renderer with test-only Android storage inspector
         run: |
@@ -230,20 +238,55 @@ jobs:
           echo "RELEASE_VERSION=$current_version" >> "$GITHUB_ENV"
           echo "OPENFRONT_CURRENT_APK=$candidate" >> "$GITHUB_ENV"
 
-      - name: Enable and verify Linux KVM for Android emulator
+      - name: Enable, diagnose and verify Linux KVM before emulator startup
+        shell: bash
         run: |
           set -Eeuo pipefail
-          sudo modprobe kvm || true
-          if grep -qE 'vendor_id[[:space:]]*:[[:space:]]*GenuineIntel' /proc/cpuinfo; then sudo modprobe kvm_intel || true; fi
-          if grep -qE 'vendor_id[[:space:]]*:[[:space:]]*AuthenticAMD' /proc/cpuinfo; then sudo modprobe kvm_amd || true; fi
+          diag="$RUNNER_TEMP/ofrc-android-diagnostics"
+          mkdir -p "$diag"
+          {
+            echo "timestamp_utc=$(date -u +%FT%TZ)"
+            echo "runner_arch=$(uname -m)"
+            echo "runner_kernel=$(uname -sr)"
+            echo "cpu_vendor:"
+            grep -m1 -E 'vendor_id|CPU implementer' /proc/cpuinfo || true
+            echo "kvm_modules_before:"
+            lsmod | grep -E '^kvm' || true
+            echo "kvm_device_before:"
+            ls -l /dev/kvm 2>&1 || true
+            echo "emulator_acceleration_configuration:"
+            echo "requested_arch=x86_64"
+            echo "disable_linux_hw_accel=false"
+            echo "emulator_options=-no-window -no-audio -no-boot-anim -no-snapshot -no-metrics -gpu swiftshader_indirect -memory 4096 -partition-size 4096"
+          } | tee "$diag/kvm-preflight.log"
+          vendor="$(awk -F: '/vendor_id[[:space:]]*:/ {gsub(/[[:space:]]/,"",$2); print $2; exit}' /proc/cpuinfo)"
+          sudo modprobe kvm
+          case "$vendor" in
+            GenuineIntel) sudo modprobe kvm_intel ;;
+            AuthenticAMD) sudo modprobe kvm_amd ;;
+            *) echo "Unsupported or unknown CPU vendor for KVM: ${vendor:-unknown}" | tee -a "$diag/kvm-preflight.log"; exit 1 ;;
+          esac
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
-          test -e /dev/kvm || { echo "GitHub runner does not expose /dev/kvm; refusing slow software-emulation fallback." >&2; exit 1; }
+          if [[ ! -e /dev/kvm ]]; then
+            echo "KVM_PREFLIGHT_FAILURE: GitHub-hosted runner does not expose /dev/kvm." | tee -a "$diag/kvm-preflight.log"
+            exit 1
+          fi
           sudo chmod 666 /dev/kvm
-          test -r /dev/kvm && test -w /dev/kvm
-          ls -l /dev/kvm
-          echo "KVM acceleration device is available to the Android emulator."
+          if [[ ! -r /dev/kvm || ! -w /dev/kvm ]]; then
+            echo "KVM_PREFLIGHT_FAILURE: /dev/kvm is not readable and writable by the runner." | tee -a "$diag/kvm-preflight.log"
+            exit 1
+          fi
+          {
+            echo "kvm_modules_after:"
+            lsmod | grep -E '^kvm' || true
+            echo "kvm_device_after:"
+            ls -l /dev/kvm
+            echo "runner_user=$(id)"
+            echo "kvm_access=read-write"
+            echo "KVM_PREFLIGHT=PASS"
+          } | tee -a "$diag/kvm-preflight.log"
 
       - name: Test genuine published-APK in-place upgrade on Android emulator
         if: success()
@@ -283,13 +326,14 @@ jobs:
             (echo >/dev/tcp/127.0.0.1/5037) >/dev/null 2>&1 && echo listening || echo closed
           } >> "$RUNNER_TEMP/ofrc-android-diagnostics/post-emulator-action.log"
 
-      - name: Upload Android baseline UI diagnostics on failure
-        if: failure()
+      - name: Upload complete Android emulator diagnostics
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: android-baseline-ui-diagnostics
           path: |
             ${{ runner.temp }}/ofrc-android-diagnostics/**
+            ${{ runner.temp }}/ofrc-gnu-tools.log
             ${{ runner.temp }}/ofrc-baseline-screen.png
             ${{ runner.temp }}/ofrc-uiautomator-dump.log
             ${{ runner.temp }}/ofrc-screencap.log

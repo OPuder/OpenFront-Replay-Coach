@@ -23,15 +23,19 @@ adb start-server; adb -s emulator-5554 wait-for-device
 for i in $(seq 1 60); do [[ "$(adb_cmd shell getprop sys.boot_completed|tr -d '\r')" == 1 ]] && break; sleep 2; done
 adb_cmd uninstall "$package_id" >/dev/null 2>&1 || true
 adb_cmd install "$baseline_apk" || fail "Could not install v2.2.51"
-adb_cmd shell "run-as $package_id mkdir -p files/rollback-test"
-adb_cmd shell "run-as $package_id sh -c 'printf %s android-data-preserved > files/rollback-test/sentinel.txt'"
-before="$(adb_cmd shell "run-as $package_id cat files/rollback-test/sentinel.txt"|tr -d '\r')"; [[ "$before" == android-data-preserved ]] || fail "Could not create app-data sentinel"
+adb -s emulator-5554 root >/dev/null
+adb -s emulator-5554 wait-for-device
+uid="$(adb_cmd shell dumpsys package "$package_id" | sed -n 's/.*userId=\([0-9]*\).*/\1/p' | head -n 1 | tr -d '\r')"
+[[ "$uid" =~ ^[0-9]+$ ]] || fail "Could not resolve installed app UID for private-data validation"
+data_dir="/data/user/0/$package_id/files/rollback-test"
+adb_cmd shell "mkdir -p '$data_dir'; printf %s android-data-preserved > '$data_dir/sentinel.txt'; chown -R $uid:$uid '/data/user/0/$package_id/files/rollback-test'; restorecon -RF '/data/user/0/$package_id/files/rollback-test'"
+before="$(adb_cmd shell "cat '$data_dir/sentinel.txt'" | tr -d '\r')"; [[ "$before" == android-data-preserved ]] || fail "Could not create private app-data sentinel"
 set +e; output="$(timeout 180s adb -s emulator-5554 install -r "$candidate" 2>&1)"; status=$?; set -e; echo "$output"
 [[ $status -ne 0 ]] || fail "Android accepted mismatched signature"
 grep -E 'INSTALL_FAILED_UPDATE_INCOMPATIBLE|signatures do not match|signatures are inconsistent' <<<"$output" >/dev/null || fail "Install failed for reason other than signature mismatch"
 installed="$(adb_cmd shell dumpsys package "$package_id")" || fail "Existing app disappeared"
 grep -F "versionCode=$base_code" <<<"$installed" >/dev/null || fail "Existing v2.2.51 package was not retained"
-after="$(adb_cmd shell "run-as $package_id cat files/rollback-test/sentinel.txt"|tr -d '\r')"; [[ "$after" == "$before" ]] || fail "App data changed"
+after="$(adb_cmd shell "cat '$data_dir/sentinel.txt'" | tr -d '\r')"; [[ "$after" == "$before" ]] || fail "App data changed after signature rejection"
 launcher="$(adb_cmd shell cmd package resolve-activity --brief -a android.intent.action.MAIN -c android.intent.category.LAUNCHER "$package_id"|tr -d '\r'|tail -n1)"
 [[ "$launcher" == */* ]] || fail "Could not resolve retained launcher"
 adb_cmd shell am start -W -n "$launcher"

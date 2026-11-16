@@ -68,6 +68,10 @@
       {
         "from": "vendor/OpenFrontIO/LICENSE",
         "to": "licenses/OpenFrontIO-AGPL-3.0.txt"
+      },
+      {
+        "from": "scripts/windows-update-rollback.ps1",
+        "to": "windows-update-rollback.ps1"
       }
     ],
     "extraFiles": [

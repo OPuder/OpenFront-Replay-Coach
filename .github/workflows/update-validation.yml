@@ -198,6 +198,7 @@ jobs:
           npx cap add android
           npx cap sync android
           node scripts/install-android-updater-plugin.mjs
+          npx capacitor-assets generate --android --iconBackgroundColor "#0b1320" --splashBackgroundColor "#0b1320"
 
       - name: Set Android version from package.json
         shell: bash

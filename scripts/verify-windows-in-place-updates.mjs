@@ -121,8 +121,14 @@ async function launch(executable, dataDir, port, mode, extraEnv = {}, requireEle
   // predates the main-process diagnostics added to the candidate build.
   const profilePath = path.join(dataDir, "electron-user-data");
   mkdirSync(profilePath, { recursive: true });
+  const localProxyBypass = extraEnv.OFRC_UPDATE_TEST_MODE === "1" && extraEnv.OFRC_UPDATE_TEST_RELEASE_URL
+    ? {
+        NO_PROXY: [process.env.NO_PROXY, "127.0.0.1,localhost"].filter(Boolean).join(","),
+        no_proxy: [process.env.no_proxy, "127.0.0.1,localhost"].filter(Boolean).join(","),
+      }
+    : {};
   const env = {
-    ...process.env, ...extraEnv,
+    ...process.env, ...extraEnv, ...localProxyBypass,
     APPDATA: appData, LOCALAPPDATA: localData,
     OFRC_UPGRADE_DIAGNOSTICS: "1",
   };
@@ -140,7 +146,7 @@ async function launch(executable, dataDir, port, mode, extraEnv = {}, requireEle
     const electronContext = requireElectronDiagnostics
       ? await waitFor(() => readElectronContext(childOutput), 10000, "Electron userData diagnostics from the packaged main process")
       : readElectronContext(childOutput);
-    return { child, helperResult, childOutput, electronContext, appData, localData, executable };
+    return { child, helperResult, get childOutput() { return childOutput; }, electronContext, appData, localData, executable };
   } catch (error) {
     stop(child);
     throw error;
@@ -204,7 +210,11 @@ async function startLocalReleaseServer(candidateZip) {
   const size = statSync(candidateZip).size;
   const sha256 = digest(candidateZip);
   let origin = "";
+  const requests = [];
   const server = createServer((request, response) => {
+    const entry = { method: request.method, url: request.url, at: new Date().toISOString() };
+    requests.push(entry);
+    console.log("PORTABLE_UPDATE_SERVER_REQUEST", JSON.stringify(entry));
     if (request.url === "/release") {
       response.writeHead(200, { "content-type": "application/json", "cache-control": "no-store" });
       response.end(JSON.stringify({
@@ -232,7 +242,7 @@ async function startLocalReleaseServer(candidateZip) {
   });
   const address = server.address();
   origin = "http://127.0.0.1:" + address.port;
-  return { server, releaseUrl: origin + "/release", sha256 };
+  return { server, releaseUrl: origin + "/release", sha256, requests };
 }
 async function verifyPortableUpdater() {
   console.log("PORTABLE_UPDATER_BASELINE: rebuilt v2.2.51 package from this commit; exercising the production Update Center IPC and PowerShell updater against loopback release metadata.");
@@ -273,6 +283,16 @@ async function verifyPortableUpdater() {
       assertUpgradeSnapshotsEqual(before, after);
       console.log("WINDOWS_IN_PLACE_UPGRADE_OK PORTABLE updater-script v2.2.51 -> v" + version + " downloaded ZIP SHA-256=" + server.sha256 + "; full profile, match, replay, simulation, analysis, LocalStorage and IndexedDB contents retained");
     } finally { stop(updatedSession.child); }
+  } catch (error) {
+    const updateLogPath = path.join(dataDirectory, "electron-user-data", "update-install.log");
+    console.error("PORTABLE_UPDATER_FAILURE_DIAGNOSTICS", JSON.stringify({
+      releaseUrl: server.releaseUrl,
+      serverRequests: server.requests,
+      appOutput: baselineSession?.childOutput?.slice(-12000) ?? "",
+      updaterLog: existsSync(updateLogPath) ? readFileSync(updateLogPath, "utf8").slice(-12000) : null,
+      error: String(error?.stack ?? error),
+    }));
+    throw error;
   } finally {
     if (baselineSession) stop(baselineSession.child);
     try { server.server.close(); } catch {}

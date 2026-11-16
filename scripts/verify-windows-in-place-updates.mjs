@@ -178,7 +178,12 @@ async function verifyNsisUpdate() {
     assertFixtureRelationships(before, "baseline");
     reportSnapshot("NSIS_BEFORE", before);
     const beforeHash = digest(baseline.archive);
-    stop(baselineSession.child);
+    // Flush the actual persisted Chromium profile before the NSIS installer
+    // replaces the application. taskkill is only a failure cleanup: it can
+    // terminate Chromium before LocalStorage's LevelDB buffers reach disk.
+    const gracefulClose = await invokeHelper("close", 9231, path.dirname(baseline.executable));
+    assert.equal(gracefulClose.closed, true, "Published v2.2.51 renderer did not acknowledge a graceful Chromium shutdown.");
+    await waitFor(() => baselineSession.child.exitCode !== null, 15000, "published v2.2.51 application to exit cleanly and flush browser storage");
     const candidate = install(path.join(current, newInstaller), installDirectory);
     assert.notEqual(digest(candidate.archive), beforeHash, "NSIS installer did not replace the existing application files.");
     assert.equal(normalizedWindows(candidate.executable), normalizedWindows(baseline.executable), "NSIS update changed the installed executable path.");

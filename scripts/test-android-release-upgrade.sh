@@ -178,7 +178,7 @@ log "Verified that both APKs are validly signed and their SHA-256 signer fingerp
 mismatch_status=0
 mismatch_output="$(timeout --signal=INT --kill-after=15s 240s adb -s emulator-5554 install --no-streaming -r "$test_signed_apk" 2>&1)" || mismatch_status=$?
 log "Package Manager valid-but-incompatible-signature response (exit $mismatch_status)."
-printf '%s\\n' "$mismatch_output"
+printf '%s\n' "$mismatch_output"
 [[ "$mismatch_status" -ne 0 ]] || fail "Android Package Manager unexpectedly accepted an APK signed by a different valid certificate."
 grep -F "INSTALL_FAILED_UPDATE_INCOMPATIBLE" <<<"$mismatch_output" >/dev/null || {
   adb_cmd logcat -d -t 700 2>&1 | grep -E "PackageManager|PackageInstaller|signature|certificate|INSTALL_" | tail -n 120 || true

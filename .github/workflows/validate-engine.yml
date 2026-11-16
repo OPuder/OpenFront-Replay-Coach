@@ -9,6 +9,7 @@ on:
       - "engine-build/**"
       - "package.json"
       - "scripts/updater-contract.test.mjs"
+      # PR #148 adds Android updater contract coverage; keep this gate in its six-workflow acceptance set.
       - ".github/workflows/validate-engine.yml"
   push:
     branches: [main]

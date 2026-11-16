@@ -26,8 +26,15 @@ grep -F "versionName='2.2.51'" <<<"$base_meta" >/dev/null || fail "Baseline APK 
 ((cand_code>base_code)) || fail "Candidate versionCode is not newer"
 adb start-server; adb -s emulator-5554 wait-for-device
 for i in $(seq 1 60); do [[ "$(adb_cmd shell getprop sys.boot_completed|tr -d '\r')" == 1 ]] && break; sleep 2; done
-adb_cmd uninstall "$package_id" >/dev/null 2>&1 || true
-adb_cmd install "$baseline_apk" || fail "Could not install v2.2.51"
+adb_cmd shell am force-stop "$package_id" >/dev/null 2>&1 || true
+if adb_cmd shell pm path "$package_id" >/dev/null 2>&1; then
+  uninstall_output="$(adb_cmd uninstall "$package_id" 2>&1)" || fail "Could not remove previous emulator package before installing the published baseline: $uninstall_output"
+  echo "$uninstall_output"
+  grep -F 'Success' <<<"$uninstall_output" >/dev/null || fail "Previous emulator package uninstall was not confirmed"
+fi
+install_output="$(adb_cmd install "$baseline_apk" 2>&1)" || { echo "$install_output"; fail "Could not install published v2.2.51 baseline APK"; }
+echo "$install_output"
+grep -F 'Success' <<<"$install_output" >/dev/null || fail "Published v2.2.51 baseline installation was not confirmed"
 adb -s emulator-5554 root >/dev/null
 adb -s emulator-5554 wait-for-device
 uid="$(adb_cmd shell dumpsys package "$package_id" | sed -n 's/.*userId=\([0-9]*\).*/\1/p' | head -n 1 | tr -d '\r')"

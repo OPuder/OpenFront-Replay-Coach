@@ -297,7 +297,9 @@ assert.match(windowsInPlace, /Rollback erfolgreich; vorherige Version wurde wied
 assert.match(windowsInPlace, /WINDOWS_PORTABLE_ROLLBACK_OK/);
 assert.match(windowsInPlace, /reportSnapshot\("NSIS_BEFORE"/);
 assert.match(windowsInPlace, /reportSnapshot\("PORTABLE_AFTER"/);
-assert.doesNotMatch(windowsInPlace, /--user-data-dir=/);
+assert.match(windowsInPlace, /const profilePath = path\.join\(dataDir, "electron-user-data"\)/);
+assert.match(windowsInPlace, /"--user-data-dir=" \+ profilePath/);
+assert.match(installer, /WebView\.setWebContentsDebuggingEnabled\(BuildConfig\.DEBUG\)/);
 assert.match(windowsStorage, /isCoachRendererTarget/);
 assert.match(windowsStorage, /assertCoachRendererTarget/);
 assert.match(windowsStorage, /window\.replayAPI\.installUpdate/);

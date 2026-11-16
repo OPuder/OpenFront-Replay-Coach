@@ -49,7 +49,10 @@ export function assertContextContinuity(before, after) {
     ["renderer origin", before.renderer?.origin, after.renderer?.origin],
     ["renderer protocol", before.renderer?.protocol, after.renderer?.protocol],
     ["Electron userData directory", before.electron?.userDataPath, after.electron?.userDataPath],
-    ["Electron appData directory", before.electron?.appDataPath, after.electron?.appDataPath],
+    // app.getPath("appData") is the OS-wide roaming root, not Chromium's
+    // profile. It can legitimately differ between the legacy baseline and
+    // candidate process environment; LocalStorage/IndexedDB live under the
+    // stable userData/Chromium profile checked above and below.
     ["Chromium profile identity", before.profileIdentity, after.profileIdentity],
     ["IndexedDB database name", before.indexedDB?.name, after.indexedDB?.name],
     ["IndexedDB database version", before.indexedDB?.version, after.indexedDB?.version],

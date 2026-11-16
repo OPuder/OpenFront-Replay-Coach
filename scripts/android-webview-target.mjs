@@ -23,12 +23,16 @@ export function assertWebViewSocketPid(socketName, expectedPid) {
 export function selectCoachWebViewTarget(targets, socketName, expectedPid) {
   assertWebViewSocketPid(socketName, expectedPid);
   if (!Array.isArray(targets)) return undefined;
-  return targets.find(target =>
+  const candidates = targets.filter(target =>
     target?.type === "page" &&
-    target.title === "OpenFront Replay Coach" &&
     typeof target.url === "string" &&
     (/^https?:\/\/localhost(?::\d+)?(?:\/|$)/i.test(target.url) || /^file:\/\/\/android_asset\//i.test(target.url)) &&
     typeof target.webSocketDebuggerUrl === "string" &&
     target.webSocketDebuggerUrl.length > 0
   );
+  // The renderer may expose an empty title while the Capacitor WebView is
+  // still initializing. A non-empty, conflicting title remains disqualifying;
+  // an empty title is carried forward for Runtime.evaluate diagnostics.
+  return candidates.find(target => target.title === "OpenFront Replay Coach") ??
+    candidates.find(target => target.title === "" || target.title == null);
 }

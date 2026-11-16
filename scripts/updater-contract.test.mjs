@@ -204,15 +204,8 @@ assert.ok(releaseUpgradeScript.includes("timeout --signal=INT --kill-after=15s 2
 assert.ok(releaseUpgradeScript.includes("seq 1 9"));
 assert.ok(releaseUpgradeScript.includes("timeout 8s adb -s emulator-5554 shell cmd package list packages"));
 assert.ok(releaseUpgradeScript.includes("versionCode"));
-assert.ok(releaseUpgradeScript.includes("cmd package resolve-activity"));
-assert.ok(releaseUpgradeScript.includes("am start -W -n"));
 assert.ok(releaseUpgradeScript.includes("pidof"));
-assert.ok(releaseUpgradeScript.includes('for attempt in $(seq 1 60)'));
-assert.ok(releaseUpgradeScript.includes('launch_status=0'));
-assert.ok(releaseUpgradeScript.includes('grep -E "mResumedActivity|topResumedActivity"'));
 assert.ok(releaseUpgradeScript.includes("timeout 60s adb -s emulator-5554"));
-assert.ok(releaseUpgradeScript.includes("dumpsys activity activities"));
-assert.ok(releaseUpgradeScript.includes("FATAL EXCEPTION"));
 const androidValidationWorkflow = read(".github/workflows/update-validation.yml");
 assert.ok(androidValidationWorkflow.includes("bash -n scripts/test-android-release-upgrade.sh"));
 
@@ -239,6 +232,8 @@ assert.match(androidEmulatorDiagnostics, /CLASSIFICATION=ACTIVITY_START_FAILURE/
 assert.match(androidEmulatorDiagnostics, /CLASSIFICATION=APP_CRASH/);
 assert.match(androidEmulatorDiagnostics, /FATAL EXCEPTION/);
 assert.match(androidEmulatorDiagnostics, /screencap -p/);
+assert.match(androidEmulatorDiagnostics, /am start -W -n/);
+assert.match(androidEmulatorDiagnostics, /mResumedActivity|topResumedActivity/);
 assert.match(updateValidationWorkflow, /ofrc-android-diagnostics/);
 assert.match(updateValidationWorkflow, /bash -n scripts\/android-emulator-diagnostics\.sh/);
 assert.match(androidReleaseUpgrade, /android_prepare_emulator/);

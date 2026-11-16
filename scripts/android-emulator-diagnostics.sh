@@ -143,7 +143,7 @@ android_prepare_emulator() {
 android_launch_package() {
   local package_id="$1"
   local description="$2"
-  local resolve_output="" launcher="" start_output="" start_status=0 pid="" activity=""
+  local resolve_output="" launcher="" start_output="" start_status=0 pid="" activity="" system_anr=""
   if ! timeout 10s adb -s emulator-5554 get-state 2>/dev/null | grep -qx device; then
     android_capture_diagnostics "adb-lost-before-launch"
     android_diag_log "CLASSIFICATION=ADB_CONNECTION_FAILURE before launching $description."
@@ -188,6 +188,12 @@ android_launch_package() {
     pid="$(timeout 4s adb -s emulator-5554 shell pidof "$package_id" 2>/dev/null | tr -d '\r' || true)"
     activity="$(timeout 4s adb -s emulator-5554 shell dumpsys activity activities 2>/dev/null | grep -E 'mResumedActivity|topResumedActivity' | tail -n 2 || true)"
     if [[ -n "$pid" ]] && grep -F "$launcher" <<<"$activity" >/dev/null; then
+      system_anr="$(timeout 8s adb -s emulator-5554 shell dumpsys window 2>&1 | grep -F 'Application Not Responding: system' | tail -n 1 || true)"
+      if [[ -n "$system_anr" ]]; then
+        android_capture_diagnostics "system-server-anr-during-launch"
+        android_diag_log "CLASSIFICATION=SYSTEM_ANR; Android system_server is showing an Application Not Responding dialog while $description is nominally resumed: $system_anr"
+        return 37
+      fi
       android_diag_log "Activity $launcher is resumed and process $pid is running for $description."
       return 0
     fi

@@ -155,6 +155,11 @@ jobs:
         with:
           packages: "platforms;android-36 build-tools;36.0.0"
 
+      - name: Install GNU timeout and checksum utilities for Android test scripts
+        run: |
+          brew install coreutils
+          echo "$(brew --prefix coreutils)/libexec/gnubin" >> "$GITHUB_PATH"
+
       - name: Build renderer with test-only Android storage inspector
         run: |
           set -Eeuo pipefail

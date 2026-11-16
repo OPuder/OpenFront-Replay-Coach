@@ -241,7 +241,7 @@ assert.match(androidEmulatorDiagnostics, /screencap -p/);
 assert.match(androidEmulatorDiagnostics, /host_resource_snapshot/);
 assert.match(androidEmulatorDiagnostics, /guest_resource_snapshot/);
 assert.match(androidEmulatorDiagnostics, /dumpsys activity lastanr/);
-assert.match(androidEmulatorDiagnostics, /adb pull \/data\/anr/);
+assert.match(androidEmulatorDiagnostics, /adb -s emulator-5554 pull \/data\/anr/);
 assert.match(androidEmulatorDiagnostics, /uiautomator dump \/sdcard\/window.xml/);
 assert.match(updateValidationWorkflow, /runs-on: macos-15/);
 assert.match(updateValidationWorkflow, /arch: arm64-v8a/);

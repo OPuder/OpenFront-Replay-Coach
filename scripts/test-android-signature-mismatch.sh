@@ -13,6 +13,11 @@ keytool -genkeypair -noprompt -keystore "$key" -storepass test-only-password -ke
 cp "$candidate_apk" "$candidate"
 "$bt/apksigner" sign --ks "$key" --ks-pass pass:test-only-password --key-pass pass:test-only-password --ks-key-alias incompatible "$candidate"
 "$bt/apksigner" verify --verbose "$baseline_apk" >/dev/null; "$bt/apksigner" verify --verbose "$candidate" >/dev/null
+base_cert="$( "$bt/apksigner" verify --print-certs "$baseline_apk" | sed -n 's/.*certificate SHA-256 digest: //p' | head -n 1 | tr '[:upper:]' '[:lower:]')"
+candidate_cert="$( "$bt/apksigner" verify --print-certs "$candidate" | sed -n 's/.*certificate SHA-256 digest: //p' | head -n 1 | tr '[:upper:]' '[:lower:]')"
+[[ -n "$base_cert" && -n "$candidate_cert" && "$base_cert" != "$candidate_cert" ]] || fail "Test APK does not have a distinct verified signing certificate"
+echo "BASELINE_CERT_SHA256=$base_cert"
+echo "INCOMPATIBLE_CERT_SHA256=$candidate_cert"
 base_meta="$("$bt/aapt" dump badging "$baseline_apk"|sed -n '1p')"; cand_meta="$("$bt/aapt" dump badging "$candidate"|sed -n '1p')"
 grep -F "package: name='$package_id'" <<<"$base_meta" >/dev/null || fail "Baseline package identity mismatch"
 grep -F "package: name='$package_id'" <<<"$cand_meta" >/dev/null || fail "Candidate package identity mismatch"

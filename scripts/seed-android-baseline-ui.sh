@@ -85,8 +85,8 @@ tap_text() {
 
 log "Launching the genuine published v2.2.51 APK for UI-based profile and replay creation."
 timeout 30s adb -s emulator-5554 shell monkey -p "$package_id" 1 >/dev/null || fail "Published app did not launch."
-sleep 8
-dump_ui || fail "Could not inspect the published app UI."
+sleep 20
+dump_ui || fail "Could not inspect the published app UI after two diagnostic UIAutomator attempts."
 coords="$(find_bounds "" edit || true)"
 [[ -n "$coords" ]] || fail "Could not locate the profile input field in the actual app UI."
 read -r input_x input_y <<< "$coords"

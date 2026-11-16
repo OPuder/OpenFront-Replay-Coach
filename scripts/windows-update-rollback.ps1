@@ -21,6 +21,10 @@ function Mirror([string]$from,[string]$to){
  & robocopy.exe $from $to /MIR /COPY:DAT /DCOPY:DAT /R:1 /W:1 /NFL /NDL /NJH /NJS /NP
  if($LASTEXITCODE -ge 8){throw "robocopy failed: $LASTEXITCODE"}
 }
+function Stop-AppProcesses {
+ Get-Process -Name 'OpenFront Replay Coach' -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
+ Start-Sleep -Milliseconds 500
+}
 $backup=Join-Path $env:TEMP ('ofrc-rollback-'+[guid]::NewGuid().ToString('N')); $stage=Join-Path $env:TEMP ('ofrc-stage-'+[guid]::NewGuid().ToString('N'))
 $registryBackup=$backup+'.registry.reg'; $registryKeyPath=$null; $registryDisplayVersion=$null
 $baseline=$null; $started=$false; $restored=$false; $updated=$false
@@ -60,6 +64,7 @@ try{
   $installerExit=$LASTEXITCODE
   if($installerExit -ne 0){throw "Installer failed: $installerExit"}
  }
+ Stop-AppProcesses
  $criticalArchive=Join-Path $Target 'resources/app.asar'
  if(!(Test-Path -LiteralPath $criticalArchive)){throw 'Updated resources/app.asar missing'}
  $updatedAsarHash=(Get-FileHash -LiteralPath $criticalArchive -Algorithm SHA256).Hash.ToLowerInvariant()
@@ -80,6 +85,7 @@ try{
  Log ("UPDATE_FAILED "+($_|Out-String).Trim())
  if($started){
   try{
+   Stop-AppProcesses
    Log 'ROLLBACK_BEGIN removing complete target tree'
    if(Test-Path -LiteralPath $Target){Remove-Item -LiteralPath $Target -Recurse -Force}
    New-Item -ItemType Directory -Path $Target -Force|Out-Null

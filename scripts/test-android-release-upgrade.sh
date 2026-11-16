@@ -168,12 +168,8 @@ adb_cmd shell am force-stop "$package_id" >/dev/null 2>&1 || true
 rm -f "$test_keystore" "$test_signed_apk"
 unset test_password
 
-log "Running a five-minute foreground idle soak on the upgraded signed test build."
-sleep 300
 if ! adb_cmd shell pidof "$package_id" >/dev/null 2>&1; then
-  log "Release app exited during the five-minute idle soak; collecting diagnostics."
-  adb_cmd shell dumpsys activity activities 2>&1 | tail -n 80 || true
-  adb_cmd logcat -d -t 500 2>&1 | grep -E "FATAL EXCEPTION|AndroidRuntime|de.openfront.replaycoach|ActivityTaskManager" | tail -n 120 || true
-  fail "Upgraded signed release app exited during the five-minute idle soak."
+  android_capture_diagnostics "app-not-running-after-negative-tests" || true
+  fail "Upgraded signed release app exited after the two Package Manager negative-install tests."
 fi
-log "PASS: published APK $previous_version_code upgraded in place to the permanent-key test build $version ($current_version_code); complete UI-seeded IndexedDB/LocalStorage survived, Package Manager rejected both an unsigned APK and a cryptographically valid APK signed by a distinct ephemeral CI-only certificate, the original installation remained intact and startable after both rejections, and the app survived five minutes idle."
+log "PASS: published APK $previous_version_code upgraded in place to the permanent-key test build $version ($current_version_code); UI-seeded IndexedDB/LocalStorage survived, Package Manager separately rejected an unsigned APK and a cryptographically valid APK signed by a distinct ephemeral CI-only certificate, and the original installation remained intact, restartable and running after both rejections."

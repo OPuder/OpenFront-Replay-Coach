@@ -133,7 +133,7 @@ if (!target) {
 console.log("ANDROID_WEBVIEW_TARGET " + JSON.stringify({
   expectedAppPid,
   adbDeviceState: adb("get-state"),
-  process: adb("shell", "ps", "-A").split(/\\r?\\n/).filter(line => line.includes(expectedAppPid)).slice(0, 5),
+  process: adb("shell", "ps", "-A").split(/\r?\n/).filter(line => line.includes(expectedAppPid)).slice(0, 5),
   socket: socket,
   socketPid: assertWebViewSocketPid(socket, expectedAppPid),
   target: { type: target.type, title: target.title ?? null, url: target.url, hasWebSocketDebuggerUrl: Boolean(target.webSocketDebuggerUrl) },

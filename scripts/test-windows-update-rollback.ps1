@@ -9,9 +9,12 @@ function Start-Check($exe,$label){
 function Get-AppVersion($installRoot){
  $asar=Join-Path $installRoot 'resources/app.asar'
  if(!(Test-Path -LiteralPath $asar)){throw "Packaged app.asar missing: $asar"}
- $json=& node -e "const a=require('@electron/asar');process.stdout.write(a.extractFile(process.argv[1],'package.json').toString())" $asar
+ $json=(& node -e "const a=require('@electron/asar');process.stdout.write(a.extractFile(process.argv[1],'package.json').toString())" $asar | Out-String)
  if($LASTEXITCODE -ne 0){throw 'Could not read package.json from app.asar'}
- return (ConvertFrom-Json $json).version
+ if([string]::IsNullOrWhiteSpace($json)){throw 'Packaged app.asar package.json is empty'}
+ $metadata=ConvertFrom-Json -InputObject $json
+ if([string]::IsNullOrWhiteSpace([string]$metadata.version)){throw 'Packaged app.asar has no application version'}
+ return [string]$metadata.version
 }
 function Prepare-UserData($exe,$appDataRoot,$label){
  $env:APPDATA=$appDataRoot; New-Item -ItemType Directory -Path $appDataRoot -Force|Out-Null

@@ -142,7 +142,6 @@ assert.match(androidBaselineUiSeed, /two diagnostic UIAutomator attempts/);
 assert.match(androidReleaseUpgrade, /snapshot-android-web-storage\.sh after/);
 assert.match(androidReleaseUpgrade, /after-negative-test-storage\.json/);
 assert.match(androidReleaseUpgrade, /compare-android-upgrade-snapshots\.mjs/);
-assert.match(androidReleaseUpgrade, /sleep 300/);
 assert.match(androidStorageInspector, /ofrc-android-upgrade-snapshot-v1/);
 assert.match(androidStorageInspector, /missingReplayRecords/);
 assert.match(androidStorageInspector, /orphanReplayRecords/);
@@ -214,8 +213,6 @@ assert.ok(releaseUpgradeScript.includes('grep -E "mResumedActivity|topResumedAct
 assert.ok(releaseUpgradeScript.includes("timeout 60s adb -s emulator-5554"));
 assert.ok(releaseUpgradeScript.includes("dumpsys activity activities"));
 assert.ok(releaseUpgradeScript.includes("FATAL EXCEPTION"));
-assert.ok(releaseUpgradeScript.includes("sleep 300"));
-assert.ok(releaseUpgradeScript.includes("five-minute idle soak"));
 const androidValidationWorkflow = read(".github/workflows/update-validation.yml");
 assert.ok(androidValidationWorkflow.includes("bash -n scripts/test-android-release-upgrade.sh"));
 
@@ -230,3 +227,23 @@ const engineCacheWorkflows = [
 for (const workflow of engineCacheWorkflows) {
   assert.match(workflow, /Restore exact historical engine Git objects[\s\S]*?actions\/cache@v4[\s\S]*?path: \.git\/modules[\s\S]*?github\.job/);
 }
+
+const androidEmulatorDiagnostics = read("scripts/android-emulator-diagnostics.sh");
+assert.match(androidEmulatorDiagnostics, /adb kill-server/);
+assert.match(androidEmulatorDiagnostics, /adb start-server/);
+assert.match(androidEmulatorDiagnostics, /adb reconnect offline/);
+assert.match(androidEmulatorDiagnostics, /sys\.boot_completed/);
+assert.match(androidEmulatorDiagnostics, /android_capture_diagnostics/);
+assert.match(androidEmulatorDiagnostics, /CLASSIFICATION=ADB_CONNECTION_FAILURE/);
+assert.match(androidEmulatorDiagnostics, /CLASSIFICATION=ACTIVITY_START_FAILURE/);
+assert.match(androidEmulatorDiagnostics, /CLASSIFICATION=APP_CRASH/);
+assert.match(androidEmulatorDiagnostics, /FATAL EXCEPTION/);
+assert.match(androidEmulatorDiagnostics, /screencap -p/);
+assert.match(updateValidationWorkflow, /ofrc-android-diagnostics/);
+assert.match(updateValidationWorkflow, /bash -n scripts\/android-emulator-diagnostics\.sh/);
+assert.match(androidReleaseUpgrade, /android_prepare_emulator/);
+assert.match(androidReleaseUpgrade, /android_launch_package/);
+assert.doesNotMatch(androidReleaseUpgrade, /sleep 300/);
+assert.match(androidBaselineUiSeed, /android_launch_package/);
+
+console.log("Android emulator diagnostics contract tests passed: bounded ADB restart/reconnect, separate boot/transport checks, early-failure log/screenshot capture, and classified launch outcomes.");

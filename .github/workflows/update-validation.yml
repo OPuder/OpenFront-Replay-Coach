@@ -243,9 +243,14 @@ jobs:
         with:
           name: android-baseline-ui-diagnostics
           path: |
+            ${{ runner.temp }}/ofrc-android-diagnostics/**
             ${{ runner.temp }}/ofrc-baseline-screen.png
             ${{ runner.temp }}/ofrc-uiautomator-dump.log
             ${{ runner.temp }}/ofrc-screencap.log
+            ${{ runner.temp }}/ofrc-android-ui.xml
+            ${{ runner.temp }}/ofrc-android-storage-before/**
+            ${{ runner.temp }}/ofrc-android-storage-after/**
+            ${{ runner.temp }}/*storage.json
           if-no-files-found: ignore
           retention-days: 3
 

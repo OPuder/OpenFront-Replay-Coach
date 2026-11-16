@@ -248,6 +248,8 @@ assert.match(updateValidationWorkflow, /arch: arm64-v8a/);
 assert.match(updateValidationWorkflow, /cores: 3/);
 assert.match(updateValidationWorkflow, /-memory 3072/);
 assert.match(updateValidationWorkflow, /Hypervisor\.framework/);
+assert.match(updateValidationWorkflow, /brew install coreutils/);
+assert.match(updateValidationWorkflow, /libexec\\/gnubin/);
 assert.match(androidEmulatorDiagnostics, /am start -W -n/);
 const androidUpgradeBridge = read("src/renderer/androidUpgradeTestBridge.ts");
 assert.match(androidUpgradeBridge, /import \{ loadImportedMatch \} from "\.\/matchStore"/);

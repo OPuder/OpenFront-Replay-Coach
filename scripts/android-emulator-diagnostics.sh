@@ -45,6 +45,30 @@ android_capture_diagnostics() {
     echo "package_manager_ready:"
     timeout 15s adb -s emulator-5554 shell cmd package list packages 2>&1 | head -n 30 || true
     echo
+    echo "host_resource_snapshot:"
+    uptime 2>&1 || true
+    free -h 2>&1 || vm_stat 2>&1 || true
+    ps -Ao pid,ppid,%cpu,%mem,rss,etime,command 2>&1 | sort -k3,3nr | head -n 35 || true
+    echo
+    echo "guest_resource_snapshot:"
+    timeout 20s adb -s emulator-5554 shell cat /proc/meminfo 2>&1 | head -n 35 || true
+    timeout 20s adb -s emulator-5554 shell cat /proc/stat 2>&1 | head -n 8 || true
+    timeout 20s adb -s emulator-5554 shell top -b -n 1 2>&1 | head -n 45 || true
+    echo
+    echo "activity_last_anr:"
+    timeout 20s adb -s emulator-5554 shell dumpsys activity lastanr 2>&1 | tail -n 160 || true
+    echo
+    echo "anr_trace_inventory:"
+    timeout 15s adb -s emulator-5554 shell ls -lah /data/anr 2>&1 || true
+    echo
+    echo "anr_trace_pull:"
+    mkdir -p "$OFRC_ANDROID_DIAG_DIR/$stage-anr"
+    timeout 30s adb -s emulator-5554 pull /data/anr "$OFRC_ANDROID_DIAG_DIR/$stage-anr" 2>&1 || true
+    echo
+    echo "uiautomator_hierarchy:"
+    timeout 20s adb -s emulator-5554 shell uiautomator dump /sdcard/window.xml 2>&1 || true
+    timeout 15s adb -s emulator-5554 pull /sdcard/window.xml "$prefix-ui.xml" 2>&1 || true
+    echo
     echo "logcat_android_runtime_activity_package:"
     timeout 20s adb -s emulator-5554 logcat -d -t 1200 2>&1 | grep -Ei 'FATAL EXCEPTION|AndroidRuntime|ActivityTaskManager|ActivityManager|PackageManager|PackageInstaller|installd|uiautomator|Accessibility|WindowManager|de\.openfront\.replaycoach|INSTALL_' | tail -n 240 || true
   } >"$prefix.log" 2>&1

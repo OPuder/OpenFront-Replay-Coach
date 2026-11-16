@@ -45,9 +45,11 @@ try{
   if($installerExit -ne 0){throw "Installer failed: $installerExit"}
  }
  if($FailAfterMutation){
-  $files=@($baseline|Where-Object type -eq 'file'); if($files.Count -lt 2){throw 'Need two baseline files for mutation test'}
-  Remove-Item -LiteralPath (Join-Path $Target $files[0].path.Replace('/','\')) -Force
-  Set-Content -LiteralPath (Join-Path $Target $files[1].path.Replace('/','\')) -Value 'CORRUPTED' -NoNewline
+  $criticalArchive=Join-Path $Target 'resources/app.asar'
+  $criticalExecutable=Join-Path $Target 'OpenFront Replay Coach.exe'
+  if(!(Test-Path -LiteralPath $criticalArchive) -or !(Test-Path -LiteralPath $criticalExecutable)){throw 'Update package is missing critical app.asar/executable paths for failure injection'}
+  Remove-Item -LiteralPath $criticalArchive -Force
+  Set-Content -LiteralPath $criticalExecutable -Value 'CORRUPTED' -NoNewline
   Set-Content -LiteralPath (Join-Path $Target '__ROLLBACK_TEST_EXTRA_FILE__.txt') -Value 'extra' -NoNewline
   Log 'FAILURE_INJECTED_AFTER_MUTATION deleted=1 corrupted=1 added=1'
   throw 'Injected post-mutation failure'

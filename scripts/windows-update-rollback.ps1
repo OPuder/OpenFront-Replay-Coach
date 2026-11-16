@@ -28,6 +28,8 @@ try{
  if(!(Test-Path -LiteralPath $PackagePath -PathType Leaf)){throw 'Update package missing'}
  if(!(Test-Path -LiteralPath $Executable -PathType Leaf)){throw 'Installed executable missing'}
  $baseline=Manifest $Target; if($baseline.Count -eq 0){throw 'Install directory empty'}
+ $baselineAsar=$baseline | Where-Object { $_.path -eq 'resources/app.asar' -and $_.type -eq 'file' } | Select-Object -First 1
+ if(!$baselineAsar){throw 'Baseline resources/app.asar missing'}
  $baseline | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath ($LogPath+'.baseline-manifest.json')
  Mirror $Target $backup; $backupManifest=Manifest $backup
  $backupManifest | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath ($LogPath+'.backup-manifest.json')
@@ -44,8 +46,12 @@ try{
   $installerExit=$LASTEXITCODE
   if($installerExit -ne 0){throw "Installer failed: $installerExit"}
  }
+ $criticalArchive=Join-Path $Target 'resources/app.asar'
+ if(!(Test-Path -LiteralPath $criticalArchive)){throw 'Updated resources/app.asar missing'}
+ $updatedAsarHash=(Get-FileHash -LiteralPath $criticalArchive -Algorithm SHA256).Hash.ToLowerInvariant()
+ if($updatedAsarHash -eq $baselineAsar.hash){throw 'Update did not replace app.asar; refusing to report an update transaction'}
+ Log "UPDATE_FILES_CHANGED old_app_asar=$($baselineAsar.hash) new_app_asar=$updatedAsarHash"
  if($FailAfterMutation){
-  $criticalArchive=Join-Path $Target 'resources/app.asar'
   $criticalExecutable=Join-Path $Target 'OpenFront Replay Coach.exe'
   if(!(Test-Path -LiteralPath $criticalArchive) -or !(Test-Path -LiteralPath $criticalExecutable)){throw 'Update package is missing critical app.asar/executable paths for failure injection'}
   Remove-Item -LiteralPath $criticalArchive -Force

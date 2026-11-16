@@ -257,8 +257,8 @@ assert.match(androidBaselineUiSeed, /android_launch_package/);
 assert.match(androidBaselineUiSeed, /timeout 20s adb -s emulator-5554 shell uiautomator dump/);
 assert.ok(!androidBaselineUiSeed.includes("dump_ui || true"));
 assert.match(androidReleaseUpgrade, /install_apk "\$current_apk" true[\s\S]*?am force-stop "\$package_id"[\s\S]*?android_launch_package/);
-assert.match(androidReleaseUpgrade, /unsigned-APK rejection[\s\S]*?android_launch_package/);
-assert.match(androidReleaseUpgrade, /wrong-signer rejection[\s\S]*?android_launch_package/);
+assert.ok(androidReleaseUpgrade.includes('android_launch_package "$package_id" "the valid signed app after unsigned-APK rejection"'));
+assert.ok(androidReleaseUpgrade.includes('android_launch_package "$package_id" "the original signed app after wrong-signer rejection"'));
 assert.match(androidReleaseUpgrade, /pre-update app process remained alive/);
 
 console.log("Android emulator diagnostics contract tests passed: bounded ADB restart/reconnect, separate boot/transport checks, early-failure log/screenshot capture, and classified launch outcomes.");

@@ -168,7 +168,7 @@ log "Verified different signing certificates: release=$candidate_cert; negative=
 incompatible_status=0
 incompatible_output="$(timeout --signal=INT --kill-after=15s 240s adb -s emulator-5554 install --no-streaming -r "$incompatible_apk" 2>&1)" || incompatible_status=$?
 log "Package Manager incompatible-signature response (exit $incompatible_status)."
-printf '%s\\n' "$incompatible_output"
+printf '%s\n' "$incompatible_output"
 [[ "$incompatible_status" -ne 0 ]] || fail "Android Package Manager unexpectedly accepted the APK signed by a different certificate."
 if ! grep -F "INSTALL_FAILED_UPDATE_INCOMPATIBLE" <<< "$incompatible_output" >/dev/null; then
   adb_cmd logcat -d -t 700 2>&1 | grep -E "PackageManager|PackageInstaller|INSTALL_FAILED_UPDATE_INCOMPATIBLE|signature|certificate" | tail -n 120 || true

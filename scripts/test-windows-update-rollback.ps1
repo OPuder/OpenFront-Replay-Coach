@@ -9,7 +9,7 @@ function Prepare-UserData($exe,$appDataRoot,$label){
  $dirs=@(Get-ChildItem -LiteralPath $appDataRoot -Directory -Force)
  if($dirs.Count -lt 1){throw "$label did not create an Electron userData directory"}
  $file=Join-Path $dirs[0].FullName 'rollback-user-data-sentinel.txt'
- Set-Content -LiteralPath $file -Value "$label-user-data-preserved"
+ Set-Content -LiteralPath $file -Value "$($label)-user-data-preserved"
  return $file
 }
 try{
@@ -18,8 +18,8 @@ try{
  $ie=Join-Path $it 'OpenFront Replay Coach.exe'; if(!(Test-Path $ie)){throw 'Baseline installer exe missing'}
  $installerDataFile=Prepare-UserData $ie (Join-Path $root 'installer-appdata') 'installer'
  Set-Content (Join-Path $it 'test-extra-sentinel') 'preserve-me'; $ilog=Join-Path $root 'installer.log'
- $a=@('-NoProfile','-ExecutionPolicy','Bypass','-File',$Helper,'-Mode','Installer','-Target',$it,'-Executable',$ie,'-PackagePath',$Installer,'-LogPath',$ilog,'-FailAfterMutation')
- $p=Start-Process powershell.exe -ArgumentList $a -Wait -PassThru -NoNewWindow; if($p.ExitCode -ne 1){throw "Installer rollback exit was $($p.ExitCode)"}
+ & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $Helper -Mode Installer -Target $it -Executable $ie -PackagePath $Installer -LogPath $ilog -FailAfterMutation
+ if($LASTEXITCODE -ne 1){throw "Installer rollback exit was $LASTEXITCODE"}
  if(Test-Path (Join-Path $it '__ROLLBACK_TEST_EXTRA_FILE__.txt')){throw 'Installer left injected extra file'}
  if((Get-Content (Join-Path $it 'test-extra-sentinel') -Raw).Trim() -ne 'preserve-me'){throw 'Installer did not restore extra baseline file'}
  if((Get-Content $installerDataFile -Raw).Trim() -ne 'installer-user-data-preserved'){throw 'Installer user data changed'}
@@ -29,8 +29,8 @@ try{
  $peItem=Get-ChildItem $pt -Filter 'OpenFront Replay Coach.exe' -File -Recurse|Select-Object -First 1; if(!$peItem){throw 'Portable executable missing'}
  $pe=$peItem.FullName; $pr=$peItem.Directory.FullName; Set-Content (Join-Path $pr 'test-extra-sentinel') 'preserve-me'
  $portableDataFile=Prepare-UserData $pe (Join-Path $root 'portable-appdata') 'portable'; $plog=Join-Path $root 'portable.log'
- $a=@('-NoProfile','-ExecutionPolicy','Bypass','-File',$Helper,'-Mode','Portable','-Target',$pr,'-Executable',$pe,'-PackagePath',$PortableZip,'-LogPath',$plog,'-FailAfterMutation')
- $p=Start-Process powershell.exe -ArgumentList $a -Wait -PassThru -NoNewWindow; if($p.ExitCode -ne 1){throw "Portable rollback exit was $($p.ExitCode)"}
+ & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $Helper -Mode Portable -Target $pr -Executable $pe -PackagePath $PortableZip -LogPath $plog -FailAfterMutation
+ if($LASTEXITCODE -ne 1){throw "Portable rollback exit was $LASTEXITCODE"}
  if(Test-Path (Join-Path $pr '__ROLLBACK_TEST_EXTRA_FILE__.txt')){throw 'Portable left injected extra file'}
  if((Get-Content (Join-Path $pr 'test-extra-sentinel') -Raw).Trim() -ne 'preserve-me'){throw 'Portable did not restore extra baseline file'}
  if((Get-Content $portableDataFile -Raw).Trim() -ne 'portable-user-data-preserved'){throw 'Portable user data changed'}

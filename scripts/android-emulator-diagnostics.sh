@@ -105,7 +105,7 @@ android_prepare_emulator() {
     state="$(timeout 4s adb -s emulator-5554 shell getprop sys.boot_completed 2>/dev/null | tr -d '\r' || true)"
     if [[ "$state" == "1" ]]; then boot_ok=true; break; fi
     if (( attempt % 6 == 0 )); then
-      android_diag_log "Android boot not complete yet (attempt $attempt/48; sys.boot_completed=${state:-empty})."
+      android_diag_log "Android boot not complete yet (attempt $attempt/30; sys.boot_completed=${state:-empty})."
     fi
     sleep 3
   done

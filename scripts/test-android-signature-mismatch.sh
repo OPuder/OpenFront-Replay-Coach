@@ -47,10 +47,17 @@ set +e; output="$(timeout 180s adb -s emulator-5554 install -r "$candidate" 2>&1
 grep -E 'INSTALL_FAILED_UPDATE_INCOMPATIBLE|signatures do not match|signatures are inconsistent' <<<"$output" >/dev/null || fail "Install failed for reason other than signature mismatch"
 installed="$(adb_cmd shell dumpsys package "$package_id")" || fail "Existing app disappeared"
 grep -F "versionCode=$base_code" <<<"$installed" >/dev/null || fail "Existing v2.2.51 package was not retained"
+grep -F "versionName=2.2.51" <<<"$installed" >/dev/null || fail "Existing v2.2.51 versionName was not retained"
 after="$(adb_cmd shell "cat '$data_dir/sentinel.txt'" | tr -d '\r')"; [[ "$after" == "$before" ]] || fail "App data changed after signature rejection"
 launcher="$(adb_cmd shell cmd package resolve-activity --brief -a android.intent.action.MAIN -c android.intent.category.LAUNCHER "$package_id"|tr -d '\r'|tail -n1)"
 [[ "$launcher" == */* ]] || fail "Could not resolve retained launcher"
 adb_cmd shell am start -W -n "$launcher"
-pid=""; for i in $(seq 1 30); do pid="$(adb_cmd shell pidof "$package_id" 2>/dev/null|tr -d '\r'||true)"; [[ -n "$pid" ]]&&break; sleep 1; done
-[[ -n "$pid" ]] || fail "Old app did not start after signature rejection"
+pid=""; resumed=false
+for i in $(seq 1 30); do
+  pid="$(adb_cmd shell pidof "$package_id" 2>/dev/null|tr -d '\r'||true)"
+  activity_state="$(adb_cmd shell dumpsys activity activities 2>/dev/null || true)"
+  if [[ -n "$pid" ]] && grep -E "mResumedActivity|topResumedActivity" <<<"$activity_state" | grep -F "$launcher" >/dev/null; then resumed=true; break; fi
+  sleep 1
+done
+[[ -n "$pid" && "$resumed" == true ]] || fail "Old app did not reach its resumed launcher activity after signature rejection"
 echo "ANDROID_SIGNATURE_MISMATCH_ROLLBACK_OK package=$package_id versionCode=$base_code candidateVersionCode=$cand_code dataSentinel=$after"

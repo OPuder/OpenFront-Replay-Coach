@@ -237,6 +237,18 @@ jobs:
           disable-animations: true
           script: bash scripts/test-android-release-upgrade.sh
 
+      - name: Upload Android baseline UI diagnostics on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-baseline-ui-diagnostics
+          path: |
+            ${{ runner.temp }}/ofrc-baseline-screen.png
+            ${{ runner.temp }}/ofrc-uiautomator-dump.log
+            ${{ runner.temp }}/ofrc-screencap.log
+          if-no-files-found: ignore
+          retention-days: 3
+
       - name: Build separate non-debuggable production APK without test inspector
         if: success()
         env:

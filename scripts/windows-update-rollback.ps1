@@ -86,7 +86,10 @@ try{
   Remove-Item -LiteralPath $criticalArchive -Force
   Set-Content -LiteralPath $criticalExecutable -Value 'CORRUPTED' -NoNewline
   Set-Content -LiteralPath (Join-Path $Target '__ROLLBACK_TEST_EXTRA_FILE__.txt') -Value 'extra' -NoNewline
-  Log 'FAILURE_INJECTED_AFTER_MUTATION deleted=1 corrupted=1 added=1'
+  $extraDirectory=Join-Path $Target '__ROLLBACK_TEST_EXTRA_DIRECTORY__'
+  New-Item -ItemType Directory -Path $extraDirectory -Force|Out-Null
+  Set-Content -LiteralPath (Join-Path $extraDirectory 'nested-extra.txt') -Value 'extra-directory' -NoNewline
+  Log 'FAILURE_INJECTED_AFTER_MUTATION deleted=1 corrupted=1 added_file=1 added_directory=1'
   throw 'Injected post-mutation failure'
  }
  if(!(Test-Path -LiteralPath $Executable)){throw 'Updated executable missing'}

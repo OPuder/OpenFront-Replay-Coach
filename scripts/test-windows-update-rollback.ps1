@@ -1,12 +1,14 @@
 param([string]$Installer,[string]$PortableZip,[string]$PreviousInstaller,[string]$PreviousPortableZip,[string]$Helper)
 $ErrorActionPreference='Stop'; $root=Join-Path $env:RUNNER_TEMP ('ofrc-rollback-'+[guid]::NewGuid().ToString('N')); New-Item -ItemType Directory $root|Out-Null
-function Start-Check($exe,$label){
+function Start-Check($exe,$label,$userDataRoot){
  Get-Process -ErrorAction SilentlyContinue | Where-Object { $_.Path -eq $exe } | Stop-Process -Force -ErrorAction SilentlyContinue
- $p=Start-Process -FilePath $exe -PassThru; Start-Sleep 8
+ $p=Start-Process -FilePath $exe -ArgumentList @("--user-data-dir=$userDataRoot") -PassThru; Start-Sleep 8
  if($p.HasExited){throw "$label failed to start after rollback"}
+ $process=Get-CimInstance Win32_Process -Filter "ProcessId = $($p.Id)"
+ if($process.CommandLine -notlike "*--user-data-dir=$userDataRoot*"){throw "$label did not start with its isolated user-data directory"}
  Stop-Process -Id $p.Id -Force; Write-Host "ROLLBACK_RESTART_OK $label"
 }
-function Get-AppVersion($installRoot){
+function Get-AppMetadata($installRoot){
  $asar=Join-Path $installRoot 'resources/app.asar'
  if(!(Test-Path -LiteralPath $asar)){throw "Packaged app.asar missing: $asar"}
  $json=(& node -e "const a=require('@electron/asar');process.stdout.write(a.extractFile(process.argv[1],'package.json').toString())" $asar | Out-String)
@@ -14,16 +16,19 @@ function Get-AppVersion($installRoot){
  if([string]::IsNullOrWhiteSpace($json)){throw 'Packaged app.asar package.json is empty'}
  $metadata=ConvertFrom-Json -InputObject $json
  if([string]::IsNullOrWhiteSpace([string]$metadata.version)){throw 'Packaged app.asar has no application version'}
- return [string]$metadata.version
+ return $metadata
 }
-function Prepare-UserData($exe,$appDataRoot,$label){
+function Get-AppVersion($installRoot){return [string](Get-AppMetadata $installRoot).version}
+function Prepare-UserData($exe,$appDataRoot,$label,$appName){
  $env:APPDATA=$appDataRoot; New-Item -ItemType Directory -Path $appDataRoot -Force|Out-Null
- $p=Start-Process -FilePath $exe -PassThru; Start-Sleep 8
- if($p.HasExited){throw "$label baseline app did not start to create isolated user data"}
+ $userDataRoot=Join-Path $appDataRoot $appName
+ New-Item -ItemType Directory -Path $userDataRoot -Force|Out-Null
+ $p=Start-Process -FilePath $exe -ArgumentList @("--user-data-dir=$userDataRoot") -PassThru; Start-Sleep 8
+ if($p.HasExited){throw "$label baseline app did not start with isolated user data"}
+ $process=Get-CimInstance Win32_Process -Filter "ProcessId = $($p.Id)"
+ if($process.CommandLine -notlike "*--user-data-dir=$userDataRoot*"){throw "$label app was not launched with the isolated user-data directory"}
  Stop-Process -Id $p.Id -Force
- $dirs=@(Get-ChildItem -LiteralPath $appDataRoot -Directory -Force)
- if($dirs.Count -lt 1){throw "$label did not create an Electron userData directory"}
- $file=Join-Path $dirs[0].FullName 'rollback-user-data-sentinel.txt'
+ $file=Join-Path $userDataRoot 'rollback-user-data-sentinel.txt'
  Set-Content -LiteralPath $file -Value "$($label)-user-data-preserved"
  return $file
 }
@@ -50,8 +55,13 @@ try{
   throw "Baseline installer failed after two attempts: $installerExit"
  }
  $ie=Join-Path $it 'OpenFront Replay Coach.exe'; if(!(Test-Path $ie)){throw 'Baseline installer exe missing'}
- $installerVersion=Get-AppVersion $it; if($installerVersion -ne '2.2.51'){throw "Expected installer baseline 2.2.51, got $installerVersion"}
- $installerDataFile=Prepare-UserData $ie (Join-Path $root 'installer-appdata') 'installer'
+ $installerMetadata=Get-AppMetadata $it
+ $installerVersion=[string]$installerMetadata.version
+ if($installerVersion -ne '2.2.51'){throw "Expected installer baseline 2.2.51, got $installerVersion"}
+ $installerAppName=[string]$installerMetadata.productName
+ if([string]::IsNullOrWhiteSpace($installerAppName)){$installerAppName=[string]$installerMetadata.name}
+ if([string]::IsNullOrWhiteSpace($installerAppName)){throw 'Baseline installer package has no Electron app name'}
+ $installerDataFile=Prepare-UserData $ie (Join-Path $root 'installer-appdata') 'installer' $installerAppName
  Set-Content (Join-Path $it 'test-extra-sentinel') 'preserve-me'; $ilog=Join-Path $root 'installer.log'
  & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $Helper -Mode Installer -Target $it -Executable $ie -PackagePath $Installer -LogPath $ilog -FailAfterMutation
  if($LASTEXITCODE -ne 1){throw "Installer rollback exit was $LASTEXITCODE"}
@@ -59,31 +69,38 @@ try{
  if(!(Select-String -LiteralPath $ilog -Pattern 'REGISTRY_BACKUP_VERIFIED.*displayVersion=2.2.51' -Quiet)){throw 'Installer rollback did not capture the baseline uninstall registry metadata'}
  if(!(Select-String -LiteralPath $ilog -Pattern 'REGISTRY_ROLLBACK_VERIFIED displayVersion=2.2.51' -Quiet)){throw 'Installer rollback did not restore the baseline uninstall registry metadata'}
  if(Test-Path (Join-Path $it '__ROLLBACK_TEST_EXTRA_FILE__.txt')){throw 'Installer left injected extra file'}
+ if(Test-Path (Join-Path $it '__ROLLBACK_TEST_EXTRA_DIRECTORY__')){throw 'Installer left injected extra directory'}
  if((Get-Content (Join-Path $it 'test-extra-sentinel') -Raw).Trim() -ne 'preserve-me'){throw 'Installer did not restore extra baseline file'}
  if((Get-Content $installerDataFile -Raw).Trim() -ne 'installer-user-data-preserved'){throw 'Installer user data changed'}
  if(!(Select-String -LiteralPath $ilog -Pattern 'FAILURE_INJECTED_AFTER_MUTATION' -Quiet)){throw 'Installer did not reach controlled post-mutation failure injection'}
  if(!(Select-String -LiteralPath $ilog -Pattern 'ROLLBACK_VERIFIED' -Quiet)){throw 'Installer complete manifest/hash proof missing'}
  if(!(Test-Path ($ilog+'.baseline-manifest.json')) -or !(Test-Path ($ilog+'.restored-manifest.json'))){throw 'Installer baseline/restored manifests missing'}
- Start-Check $ie 'Windows Installer'; Write-Host "WINDOWS_INSTALLER_ROLLBACK_OK log=$ilog"
+ Start-Check $ie 'Windows Installer' (Split-Path -Parent $installerDataFile); Write-Host "WINDOWS_INSTALLER_ROLLBACK_OK log=$ilog"
  $pt=Join-Path $root 'portable'; New-Item -ItemType Directory $pt|Out-Null; Expand-Archive $PreviousPortableZip $pt
  $peItem=Get-ChildItem $pt -Filter 'OpenFront Replay Coach.exe' -File -Recurse|Select-Object -First 1; if(!$peItem){throw 'Portable executable missing'}
  $pe=$peItem.FullName; $pr=$peItem.Directory.FullName
- $portableVersion=Get-AppVersion $pr; if($portableVersion -ne '2.2.51'){throw "Expected portable baseline 2.2.51, got $portableVersion"}
+ $portableMetadata=Get-AppMetadata $pr
+ $portableVersion=[string]$portableMetadata.version
+ if($portableVersion -ne '2.2.51'){throw "Expected portable baseline 2.2.51, got $portableVersion"}
+ $portableAppName=[string]$portableMetadata.productName
+ if([string]::IsNullOrWhiteSpace($portableAppName)){$portableAppName=[string]$portableMetadata.name}
+ if([string]::IsNullOrWhiteSpace($portableAppName)){throw 'Baseline portable package has no Electron app name'}
  $currentStage=Join-Path $root 'current-portable-version'; Expand-Archive $PortableZip $currentStage
  $currentExe=Get-ChildItem $currentStage -Filter 'OpenFront Replay Coach.exe' -File -Recurse|Select-Object -First 1
  if(!$currentExe){throw 'Current portable package executable missing'}
  $currentVersion=Get-AppVersion $currentExe.Directory.FullName
  if([version]$currentVersion -le [version]$portableVersion){throw "Current package version $currentVersion is not newer than baseline $portableVersion"}
  Set-Content (Join-Path $pr 'test-extra-sentinel') 'preserve-me'
- $portableDataFile=Prepare-UserData $pe (Join-Path $root 'portable-appdata') 'portable'; $plog=Join-Path $root 'portable.log'
+ $portableDataFile=Prepare-UserData $pe (Join-Path $root 'portable-appdata') 'portable' $portableAppName; $plog=Join-Path $root 'portable.log'
  & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $Helper -Mode Portable -Target $pr -Executable $pe -PackagePath $PortableZip -LogPath $plog -FailAfterMutation
  if($LASTEXITCODE -ne 1){throw "Portable rollback exit was $LASTEXITCODE"}
  if((Get-AppVersion $pr) -ne $portableVersion){throw 'Portable rollback did not restore old application version'}
  if(Test-Path (Join-Path $pr '__ROLLBACK_TEST_EXTRA_FILE__.txt')){throw 'Portable left injected extra file'}
+ if(Test-Path (Join-Path $pr '__ROLLBACK_TEST_EXTRA_DIRECTORY__')){throw 'Portable left injected extra directory'}
  if((Get-Content (Join-Path $pr 'test-extra-sentinel') -Raw).Trim() -ne 'preserve-me'){throw 'Portable did not restore extra baseline file'}
  if((Get-Content $portableDataFile -Raw).Trim() -ne 'portable-user-data-preserved'){throw 'Portable user data changed'}
  if(!(Select-String -LiteralPath $plog -Pattern 'FAILURE_INJECTED_AFTER_MUTATION' -Quiet)){throw 'Portable did not reach controlled post-mutation failure injection'}
  if(!(Select-String -LiteralPath $plog -Pattern 'ROLLBACK_VERIFIED' -Quiet)){throw 'Portable complete manifest/hash proof missing'}
  if(!(Test-Path ($plog+'.baseline-manifest.json')) -or !(Test-Path ($plog+'.restored-manifest.json'))){throw 'Portable baseline/restored manifests missing'}
- Start-Check $pe 'Windows Portable'; Write-Host "WINDOWS_PORTABLE_ROLLBACK_OK log=$plog"; Write-Host "WINDOWS_ROLLBACK_E2E_OK data=$root"
+ Start-Check $pe 'Windows Portable' (Split-Path -Parent $portableDataFile); Write-Host "WINDOWS_PORTABLE_ROLLBACK_OK log=$plog"; Write-Host "WINDOWS_ROLLBACK_E2E_OK data=$root"
 }catch{Write-Error $_; Write-Host "DIAGNOSTICS_RETAINED $root";throw}

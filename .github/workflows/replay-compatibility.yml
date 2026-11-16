@@ -83,7 +83,7 @@ jobs:
             writeFileSync(join(directory, fixture.id + '.json'), JSON.stringify(record));
             console.log('Prepared decoder fixture ' + fixture.map + ': ' + record.turns.length + ' turns');
           }
-          appendFileSync(process.env.GITHUB_ENV, 'OPENFRONT_REPLAY_FIXTURE_DIR=' + directory + '\\n');
+          appendFileSync(process.env.GITHUB_ENV, 'OPENFRONT_REPLAY_FIXTURE_DIR=' + directory + '\n');
           NODE
 
       - name: Verify the actual Europe replay and all coaching regressions

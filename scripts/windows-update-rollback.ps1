@@ -28,7 +28,10 @@ try{
  if(!(Test-Path -LiteralPath $PackagePath -PathType Leaf)){throw 'Update package missing'}
  if(!(Test-Path -LiteralPath $Executable -PathType Leaf)){throw 'Installed executable missing'}
  $baseline=Manifest $Target; if($baseline.Count -eq 0){throw 'Install directory empty'}
- Mirror $Target $backup; Assert-Manifest $baseline (Manifest $backup) 'Backup verification failed'
+ $baseline | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath ($LogPath+'.baseline-manifest.json')
+ Mirror $Target $backup; $backupManifest=Manifest $backup
+ $backupManifest | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath ($LogPath+'.backup-manifest.json')
+ Assert-Manifest $baseline $backupManifest 'Backup verification failed'
  Log "BACKUP_VERIFIED $backup entries=$($baseline.Count)"
  if($Mode -eq 'Portable'){
   New-Item -ItemType Directory -Path $stage -Force|Out-Null; Expand-Archive -LiteralPath $PackagePath -DestinationPath $stage -Force
@@ -60,7 +63,9 @@ try{
    New-Item -ItemType Directory -Path $Target -Force|Out-Null
    Mirror $backup $Target
    Assert-Manifest $baseline (Manifest $Target) 'Restored tree verification failed'
-   $restored=$true; Log "ROLLBACK_VERIFIED complete_inventory_hashes=$($baseline.Count)"
+   $restored=$true
+   $restoredManifest | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath ($LogPath+'.restored-manifest.json')
+   Log "ROLLBACK_VERIFIED complete_inventory_hashes=$($baseline.Count)"
   }catch{Log ("ROLLBACK_FATAL "+($_|Out-String).Trim()); Log "BACKUP_RETAINED $backup"; exit 90}
  }else{if($null -ne $baseline){Assert-Manifest $baseline (Manifest $Target) 'Pre-update tree changed'};$restored=$true}
  if($restored -and (Test-Path -LiteralPath $Executable)){Log 'RELAUNCH_RESTORED_VERSION';Start-Process -FilePath $Executable|Out-Null}

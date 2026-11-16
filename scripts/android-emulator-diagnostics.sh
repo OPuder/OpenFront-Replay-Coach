@@ -127,11 +127,11 @@ android_prepare_emulator() {
     return 24
   fi
   local qemu_identity="" model=""
-  qemu_identity="$(timeout 10s adb -s emulator-5554 shell getprop ro.kernel.qemu 2>/dev/null | tr -d '\\r' || true)"
+  qemu_identity="$(timeout 10s adb -s emulator-5554 shell getprop ro.kernel.qemu 2>/dev/null | tr -d '\r' || true)"
   if [[ "$qemu_identity" != "1" ]]; then
-    qemu_identity="$(timeout 10s adb -s emulator-5554 shell getprop ro.boot.qemu 2>/dev/null | tr -d '\\r' || true)"
+    qemu_identity="$(timeout 10s adb -s emulator-5554 shell getprop ro.boot.qemu 2>/dev/null | tr -d '\r' || true)"
   fi
-  model="$(timeout 10s adb -s emulator-5554 shell getprop ro.product.model 2>/dev/null | tr -d '\\r' || true)"
+  model="$(timeout 10s adb -s emulator-5554 shell getprop ro.product.model 2>/dev/null | tr -d '\r' || true)"
   if [[ "$qemu_identity" != "1" ]]; then
     android_capture_diagnostics "emulator-identity-unverified"
     android_diag_log "Expected an emulator but QEMU identity was not confirmed (ro.kernel.qemu/ro.boot.qemu=$qemu_identity; model=$model)."

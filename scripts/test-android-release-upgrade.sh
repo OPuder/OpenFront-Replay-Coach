@@ -28,26 +28,19 @@ current_version_code="$(sed -E "s/.*versionCode='([0-9]+)'.*/\1/" <<< "$current_
 [[ "$previous_version_code" =~ ^[0-9]+$ && "$current_version_code" =~ ^[0-9]+$ ]] || fail "Could not read APK versionCode metadata."
 (( current_version_code > previous_version_code )) || fail "Release versionCode $current_version_code is not newer than published versionCode $previous_version_code."
 
-log "Starting ADB and waiting for the release emulator."
-timeout 30s adb start-server || fail "Android Debug Bridge server could not be started."
-timeout 30s adb devices -l || fail "Android Debug Bridge server did not respond."
-timeout 90s adb -s emulator-5554 wait-for-device || fail "Android emulator did not connect to ADB."
-booted=false
-for attempt in $(seq 1 30); do
-  state="$(timeout 5s adb -s emulator-5554 shell getprop sys.boot_completed 2>/dev/null | tr -d '\r' || true)"
-  if [[ "$state" == "1" ]]; then booted=true; break; fi
-  sleep 2
-done
-[[ "$booted" == true ]] || fail "Android emulator did not finish booting within 150 seconds."
+source scripts/android-emulator-diagnostics.sh
+on_android_upgrade_exit() {
+  local status=$?
+  trap - EXIT
+  if [[ "$status" -ne 0 ]]; then
+    android_capture_diagnostics "release-upgrade-failure" || true
+  fi
+  exit "$status"
+}
+trap on_android_upgrade_exit EXIT
 
-package_manager_ready=false
-for attempt in $(seq 1 9); do
-  package_list="$(timeout 8s adb -s emulator-5554 shell cmd package list packages 2>&1 || true)"
-  if grep -q '^package:' <<< "$package_list"; then package_manager_ready=true; break; fi
-  log "Package Manager not ready (attempt $attempt/9): ${package_list:-no response}"
-  sleep 2
-done
-[[ "$package_manager_ready" == true ]] || fail "Android Package Manager did not become ready within 90 seconds."
+log "Starting bounded ADB-server, emulator-transport and Android-boot checks."
+android_prepare_emulator || fail "Android emulator preparation failed; inspect the stage-specific ADB/boot diagnostics artifact."
 
 install_apk() {
   local apk="$1"
@@ -89,31 +82,9 @@ adb_cmd shell svc data disable >/dev/null 2>&1 || true
 
 installed="$(adb_cmd shell dumpsys package "$package_id")" || fail "Could not inspect the upgraded Android package."
 grep -F "versionCode=$current_version_code" <<< "$installed" >/dev/null || fail "Installed package does not report release versionCode $current_version_code."
-launcher="$(adb_cmd shell cmd package resolve-activity --brief -a android.intent.action.MAIN -c android.intent.category.LAUNCHER "$package_id" | tr -d '\r' | tail -n 1)" || fail "Could not resolve release launcher activity."
-[[ "$launcher" == */* ]] || fail "Could not resolve the current release APK launcher activity."
-launch_status=0
-launch_output="$(adb_cmd shell am start -W -n "$launcher" 2>&1)" || launch_status=$?
-log "Release launcher response (exit $launch_status): ${launch_output:-no output}"
-started=false
-for attempt in $(seq 1 60); do
-  process_id="$(adb_cmd shell pidof "$package_id" 2>/dev/null | tr -d '\r' || true)"
-  if [[ -n "$process_id" ]]; then
-    activity_state="$(adb_cmd shell dumpsys activity activities 2>&1 || true)"
-    if grep -E "mResumedActivity|topResumedActivity" <<< "$activity_state" | grep -F "$launcher" >/dev/null; then
-      started=true
-      break
-    fi
-  fi
-  sleep 2
-done
-if [[ "$started" != true ]]; then
-  log "Release app launch diagnostics:"
-  adb_cmd shell pidof "$package_id" 2>&1 || true
-  adb_cmd shell dumpsys activity activities 2>&1 | tail -n 100 || true
-  adb_cmd logcat -d -t 700 2>&1 | grep -E "FATAL EXCEPTION|AndroidRuntime|de.openfront.replaycoach|ActivityTaskManager|ActivityManager|chromium" | tail -n 160 || true
-  fail "Current release app did not reach its resumed launcher activity within 120 seconds after the upgrade."
-fi
-log "Inspecting every LocalStorage and IndexedDB record through the test-build-only WebView bridge."
+log "Launching the upgraded app with separate ADB, ActivityManager and process-crash classification."
+android_launch_package "$package_id" "the upgraded release APK" || fail "Upgraded app did not launch successfully; diagnostics classify ADB, activity-start and app-crash outcomes separately."
+log "Inspecting every LocalStorage/ and IndexedDB record through the test-build-only WebView bridge."
 node scripts/inspect-android-upgrade-data.mjs "$RUNNER_TEMP/after-valid-upgrade-storage.json"
 log "Stopping the upgraded app before the post-upgrade WebView storage snapshot."
 adb_cmd shell am force-stop "$package_id" >/dev/null 2>&1 || true

@@ -115,12 +115,19 @@ async function launch(executable, dataDir, port, mode, extraEnv = {}, requireEle
   const localData = path.join(dataDir, "localdata");
   mkdirSync(appData, { recursive: true });
   mkdirSync(localData, { recursive: true });
+  // Electron's Chromium profile must be isolated from the runner account and
+  // remain identical across the published baseline and candidate executable.
+  // Passing --user-data-dir makes this deterministic even for v2.2.51, which
+  // predates the main-process diagnostics added to the candidate build.
+  const profilePath = path.join(dataDir, "electron-user-data");
+  mkdirSync(profilePath, { recursive: true });
   const env = {
     ...process.env, ...extraEnv,
     APPDATA: appData, LOCALAPPDATA: localData,
     OFRC_UPGRADE_DIAGNOSTICS: "1",
   };
   const child = spawn(executable, [
+    "--user-data-dir=" + profilePath,
     "--remote-debugging-port=" + port,
     "--remote-allow-origins=*",
     "--no-first-run",

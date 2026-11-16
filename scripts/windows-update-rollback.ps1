@@ -37,8 +37,9 @@ try{
   $started=$true; & robocopy.exe $newExe.Directory.FullName $Target /E /COPY:DAT /DCOPY:DAT /R:1 /W:1 /NFL /NDL /NJH /NJS /NP
   if($LASTEXITCODE -ge 8){throw "Portable copy failed: $LASTEXITCODE"}
  }else{
-  $started=$true; $p=Start-Process -FilePath $PackagePath -ArgumentList @('/S',"/D=$Target") -Wait -PassThru
-  if($p.ExitCode -ne 0){throw "Installer failed: $($p.ExitCode)"}
+  $started=$true; & $PackagePath '/S' "/D=$Target"
+  $installerExit=$LASTEXITCODE
+  if($installerExit -ne 0){throw "Installer failed: $installerExit"}
  }
  if($FailAfterMutation){
   $files=@($baseline|Where-Object type -eq 'file'); if($files.Count -lt 2){throw 'Need two baseline files for mutation test'}

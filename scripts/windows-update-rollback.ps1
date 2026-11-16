@@ -50,7 +50,7 @@ function Find-UninstallEntries {
    }
   }
  }
- return ,$entries
+ return $entries
 }
 function Stop-AppProcesses {
  Get-Process -Name 'OpenFront Replay Coach' -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue

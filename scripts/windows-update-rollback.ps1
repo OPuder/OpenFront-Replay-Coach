@@ -70,7 +70,8 @@ try{
    if(Test-Path -LiteralPath $Target){Remove-Item -LiteralPath $Target -Recurse -Force}
    New-Item -ItemType Directory -Path $Target -Force|Out-Null
    Mirror $backup $Target
-   Assert-Manifest $baseline (Manifest $Target) 'Restored tree verification failed'
+   $restoredManifest=Manifest $Target
+   Assert-Manifest $baseline $restoredManifest 'Restored tree verification failed'
    $restored=$true
    $restoredManifest | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath ($LogPath+'.restored-manifest.json')
    Log "ROLLBACK_VERIFIED complete_inventory_hashes=$($baseline.Count)"

@@ -36,14 +36,24 @@ try{
  $baselineAsar=$baseline | Where-Object { $_.path -eq 'resources/app.asar' -and $_.type -eq 'file' } | Select-Object -First 1
  if(!$baselineAsar){throw 'Baseline resources/app.asar missing'}
  if($Mode -eq 'Installer'){
-  $uninstallRoot='HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall'
-  $matches=@(Get-ChildItem -LiteralPath $uninstallRoot -ErrorAction SilentlyContinue | ForEach-Object {
+  $uninstallRoots=@(
+   [pscustomobject]@{path='HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall';native='HKCU\Software\Microsoft\Windows\CurrentVersion\Uninstall'},
+   [pscustomobject]@{path='HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall';native='HKLM\Software\Microsoft\Windows\CurrentVersion\Uninstall'},
+   [pscustomobject]@{path='HKLM:\Software\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall';native='HKLM\Software\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall'}
+  )
+  $matches=@(foreach($root in $uninstallRoots){Get-ChildItem -LiteralPath $root.path -ErrorAction SilentlyContinue | ForEach-Object {
    $props=Get-ItemProperty -LiteralPath $_.PSPath -ErrorAction SilentlyContinue
-   if($props.DisplayName -eq 'OpenFront Replay Coach' -and $props.InstallLocation -and ([IO.Path]::GetFullPath($props.InstallLocation).TrimEnd('\') -ieq $Target.TrimEnd('\'))){[pscustomobject]@{path=$_.PSPath;name=$_.PSChildName;version=$props.DisplayVersion}}
-  })
-  if($matches.Count -ne 1){throw "Expected exactly one HKCU uninstall registry entry for $Target; found $($matches.Count)"}
+   if($props.DisplayName -eq 'OpenFront Replay Coach'){
+    $installLocation=[string]$props.InstallLocation; $uninstallString=[string]$props.UninstallString; $displayIcon=[string]$props.DisplayIcon
+    $targetReference=($installLocation -and ([IO.Path]::GetFullPath($installLocation).TrimEnd('\') -ieq $Target.TrimEnd('\'))) -or
+     ($uninstallString -and $uninstallString.IndexOf($Target,[StringComparison]::OrdinalIgnoreCase) -ge 0) -or
+     ($displayIcon -and $displayIcon.IndexOf($Target,[StringComparison]::OrdinalIgnoreCase) -ge 0)
+    if($targetReference){[pscustomobject]@{path=$_.PSPath;name=$_.PSChildName;version=$props.DisplayVersion;nativeKey=($root.native+'\'+$_.PSChildName)}}
+   }
+  }})
+  if($matches.Count -ne 1){throw "Expected exactly one uninstall registry entry referencing $Target; found $($matches.Count)"}
   $registryKeyPath=$matches[0].path; $registryDisplayVersion=[string]$matches[0].version
-  $nativeKey='HKCU\Software\Microsoft\Windows\CurrentVersion\Uninstall\'+$matches[0].name
+  $nativeKey=$matches[0].nativeKey
   & reg.exe export $nativeKey $registryBackup /y | Out-Null
   if($LASTEXITCODE -ne 0 -or !(Test-Path -LiteralPath $registryBackup)){throw 'Could not create installer uninstall-registry backup'}
   Log "REGISTRY_BACKUP_VERIFIED key=$nativeKey displayVersion=$registryDisplayVersion"

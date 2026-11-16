@@ -124,7 +124,13 @@ jobs:
           $installer = Get-ChildItem release -Filter '*.exe' -File | Select-Object -First 1
           $portable = Get-ChildItem release -Filter '*.zip' -File | Select-Object -First 1
           if (-not $installer -or -not $portable) { throw 'Rollback test packages are missing.' }
-          ./scripts/test-windows-update-rollback.ps1 -Installer $installer.FullName -PortableZip $portable.FullName -PreviousInstaller $env:PREVIOUS_INSTALLER -PreviousPortableZip $env:PREVIOUS_PORTABLE -Helper (Resolve-Path scripts/windows-update-rollback.ps1).Path
+          $sourceHelper = (Resolve-Path scripts/windows-update-rollback.ps1).Path
+          $packagedHelper = Join-Path $PWD 'release/win-unpacked/resources/windows-update-rollback.ps1'
+          if (-not (Test-Path -LiteralPath $packagedHelper)) { throw 'Packaged Windows rollback helper is missing from resources.' }
+          $sourceHash = (Get-FileHash -LiteralPath $sourceHelper -Algorithm SHA256).Hash
+          $packagedHash = (Get-FileHash -LiteralPath $packagedHelper -Algorithm SHA256).Hash
+          if ($sourceHash -ne $packagedHash) { throw 'Packaged Windows rollback helper differs from the tested source helper.' }
+          ./scripts/test-windows-update-rollback.ps1 -Installer $installer.FullName -PortableZip $portable.FullName -PreviousInstaller $env:PREVIOUS_INSTALLER -PreviousPortableZip $env:PREVIOUS_PORTABLE -Helper $packagedHelper
 
       - name: Upload Windows rollback logs and manifests
         if: always()

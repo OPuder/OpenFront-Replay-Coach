@@ -141,6 +141,44 @@ if ! grep -E "INSTALL_PARSE_FAILED_NO_CERTIFICATES|INSTALL_FAILED_INVALID_APK" <
   adb_cmd logcat -d -t 700 2>&1 | grep -E "PackageManager|PackageInstaller|signature|certificate|INSTALL_" | tail -n 120 || true
   fail "Android rejected the unsigned APK, but the Package Manager did not report a certificate/signature validation failure."
 fi
+
+log "Testing an otherwise valid APK signed by a different certificate against the installed release."
+adb_cmd shell am force-stop "$package_id" >/dev/null 2>&1 || true
+incompatible_apk="$RUNNER_TEMP/openfront-coach-incompatible-signature.apk"
+negative_keystore="$RUNNER_TEMP/openfront-coach-negative-signature.jks"
+negative_password="ofrc-negative-test-only"
+rm -f "$incompatible_apk" "$negative_keystore"
+keytool -genkeypair -noprompt -keystore "$negative_keystore" -storepass "$negative_password" -keypass "$negative_password" \
+  -alias ofrc-negative-test -keyalg RSA -keysize 2048 -validity 2 \
+  -dname "CN=OpenFront Replay Coach Negative Test,O=OpenFront,C=DE"
+"$apksigner" sign --ks "$negative_keystore" --ks-key-alias ofrc-negative-test \
+  --ks-pass "pass:$negative_password" --key-pass "pass:$negative_password" \
+  --out "$incompatible_apk" "$negative_apk"
+"$apksigner" verify --verbose "$incompatible_apk" >/dev/null || fail "The different-certificate APK is not a valid signed APK."
+candidate_cert_output="$("$apksigner" verify --print-certs "$current_apk" 2>&1)"
+incompatible_cert_output="$("$apksigner" verify --print-certs "$incompatible_apk" 2>&1)"
+extract_certificate_sha256() {
+  grep -Eo '[[:xdigit:]]{64}' <<< "$1" | tail -n 1 || true
+}
+candidate_cert="$(extract_certificate_sha256 "$candidate_cert_output")"
+incompatible_cert="$(extract_certificate_sha256 "$incompatible_cert_output")"
+[[ -n "$candidate_cert" && -n "$incompatible_cert" && "$incompatible_cert" != "$candidate_cert" ]] \
+  || fail "The negative APK does not use a signing certificate different from the installed release."
+log "Verified different signing certificates: release=$candidate_cert; negative=$incompatible_cert."
+incompatible_status=0
+incompatible_output="$(timeout --signal=INT --kill-after=15s 240s adb -s emulator-5554 install --no-streaming -r "$incompatible_apk" 2>&1)" || incompatible_status=$?
+log "Package Manager incompatible-signature response (exit $incompatible_status)."
+printf '%s\\n' "$incompatible_output"
+[[ "$incompatible_status" -ne 0 ]] || fail "Android Package Manager unexpectedly accepted the APK signed by a different certificate."
+if ! grep -F "INSTALL_FAILED_UPDATE_INCOMPATIBLE" <<< "$incompatible_output" >/dev/null; then
+  adb_cmd logcat -d -t 700 2>&1 | grep -E "PackageManager|PackageInstaller|INSTALL_FAILED_UPDATE_INCOMPATIBLE|signature|certificate" | tail -n 120 || true
+  fail "Android did not report INSTALL_FAILED_UPDATE_INCOMPATIBLE for the different-certificate APK."
+fi
+installed_after_incompatible="$(adb_cmd shell dumpsys package "$package_id")" || fail "Could not inspect the installed package after the incompatible-signature test."
+grep -F "versionCode=$current_version_code" <<< "$installed_after_incompatible" >/dev/null || fail "The incompatible-signature update replaced or damaged the valid package."
+adb_cmd shell monkey -p "$package_id" 1 >/dev/null || fail "The valid signed app could not be relaunched after the incompatible-signature rejection."
+sleep 5
+adb_cmd shell pidof "$package_id" >/dev/null || fail "The valid signed app did not remain running after the incompatible-signature rejection."
 installed_after_negative="$(adb_cmd shell dumpsys package "$package_id")" || fail "Could not inspect the valid package after the negative test."
 grep -F "versionCode=$current_version_code" <<< "$installed_after_negative" >/dev/null || fail "The failed negative install replaced or damaged the valid package."
 adb_cmd shell am force-stop "$package_id" >/dev/null 2>&1 || true
@@ -161,4 +199,4 @@ if ! adb_cmd shell pidof "$package_id" >/dev/null 2>&1; then
   adb_cmd logcat -d -t 500 2>&1 | grep -E "FATAL EXCEPTION|AndroidRuntime|de.openfront.replaycoach|ActivityTaskManager" | tail -n 120 || true
   fail "Upgraded signed release app exited during the five-minute idle soak."
 fi
-log "PASS: published APK $previous_version_code upgraded in place to the permanent-key test build $version ($current_version_code); UI-seeded IndexedDB/LocalStorage survived, Package Manager rejected the unsigned negative APK, the valid app remained startable, and the app survived five minutes idle."
+log "PASS: published APK $previous_version_code upgraded in place to the permanent-key test build $version ($current_version_code); UI-seeded IndexedDB/LocalStorage survived, Package Manager rejected both an unsigned APK and a valid APK signed by a different certificate, the valid app remained startable, and the app survived five minutes idle."

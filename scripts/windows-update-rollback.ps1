@@ -61,7 +61,7 @@ try{
    Assert-Manifest $baseline (Manifest $Target) 'Restored tree verification failed'
    $restored=$true; Log "ROLLBACK_VERIFIED complete_inventory_hashes=$($baseline.Count)"
   }catch{Log ("ROLLBACK_FATAL "+($_|Out-String).Trim()); Log "BACKUP_RETAINED $backup"; exit 90}
- }else{Assert-Manifest $baseline (Manifest $Target) 'Pre-update tree changed';$restored=$true}
+ }else{if($null -ne $baseline){Assert-Manifest $baseline (Manifest $Target) 'Pre-update tree changed'};$restored=$true}
  if($restored -and (Test-Path -LiteralPath $Executable)){Log 'RELAUNCH_RESTORED_VERSION';Start-Process -FilePath $Executable|Out-Null}
  if($restored){Remove-Item -LiteralPath $backup -Recurse -Force -ErrorAction SilentlyContinue}
  exit 1

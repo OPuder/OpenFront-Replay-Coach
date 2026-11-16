@@ -1,6 +1,11 @@
 param([string]$Installer,[string]$PortableZip,[string]$PreviousInstaller,[string]$PreviousPortableZip,[string]$Helper)
 $ErrorActionPreference='Stop'; $root=Join-Path $env:RUNNER_TEMP ('ofrc-rollback-'+[guid]::NewGuid().ToString('N')); New-Item -ItemType Directory $root|Out-Null
-function Start-Check($exe,$label){$p=Start-Process -FilePath $exe -PassThru; Start-Sleep 8; if($p.HasExited){throw "$label failed to start after rollback"}; Stop-Process -Id $p.Id -Force; Write-Host "ROLLBACK_RESTART_OK $label"}
+function Start-Check($exe,$label){
+ Get-Process -ErrorAction SilentlyContinue | Where-Object { $_.Path -eq $exe } | Stop-Process -Force -ErrorAction SilentlyContinue
+ $p=Start-Process -FilePath $exe -PassThru; Start-Sleep 8
+ if($p.HasExited){throw "$label failed to start after rollback"}
+ Stop-Process -Id $p.Id -Force; Write-Host "ROLLBACK_RESTART_OK $label"
+}
 function Prepare-UserData($exe,$appDataRoot,$label){
  $env:APPDATA=$appDataRoot; New-Item -ItemType Directory -Path $appDataRoot -Force|Out-Null
  $p=Start-Process -FilePath $exe -PassThru; Start-Sleep 8

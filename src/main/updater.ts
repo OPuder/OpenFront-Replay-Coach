@@ -72,9 +72,6 @@ async function downloadVerifiedAsset(asset: ReleaseAsset): Promise<string> {
   reportProgress('Update ist geprüft und bereit', 100);
   return destination;
 }
-function quotePowerShell(value: string): string {
-  return "'" + value.replace(/'/g, "''") + "'";
-}
 async function isPortableInstall(executable: string): Promise<boolean> {
   if (process.env.PORTABLE_EXECUTABLE_DIR) return true;
   try {

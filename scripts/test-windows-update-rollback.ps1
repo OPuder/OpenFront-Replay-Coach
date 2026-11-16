@@ -2,10 +2,11 @@ param([string]$Installer,[string]$PortableZip,[string]$PreviousInstaller,[string
 $ErrorActionPreference='Stop'; $root=Join-Path $env:RUNNER_TEMP ('ofrc-rollback-'+[guid]::NewGuid().ToString('N')); New-Item -ItemType Directory $root|Out-Null
 function Start-Check($exe,$label,$userDataRoot){
  Get-Process -ErrorAction SilentlyContinue | Where-Object { $_.Path -eq $exe } | Stop-Process -Force -ErrorAction SilentlyContinue
- $p=Start-Process -FilePath $exe -ArgumentList @("--user-data-dir=$userDataRoot") -PassThru; Start-Sleep 8
+ $userDataArgument='--user-data-dir="' + $userDataRoot + '"'
+ $p=Start-Process -FilePath $exe -ArgumentList @($userDataArgument) -PassThru; Start-Sleep 8
  if($p.HasExited){throw "$label failed to start after rollback"}
  $process=Get-CimInstance Win32_Process -Filter "ProcessId = $($p.Id)"
- if($process.CommandLine -notlike "*--user-data-dir=$userDataRoot*"){throw "$label did not start with its isolated user-data directory"}
+ if(($process.CommandLine -notlike "*--user-data-dir*" -or $process.CommandLine -notlike "*$userDataRoot*")){throw "$label did not start with its isolated user-data directory"}
  Stop-Process -Id $p.Id -Force; Write-Host "ROLLBACK_RESTART_OK $label"
 }
 function Get-AppMetadata($installRoot){
@@ -23,10 +24,11 @@ function Prepare-UserData($exe,$appDataRoot,$label,$appName){
  $env:APPDATA=$appDataRoot; New-Item -ItemType Directory -Path $appDataRoot -Force|Out-Null
  $userDataRoot=Join-Path $appDataRoot $appName
  New-Item -ItemType Directory -Path $userDataRoot -Force|Out-Null
- $p=Start-Process -FilePath $exe -ArgumentList @("--user-data-dir=$userDataRoot") -PassThru; Start-Sleep 8
+ $userDataArgument='--user-data-dir="' + $userDataRoot + '"'
+ $p=Start-Process -FilePath $exe -ArgumentList @($userDataArgument) -PassThru; Start-Sleep 8
  if($p.HasExited){throw "$label baseline app did not start with isolated user data"}
  $process=Get-CimInstance Win32_Process -Filter "ProcessId = $($p.Id)"
- if($process.CommandLine -notlike "*--user-data-dir=$userDataRoot*"){throw "$label app was not launched with the isolated user-data directory"}
+ if(($process.CommandLine -notlike "*--user-data-dir*" -or $process.CommandLine -notlike "*$userDataRoot*")){throw "$label app was not launched with the isolated user-data directory"}
  Stop-Process -Id $p.Id -Force
  $file=Join-Path $userDataRoot 'rollback-user-data-sentinel.txt'
  Set-Content -LiteralPath $file -Value "$($label)-user-data-preserved"

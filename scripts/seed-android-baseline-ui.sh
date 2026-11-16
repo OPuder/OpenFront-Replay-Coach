@@ -7,6 +7,15 @@ ui_xml="$RUNNER_TEMP/ofrc-android-ui.xml"
 
 log() { echo "::notice::[Android baseline UI seed] $*"; }
 fail() { echo "::error::[Android baseline UI seed] $*"; exit 1; }
+source scripts/android-emulator-diagnostics.sh
+on_android_seed_exit() {
+  local status=$?
+  trap - EXIT
+  if [[ "$status" -ne 0 ]]; then android_capture_diagnostics "baseline-ui-seed-failure" || true; fi
+  exit "$status"
+}
+trap on_android_seed_exit EXIT
+
 
 dump_ui() {
   local dump_output="" pull_output=""
@@ -89,8 +98,10 @@ tap_text() {
   fail "Could not find the UI control '$needle'. Captured UI: $(cat "$ui_xml" 2>/dev/null | head -c 4000)"
 }
 
-log "Launching the genuine published v2.2.51 APK for UI-based profile and replay creation."
-timeout 30s adb -s emulator-5554 shell monkey -p "$package_id" 1 >/dev/null || fail "Published app did not launch."
+log "Rechecking ADB transport and boot state before launching the published baseline."
+android_prepare_emulator || fail "Baseline emulator preparation failed; inspect stage-specific ADB/boot diagnostics."
+log "Launching the genuine published v2.2.51 APK and classifying ADB, ActivityManager and crash failures."
+android_launch_package "$package_id" "the published v2.2.51 baseline APK" || fail "Published baseline app launch failed; see classified emulator diagnostics."
 sleep 20
 dump_ui || fail "Could not inspect the published app UI after two diagnostic UIAutomator attempts."
 coords="$(find_bounds "" edit || true)"

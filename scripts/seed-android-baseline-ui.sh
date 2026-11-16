@@ -21,7 +21,7 @@ dump_ui() {
   local dump_output="" pull_output=""
   for attempt in 1 2; do
     rm -f "$ui_xml"
-    timeout 75s adb -s emulator-5554 shell uiautomator dump --compressed /sdcard/ofrc-window.xml >"$RUNNER_TEMP/ofrc-uiautomator-dump.log" 2>&1 || {
+    timeout 20s adb -s emulator-5554 shell uiautomator dump --compressed /sdcard/ofrc-window.xml >"$RUNNER_TEMP/ofrc-uiautomator-dump.log" 2>&1 || {
       dump_output="$(cat "$RUNNER_TEMP/ofrc-uiautomator-dump.log" 2>/dev/null || true)"
       log "UI hierarchy dump attempt $attempt/2 failed: ${dump_output:-no diagnostic output}"
     }
@@ -86,7 +86,7 @@ tap_text() {
   local mode="${3:-text}"
   local coords=""
   for attempt in $(seq 1 20); do
-    dump_ui || true
+    dump_ui || fail "UIAutomator could not produce a readable hierarchy after two bounded attempts."
     coords="$(find_bounds "$needle" "$mode" "$occurrence" || true)"
     if [[ -n "$coords" ]]; then
       read -r x y <<< "$coords"
@@ -114,7 +114,7 @@ tap_text "Konto laden"
 
 profile_ready=false
 for attempt in $(seq 1 90); do
-  dump_ui || true
+  dump_ui || fail "UIAutomator could not produce a readable hierarchy after two bounded attempts."
   if grep -qi "Konto geladen" "$ui_xml" || grep -qi "Spieler-ID:" "$ui_xml"; then
     profile_ready=true
     break
@@ -146,7 +146,7 @@ PY
 
 replay_count=0
 for attempt in $(seq 1 240); do
-  dump_ui || true
+  dump_ui || fail "UIAutomator could not produce a readable hierarchy after two bounded attempts."
   replay_count="$(read_metric "REPLAYS GESPEICHERT")"
   if [[ "$replay_count" =~ ^[0-9]+$ ]] && (( replay_count >= 3 )); then break; fi
   sleep 2
@@ -163,7 +163,7 @@ sleep 2
 tap_text "Coach öffnen" 1 exact
 training_goal=false
 for attempt in $(seq 1 240); do
-  dump_ui || true
+  dump_ui || fail "UIAutomator could not produce a readable hierarchy after two bounded attempts."
   if grep -qi "Als Trainingsziel übernehmen" "$ui_xml"; then
     training_goal=true
     break

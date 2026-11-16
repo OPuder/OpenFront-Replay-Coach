@@ -38,6 +38,7 @@ try{
  if((Get-Content (Join-Path $it 'test-extra-sentinel') -Raw).Trim() -ne 'preserve-me'){throw 'Installer did not restore extra baseline file'}
  if((Get-Content $installerDataFile -Raw).Trim() -ne 'installer-user-data-preserved'){throw 'Installer user data changed'}
  if(!(Select-String -LiteralPath $ilog -Pattern 'ROLLBACK_VERIFIED' -Quiet)){throw 'Installer complete manifest/hash proof missing'}
+ if(!(Test-Path ($ilog+'.baseline-manifest.json')) -or !(Test-Path ($ilog+'.restored-manifest.json'))){throw 'Installer baseline/restored manifests missing'}
  Start-Check $ie 'Windows Installer'; Write-Host "WINDOWS_INSTALLER_ROLLBACK_OK log=$ilog"
  $pt=Join-Path $root 'portable'; New-Item -ItemType Directory $pt|Out-Null; Expand-Archive $PreviousPortableZip $pt
  $peItem=Get-ChildItem $pt -Filter 'OpenFront Replay Coach.exe' -File -Recurse|Select-Object -First 1; if(!$peItem){throw 'Portable executable missing'}
@@ -57,5 +58,6 @@ try{
  if((Get-Content (Join-Path $pr 'test-extra-sentinel') -Raw).Trim() -ne 'preserve-me'){throw 'Portable did not restore extra baseline file'}
  if((Get-Content $portableDataFile -Raw).Trim() -ne 'portable-user-data-preserved'){throw 'Portable user data changed'}
  if(!(Select-String -LiteralPath $plog -Pattern 'ROLLBACK_VERIFIED' -Quiet)){throw 'Portable complete manifest/hash proof missing'}
+ if(!(Test-Path ($plog+'.baseline-manifest.json')) -or !(Test-Path ($plog+'.restored-manifest.json'))){throw 'Portable baseline/restored manifests missing'}
  Start-Check $pe 'Windows Portable'; Write-Host "WINDOWS_PORTABLE_ROLLBACK_OK log=$plog"; Write-Host "WINDOWS_ROLLBACK_E2E_OK data=$root"
 }catch{Write-Error $_; Write-Host "DIAGNOSTICS_RETAINED $root";throw}

@@ -155,6 +155,48 @@ bash scripts/snapshot-android-web-storage.sh after
 node scripts/compare-android-web-storage.mjs
 node scripts/compare-android-upgrade-snapshots.mjs "$RUNNER_TEMP/after-valid-upgrade-storage.json" "$RUNNER_TEMP/after-negative-test-storage.json"
 
+log "Creating an isolated CI-only signing identity for the valid signer-mismatch negative test."
+test_keystore="$RUNNER_TEMP/ofrc-android-negative-test.p12"
+test_signed_apk="$RUNNER_TEMP/openfront-coach-valid-wrong-signer.apk"
+test_alias="ofrc-negative-test"
+test_password="$(openssl rand -hex 24)"
+rm -f "$test_keystore" "$test_signed_apk"
+keytool -genkeypair -noprompt -storetype PKCS12 -keystore "$test_keystore" \
+  -storepass "$test_password" -keypass "$test_password" -alias "$test_alias" \
+  -keyalg RSA -keysize 2048 -validity 2 \
+  -dname "CN=OFRC Android Update Negative Test, OU=CI Tests, O=OpenFront Replay Coach, L=CI, ST=CI, C=DE" \
+  >/dev/null 2>&1 || fail "Could not generate the isolated CI-only negative-test certificate."
+"$apksigner" sign --ks "$test_keystore" --ks-type PKCS12 --ks-key-alias "$test_alias" \
+  --ks-pass "pass:$test_password" --key-pass "pass:$test_password" \
+  --out "$test_signed_apk" "$current_apk" || fail "Could not sign the valid signer-mismatch APK with the isolated test key."
+"$apksigner" verify --verbose "$test_signed_apk" >/dev/null || fail "The signer-mismatch APK is not a cryptographically valid APK."
+installed_signer="$( "$apksigner" verify --print-certs "$current_apk" | sed -n 's/.*certificate SHA-256 digest: //p' | head -n 1 )"
+negative_signer="$( "$apksigner" verify --print-certs "$test_signed_apk" | sed -n 's/.*certificate SHA-256 digest: //p' | head -n 1 )"
+[[ -n "$installed_signer" && -n "$negative_signer" && "$installed_signer" != "$negative_signer" ]] || fail "The valid negative APK does not have a distinct signing certificate."
+log "Verified that both APKs are validly signed and their SHA-256 signer fingerprints differ; test keystore remains private to this CI job."
+
+mismatch_status=0
+mismatch_output="$(timeout --signal=INT --kill-after=15s 240s adb -s emulator-5554 install --no-streaming -r "$test_signed_apk" 2>&1)" || mismatch_status=$?
+log "Package Manager valid-but-incompatible-signature response (exit $mismatch_status)."
+printf '%s\\n' "$mismatch_output"
+[[ "$mismatch_status" -ne 0 ]] || fail "Android Package Manager unexpectedly accepted an APK signed by a different valid certificate."
+grep -F "INSTALL_FAILED_UPDATE_INCOMPATIBLE" <<<"$mismatch_output" >/dev/null || {
+  adb_cmd logcat -d -t 700 2>&1 | grep -E "PackageManager|PackageInstaller|signature|certificate|INSTALL_" | tail -n 120 || true
+  fail "Package Manager did not reject the valid wrong-signer APK with INSTALL_FAILED_UPDATE_INCOMPATIBLE."
+}
+
+installed_after_mismatch="$(adb_cmd shell dumpsys package "$package_id")" || fail "Could not inspect the installed app after signer-mismatch rejection."
+grep -F "versionCode=$current_version_code" <<<"$installed_after_mismatch" >/dev/null || fail "The failed signer-mismatch update replaced or damaged the installed app."
+adb_cmd shell am force-stop "$package_id" >/dev/null 2>&1 || true
+adb_cmd shell monkey -p "$package_id" 1 >/dev/null || fail "The original signed app could not be launched after signer-mismatch rejection."
+sleep 5
+adb_cmd shell pidof "$package_id" >/dev/null || fail "The original signed app did not remain running after signer-mismatch rejection."
+node scripts/inspect-android-upgrade-data.mjs "$RUNNER_TEMP/after-signature-mismatch-storage.json"
+node scripts/compare-android-upgrade-snapshots.mjs "$RUNNER_TEMP/after-negative-test-storage.json" "$RUNNER_TEMP/after-signature-mismatch-storage.json"
+adb_cmd shell am force-stop "$package_id" >/dev/null 2>&1 || true
+rm -f "$test_keystore" "$test_signed_apk"
+unset test_password
+
 log "Running a five-minute foreground idle soak on the upgraded signed test build."
 sleep 300
 if ! adb_cmd shell pidof "$package_id" >/dev/null 2>&1; then
@@ -163,4 +205,4 @@ if ! adb_cmd shell pidof "$package_id" >/dev/null 2>&1; then
   adb_cmd logcat -d -t 500 2>&1 | grep -E "FATAL EXCEPTION|AndroidRuntime|de.openfront.replaycoach|ActivityTaskManager" | tail -n 120 || true
   fail "Upgraded signed release app exited during the five-minute idle soak."
 fi
-log "PASS: published APK $previous_version_code upgraded in place to the permanent-key test build $version ($current_version_code); UI-seeded IndexedDB/LocalStorage survived, Package Manager rejected an unsigned negative APK without using a temporary signing key, the valid app remained startable, and the app survived five minutes idle."
+log "PASS: published APK $previous_version_code upgraded in place to the permanent-key test build $version ($current_version_code); complete UI-seeded IndexedDB/LocalStorage survived, Package Manager rejected both an unsigned APK and a cryptographically valid APK signed by a distinct ephemeral CI-only certificate, the original installation remained intact and startable after both rejections, and the app survived five minutes idle."

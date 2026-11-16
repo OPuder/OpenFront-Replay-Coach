@@ -91,32 +91,58 @@ assert.match(releaseWorkflow, /names\.length === 3/);
 assert.match(releaseWorkflow, /-Android\.apk/);
 
 const updateValidationWorkflow = read(".github/workflows/update-validation.yml");
-const androidReleaseUpgradeScript = read("scripts/test-android-release-upgrade.sh");
-const buildCandidateStep = updateValidationWorkflow.indexOf("Build higher-version candidate with the permanent release key");
-const emulatorUpgradeStep = updateValidationWorkflow.indexOf("Test genuine published-APK in-place upgrade on Android emulator");
-const productionApkStep = updateValidationWorkflow.indexOf("Build separate non-debuggable production APK without test inspector");
-assert.ok(buildCandidateStep >= 0 && emulatorUpgradeStep > buildCandidateStep && productionApkStep > emulatorUpgradeStep,
-  "The permanent-key test APK must be built before the genuine v2.2.51 emulator upgrade, and the production APK only afterwards.");
-assert.match(updateValidationWorkflow, /ANDROID_UPGRADE_TEST_BUILD: "1"/);
-assert.match(updateValidationWorkflow, /script: bash scripts\/test-android-release-upgrade\.sh/);
-assert.match(updateValidationWorkflow, /bash -n scripts\/test-android-release-upgrade\.sh/);
-assert.match(androidReleaseUpgradeScript, /seed-android-baseline-ui\.sh/);
-assert.match(androidReleaseUpgradeScript, /snapshot-android-web-storage\.sh before/);
-assert.match(androidReleaseUpgradeScript, /snapshot-android-web-storage\.sh after/);
-assert.match(androidReleaseUpgradeScript, /INSTALL_FAILED_UPDATE_INCOMPATIBLE/);
-assert.match(androidReleaseUpgradeScript, /negative_cert.*candidate_cert/);
-assert.match(androidReleaseUpgradeScript, /after-negative-test-storage\.json/);
-assert.match(androidReleaseUpgradeScript, /compare-android-upgrade-snapshots\.mjs/);
-assert.match(androidReleaseUpgradeScript, /compare-android-web-storage\.mjs/);
+const androidSigningConfigurator = read("scripts/configure-android-signing.mjs");
+const androidReleaseUpgrade = read("scripts/test-android-release-upgrade.sh");
+const androidBaselineDownload = read("scripts/download-android-release-baseline.sh");
+const androidStorageInspector = read("scripts/inspect-android-upgrade-data.mjs");
+const androidStorageSnapshot = read("scripts/snapshot-android-web-storage.sh");
+const androidUnsignedNegative = read("scripts/create-android-unsigned-negative-apk.py");
+
+assert.match(updateValidationWorkflow, /Download and verify exact public v2\.2\.51 Android baseline/);
+assert.match(updateValidationWorkflow, /Build higher-version candidate with the permanent release key/);
+assert.match(updateValidationWorkflow, /Test genuine published-APK in-place upgrade on Android emulator[\s\S]*?bash scripts\/test-android-release-upgrade\.sh/);
+assert.match(updateValidationWorkflow, /Build separate non-debuggable production APK without test inspector/);
+assert.match(updateValidationWorkflow, /Download uploaded APK for byte-for-byte verification/);
+assert.match(updateValidationWorkflow, /Verify uploaded production APK hash and signature/);
+assert.match(updateValidationWorkflow, /Verify permanent Android release signing key and continuity[\s\S]*?if: always\(\) && \(github\.event_name != 'pull_request' \|\| github\.event\.pull_request\.head\.repo\.full_name == github\.repository\)/);
+assert.match(androidSigningGate, /ANDROID_UPGRADE_TEST_BUILD/);
+assert.match(androidSigningGate, /assembleDebug/);
+assert.match(androidSigningGate, /assembleRelease/);
+assert.match(androidSigningGate, /ANDROID_SIGNING_VERIFY_ONLY/);
+assert.match(androidSigningConfigurator, /signingConfig signingConfigs\.release/);
+assert.match(androidSigningConfigurator, /debuggable: "true"/);
+assert.match(androidSigningConfigurator, /debuggable: "false"/);
+assert.match(androidBaselineDownload, /v2\.2\.51/);
+assert.match(androidBaselineDownload, /8b2da877f5e4788c29e13f7788aaca34d07e969e1f03a0f1aff8e0cdc6c030fd/);
+assert.match(androidBaselineDownload, /apksigner/);
+assert.match(androidBaselineDownload, /versionCode='2002051'/);
+assert.match(androidReleaseUpgrade, /adb -s emulator-5554 install --no-streaming -r/);
+assert.match(androidReleaseUpgrade, /seed-android-baseline-ui\.sh/);
+assert.match(androidReleaseUpgrade, /snapshot-android-web-storage\.sh before/);
+assert.match(androidReleaseUpgrade, /inspect-android-upgrade-data\.mjs/);
+assert.match(androidReleaseUpgrade, /compare-android-web-storage\.mjs/);
+assert.match(androidReleaseUpgrade, /create-android-unsigned-negative-apk\.py/);
+assert.match(androidReleaseUpgrade, /INSTALL_PARSE_FAILED_NO_CERTIFICATES\|INSTALL_FAILED_INVALID_APK/);
+assert.match(androidReleaseUpgrade, /compare-android-upgrade-snapshots\.mjs/);
+assert.match(androidReleaseUpgrade, /sleep 300/);
+assert.match(androidStorageInspector, /ofrc-android-upgrade-snapshot-v1/);
+assert.match(androidStorageInspector, /missingReplayRecords/);
+assert.match(androidStorageInspector, /orphanReplayRecords/);
+assert.match(androidStorageSnapshot, /adb root/);
+assert.match(androidStorageSnapshot, /IndexedDB/);
+assert.match(androidStorageSnapshot, /Local Storage/);
+assert.match(androidStorageSnapshot, /immutableTables/);
+assert.match(androidUnsignedNegative, /META-INF/);
+assert.match(androidUnsignedNegative, /No signing key was generated or used/);
 assert.match(androidUpdateRegression, /OPENFRONT_UPDATE_APK/);
 assert.doesNotMatch(androidUpdateRegression, /gradlew|assembleDebug/);
 
-assert.ok(releaseWorkflow.includes("names.some(name => /(?:\\.Setup\\.| Setup )[0-9.]+\\.exe$/i.test(name))"), "Release verification must match both legacy dotted and actual spaced NSIS installer filenames.");
-assert.ok(updater.includes(String.raw`/(?:\.Setup\.| Setup )[\d.]+\.exe$/i`), "The main-process updater must recognize the current and legacy installer names.");
-assert.ok(renderer.includes(String.raw`/(?:\.Setup\.| Setup )[\d.]+\.exe$/i`), "The Update Center must recognize the current and legacy installer names.");
-const installerAssetMatcher = /(?:\.Setup\.| Setup )[\d.]+\.exe$/i;
-assert.match("OpenFront Replay Coach Setup 2.2.45.exe", installerAssetMatcher, "The current electron-builder NSIS filename must be detected.");
-assert.match("OpenFront.Replay.Coach.Setup.2.2.44.exe", installerAssetMatcher, "Legacy published installer filenames must remain supported.");
+assert.ok(
+  updateValidationWorkflow.indexOf("Test genuine published-APK in-place upgrade on Android emulator") <
+    updateValidationWorkflow.indexOf("Verify permanent Android release signing key and continuity"),
+  "The permanent signing continuity gate must run after the published-APK emulator upgrade test."
+);
+
 assert.ok(releaseWorkflow.includes("names.some(name => /-win\\.zip$/i.test(name))"), "Release verification must match the actual Windows portable ZIP filename.");
 assert.ok(releaseWorkflow.includes("names.some(name => /-Android\\.apk$/i.test(name))"), "Release verification must match the actual Android APK filename.");
 

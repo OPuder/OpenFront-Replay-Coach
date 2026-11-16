@@ -163,6 +163,12 @@ assert.ok(
 
 assert.ok(releaseWorkflow.includes("names.some(name => /-win\\.zip$/i.test(name))"), "Release verification must match the actual Windows portable ZIP filename.");
 assert.ok(releaseWorkflow.includes("names.some(name => /-Android\\.apk$/i.test(name))"), "Release verification must match the actual Android APK filename.");
+assert.ok(releaseWorkflow.includes("names.some(name => /(?:\\\\.Setup\\\\.| Setup )[0-9.]+\\\\.exe$/i.test(name))"), "Release verification must match both legacy dotted and current spaced NSIS installer filenames.");
+assert.ok(updater.includes(String.raw`/(?:\\.Setup\\.| Setup )[\\d.]+\\.exe$/i`), "The main-process updater must recognize current and legacy installer names.");
+assert.ok(renderer.includes(String.raw`/(?:\\.Setup\\.| Setup )[\\d.]+\\.exe$/i`), "The Update Center must recognize current and legacy installer names.");
+const installerAssetMatcher = /(?:\\.Setup\\.| Setup )[\\d.]+\\.exe$/i;
+assert.match("OpenFront Replay Coach Setup 2.2.45.exe", installerAssetMatcher, "The current electron-builder NSIS filename must be detected.");
+assert.match("OpenFront.Replay.Coach.Setup.2.2.44.exe", installerAssetMatcher, "Legacy published installer filenames must remain supported.");
 
 
 const matchStore = read("src/renderer/matchStore.ts");

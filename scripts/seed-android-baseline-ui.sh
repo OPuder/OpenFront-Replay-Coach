@@ -9,9 +9,23 @@ log() { echo "::notice::[Android baseline UI seed] $*"; }
 fail() { echo "::error::[Android baseline UI seed] $*"; exit 1; }
 
 dump_ui() {
-  timeout 25s adb -s emulator-5554 shell uiautomator dump /sdcard/ofrc-window.xml >/dev/null 2>&1 || true
-  timeout 20s adb -s emulator-5554 pull /sdcard/ofrc-window.xml "$ui_xml" >/dev/null 2>&1 || true
-  test -s "$ui_xml"
+  local dump_output="" pull_output=""
+  for attempt in 1 2; do
+    rm -f "$ui_xml"
+    timeout 75s adb -s emulator-5554 shell uiautomator dump --compressed /sdcard/ofrc-window.xml >"$RUNNER_TEMP/ofrc-uiautomator-dump.log" 2>&1 || {
+      dump_output="$(cat "$RUNNER_TEMP/ofrc-uiautomator-dump.log" 2>/dev/null || true)"
+      log "UI hierarchy dump attempt $attempt/2 failed: ${dump_output:-no diagnostic output}"
+    }
+    if [[ -s "$RUNNER_TEMP/ofrc-uiautomator-dump.log" ]] && grep -qi "dumped to" "$RUNNER_TEMP/ofrc-uiautomator-dump.log"; then
+      pull_output="$(timeout 30s adb -s emulator-5554 pull /sdcard/ofrc-window.xml "$ui_xml" 2>&1 || true)"
+      if [[ -s "$ui_xml" ]] && grep -q "<hierarchy" "$ui_xml"; then return 0; fi
+      log "UI hierarchy pull attempt $attempt/2 did not produce valid XML: ${pull_output:-empty file}"
+    fi
+    if (( attempt == 1 )); then sleep 5; fi
+  done
+  log "Focused window: $(timeout 15s adb -s emulator-5554 shell dumpsys window 2>&1 | grep -E 'mCurrentFocus|mFocusedApp' | tail -n 4 || true)"
+  log "Recent UIAutomator diagnostics: $(timeout 15s adb -s emulator-5554 logcat -d -t 180 2>&1 | grep -Ei 'uiautomator|Accessibility|WindowManager|FATAL EXCEPTION' | tail -n 30 || true)"
+  return 1
 }
 
 find_bounds() {

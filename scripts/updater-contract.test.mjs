@@ -238,6 +238,7 @@ assert.match(androidEmulatorDiagnostics, /am start -W -n/);
 const androidUpgradeBridge = read("src/renderer/androidUpgradeTestBridge.ts");
 assert.match(androidUpgradeBridge, /import \{ loadImportedMatch \} from "\.\/matchStore"/);
 assert.match(androidUpgradeBridge, /loadImportedMatch\(playerId, gameId\)/);
+assert.match(androidUpgradeBridge, /slice\(0, 2\)/);
 assert.match(androidUpgradeBridge, /replayRestored/);
 assert.match(androidUpgradeBridge, /recordGameId/);
 assert.match(androidUpgradeBridge, /engineCommit/);

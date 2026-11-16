@@ -104,6 +104,19 @@ jobs:
           Write-Host "Portable: $($portable.Name) ($($portable.Length) bytes)"
           Write-Host "Packaged app.asar: $($appAsar.Length) bytes"
 
+      - name: Download and verify published Windows v2.2.51 baselines
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $installer = Join-Path $env:RUNNER_TEMP 'OpenFront.Replay.Coach.Setup.2.2.51.exe'
+          $portable = Join-Path $env:RUNNER_TEMP 'OpenFront.Replay.Coach-2.2.51-win.zip'
+          Invoke-WebRequest -Uri 'https://github.com/OPuder/OpenFront-Replay-Coach/releases/download/v2.2.51/OpenFront.Replay.Coach.Setup.2.2.51.exe' -OutFile $installer
+          Invoke-WebRequest -Uri 'https://github.com/OPuder/OpenFront-Replay-Coach/releases/download/v2.2.51/OpenFront.Replay.Coach-2.2.51-win.zip' -OutFile $portable
+          if ((Get-FileHash -LiteralPath $installer -Algorithm SHA256).Hash.ToLowerInvariant() -ne '277cadab13ed4ee7daa39bf9680a88382c1ab12fffe9da482262580c4ed4c71c') { throw 'Published Windows v2.2.51 installer checksum mismatch.' }
+          if ((Get-FileHash -LiteralPath $portable -Algorithm SHA256).Hash.ToLowerInvariant() -ne 'afbe14fe474f01d9ee8f7e2564e62b0c76859f2a477a429ea7245ea8f0c7f0f8') { throw 'Published Windows v2.2.51 portable checksum mismatch.' }
+          "PREVIOUS_INSTALLER=$installer" >> $env:GITHUB_ENV
+          "PREVIOUS_PORTABLE=$portable" >> $env:GITHUB_ENV
+
       - name: Exercise real Windows Installer and Portable rollback after file mutations
         shell: pwsh
         timeout-minutes: 20
@@ -111,7 +124,7 @@ jobs:
           $installer = Get-ChildItem release -Filter '*.exe' -File | Select-Object -First 1
           $portable = Get-ChildItem release -Filter '*.zip' -File | Select-Object -First 1
           if (-not $installer -or -not $portable) { throw 'Rollback test packages are missing.' }
-          ./scripts/test-windows-update-rollback.ps1 -Installer $installer.FullName -PortableZip $portable.FullName -Helper (Resolve-Path scripts/windows-update-rollback.ps1).Path
+          ./scripts/test-windows-update-rollback.ps1 -Installer $installer.FullName -PortableZip $portable.FullName -PreviousInstaller $env:PREVIOUS_INSTALLER -PreviousPortableZip $env:PREVIOUS_PORTABLE -Helper (Resolve-Path scripts/windows-update-rollback.ps1).Path
 
       - name: Upload Windows rollback logs and manifests
         if: always()

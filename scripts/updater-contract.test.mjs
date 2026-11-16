@@ -201,13 +201,12 @@ assert.ok(!releaseUpgradeWorkflow.includes("disable-animations: true"));
 assert.ok(releaseUpgradeScript.includes("PREVIOUS_APK"));
 assert.ok(releaseUpgradeScript.includes("for attempt in 1 2 3"));
 assert.ok(releaseUpgradeScript.includes("timeout --signal=INT --kill-after=15s 240s adb -s emulator-5554 install"));
-assert.ok(releaseUpgradeScript.includes("seq 1 9"));
-assert.ok(releaseUpgradeScript.includes("timeout 8s adb -s emulator-5554 shell cmd package list packages"));
 assert.ok(releaseUpgradeScript.includes("versionCode"));
 assert.ok(releaseUpgradeScript.includes("pidof"));
 assert.ok(releaseUpgradeScript.includes("timeout 60s adb -s emulator-5554"));
 const androidValidationWorkflow = read(".github/workflows/update-validation.yml");
 assert.ok(androidValidationWorkflow.includes("bash -n scripts/test-android-release-upgrade.sh"));
+assert.ok(androidValidationWorkflow.includes("bash -n scripts/android-emulator-diagnostics.sh"));
 
 
 const engineCacheWorkflows = [
@@ -226,6 +225,9 @@ assert.match(androidEmulatorDiagnostics, /adb kill-server/);
 assert.match(androidEmulatorDiagnostics, /adb start-server/);
 assert.match(androidEmulatorDiagnostics, /adb reconnect offline/);
 assert.match(androidEmulatorDiagnostics, /sys\.boot_completed/);
+assert.match(androidEmulatorDiagnostics, /seq 1 48/);
+assert.match(androidEmulatorDiagnostics, /cmd package list packages/);
+assert.match(androidEmulatorDiagnostics, /QEMU emulator identity/);
 assert.match(androidEmulatorDiagnostics, /android_capture_diagnostics/);
 assert.match(androidEmulatorDiagnostics, /CLASSIFICATION=ADB_CONNECTION_FAILURE/);
 assert.match(androidEmulatorDiagnostics, /CLASSIFICATION=ACTIVITY_START_FAILURE/);

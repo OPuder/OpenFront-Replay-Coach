@@ -7,7 +7,7 @@ import { UPGRADE_FIXTURE, LOCAL_STORAGE_ENTRIES } from "./windows-upgrade-fixtur
 const mode = process.argv[2];
 const port = Number(process.argv[3]);
 const expectedInstallDirectory = process.argv[4];
-if (!["seed", "snapshot", "update"].includes(mode) || !Number.isInteger(port) || port < 1 || !expectedInstallDirectory) {
+if (!["seed", "snapshot", "update", "close"].includes(mode) || !Number.isInteger(port) || port < 1 || !expectedInstallDirectory) {
   throw new Error("Usage: node scripts/windows-webview-storage.mjs <seed|snapshot|update> <port> <install-directory>");
 }
 
@@ -198,11 +198,25 @@ try{
       throw new UpgradeContextError("Application completed startup without restoring the persisted player profile and linked match: " + JSON.stringify(restored));
     }
   }
-  let result;
-  if(mode==="seed") result=await evaluate(seedExpression);
-  else if(mode==="update") result=await evaluate(updateExpression);
-  const snapshot=mode==="update"?null:await evaluate(snapshotExpression);
-  console.log(JSON.stringify({mode,targetUrl:target.url,renderer,result,snapshot}));
+  if(mode==="close") {
+    // Browser.close performs an orderly Chromium shutdown. Force-killing the
+    // published baseline after CDP writes can leave LocalStorage's LevelDB
+    // buffers unflushed, making a valid persisted player ID disappear on the
+    // next launch and invalidating the in-place-upgrade test itself.
+    const closed = new Promise((resolve, reject) => {
+      const timer = setTimeout(() => reject(new UpgradeContextError("Chromium did not close cleanly after Browser.close.")), 15000);
+      ws.addEventListener("close", () => { clearTimeout(timer); resolve(true); }, { once: true });
+    });
+    ws.send(JSON.stringify({ id: ++nextId, method: "Browser.close", params: {} }));
+    await closed;
+    console.log(JSON.stringify({mode,targetUrl:target.url,renderer,closed:true}));
+  } else {
+    let result;
+    if(mode==="seed") result=await evaluate(seedExpression);
+    else if(mode==="update") result=await evaluate(updateExpression);
+    const snapshot=mode==="update"?null:await evaluate(snapshotExpression);
+    console.log(JSON.stringify({mode,targetUrl:target.url,renderer,result,snapshot}));
+  }
 }catch(error){
   const message=String(error?.message??error);
   if(message.includes("DATA_LOSS_ERROR")) throw new UpgradeDataLossError(message.replace(/^.*DATA_LOSS_ERROR:\s*/,""));

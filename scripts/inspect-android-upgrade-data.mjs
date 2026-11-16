@@ -77,6 +77,13 @@ try {
     throw new Error(`Expected a real profile and at least two persisted full replays; found profiles=${profiles.length}, matches=${matches.length}, replayRecords=${replays.length}.`);
   }
   if (!verifiedAnalyses.length) throw new Error("No verified replay analysis result survived in the match records.");
+  const rehydration = snapshot.rehydration;
+  if (!rehydration || rehydration.attempted < 2 || rehydration.loaded !== rehydration.attempted
+    || rehydration.replayRestored !== rehydration.attempted
+    || rehydration.matches.some(item => !item.loaded || !item.replayRestored
+      || String(item.recordGameId) !== String(item.gameId) || !item.engineCommit || Number(item.turnCount) < 1)) {
+    throw new Error(`Production matchStore rehydration failed after update: ${JSON.stringify(rehydration)}`);
+  }
   if (replayMetadata.some(item => !item.gameId || String(item.recordGameId) !== String(item.gameId) || !item.engineCommit || Number(item.turnCount) < 1)) {
     throw new Error("One or more full replay records lost their game identity or exact engine commit metadata.");
   }
@@ -94,6 +101,11 @@ try {
     localStorageKeys: localEntries.map(entry => entry.key),
     verifiedAnalyses: verifiedAnalyses.length,
     fullReplayIdentityCount: replayMetadata.length,
+    productionStoreRehydration: {
+      attempted: rehydration.attempted,
+      loaded: rehydration.loaded,
+      replayRestored: rehydration.replayRestored,
+    },
     trainingGoalGameId: trainingGoal.gameId,
     indexedDb: snapshot.indexedDb.name,
     storeCounts: Object.fromEntries(snapshot.indexedDb.stores.map(store => [store.name, store.count])),

@@ -22,6 +22,7 @@ function Mirror([string]$from,[string]$to){
  if($LASTEXITCODE -ge 8){throw "robocopy failed: $LASTEXITCODE"}
 }
 $backup=Join-Path $env:TEMP ('ofrc-rollback-'+[guid]::NewGuid().ToString('N')); $stage=Join-Path $env:TEMP ('ofrc-stage-'+[guid]::NewGuid().ToString('N'))
+$registryBackup=$backup+'.registry.reg'; $registryKeyPath=$null; $registryDisplayVersion=$null
 $baseline=$null; $started=$false; $restored=$false; $updated=$false
 try{
  if($ProcessId -gt 0){try{Wait-Process -Id $ProcessId -Timeout 120 -ErrorAction Stop}catch{if(Get-Process -Id $ProcessId -ErrorAction SilentlyContinue){throw 'Application did not exit'}}}
@@ -30,6 +31,19 @@ try{
  $baseline=Manifest $Target; if($baseline.Count -eq 0){throw 'Install directory empty'}
  $baselineAsar=$baseline | Where-Object { $_.path -eq 'resources/app.asar' -and $_.type -eq 'file' } | Select-Object -First 1
  if(!$baselineAsar){throw 'Baseline resources/app.asar missing'}
+ if($Mode -eq 'Installer'){
+  $uninstallRoot='HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall'
+  $matches=@(Get-ChildItem -LiteralPath $uninstallRoot -ErrorAction SilentlyContinue | ForEach-Object {
+   $props=Get-ItemProperty -LiteralPath $_.PSPath -ErrorAction SilentlyContinue
+   if($props.DisplayName -eq 'OpenFront Replay Coach' -and $props.InstallLocation -and ([IO.Path]::GetFullPath($props.InstallLocation).TrimEnd('\') -ieq $Target.TrimEnd('\'))){[pscustomobject]@{path=$_.PSPath;name=$_.PSChildName;version=$props.DisplayVersion}}
+  })
+  if($matches.Count -ne 1){throw "Expected exactly one HKCU uninstall registry entry for $Target; found $($matches.Count)"}
+  $registryKeyPath=$matches[0].path; $registryDisplayVersion=[string]$matches[0].version
+  $nativeKey='HKCU\Software\Microsoft\Windows\CurrentVersion\Uninstall\'+$matches[0].name
+  & reg.exe export $nativeKey $registryBackup /y | Out-Null
+  if($LASTEXITCODE -ne 0 -or !(Test-Path -LiteralPath $registryBackup)){throw 'Could not create installer uninstall-registry backup'}
+  Log "REGISTRY_BACKUP_VERIFIED key=$nativeKey displayVersion=$registryDisplayVersion"
+ }
  $baseline | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath ($LogPath+'.baseline-manifest.json')
  Mirror $Target $backup; $backupManifest=Manifest $backup
  $backupManifest | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath ($LogPath+'.backup-manifest.json')
@@ -72,6 +86,14 @@ try{
    Mirror $backup $Target
    $restoredManifest=Manifest $Target
    Assert-Manifest $baseline $restoredManifest 'Restored tree verification failed'
+   if($registryKeyPath){
+    if(Test-Path -LiteralPath $registryKeyPath){Remove-Item -LiteralPath $registryKeyPath -Recurse -Force}
+    & reg.exe import $registryBackup | Out-Null
+    if($LASTEXITCODE -ne 0){throw 'Could not restore previous Windows uninstall registry metadata'}
+    $restoredRegistry=Get-ItemProperty -LiteralPath $registryKeyPath
+    if([string]$restoredRegistry.DisplayVersion -ne $registryDisplayVersion){throw 'Restored uninstall registry DisplayVersion does not match baseline'}
+    Log "REGISTRY_ROLLBACK_VERIFIED displayVersion=$($restoredRegistry.DisplayVersion)"
+   }
    $restored=$true
    $restoredManifest | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath ($LogPath+'.restored-manifest.json')
    Log "ROLLBACK_VERIFIED complete_inventory_hashes=$($baseline.Count)"
@@ -82,5 +104,8 @@ try{
  exit 1
 }finally{
  Remove-Item -LiteralPath $stage -Recurse -Force -ErrorAction SilentlyContinue
- if($updated -or $restored){Remove-Item -LiteralPath $backup -Recurse -Force -ErrorAction SilentlyContinue}
+ if($updated -or $restored){
+  Remove-Item -LiteralPath $backup -Recurse -Force -ErrorAction SilentlyContinue
+  Remove-Item -LiteralPath $registryBackup -Force -ErrorAction SilentlyContinue
+ }
 }

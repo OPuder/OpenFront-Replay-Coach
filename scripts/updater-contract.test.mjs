@@ -98,27 +98,27 @@ const productionApkStep = updateValidationWorkflow.indexOf("Build separate non-d
 assert.ok(buildCandidateStep >= 0 && emulatorUpgradeStep > buildCandidateStep && productionApkStep > emulatorUpgradeStep,
   "The permanent-key test APK must be built before the genuine v2.2.51 emulator upgrade, and the production APK only afterwards.");
 assert.match(updateValidationWorkflow, /ANDROID_UPGRADE_TEST_BUILD: "1"/);
-assert.match(updateValidationWorkflow, /script: bash scripts\\/test-android-release-upgrade\\.sh/);
-assert.match(updateValidationWorkflow, /bash -n scripts\\/test-android-release-upgrade\\.sh/);
-assert.match(androidReleaseUpgradeScript, /seed-android-baseline-ui\\.sh/);
-assert.match(androidReleaseUpgradeScript, /snapshot-android-web-storage\\.sh before/);
-assert.match(androidReleaseUpgradeScript, /snapshot-android-web-storage\\.sh after/);
+assert.match(updateValidationWorkflow, /script: bash scripts\/test-android-release-upgrade\.sh/);
+assert.match(updateValidationWorkflow, /bash -n scripts\/test-android-release-upgrade\.sh/);
+assert.match(androidReleaseUpgradeScript, /seed-android-baseline-ui\.sh/);
+assert.match(androidReleaseUpgradeScript, /snapshot-android-web-storage\.sh before/);
+assert.match(androidReleaseUpgradeScript, /snapshot-android-web-storage\.sh after/);
 assert.match(androidReleaseUpgradeScript, /INSTALL_FAILED_UPDATE_INCOMPATIBLE/);
 assert.match(androidReleaseUpgradeScript, /negative_cert.*candidate_cert/);
-assert.match(androidReleaseUpgradeScript, /after-negative-test-storage\\.json/);
-assert.match(androidReleaseUpgradeScript, /compare-android-upgrade-snapshots\\.mjs/);
-assert.match(androidReleaseUpgradeScript, /compare-android-web-storage\\.mjs/);
+assert.match(androidReleaseUpgradeScript, /after-negative-test-storage\.json/);
+assert.match(androidReleaseUpgradeScript, /compare-android-upgrade-snapshots\.mjs/);
+assert.match(androidReleaseUpgradeScript, /compare-android-web-storage\.mjs/);
 assert.match(androidUpdateRegression, /OPENFRONT_UPDATE_APK/);
 assert.doesNotMatch(androidUpdateRegression, /gradlew|assembleDebug/);
 
-assert.ok(releaseWorkflow.includes("names.some(name => /(?:\\.Setup\\.| Setup )[0-9.]+\\.exe$/i.test(name))"), "Release verification must match both legacy dotted and actual spaced NSIS installer filenames.");
+assert.ok(releaseWorkflow.includes("names.some(name => /(?:\.Setup\.| Setup )[0-9.]+\.exe$/i.test(name))"), "Release verification must match both legacy dotted and actual spaced NSIS installer filenames.");
 assert.ok(updater.includes(String.raw`/(?:\.Setup\.| Setup )[\d.]+\.exe$/i`), "The main-process updater must recognize the current and legacy installer names.");
 assert.ok(renderer.includes(String.raw`/(?:\.Setup\.| Setup )[\d.]+\.exe$/i`), "The Update Center must recognize the current and legacy installer names.");
 const installerAssetMatcher = /(?:\.Setup\.| Setup )[\d.]+\.exe$/i;
 assert.match("OpenFront Replay Coach Setup 2.2.45.exe", installerAssetMatcher, "The current electron-builder NSIS filename must be detected.");
 assert.match("OpenFront.Replay.Coach.Setup.2.2.44.exe", installerAssetMatcher, "Legacy published installer filenames must remain supported.");
-assert.ok(releaseWorkflow.includes("names.some(name => /-win\\.zip$/i.test(name))"), "Release verification must match the actual Windows portable ZIP filename.");
-assert.ok(releaseWorkflow.includes("names.some(name => /-Android\\.apk$/i.test(name))"), "Release verification must match the actual Android APK filename.");
+assert.ok(releaseWorkflow.includes("names.some(name => /-win\.zip$/i.test(name))"), "Release verification must match the actual Windows portable ZIP filename.");
+assert.ok(releaseWorkflow.includes("names.some(name => /-Android\.apk$/i.test(name))"), "Release verification must match the actual Android APK filename.");
 
 
 const matchStore = read("src/renderer/matchStore.ts");

@@ -29,11 +29,16 @@ try{
  $p=Start-Process -FilePath $PreviousInstaller -ArgumentList @('/S',"/D=$it") -Wait -PassThru; if($p.ExitCode -ne 0){throw "Baseline installer failed: $($p.ExitCode)"}
  $ie=Join-Path $it 'OpenFront Replay Coach.exe'; if(!(Test-Path $ie)){throw 'Baseline installer exe missing'}
  $installerVersion=Get-AppVersion $it; if($installerVersion -ne '2.2.51'){throw "Expected installer baseline 2.2.51, got $installerVersion"}
+ $uninstallRoot='HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall'
+ $registryEntries=@(Get-ChildItem -LiteralPath $uninstallRoot | ForEach-Object {$props=Get-ItemProperty -LiteralPath $_.PSPath; if($props.DisplayName -eq 'OpenFront Replay Coach' -and $props.InstallLocation -and ([IO.Path]::GetFullPath($props.InstallLocation).TrimEnd('\') -ieq $it.TrimEnd('\'))){[pscustomobject]@{path=$_.PSPath;version=[string]$props.DisplayVersion}}})
+ if($registryEntries.Count -ne 1 -or $registryEntries[0].version -ne '2.2.51'){throw 'Could not verify v2.2.51 installer uninstall registry metadata'}
+ $installerRegistryPath=$registryEntries[0].path
  $installerDataFile=Prepare-UserData $ie (Join-Path $root 'installer-appdata') 'installer'
  Set-Content (Join-Path $it 'test-extra-sentinel') 'preserve-me'; $ilog=Join-Path $root 'installer.log'
  & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $Helper -Mode Installer -Target $it -Executable $ie -PackagePath $Installer -LogPath $ilog -FailAfterMutation
  if($LASTEXITCODE -ne 1){throw "Installer rollback exit was $LASTEXITCODE"}
  if((Get-AppVersion $it) -ne $installerVersion){throw 'Installer rollback did not restore old application version'}
+ if([string](Get-ItemProperty -LiteralPath $installerRegistryPath).DisplayVersion -ne '2.2.51'){throw 'Installer rollback did not restore old uninstall registry version'}
  if(Test-Path (Join-Path $it '__ROLLBACK_TEST_EXTRA_FILE__.txt')){throw 'Installer left injected extra file'}
  if((Get-Content (Join-Path $it 'test-extra-sentinel') -Raw).Trim() -ne 'preserve-me'){throw 'Installer did not restore extra baseline file'}
  if((Get-Content $installerDataFile -Raw).Trim() -ne 'installer-user-data-preserved'){throw 'Installer user data changed'}

@@ -26,7 +26,16 @@ for (const file of [path.join(previous, oldInstaller), path.join(current, newIns
 }
 function run(command, args, env = process.env, timeout = 240000) {
   const result = spawnSync(command, args, { encoding: "utf8", windowsHide: true, timeout, env });
-  if (result.error || result.status !== 0) throw new Error(command + " failed: " + (result.error || result.stderr || result.stdout));
+  if (result.error || result.status !== 0) {
+    const diagnostic = {
+      status: result.status,
+      signal: result.signal,
+      error: result.error ? { name: result.error.name, message: result.error.message, code: result.error.code, errno: result.error.errno, syscall: result.error.syscall, path: result.error.path } : null,
+      stdout: String(result.stdout ?? "").slice(-8000),
+      stderr: String(result.stderr ?? "").slice(-8000),
+    };
+    throw new Error(command + " failed: " + JSON.stringify(diagnostic));
+  }
   return result.stdout || "";
 }
 const digest = file => createHash("sha256").update(readFileSync(file)).digest("hex");
@@ -148,8 +157,16 @@ async function launch(executable, dataDir, port, mode, extraEnv = {}, requireEle
       : readElectronContext(childOutput);
     return { child, helperResult, get childOutput() { return childOutput; }, electronContext, appData, localData, executable };
   } catch (error) {
+    const diagnostic = {
+      executable,
+      pid: child.pid ?? null,
+      exitCode: child.exitCode,
+      signalCode: child.signalCode,
+      childOutput: childOutput.slice(-12000),
+      error: String(error?.stack ?? error),
+    };
     stop(child);
-    throw error;
+    throw new Error("Packaged Electron launch or storage helper failed: " + JSON.stringify(diagnostic), { cause: error });
   }
 }
 function install(file, directory) {
@@ -194,7 +211,11 @@ async function verifyNsisUpdate() {
     assert.notEqual(digest(candidate.archive), beforeHash, "NSIS installer did not replace the existing application files.");
     assert.equal(normalizedWindows(candidate.executable), normalizedWindows(baseline.executable), "NSIS update changed the installed executable path.");
     assert.equal(normalizedWindows(candidate.archive), normalizedWindows(baseline.archive), "NSIS update changed the installed app.asar path.");
-    const updatedSession = await launch(candidate.executable, dataDirectory, 9231, "snapshot", {}, true);
+    // The NSIS check verifies installation/profile continuity, not the
+    // Update Center's network path. Suppress the candidate's unrelated
+    // automatic startup check; the portable regression below tests explicit
+    // updater IPC against its isolated loopback release server.
+    const updatedSession = await launch(candidate.executable, dataDirectory, 9231, "snapshot", { OFRC_UPDATE_TEST_MODE: "1" }, true);
     try {
       const after = attachContext(updatedSession.helperResult.snapshot, updatedSession, dataDirectory);
       reportSnapshot("NSIS_AFTER", after);

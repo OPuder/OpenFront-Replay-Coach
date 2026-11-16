@@ -3,7 +3,7 @@ set -Eeuo pipefail
 package_id=de.openfront.replaycoach
 baseline_apk="$BASELINE_APK"
 candidate_apk="$CANDIDATE_APK"
-adb_cmd(){ timeout 45s adb -s emulator-5554 "$@"; }
+adb_cmd(){ timeout 180s adb -s emulator-5554 "$@"; }
 fail(){ echo "::error::[Android signature rollback] $*"; exit 1; }
 test -s "$baseline_apk" || fail "Published v2.2.51 baseline APK missing"
 test -s "$candidate_apk" || fail "Higher-version candidate APK missing"
@@ -32,9 +32,22 @@ if adb_cmd shell pm path "$package_id" >/dev/null 2>&1; then
   echo "$uninstall_output"
   grep -F 'Success' <<<"$uninstall_output" >/dev/null || fail "Previous emulator package uninstall was not confirmed"
 fi
-install_output="$(adb_cmd install "$baseline_apk" 2>&1)" || { echo "$install_output"; fail "Could not install published v2.2.51 baseline APK"; }
-echo "$install_output"
-grep -F 'Success' <<<"$install_output" >/dev/null || fail "Published v2.2.51 baseline installation was not confirmed"
+install_output=""
+install_status=1
+for attempt in 1 2 3; do
+  set +e
+  install_output="$(timeout 180s adb -s emulator-5554 install --no-streaming "$baseline_apk" 2>&1)"
+  install_status=$?
+  set -e
+  echo "BASELINE_INSTALL_ATTEMPT=$attempt EXIT=$install_status OUTPUT=${install_output:-<empty>}"
+  if [[ "$install_status" -eq 0 ]] && grep -F 'Success' <<<"$install_output" >/dev/null; then break; fi
+  timeout 20s adb -s emulator-5554 get-state 2>&1 || true
+  timeout 20s adb -s emulator-5554 shell df -h /data 2>&1 || true
+  timeout 20s adb -s emulator-5554 logcat -d -t 250 2>&1 | grep -E "PackageManager|installd|INSTALL_|FATAL EXCEPTION|AndroidRuntime" | tail -n 80 || true
+  [[ "$attempt" -lt 3 ]] && sleep 5
+done
+[[ "$install_status" -eq 0 ]] || fail "Could not install published v2.2.51 baseline APK after retries (exit $install_status): ${install_output:-<empty adb output>}"
+grep -F 'Success' <<<"$install_output" >/dev/null || fail "Published v2.2.51 baseline installation was not confirmed: $install_output"
 adb -s emulator-5554 root >/dev/null
 adb -s emulator-5554 wait-for-device
 uid="$(adb_cmd shell dumpsys package "$package_id" | sed -n 's/.*userId=\([0-9]*\).*/\1/p' | head -n 1 | tr -d '\r')"

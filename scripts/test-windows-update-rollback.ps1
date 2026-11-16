@@ -29,7 +29,26 @@ function Prepare-UserData($exe,$appDataRoot,$label){
 }
 try{
  $it=Join-Path $root 'installer'
- $p=Start-Process -FilePath $PreviousInstaller -ArgumentList @('/S',"/D=$it") -Wait -PassThru; if($p.ExitCode -ne 0){throw "Baseline installer failed: $($p.ExitCode)"}
+ $baselineInstallLog=Join-Path $root 'baseline-installer.log'
+ "BASELINE_INSTALLER=$PreviousInstaller TARGET=$it" | Set-Content -LiteralPath $baselineInstallLog
+ $installerExit=-1
+ for($attempt=1;$attempt -le 2;$attempt++){
+  try{
+   $p=Start-Process -FilePath $PreviousInstaller -ArgumentList @('/S',"/D=$it") -Wait -PassThru -ErrorAction Stop
+   $installerExit=$p.ExitCode
+  }catch{
+   ($_|Out-String) | Add-Content -LiteralPath $baselineInstallLog
+  }
+  "ATTEMPT=$attempt EXIT=$installerExit" | Add-Content -LiteralPath $baselineInstallLog
+  if($installerExit -eq 0){break}
+  Start-Sleep -Seconds 3
+ }
+ if($installerExit -ne 0){
+  $events=Get-WinEvent -FilterHashtable @{LogName='Application';Id=1000,1001;StartTime=(Get-Date).AddMinutes(-10)} -ErrorAction SilentlyContinue | Select-Object -First 10 | Format-List TimeCreated,Id,ProviderName,Message | Out-String
+  $events | Add-Content -LiteralPath $baselineInstallLog
+  Write-Host "BASELINE_INSTALLER_DIAGNOSTICS=$baselineInstallLog"
+  throw "Baseline installer failed after two attempts: $installerExit"
+ }
  $ie=Join-Path $it 'OpenFront Replay Coach.exe'; if(!(Test-Path $ie)){throw 'Baseline installer exe missing'}
  $installerVersion=Get-AppVersion $it; if($installerVersion -ne '2.2.51'){throw "Expected installer baseline 2.2.51, got $installerVersion"}
  $installerDataFile=Prepare-UserData $ie (Join-Path $root 'installer-appdata') 'installer'

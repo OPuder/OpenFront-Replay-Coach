@@ -35,8 +35,9 @@ function reportProgress(phase: string, percent: number) {
   }
 }
 function resolveReleaseApiUrl(): string {
+  if (process.env.OFRC_UPDATE_TEST_MODE !== '1') return RELEASE_API;
   const testUrl = process.env.OFRC_UPDATE_TEST_RELEASE_URL;
-  if (process.env.OFRC_UPDATE_TEST_MODE !== '1' || !testUrl) return RELEASE_API;
+  if (!testUrl) throw new Error('OFRC_UPDATE_TEST_MODE ist aktiv, aber OFRC_UPDATE_TEST_RELEASE_URL fehlt.');
   let parsed: URL;
   try { parsed = new URL(testUrl); } catch { throw new Error('Ungültige lokale Update-Test-URL.'); }
   if (parsed.protocol !== 'http:' || parsed.hostname !== '127.0.0.1') {
@@ -45,13 +46,23 @@ function resolveReleaseApiUrl(): string {
   return parsed.toString();
 }
 async function getLatestRelease(): Promise<Release> {
-  const response = await fetch(resolveReleaseApiUrl(), {
-    headers: { Accept: 'application/vnd.github+json', 'User-Agent': 'OpenFront-Replay-Coach/' + app.getVersion() },
-    cache: 'no-store', signal: AbortSignal.timeout(15000),
-  });
+  const endpoint = resolveReleaseApiUrl();
+  const testMode = process.env.OFRC_UPDATE_TEST_MODE === '1';
+  if (testMode) console.info('[ReplayCoach] Update regression: release lookup started', endpoint);
+  let response: Response;
+  try {
+    response = await fetch(endpoint, {
+      headers: { Accept: 'application/vnd.github+json', 'User-Agent': 'OpenFront-Replay-Coach/' + app.getVersion() },
+      cache: 'no-store', signal: AbortSignal.timeout(15000),
+    });
+  } catch (error) {
+    console.error('[ReplayCoach] Update release lookup failed', { endpoint, error: String(error) });
+    throw error;
+  }
   if (!response.ok) throw new Error('GitHub Update-Server antwortet mit HTTP ' + response.status + '.');
   const release = await response.json() as Release;
   if (!release.tag_name || !Array.isArray(release.assets)) throw new Error('Die GitHub-Release-Antwort ist unvollständig.');
+  if (testMode) console.info('[ReplayCoach] Update regression: release lookup succeeded', { tag: release.tag_name, assets: release.assets.map(asset => asset.name) });
   return release;
 }
 function chooseWindowsAsset(release: Release, portable: boolean): ReleaseAsset {
@@ -235,18 +246,22 @@ async function installLatestWindowsUpdate(): Promise<{ scheduled: boolean; versi
   if (activeWindowsUpdate) return activeWindowsUpdate;
   if (process.platform !== 'win32' || !app.isPackaged) throw new Error('Automatische Installation ist nur in der installierten oder portablen Windows-App verfügbar.');
   activeWindowsUpdate = (async () => {
+    console.info('[ReplayCoach] Windows update: install IPC accepted; resolving latest release.');
     const release = await getLatestRelease();
     const version = release.tag_name.replace(/^v/i, '');
     if (compareVersions(version, app.getVersion()) <= 0) throw new Error('Du verwendest bereits die aktuelle Version.');
     const portable = await isPortableInstall(app.getPath('exe'));
     const asset = chooseWindowsAsset(release, portable);
+    console.info('[ReplayCoach] Windows update: release asset selected', { name: asset.name, size: asset.size, portable });
     const downloadPath = await downloadVerifiedAsset(asset);
+    console.info('[ReplayCoach] Windows update: asset download and SHA-256 validation succeeded', { name: asset.name });
     // A user-triggered retry is explicit; clear the old guard, then persist this attempt
     // so a failed detached installer cannot trigger an automatic restart loop.
     await clearAutoUpdateAttempt();
     await writeAutoUpdateAttempt(version);
     try {
       await scheduleWindowsInstall(downloadPath, portable);
+      console.info('[ReplayCoach] Windows update: detached installer helper spawned; application shutdown scheduled.');
     } catch (error) {
       await clearAutoUpdateAttempt();
       throw error;
@@ -270,7 +285,17 @@ export async function getWindowsUpdateStatus(): Promise<{ failed: boolean; messa
   };
 }
 export function registerUpdaterIpc(): void {
-  ipcMain.handle('updates:install', async () => installLatestWindowsUpdate());
+  ipcMain.handle('updates:install', async () => {
+    console.info('[ReplayCoach] IPC updates:install received.');
+    try {
+      const result = await installLatestWindowsUpdate();
+      console.info('[ReplayCoach] IPC updates:install response', result);
+      return result;
+    } catch (error) {
+      console.error('[ReplayCoach] IPC updates:install failed', error);
+      throw error;
+    }
+  });
   ipcMain.handle('updates:status', async () => getWindowsUpdateStatus());
 }
 export async function autoUpdateOnStartup(): Promise<boolean> {

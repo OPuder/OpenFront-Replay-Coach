@@ -3,6 +3,15 @@ $ErrorActionPreference='Stop'
 $root=Join-Path $env:RUNNER_TEMP ('ofrc rollback '+[guid]::NewGuid().ToString('N'))
 New-Item -ItemType Directory -Path $root|Out-Null
 
+$helperDirectory=Join-Path $root 'helper-runtime'
+New-Item -ItemType Directory -Path $helperDirectory|Out-Null
+$packagedLockDiagnostic=Join-Path (Split-Path -Parent $Helper) 'windows-process-lock-diagnostics.ps1'
+if(!(Test-Path -LiteralPath $packagedLockDiagnostic)){throw 'Packaged Restart Manager diagnostic missing beside rollback helper'}
+$runtimeHelper=Join-Path $helperDirectory 'windows-update-rollback.ps1'
+Copy-Item -LiteralPath $Helper -Destination $runtimeHelper
+Copy-Item -LiteralPath $packagedLockDiagnostic -Destination (Join-Path $helperDirectory 'windows-process-lock-diagnostics.ps1')
+$Helper=$runtimeHelper
+
 function Get-AppMetadata([string]$installRoot){
  $asar=Join-Path $installRoot 'resources/app.asar'
  if(!(Test-Path -LiteralPath $asar)){throw "Packaged app.asar missing: $asar"}

@@ -190,41 +190,58 @@ function reportSnapshot(label, snapshot) {
   console.log("WINDOWS_UPGRADE_" + label + "_SNAPSHOT " + JSON.stringify(snapshot));
 }
 async function verifyNsisUpdate() {
+  console.log("NSIS_UPDATER_BASELINE: exercising the production Update Center IPC and detached installer against loopback release metadata.");
   const installDirectory = path.join(temp, "ofrc-nsis-in-place");
   const dataDirectory = path.join(temp, "ofrc-nsis-user-data");
+  const candidateInstaller = path.join(current, newInstaller);
   rmSync(installDirectory, { recursive: true, force: true });
   rmSync(dataDirectory, { recursive: true, force: true });
   const baseline = install(path.join(previous, oldInstaller), installDirectory);
-  const baselineSession = await launch(baseline.executable, dataDirectory, 9231, "seed");
+  const server = await startLocalReleaseServer(candidateInstaller, newInstaller);
+  const testEnv = { OFRC_UPDATE_TEST_MODE: "1", OFRC_UPDATE_TEST_RELEASE_URL: server.releaseUrl };
+  let baselineSession;
+  let updatedSession;
   try {
+    baselineSession = await launch(baseline.executable, dataDirectory, 9231, "seed", testEnv, true);
     const before = attachContext(baselineSession.helperResult.snapshot, baselineSession, dataDirectory);
     assertFixtureRelationships(before, "baseline");
     reportSnapshot("NSIS_BEFORE", before);
     const beforeHash = digest(baseline.archive);
-    // Flush the actual persisted Chromium profile before the NSIS installer
-    // replaces the application. taskkill is only a failure cleanup: it can
-    // terminate Chromium before LocalStorage's LevelDB buffers reach disk.
-    const gracefulClose = await invokeHelper("close", 9231, path.dirname(baseline.executable));
-    assert.equal(gracefulClose.closed, true, "Published v2.2.51 renderer did not acknowledge a graceful Chromium shutdown.");
-    await waitFor(() => baselineSession.child.exitCode !== null, 15000, "published v2.2.51 application to exit cleanly and flush browser storage");
-    const candidate = install(path.join(current, newInstaller), installDirectory);
-    assert.notEqual(digest(candidate.archive), beforeHash, "NSIS installer did not replace the existing application files.");
-    assert.equal(normalizedWindows(candidate.executable), normalizedWindows(baseline.executable), "NSIS update changed the installed executable path.");
-    assert.equal(normalizedWindows(candidate.archive), normalizedWindows(baseline.archive), "NSIS update changed the installed app.asar path.");
-    // The NSIS check verifies installation/profile continuity, not the
-    // Update Center's network path. Suppress the candidate's unrelated
-    // automatic startup check; the portable regression below tests explicit
-    // updater IPC against its isolated loopback release server.
-    const updatedSession = await launch(candidate.executable, dataDirectory, 9231, "snapshot", { OFRC_UPDATE_TEST_MODE: "1" }, true);
-    try {
-      const after = attachContext(updatedSession.helperResult.snapshot, updatedSession, dataDirectory);
-      reportSnapshot("NSIS_AFTER", after);
-      assertContextContinuity(before, after);
-      assertFixtureRelationships(after, "updated");
-      assertUpgradeSnapshotsEqual(before, after);
-      console.log("WINDOWS_IN_PLACE_UPGRADE_OK NSIS v2.2.51 -> v" + version + " full profile, match, replay, simulation, analysis, LocalStorage and IndexedDB contents retained");
-    } finally { stop(updatedSession.child); }
-  } finally { stop(baselineSession.child); }
+    const scheduled = await invokeHelper("update", 9231, installDirectory);
+    assert.equal(scheduled.result?.scheduled, true, "NSIS updater did not schedule the real installer update: " + JSON.stringify(scheduled));
+    await waitFor(() => baselineSession.child.exitCode !== null, 30000, "published v2.2.51 NSIS process to exit after handing off the installer");
+    const updateLog = path.join(before.electron.userDataPath, "update-install.log");
+    await waitFor(() => existsSync(updateLog) && readFileSync(updateLog, "utf8").includes("installer-install-verified"), 120000, "NSIS updater to install and verify the candidate installer");
+    const updatedExecutable = path.join(installDirectory, appName);
+    const updatedArchive = path.join(installDirectory, "resources", "app.asar");
+    assert.notEqual(digest(updatedArchive), beforeHash, "NSIS updater did not replace the existing application files.");
+    assert.equal(normalizedWindows(updatedExecutable), normalizedWindows(baseline.executable), "NSIS updater changed the installed executable path.");
+    assert.equal(normalizedWindows(updatedArchive), normalizedWindows(baseline.archive), "NSIS updater changed the installed app.asar path.");
+    await waitFor(() => isExecutableRunning(updatedExecutable), 30000, "NSIS updater to restart the updated application");
+    stopExecutable(updatedExecutable);
+    updatedSession = await launch(updatedExecutable, dataDirectory, 9231, "snapshot", testEnv, true);
+    const after = attachContext(updatedSession.helperResult.snapshot, updatedSession, dataDirectory);
+    reportSnapshot("NSIS_AFTER", after);
+    assertContextContinuity(before, after);
+    assertFixtureRelationships(after, "updated");
+    assertUpgradeSnapshotsEqual(before, after);
+    assert(server.requests.some(request => request.url === "/release"), "NSIS release lookup never reached the local test server.");
+    assert(server.requests.some(request => request.url === "/candidate-asset"), "NSIS installer was not downloaded.");
+    console.log("WINDOWS_IN_PLACE_UPGRADE_OK NSIS updater IPC v2.2.51 -> v" + version + " downloaded and verified installer; full profile, match, replay, simulation, analysis, LocalStorage and IndexedDB contents retained");
+  } catch (error) {
+    const updateLogPath = path.join(dataDirectory, "electron-user-data", "update-install.log");
+    console.error("NSIS_UPDATER_FAILURE_DIAGNOSTICS", JSON.stringify({
+      releaseUrl: server.releaseUrl, serverRequests: server.requests,
+      appOutput: baselineSession?.childOutput?.slice(-12000) ?? "",
+      updaterLog: existsSync(updateLogPath) ? readFileSync(updateLogPath, "utf8").slice(-12000) : null,
+      error: String(error?.stack ?? error),
+    }));
+    throw error;
+  } finally {
+    if (baselineSession) stop(baselineSession.child);
+    if (updatedSession) stop(updatedSession.child);
+    try { server.server.close(); } catch {}
+  }
 }
 
 async function startLocalReleaseServer(candidateZip, assetName = newPortable) {

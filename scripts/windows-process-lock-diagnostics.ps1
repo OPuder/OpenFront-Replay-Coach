@@ -23,8 +23,11 @@ public static class OpenFrontRestartManager {
   uint session; int rc=RmStartSession(out session,0,Guid.NewGuid().ToString("N"));
   if(rc!=0) throw new InvalidOperationException("RmStartSession failed: "+rc);
   try {
-   rc=RmRegisterResources(session,(uint)files.Length,files,0,null,0,null);
-   if(rc!=0) throw new InvalidOperationException("RmRegisterResources failed: "+rc);
+   for(int offset=0;offset<files.Length;offset+=1000) {
+    int length=Math.Min(1000,files.Length-offset); string[] batch=new string[length]; Array.Copy(files,offset,batch,0,length);
+    rc=RmRegisterResources(session,(uint)batch.Length,batch,0,null,0,null);
+    if(rc!=0) throw new InvalidOperationException("RmRegisterResources failed at offset "+offset+": "+rc);
+   }
    uint needed=0,count=0,reasons=0; rc=RmGetList(session,out needed,ref count,IntPtr.Zero,ref reasons);
    if(rc==0 || needed==0) return new ProcessInfo[0];
    if(rc!=234) throw new InvalidOperationException("RmGetList sizing failed: "+rc);

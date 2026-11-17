@@ -1,13 +1,10 @@
 param([string]$Installer,[string]$PortableZip,[string]$PreviousInstaller,[string]$PreviousPortableZip,[string]$Helper)
 $ErrorActionPreference='Stop'; $root=Join-Path $env:RUNNER_TEMP ('ofrc-rollback-'+[guid]::NewGuid().ToString('N')); New-Item -ItemType Directory $root|Out-Null
-function Start-Check($exe,$label,$userDataRoot){
- Get-Process -ErrorAction SilentlyContinue | Where-Object { $_.Path -eq $exe } | Stop-Process -Force -ErrorAction SilentlyContinue
- $userDataArgument='--user-data-dir="' + $userDataRoot + '"'
- $p=Start-Process -FilePath $exe -ArgumentList @($userDataArgument) -PassThru; Start-Sleep 8
- if($p.HasExited){throw "$label failed to start after rollback"}
- $process=Get-CimInstance Win32_Process -Filter "ProcessId = $($p.Id)"
- if(($process.CommandLine -notlike "*--user-data-dir*" -or $process.CommandLine -notlike "*$userDataRoot*")){throw "$label did not start with its isolated user-data directory"}
- Stop-Process -Id $p.Id -Force; Write-Host "ROLLBACK_RESTART_OK $label"
+function Start-Check($exe,$label,$userDataRoot,$runId,$evidencePath){
+ & node scripts/windows-profile-storage.mjs verify $exe $userDataRoot $runId $evidencePath
+ if($LASTEXITCODE -ne 0){throw "$label failed renderer restart or LocalStorage/IndexedDB verification"}
+ if((Get-Content (Join-Path $userDataRoot 'rollback-user-data-sentinel.txt') -Raw).Trim() -ne "$label-$runId-user-data-preserved"){throw "$label user-data file sentinel changed"}
+ Write-Host "ROLLBACK_RESTART_AND_WEB_STORAGE_OK $label profile=$userDataRoot"
 }
 function Get-AppMetadata($installRoot){
  $asar=Join-Path $installRoot 'resources/app.asar'
@@ -20,19 +17,15 @@ function Get-AppMetadata($installRoot){
  return $metadata
 }
 function Get-AppVersion($installRoot){return [string](Get-AppMetadata $installRoot).version}
-function Prepare-UserData($exe,$appDataRoot,$label,$appName){
+function Prepare-UserData($exe,$appDataRoot,$label,$appName,$runId,$evidencePath){
  $env:APPDATA=$appDataRoot; New-Item -ItemType Directory -Path $appDataRoot -Force|Out-Null
  $userDataRoot=Join-Path $appDataRoot $appName
+ if(Test-Path -LiteralPath $userDataRoot){throw "$label isolated profile already exists"}
  New-Item -ItemType Directory -Path $userDataRoot -Force|Out-Null
- $userDataArgument='--user-data-dir="' + $userDataRoot + '"'
- $p=Start-Process -FilePath $exe -ArgumentList @($userDataArgument) -PassThru; Start-Sleep 8
- if($p.HasExited){throw "$label baseline app did not start with isolated user data"}
- $process=Get-CimInstance Win32_Process -Filter "ProcessId = $($p.Id)"
- if(($process.CommandLine -notlike "*--user-data-dir*" -or $process.CommandLine -notlike "*$userDataRoot*")){throw "$label app was not launched with the isolated user-data directory"}
- Stop-Process -Id $p.Id -Force
- $file=Join-Path $userDataRoot 'rollback-user-data-sentinel.txt'
- Set-Content -LiteralPath $file -Value "$($label)-user-data-preserved"
- return $file
+ Set-Content -LiteralPath (Join-Path $userDataRoot 'rollback-user-data-sentinel.txt') -Value "$($label)-$runId-user-data-preserved"
+ & node scripts/windows-profile-storage.mjs seed $exe $userDataRoot $runId $evidencePath
+ if($LASTEXITCODE -ne 0){throw "$label could not seed real Chromium LocalStorage and IndexedDB"}
+ return $userDataRoot
 }
 try{
  $it=Join-Path $root 'installer'
@@ -63,7 +56,9 @@ try{
  $installerAppName=[string]$installerMetadata.productName
  if([string]::IsNullOrWhiteSpace($installerAppName)){$installerAppName=[string]$installerMetadata.name}
  if([string]::IsNullOrWhiteSpace($installerAppName)){throw 'Baseline installer package has no Electron app name'}
- $installerDataFile=Prepare-UserData $ie (Join-Path $root 'installer-appdata') 'installer' $installerAppName
+ $installerRunId=[guid]::NewGuid().ToString('N')
+ $installerProfileEvidence=Join-Path $root 'installer-profile-evidence.json'
+ $installerUserDataRoot=Prepare-UserData $ie (Join-Path $root 'installer-appdata') 'installer' $installerAppName $installerRunId $installerProfileEvidence
  Set-Content (Join-Path $it 'test-extra-sentinel') 'preserve-me'; $ilog=Join-Path $root 'installer.log'
  & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $Helper -Mode Installer -Target $it -Executable $ie -PackagePath $Installer -LogPath $ilog -FailAfterMutation
  if($LASTEXITCODE -ne 1){throw "Installer rollback exit was $LASTEXITCODE"}
@@ -78,11 +73,11 @@ try{
  if(Test-Path (Join-Path $it '__ROLLBACK_TEST_EXTRA_FILE__.txt')){throw 'Installer left injected extra file'}
  if(Test-Path (Join-Path $it '__ROLLBACK_TEST_EXTRA_DIRECTORY__')){throw 'Installer left injected extra directory'}
  if((Get-Content (Join-Path $it 'test-extra-sentinel') -Raw).Trim() -ne 'preserve-me'){throw 'Installer did not restore extra baseline file'}
- if((Get-Content $installerDataFile -Raw).Trim() -ne 'installer-user-data-preserved'){throw 'Installer user data changed'}
+ 
  if(!(Select-String -LiteralPath $ilog -Pattern 'FAILURE_INJECTED_AFTER_MUTATION' -Quiet)){throw 'Installer did not reach controlled post-mutation failure injection'}
  if(!(Select-String -LiteralPath $ilog -Pattern 'ROLLBACK_VERIFIED' -Quiet)){throw 'Installer complete manifest/hash proof missing'}
  if(!(Test-Path ($ilog+'.baseline-manifest.json')) -or !(Test-Path ($ilog+'.restored-manifest.json'))){throw 'Installer baseline/restored manifests missing'}
- Start-Check $ie 'Windows Installer' (Split-Path -Parent $installerDataFile); Write-Host "WINDOWS_INSTALLER_ROLLBACK_OK log=$ilog"
+ Start-Check $ie 'installer' $installerUserDataRoot $installerRunId $installerProfileEvidence; Write-Host "WINDOWS_INSTALLER_ROLLBACK_OK log=$ilog"
  $pt=Join-Path $root 'portable'; New-Item -ItemType Directory $pt|Out-Null; Expand-Archive $PreviousPortableZip $pt
  $peItem=Get-ChildItem $pt -Filter 'OpenFront Replay Coach.exe' -File -Recurse|Select-Object -First 1; if(!$peItem){throw 'Portable executable missing'}
  $pe=$peItem.FullName; $pr=$peItem.Directory.FullName
@@ -98,16 +93,18 @@ try{
  $currentVersion=Get-AppVersion $currentExe.Directory.FullName
  if([version]$currentVersion -le [version]$portableVersion){throw "Current package version $currentVersion is not newer than baseline $portableVersion"}
  Set-Content (Join-Path $pr 'test-extra-sentinel') 'preserve-me'
- $portableDataFile=Prepare-UserData $pe (Join-Path $root 'portable-appdata') 'portable' $portableAppName; $plog=Join-Path $root 'portable.log'
+ $portableRunId=[guid]::NewGuid().ToString('N')
+ $portableProfileEvidence=Join-Path $root 'portable-profile-evidence.json'
+ $portableUserDataRoot=Prepare-UserData $pe (Join-Path $root 'portable-appdata') 'portable' $portableAppName $portableRunId $portableProfileEvidence; $plog=Join-Path $root 'portable.log'
  & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $Helper -Mode Portable -Target $pr -Executable $pe -PackagePath $PortableZip -LogPath $plog -FailAfterMutation
  if($LASTEXITCODE -ne 1){throw "Portable rollback exit was $LASTEXITCODE"}
  if((Get-AppVersion $pr) -ne $portableVersion){throw 'Portable rollback did not restore old application version'}
  if(Test-Path (Join-Path $pr '__ROLLBACK_TEST_EXTRA_FILE__.txt')){throw 'Portable left injected extra file'}
  if(Test-Path (Join-Path $pr '__ROLLBACK_TEST_EXTRA_DIRECTORY__')){throw 'Portable left injected extra directory'}
  if((Get-Content (Join-Path $pr 'test-extra-sentinel') -Raw).Trim() -ne 'preserve-me'){throw 'Portable did not restore extra baseline file'}
- if((Get-Content $portableDataFile -Raw).Trim() -ne 'portable-user-data-preserved'){throw 'Portable user data changed'}
+ 
  if(!(Select-String -LiteralPath $plog -Pattern 'FAILURE_INJECTED_AFTER_MUTATION' -Quiet)){throw 'Portable did not reach controlled post-mutation failure injection'}
  if(!(Select-String -LiteralPath $plog -Pattern 'ROLLBACK_VERIFIED' -Quiet)){throw 'Portable complete manifest/hash proof missing'}
  if(!(Test-Path ($plog+'.baseline-manifest.json')) -or !(Test-Path ($plog+'.restored-manifest.json'))){throw 'Portable baseline/restored manifests missing'}
- Start-Check $pe 'Windows Portable' (Split-Path -Parent $portableDataFile); Write-Host "WINDOWS_PORTABLE_ROLLBACK_OK log=$plog"; Write-Host "WINDOWS_ROLLBACK_E2E_OK data=$root"
+ Start-Check $pe 'portable' $portableUserDataRoot $portableRunId $portableProfileEvidence; Write-Host "WINDOWS_PORTABLE_ROLLBACK_OK log=$plog"; Write-Host "WINDOWS_ROLLBACK_E2E_OK data=$root"
 }catch{Write-Error $_; Write-Host "DIAGNOSTICS_RETAINED $root";throw}

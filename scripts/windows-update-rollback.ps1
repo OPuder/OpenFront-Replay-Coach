@@ -1,4 +1,4 @@
-param([Parameter(Mandatory=$true)][ValidateSet('Installer','Portable')][string]$Mode,[Parameter(Mandatory=$true)][string]$Target,[Parameter(Mandatory=$true)][string]$Executable,[Parameter(Mandatory=$true)][string]$PackagePath,[Parameter(Mandatory=$true)][string]$LogPath,[int]$ProcessId=0,[switch]$FailAfterMutation)
+param([Parameter(Mandatory=$true)][ValidateSet('Installer','Portable')][string]$Mode,[Parameter(Mandatory=$true)][string]$Target,[Parameter(Mandatory=$true)][string]$Executable,[Parameter(Mandatory=$true)][string]$PackagePath,[Parameter(Mandatory=$true)][string]$LogPath,[int]$ProcessId=0,[switch]$FailAfterMutation,[switch]$CorruptBackupForTest)
 $ErrorActionPreference='Stop'
 $Target=[IO.Path]::GetFullPath($Target); $Executable=[IO.Path]::GetFullPath($Executable); $LogPath=[IO.Path]::GetFullPath($LogPath)
 New-Item -ItemType Directory -Path (Split-Path -Parent $LogPath) -Force | Out-Null
@@ -8,7 +8,7 @@ function Manifest([string]$root){
  $base=[IO.Path]::GetFullPath($root).TrimEnd('\')+'\'
  return ,@(Get-ChildItem -LiteralPath $root -Force -Recurse | ForEach-Object {
   $rel=$_.FullName.Substring($base.Length).Replace('\','/')
-  if($_.PSIsContainer){[pscustomobject]@{path=$rel;type='dir';length=0;hash='';attributes=$_.Attributes.ToString();lastWriteUtc=$_.LastWriteTimeUtc.ToString('o')}}
+  if($_.PSIsContainer){[pscustomobject]@{path=$rel;type='dir';length=0;hash='';attributes=$_.Attributes.ToString();lastWriteUtc=$null}}
   else{[pscustomobject]@{path=$rel;type='file';length=$_.Length;hash=(Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant();attributes=$_.Attributes.ToString();lastWriteUtc=$_.LastWriteTimeUtc.ToString('o')}}
  } | Sort-Object path)
 }
@@ -111,6 +111,7 @@ try{
   New-Item -ItemType Directory -Path $extraDirectory -Force|Out-Null
   Set-Content -LiteralPath (Join-Path $extraDirectory 'nested-extra.txt') -Value 'extra-directory' -NoNewline
   Log 'FAILURE_INJECTED_AFTER_MUTATION deleted=1 corrupted=1 added_file=1 added_directory=1'
+  if($CorruptBackupForTest){$backupAsar=Join-Path $backup 'resources/app.asar';Set-Content -LiteralPath $backupAsar -Value 'INTENTIONALLY_CORRUPTED_ROLLBACK_BACKUP' -NoNewline;Log 'TEST_ONLY_ROLLBACK_BACKUP_CORRUPTED'}
   throw 'Injected post-mutation failure'
  }
  if(!(Test-Path -LiteralPath $Executable)){throw 'Updated executable missing'}

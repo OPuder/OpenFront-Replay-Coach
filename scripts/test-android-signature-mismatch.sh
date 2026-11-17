@@ -50,8 +50,12 @@ done
 grep -F 'Success' <<<"$install_output" >/dev/null || fail "Published v2.2.51 baseline installation was not confirmed: $install_output"
 adb -s emulator-5554 root >/dev/null
 adb -s emulator-5554 wait-for-device
-uid="$(adb_cmd shell dumpsys package "$package_id" | sed -n 's/.*userId=\([0-9]*\).*/\1/p' | head -n 1 | tr -d '\r')"
-[[ "$uid" =~ ^[0-9]+$ ]] || fail "Could not resolve installed app UID for private-data validation"
+uid="$(adb_cmd shell "stat -c '%u' '/data/user/0/$package_id'" 2>/dev/null | tr -d '\r' || true)"
+if [[ ! "$uid" =~ ^[0-9]+$ ]]; then
+  uid="$(adb_cmd shell "ls -nd '/data/user/0/$package_id' | awk '{print \$3}'" | tr -d '\r' || true)"
+fi
+[[ "$uid" =~ ^[0-9]+$ ]] || fail "Could not resolve installed app UID from the actual private-data directory"
+echo "BASELINE_APP_UID=$uid"
 data_dir="/data/user/0/$package_id/files/rollback-test"
 adb_cmd shell "mkdir -p '$data_dir'; printf %s android-data-preserved > '$data_dir/sentinel.txt'; chown -R $uid:$uid '/data/user/0/$package_id/files/rollback-test'; restorecon -RF '/data/user/0/$package_id/files/rollback-test'"
 before="$(adb_cmd shell "cat '$data_dir/sentinel.txt'" | tr -d '\r')"; [[ "$before" == android-data-preserved ]] || fail "Could not create private app-data sentinel"

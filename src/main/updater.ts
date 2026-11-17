@@ -115,15 +115,6 @@ async function downloadVerifiedAsset(asset: ReleaseAsset): Promise<string> {
 function quotePowerShell(value: string): string {
   return "'" + value.replace(/'/g, "''") + "'";
 }
-function logWindowsUpdateLifecycle(phase: string, details: Record<string, unknown> = {}): void {
-  const entry = { at: new Date().toISOString(), phase, pid: process.pid, ...details };
-  console.info('[ReplayCoach] Windows update lifecycle', entry);
-  try {
-    if (app.isReady()) appendFileSync(path.join(app.getPath('userData'), 'update-install.log'), JSON.stringify(entry) + '\\n', 'utf8');
-  } catch (error) {
-    console.error('[ReplayCoach] Could not persist update lifecycle diagnostic', { phase, error: String(error) });
-  }
-}
 async function isPortableInstall(executable: string): Promise<boolean> {
   if (process.env.PORTABLE_EXECUTABLE_DIR) return true;
   try {

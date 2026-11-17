@@ -36,7 +36,7 @@ function Start-LockHolder([string]$Label){
   throw "Lock-holder $Label did not acquire its test file (pid=$($process.Id), stdout=$stdout, stderr=$stderr)"
  }
  $reportedPid=[int](Get-Content -LiteralPath $ready -Raw).Trim()
- if($reportedPid -ne $process.Id){throw "Lock-holder PID mismatch for $Label: ready=$reportedPid process=$($process.Id)"}
+ if($reportedPid -ne $process.Id){throw "Lock-holder PID mismatch for ${Label}: ready=$reportedPid process=$($process.Id)"}
  return $reportedPid
 }
 try{

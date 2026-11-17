@@ -1,6 +1,6 @@
 param([string]$Installer,[string]$PortableZip,[string]$PreviousInstaller,[string]$PreviousPortableZip,[string]$Helper)
 $ErrorActionPreference='Stop'
-$root=Join-Path $env:RUNNER_TEMP ('ofrc-rollback-'+[guid]::NewGuid().ToString('N'))
+$root=Join-Path $env:RUNNER_TEMP ('ofrc rollback '+[guid]::NewGuid().ToString('N'))
 New-Item -ItemType Directory -Path $root|Out-Null
 
 function Get-AppMetadata([string]$installRoot){
@@ -81,7 +81,7 @@ try{
  $baselineInstallerLog=Join-Path $root 'baseline-installer.log'
  $installExit=-1
  for($attempt=1;$attempt -le 2;$attempt++){
-  try{$p=Start-Process -FilePath $PreviousInstaller -ArgumentList @('/S',"/D=$installerTarget") -Wait -PassThru -ErrorAction Stop;$installExit=$p.ExitCode}
+  try{$p=Start-Process -FilePath $PreviousInstaller -ArgumentList @('/S',('"/D={0}"' -f $installerTarget)) -Wait -PassThru -ErrorAction Stop;$installExit=$p.ExitCode}
   catch{($_|Out-String)|Add-Content -LiteralPath $baselineInstallerLog}
   "ATTEMPT=$attempt EXIT=$installExit" | Add-Content -LiteralPath $baselineInstallerLog
   if($installExit -eq 0){break}

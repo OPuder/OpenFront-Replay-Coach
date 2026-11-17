@@ -97,10 +97,17 @@ async function isPortableInstall(executable: string): Promise<boolean> {
 async function scheduleWindowsInstall(downloadPath: string, portable: boolean, version: string): Promise<void> {
   const executable = app.getPath('exe');
   const targetDirectory = process.env.PORTABLE_EXECUTABLE_DIR || path.dirname(executable);
-  const helperPath = path.join(process.resourcesPath, 'windows-update-rollback.ps1');
+  const packagedHelperPath = path.join(process.resourcesPath, 'windows-update-rollback.ps1');
+  const packagedLockDiagnosticPath = path.join(process.resourcesPath, 'windows-process-lock-diagnostics.ps1');
+  const helperDirectory = await fs.mkdtemp(path.join(os.tmpdir(), 'openfront-replay-coach-update-helper-'));
+  const helperPath = path.join(helperDirectory, 'windows-update-rollback.ps1');
+  const lockDiagnosticPath = path.join(helperDirectory, 'windows-process-lock-diagnostics.ps1');
   const logPath = path.join(app.getPath('userData'), 'update-install.log');
   await fs.rm(startupReadyPath(), { force: true });
-  await fs.access(helperPath);
+  await Promise.all([
+    fs.copyFile(packagedHelperPath, helperPath),
+    fs.copyFile(packagedLockDiagnosticPath, lockDiagnosticPath),
+  ]);
   const child = spawn('powershell.exe', [
     '-NoLogo', '-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass',
     '-File', helperPath,

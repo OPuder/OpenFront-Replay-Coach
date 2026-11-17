@@ -57,12 +57,12 @@ public static class OpenFrontRestartManager {
    }
    throw new InvalidOperationException("RmGetList process list kept changing after five sizing attempts");
   } finally { RmEndSession(session); }
- }}
+ }
 }
 '@
 }
 $files=@(Get-ChildItem -LiteralPath $Target -File -Force -Recurse -ErrorAction Stop | ForEach-Object FullName)
-$owners=[OpenFrontRestartManager]::GetLockers([string[]]$files)
+if($files.Count -eq 0){$owners=@()}else{$owners=[OpenFrontRestartManager]::GetLockers([string[]]$files)}
 $processSnapshot=@{}
 Get-CimInstance Win32_Process -ErrorAction Stop | ForEach-Object { $processSnapshot[[int]$_.ProcessId]=$_ }
 $result = @(

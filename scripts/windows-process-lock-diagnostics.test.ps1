@@ -56,6 +56,8 @@ try{
  Assert-Throws {ConvertFrom-OpenFrontLockOwnerDiagnostic -Json '{"schemaVersion":1,"status":"owners","count":1,"owners":[{}]}'} 'missing owner fields'
  Assert-Throws {ConvertFrom-OpenFrontLockOwnerDiagnostic -Json '{"schemaVersion":1,"status":"owners","count":1,"owners":[{"processId":0,"processName":"","executablePath":"","applicationType":"","category":"","sessionId":0}]}'} 'empty owner fields'
  Assert-Throws {ConvertFrom-OpenFrontLockOwnerDiagnostic -Json '{"schemaVersion":1,"status":"owners","count":0,"owners":[]}'} 'owners status with empty list'
+ Assert-Throws {ConvertFrom-OpenFrontLockOwnerDiagnostic -Json '{"schemaVersion":1,"status":"empty","count":0,"owners":null}'} 'null owners list'
+ Assert-Throws {ConvertFrom-OpenFrontLockOwnerDiagnostic -Json '{"schemaVersion":1,"status":"owners","count":2,"owners":[{"processId":1234,"processName":"powershell.exe","executablePath":"","applicationType":"Unknown","category":"external-or-unclassified","sessionId":1},{}]}'} 'malformed second owner in multiple-owner list'
  Assert-Throws {ConvertFrom-OpenFrontLockOwnerDiagnostic -Json 'null'} 'JSON null'
  Write-Host 'RESTART_MANAGER_JSON_CONTRACT_TESTS_OK'
 

@@ -313,6 +313,28 @@ jobs:
           test -s "$image_dir/source.properties"
           echo "Verified Android emulator image: $image_dir"
 
+      - name: Preflight Android emulator acceleration and KVM permissions
+        if: steps.parse_apk.outcome == 'success'
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          echo "Android emulator acceleration preflight on $(uname -a)"
+          if [[ -e /dev/kvm ]]; then
+            ls -l /dev/kvm
+            if [[ -r /dev/kvm && -w /dev/kvm ]]; then
+              echo "KVM_DEVICE_ACCESS=available"
+            else
+              echo "KVM_DEVICE_ACCESS=permission-denied"
+            fi
+          else
+            echo "KVM_DEVICE_ACCESS=device-missing"
+          fi
+          if "$ANDROID_HOME/emulator/emulator" -accel-check; then
+            echo "EMULATOR_ACCELERATION=hardware-available"
+          else
+            echo "EMULATOR_ACCELERATION=software-fallback-required"
+          fi
+
       - name: Test debug data preservation and real published-APK update
         if: steps.parse_apk.outcome == 'success'
         timeout-minutes: 60

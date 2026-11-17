@@ -45,6 +45,9 @@ jobs:
       - name: Install Coach dependencies once
         run: npm ci
 
+      - name: Validate Windows LocalStorage and IndexedDB rollback harness syntax
+        run: node --check scripts/windows-profile-storage.mjs
+
       - name: Verify updater contract tests
         run: node --test scripts/updater-contract.test.mjs
 

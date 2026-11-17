@@ -1,238 +1,166 @@
 param([string]$Installer,[string]$PortableZip,[string]$PreviousInstaller,[string]$PreviousPortableZip,[string]$Helper)
-$ErrorActionPreference='Stop'; $root=Join-Path $env:RUNNER_TEMP ('ofrc-rollback-'+[guid]::NewGuid().ToString('N')); New-Item -ItemType Directory $root|Out-Null
-function Start-Check($exe,$label,$userDataRoot,$runId,$evidencePath){
- & node scripts/windows-profile-storage.mjs verify $exe $userDataRoot $runId $evidencePath
- if($LASTEXITCODE -ne 0){throw "$label failed renderer restart or LocalStorage/IndexedDB verification"}
- if((Get-Content (Join-Path $userDataRoot 'rollback-user-data-sentinel.txt') -Raw).Trim() -ne "$label-$runId-user-data-preserved"){throw "$label user-data file sentinel changed"}
- Write-Host "ROLLBACK_RESTART_AND_WEB_STORAGE_OK $label profile=$userDataRoot"
+$ErrorActionPreference='Stop'
+$root=Join-Path $env:RUNNER_TEMP ('ofrc-rollback-'+[guid]::NewGuid().ToString('N'))
+New-Item -ItemType Directory -Path $root|Out-Null
+
+function Get-AppMetadata([string]$installRoot){
+ $asar=Join-Path $installRoot 'resources/app.asar'
+ if(!(Test-Path -LiteralPath $asar)){throw "Packaged app.asar missing: $asar"}
+ $json=(& node -e "const a=require('@electron/asar');process.stdout.write(a.extractFile(process.argv[1],'package.json').toString())" $asar | Out-String)
+ if($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($json)){throw 'Could not read package.json from app.asar'}
+ $metadata=ConvertFrom-Json -InputObject $json
+ if([string]::IsNullOrWhiteSpace([string]$metadata.version)){throw 'Packaged app.asar has no version'}
+ return $metadata
 }
-function Copy-InstallTree($source,$destination){
+function Get-AppVersion([string]$installRoot){return [string](Get-AppMetadata $installRoot).version}
+function Prepare-UserData([string]$exe,[string]$appDataRoot,[string]$label,[string]$appName,[string]$runId,[string]$evidencePath){
+ $env:APPDATA=$appDataRoot
+ New-Item -ItemType Directory -Path $appDataRoot -Force|Out-Null
+ $profile=Join-Path $appDataRoot $appName
+ if(Test-Path -LiteralPath $profile){throw "$label profile already exists; refusing reuse"}
+ New-Item -ItemType Directory -Path $profile -Force|Out-Null
+ Set-Content -LiteralPath (Join-Path $profile 'rollback-user-data-sentinel.txt') -Value "$label-$runId-user-data-preserved"
+ & node scripts/windows-profile-storage.mjs seed $exe $profile $runId $evidencePath | ForEach-Object { Write-Host $_ }
+ if($LASTEXITCODE -ne 0){throw "$label could not seed real Chromium LocalStorage and IndexedDB"}
+ return $profile
+}
+function Start-Check([string]$exe,[string]$label,[string]$profile,[string]$runId,[string]$evidencePath){
+ & node scripts/windows-profile-storage.mjs verify $exe $profile $runId $evidencePath
+ if($LASTEXITCODE -ne 0){throw "$label failed renderer restart or LocalStorage/IndexedDB verification"}
+ $sentinel=(Get-Content (Join-Path $profile 'rollback-user-data-sentinel.txt') -Raw).Trim()
+ if($sentinel -ne "$label-$runId-user-data-preserved"){throw "$label user-data file sentinel changed"}
+ Write-Host "ROLLBACK_RESTART_AND_WEB_STORAGE_OK $label profile=$profile"
+}
+function Copy-InstallTree([string]$source,[string]$destination){
  New-Item -ItemType Directory -Path $destination -Force|Out-Null
  & robocopy.exe $source $destination /MIR /COPY:DAT /DCOPY:DAT /R:1 /W:1 /NFL /NDL /NJH /NJS /NP
  if($LASTEXITCODE -ge 8){throw "Could not create isolated negative-test copy: $LASTEXITCODE"}
 }
-function Assert-FailedRollback($target,$exe,$mode,$package,$log,$label,$profile,$runId,$evidence){
+function Assert-ExpectedRollback([string]$target,[string]$exe,[string]$mode,[string]$package,[string]$log,[string]$expectedExit,[string]$label){
+ & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $Helper -Mode $mode -Target $target -Executable $exe -PackagePath $package -LogPath $log -FailAfterMutation
+ if($LASTEXITCODE -ne [int]$expectedExit){throw "$label expected helper exit $expectedExit, got $LASTEXITCODE"}
+ if(!(Select-String -LiteralPath $log -Pattern 'FAILURE_INJECTED_AFTER_MUTATION' -Quiet)){throw "$label did not fail after file mutations"}
+ if(!(Select-String -LiteralPath $log -Pattern 'ROLLBACK_VERIFIED' -Quiet)){throw "$label complete inventory/hash rollback verification missing"}
+ if(!(Test-Path ($log+'.baseline-manifest.json')) -or !(Test-Path ($log+'.restored-manifest.json'))){throw "$label baseline/restored file manifests missing"}
+}
+function Assert-FailedRestore([string]$target,[string]$exe,[string]$mode,[string]$package,[string]$log,[string]$label,[string]$profile,[string]$runId,[string]$evidencePath,[string]$originalExe){
  & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $Helper -Mode $mode -Target $target -Executable $exe -PackagePath $package -LogPath $log -FailAfterMutation -CorruptBackupForTest
- if($LASTEXITCODE -ne 90){throw "$label intentionally damaged-backup rollback should fail closed with exit 90; got $LASTEXITCODE"}
- if(!(Select-String -LiteralPath $log -Pattern 'TEST_ONLY_ROLLBACK_BACKUP_CORRUPTED' -Quiet)){throw "$label did not execute rollback failure injection"}
- if(!(Select-String -LiteralPath $log -Pattern 'ROLLBACK_FATAL' -Quiet)){throw "$label did not report failed rollback"}
- Start-Check $script:installerExeForVerification $label $profile $runId $evidence
-}
-function Get-AppMetadata($installRoot){
- $asar=Join-Path $installRoot 'resources/app.asar'
- if(!(Test-Path -LiteralPath $asar)){throw "Packaged app.asar missing: $asar"}
- $json=(& node -e "const a=require('@electron/asar');process.stdout.write(a.extractFile(process.argv[1],'package.json').toString())" $asar | Out-String)
- if($LASTEXITCODE -ne 0){throw 'Could not read package.json from app.asar'}
- if([string]::IsNullOrWhiteSpace($json)){throw 'Packaged app.asar package.json is empty'}
- $metadata=ConvertFrom-Json -InputObject $json
- if([string]::IsNullOrWhiteSpace([string]$metadata.version)){throw 'Packaged app.asar has no application version'}
- return $metadata
-}
-function Get-AppVersion($installRoot){return [string](Get-AppMetadata $installRoot).version}
-function Prepare-UserData($exe,$appDataRoot,$label,$appName,$runId,$evidencePath){
- $env:APPDATA=$appDataRoot; New-Item -ItemType Directory -Path $appDataRoot -Force|Out-Null
- $userDataRoot=Join-Path $appDataRoot $appName
- if(Test-Path -LiteralPath $userDataRoot){throw "$label isolated profile already exists"}
- New-Item -ItemType Directory -Path $userDataRoot -Force|Out-Null
- Set-Content -LiteralPath (Join-Path $userDataRoot 'rollback-user-data-sentinel.txt') -Value "$($label)-$runId-user-data-preserved"
- & node scripts/windows-profile-storage.mjs seed $exe $userDataRoot $runId $evidencePath | ForEach-Object { Write-Host $_ }
- if($LASTEXITCODE -ne 0){throw "$label could not seed real Chromium LocalStorage and IndexedDB"}
- return $userDataRoot
+ if($LASTEXITCODE -ne 90){throw "$label damaged-backup rollback should fail closed with exit 90; got $LASTEXITCODE"}
+ if(!(Select-String -LiteralPath $log -Pattern 'TEST_ONLY_ROLLBACK_BACKUP_CORRUPTED' -Quiet) -or !(Select-String -LiteralPath $log -Pattern 'ROLLBACK_FATAL' -Quiet)){throw "$label failed-rollback diagnostics missing"}
+ Start-Check $originalExe $label $profile $runId $evidencePath
+ $retained=Select-String -LiteralPath $log -Pattern 'BACKUP_RETAINED (.+)$' | Select-Object -Last 1
+ if($retained){Remove-Item -LiteralPath $retained.Matches[0].Groups[1].Value -Recurse -Force -ErrorAction SilentlyContinue}
 }
 try{
- $it=Join-Path $root 'installer'
- $baselineInstallLog=Join-Path $root 'baseline-installer.log'
- "BASELINE_INSTALLER=$PreviousInstaller TARGET=$it" | Set-Content -LiteralPath $baselineInstallLog
- $installerExit=-1
+ # Windows Installer: install and start the published 2.2.51 baseline into an isolated directory.
+ $installerTarget=Join-Path $root 'installer'
+ $baselineInstallerLog=Join-Path $root 'baseline-installer.log'
+ $installExit=-1
  for($attempt=1;$attempt -le 2;$attempt++){
-  try{
-   $p=Start-Process -FilePath $PreviousInstaller -ArgumentList @('/S',"/D=$it") -Wait -PassThru -ErrorAction Stop
-   $installerExit=$p.ExitCode
-  }catch{
-   ($_|Out-String) | Add-Content -LiteralPath $baselineInstallLog
-  }
-  "ATTEMPT=$attempt EXIT=$installerExit" | Add-Content -LiteralPath $baselineInstallLog
-  if($installerExit -eq 0){break}
+  try{$p=Start-Process -FilePath $PreviousInstaller -ArgumentList @('/S',"/D=$installerTarget") -Wait -PassThru -ErrorAction Stop;$installExit=$p.ExitCode}
+  catch{($_|Out-String)|Add-Content -LiteralPath $baselineInstallerLog}
+  "ATTEMPT=$attempt EXIT=$installExit" | Add-Content -LiteralPath $baselineInstallerLog
+  if($installExit -eq 0){break}
   Start-Sleep -Seconds 3
  }
- if($installerExit -ne 0){
-  $events=Get-WinEvent -FilterHashtable @{LogName='Application';Id=1000,1001;StartTime=(Get-Date).AddMinutes(-10)} -ErrorAction SilentlyContinue | Select-Object -First 10 | Format-List TimeCreated,Id,ProviderName,Message | Out-String
-  $events | Add-Content -LiteralPath $baselineInstallLog
-  Write-Host "BASELINE_INSTALLER_DIAGNOSTICS=$baselineInstallLog"
-  throw "Baseline installer failed after two attempts: $installerExit"
- }
- $ie=Join-Path $it 'OpenFront Replay Coach.exe'; if(!(Test-Path $ie)){throw 'Baseline installer exe missing'}
- $script:installerExeForVerification=$ie
- $installerMetadata=Get-AppMetadata $it
- $installerVersion=[string]$installerMetadata.version
+ if($installExit -ne 0){throw "Published Windows baseline installer failed: $installExit"}
+ $installerExe=Join-Path $installerTarget 'OpenFront Replay Coach.exe'
+ if(!(Test-Path $installerExe)){throw 'Baseline installer executable missing'}
+ $installerMeta=Get-AppMetadata $installerTarget
+ $installerVersion=[string]$installerMeta.version
  if($installerVersion -ne '2.2.51'){throw "Expected installer baseline 2.2.51, got $installerVersion"}
- $installerAppName=[string]$installerMetadata.productName
- if([string]::IsNullOrWhiteSpace($installerAppName)){$installerAppName=[string]$installerMetadata.name}
- if([string]::IsNullOrWhiteSpace($installerAppName)){throw 'Baseline installer package has no Electron app name'}
+ $installerAppName=[string]$installerMeta.productName
+ if([string]::IsNullOrWhiteSpace($installerAppName)){$installerAppName=[string]$installerMeta.name}
+ if([string]::IsNullOrWhiteSpace($installerAppName)){throw 'Baseline installer app name missing'}
  $installerRunId=[guid]::NewGuid().ToString('N')
  $installerProfileEvidence=Join-Path $root 'installer-profile-evidence.json'
- $installerUserDataRoot=Prepare-UserData $ie (Join-Path $root 'installer-appdata') 'installer' $installerAppName $installerRunId $installerProfileEvidence
- Set-Content (Join-Path $it 'test-extra-sentinel') 'preserve-me'; $ilog=Join-Path $root 'installer.log'
- & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $Helper -Mode Installer -Target $it -Executable $ie -PackagePath $Installer -LogPath $ilog -FailAfterMutation
- if($LASTEXITCODE -ne 1){throw "Installer rollback exit was $LASTEXITCODE"}
- if((Get-AppVersion $it) -ne $installerVersion){throw 'Installer rollback did not restore old application version'}
- $registryWasAbsent=Select-String -LiteralPath $ilog -Pattern 'REGISTRY_BASELINE_NONE' -Quiet
- if($registryWasAbsent){
-  if(!(Select-String -LiteralPath $ilog -Pattern 'REGISTRY_ROLLBACK_VERIFIED baseline=none' -Quiet)){throw 'Installer rollback did not preserve the baseline absence of uninstall registry metadata'}
- }else{
-  if(!(Select-String -LiteralPath $ilog -Pattern 'REGISTRY_BACKUP_VERIFIED' -Quiet)){throw 'Installer rollback did not capture the baseline uninstall registry metadata'}
-  if(!(Select-String -LiteralPath $ilog -Pattern 'REGISTRY_ROLLBACK_VERIFIED displayVersion=' -Quiet)){throw 'Installer rollback did not restore the baseline uninstall registry metadata'}
- }
- if(Test-Path (Join-Path $it '__ROLLBACK_TEST_EXTRA_FILE__.txt')){throw 'Installer left injected extra file'}
- if(Test-Path (Join-Path $it '__ROLLBACK_TEST_EXTRA_DIRECTORY__')){throw 'Installer left injected extra directory'}
- if((Get-Content (Join-Path $it 'test-extra-sentinel') -Raw).Trim() -ne 'preserve-me'){throw 'Installer did not restore extra baseline file'}
- 
- if(!(Select-String -LiteralPath $ilog -Pattern 'FAILURE_INJECTED_AFTER_MUTATION' -Quiet)){throw 'Installer did not reach controlled post-mutation failure injection'}
- if(!(Select-String -LiteralPath $ilog -Pattern 'ROLLBACK_VERIFIED' -Quiet)){throw 'Installer complete manifest/hash proof missing'}
- if(!(Test-Path ($ilog+'.baseline-manifest.json')) -or !(Test-Path ($ilog+'.restored-manifest.json'))){throw 'Installer baseline/restored manifests missing'}
- Start-Check $ie 'installer' $installerUserDataRoot $installerRunId $installerProfileEvidence; Write-Host "WINDOWS_INSTALLER_ROLLBACK_OK log=$ilog"
- # A truncated installer must fail closed and leave the previous version plus both web stores intact.
+ $installerProfile=Prepare-UserData $installerExe (Join-Path $root 'installer-appdata') 'installer' $installerAppName $installerRunId $installerProfileEvidence
+ Set-Content (Join-Path $installerTarget 'test-extra-sentinel') 'preserve-me'
+ $installerLog=Join-Path $root 'installer.log'
+ Assert-ExpectedRollback $installerTarget $installerExe Installer $Installer $installerLog 1 'Installer'
+ if((Get-AppVersion $installerTarget) -ne $installerVersion){throw 'Installer rollback did not restore 2.2.51'}
+ if(Test-Path (Join-Path $installerTarget '__ROLLBACK_TEST_EXTRA_FILE__.txt')){throw 'Installer left injected extra file'}
+ if(Test-Path (Join-Path $installerTarget '__ROLLBACK_TEST_EXTRA_DIRECTORY__')){throw 'Installer left injected extra directory'}
+ if((Get-Content (Join-Path $installerTarget 'test-extra-sentinel') -Raw).Trim() -ne 'preserve-me'){throw 'Installer did not restore baseline sentinel file'}
+ if(!(Select-String -LiteralPath $installerLog -Pattern 'REGISTRY_BACKUP_VERIFIED' -Quiet) -or !(Select-String -LiteralPath $installerLog -Pattern 'REGISTRY_ROLLBACK_VERIFIED displayVersion=' -Quiet)){throw 'Installer uninstall registry metadata was not backed up and restored'}
+ Start-Check $installerExe 'installer' $installerProfile $installerRunId $installerProfileEvidence
+ Write-Host "WINDOWS_INSTALLER_ROLLBACK_OK log=$installerLog"
+
+ # A truncated installer must fail and restore the complete baseline on a disposable copy.
  $badInstaller=Join-Path $root 'incomplete-installer.exe'
  $installerBytes=[IO.File]::ReadAllBytes($Installer)
- [IO.File]::WriteAllBytes($badInstaller,[byte[]]$installerBytes[0..([Math]::Min(2047,$installerBytes.Length-1))])
+ $prefixLength=[Math]::Min(2048,$installerBytes.Length)
+ $prefix=New-Object byte[] $prefixLength
+ [Array]::Copy($installerBytes,$prefix,$prefixLength)
+ [IO.File]::WriteAllBytes($badInstaller,$prefix)
  $badInstallerTarget=Join-Path $root 'installer-incomplete-package-target'
- Copy-InstallTree $it $badInstallerTarget
- $badInstallerExe=Join-Path $badInstallerTarget 'OpenFront Replay Coach.exe'
+ Copy-InstallTree $installerTarget $badInstallerTarget
  $badInstallerLog=Join-Path $root 'installer-incomplete-package.log'
- & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $Helper -Mode Installer -Target $badInstallerTarget -Executable $badInstallerExe -PackagePath $badInstaller -LogPath $badInstallerLog
- if($LASTEXITCODE -ne 1){throw "Incomplete installer package should be rejected and rolled back; got $LASTEXITCODE"}
- if(!(Select-String -LiteralPath $badInstallerLog -Pattern 'ROLLBACK_VERIFIED' -Quiet)){throw 'Incomplete installer package did not restore the baseline inventory'}
- if((Get-AppVersion $badInstallerTarget) -ne $installerVersion){throw 'Incomplete installer package changed the installed version'}
- Start-Check $ie 'installer' $installerUserDataRoot $installerRunId $installerProfileEvidence
- # Exercise a failed restore using a deliberately damaged backup in a disposable install clone.
- $installerFailedRestoreTarget=Join-Path $root 'installer-failed-restore-target'
- Copy-InstallTree $it $installerFailedRestoreTarget
- $installerFailedRestoreLog=Join-Path $root 'installer-failed-restore.log'
- Assert-FailedRollback $installerFailedRestoreTarget (Join-Path $installerFailedRestoreTarget 'OpenFront Replay Coach.exe') Installer $Installer $installerFailedRestoreLog 'installer' $installerUserDataRoot $installerRunId $installerProfileEvidence
- $retained=Select-String -LiteralPath $installerFailedRestoreLog -Pattern 'BACKUP_RETAINED (.+)
- $pt=Join-Path $root 'portable'; New-Item -ItemType Directory $pt|Out-Null; Expand-Archive $PreviousPortableZip $pt
- $peItem=Get-ChildItem $pt -Filter 'OpenFront Replay Coach.exe' -File -Recurse|Select-Object -First 1; if(!$peItem){throw 'Portable executable missing'}
- $pe=$peItem.FullName; $pr=$peItem.Directory.FullName
- $script:portableExeForVerification=$pe
- $portableMetadata=Get-AppMetadata $pr
- $portableVersion=[string]$portableMetadata.version
+ & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $Helper -Mode Installer -Target $badInstallerTarget -Executable (Join-Path $badInstallerTarget 'OpenFront Replay Coach.exe') -PackagePath $badInstaller -LogPath $badInstallerLog
+ if($LASTEXITCODE -ne 1 -or !(Select-String -LiteralPath $badInstallerLog -Pattern 'ROLLBACK_VERIFIED' -Quiet)){throw 'Truncated installer package was not rejected with a verified restore'}
+ if((Get-AppVersion $badInstallerTarget) -ne $installerVersion){throw 'Truncated installer package changed baseline version'}
+ Start-Check $installerExe 'installer' $installerProfile $installerRunId $installerProfileEvidence
+
+ # A corrupted rollback backup must fail closed without touching the real user profile.
+ $failedInstallerTarget=Join-Path $root 'installer-failed-restore-target'
+ Copy-InstallTree $installerTarget $failedInstallerTarget
+ Assert-FailedRestore $failedInstallerTarget (Join-Path $failedInstallerTarget 'OpenFront Replay Coach.exe') Installer $Installer (Join-Path $root 'installer-failed-restore.log') 'installer' $installerProfile $installerRunId $installerProfileEvidence $installerExe
+
+ # Windows Portable: independently extract, seed a second profile and test its update path.
+ $portableRoot=Join-Path $root 'portable'
+ New-Item -ItemType Directory -Path $portableRoot|Out-Null
+ Expand-Archive -LiteralPath $PreviousPortableZip -DestinationPath $portableRoot
+ $portableExeItem=Get-ChildItem -LiteralPath $portableRoot -Filter 'OpenFront Replay Coach.exe' -File -Recurse|Select-Object -First 1
+ if(!$portableExeItem){throw 'Baseline portable executable missing'}
+ $portableExe=$portableExeItem.FullName
+ $portableTarget=$portableExeItem.Directory.FullName
+ $portableMeta=Get-AppMetadata $portableTarget
+ $portableVersion=[string]$portableMeta.version
  if($portableVersion -ne '2.2.51'){throw "Expected portable baseline 2.2.51, got $portableVersion"}
- $portableAppName=[string]$portableMetadata.productName
- if([string]::IsNullOrWhiteSpace($portableAppName)){$portableAppName=[string]$portableMetadata.name}
- if([string]::IsNullOrWhiteSpace($portableAppName)){throw 'Baseline portable package has no Electron app name'}
- $currentStage=Join-Path $root 'current-portable-version'; Expand-Archive $PortableZip $currentStage
- $currentExe=Get-ChildItem $currentStage -Filter 'OpenFront Replay Coach.exe' -File -Recurse|Select-Object -First 1
- if(!$currentExe){throw 'Current portable package executable missing'}
- $currentVersion=Get-AppVersion $currentExe.Directory.FullName
- if([version]$currentVersion -le [version]$portableVersion){throw "Current package version $currentVersion is not newer than baseline $portableVersion"}
- Set-Content (Join-Path $pr 'test-extra-sentinel') 'preserve-me'
+ $portableAppName=[string]$portableMeta.productName
+ if([string]::IsNullOrWhiteSpace($portableAppName)){$portableAppName=[string]$portableMeta.name}
+ if([string]::IsNullOrWhiteSpace($portableAppName)){throw 'Baseline portable app name missing'}
+ $currentPortable=Join-Path $root 'current-portable'
+ Expand-Archive -LiteralPath $PortableZip -DestinationPath $currentPortable
+ $currentPortableExe=Get-ChildItem -LiteralPath $currentPortable -Filter 'OpenFront Replay Coach.exe' -File -Recurse|Select-Object -First 1
+ if(!$currentPortableExe){throw 'Current portable package executable missing'}
+ $currentVersion=Get-AppVersion $currentPortableExe.Directory.FullName
+ if([version]$currentVersion -le [version]$portableVersion){throw "Current portable package version $currentVersion is not newer than $portableVersion"}
  $portableRunId=[guid]::NewGuid().ToString('N')
  $portableProfileEvidence=Join-Path $root 'portable-profile-evidence.json'
- $portableUserDataRoot=Prepare-UserData $pe (Join-Path $root 'portable-appdata') 'portable' $portableAppName $portableRunId $portableProfileEvidence; $plog=Join-Path $root 'portable.log'
- & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $Helper -Mode Portable -Target $pr -Executable $pe -PackagePath $PortableZip -LogPath $plog -FailAfterMutation
- if($LASTEXITCODE -ne 1){throw "Portable rollback exit was $LASTEXITCODE"}
- if((Get-AppVersion $pr) -ne $portableVersion){throw 'Portable rollback did not restore old application version'}
- if(Test-Path (Join-Path $pr '__ROLLBACK_TEST_EXTRA_FILE__.txt')){throw 'Portable left injected extra file'}
- if(Test-Path (Join-Path $pr '__ROLLBACK_TEST_EXTRA_DIRECTORY__')){throw 'Portable left injected extra directory'}
- if((Get-Content (Join-Path $pr 'test-extra-sentinel') -Raw).Trim() -ne 'preserve-me'){throw 'Portable did not restore extra baseline file'}
- 
- if(!(Select-String -LiteralPath $plog -Pattern 'FAILURE_INJECTED_AFTER_MUTATION' -Quiet)){throw 'Portable did not reach controlled post-mutation failure injection'}
- if(!(Select-String -LiteralPath $plog -Pattern 'ROLLBACK_VERIFIED' -Quiet)){throw 'Portable complete manifest/hash proof missing'}
- if(!(Test-Path ($plog+'.baseline-manifest.json')) -or !(Test-Path ($plog+'.restored-manifest.json'))){throw 'Portable baseline/restored manifests missing'}
- Start-Check $pe 'portable' $portableUserDataRoot $portableRunId $portableProfileEvidence
- # An incomplete ZIP with no executable must be rejected without changing the portable tree.
- $badPayload=Join-Path $root 'incomplete-portable-payload'; New-Item -ItemType Directory $badPayload|Out-Null
- Set-Content (Join-Path $badPayload 'partial-update.txt') 'deliberately incomplete update payload'
+ $portableProfile=Prepare-UserData $portableExe (Join-Path $root 'portable-appdata') 'portable' $portableAppName $portableRunId $portableProfileEvidence
+ Set-Content (Join-Path $portableTarget 'test-extra-sentinel') 'preserve-me'
+ $portableLog=Join-Path $root 'portable.log'
+ Assert-ExpectedRollback $portableTarget $portableExe Portable $PortableZip $portableLog 1 'Portable'
+ if((Get-AppVersion $portableTarget) -ne $portableVersion){throw 'Portable rollback did not restore 2.2.51'}
+ if(Test-Path (Join-Path $portableTarget '__ROLLBACK_TEST_EXTRA_FILE__.txt')){throw 'Portable left injected extra file'}
+ if(Test-Path (Join-Path $portableTarget '__ROLLBACK_TEST_EXTRA_DIRECTORY__')){throw 'Portable left injected extra directory'}
+ if((Get-Content (Join-Path $portableTarget 'test-extra-sentinel') -Raw).Trim() -ne 'preserve-me'){throw 'Portable did not restore baseline sentinel file'}
+ Start-Check $portableExe 'portable' $portableProfile $portableRunId $portableProfileEvidence
+ Write-Host "WINDOWS_PORTABLE_ROLLBACK_OK log=$portableLog"
+
+ # An incomplete portable archive must be rejected before mutation and preserve the old app.
+ $partialPayload=Join-Path $root 'incomplete-portable-payload'
+ New-Item -ItemType Directory -Path $partialPayload|Out-Null
+ Set-Content (Join-Path $partialPayload 'partial-update.txt') 'deliberately incomplete package'
  $badPortable=Join-Path $root 'incomplete-portable.zip'
- Compress-Archive -LiteralPath (Join-Path $badPayload 'partial-update.txt') -DestinationPath $badPortable -Force
+ Compress-Archive -LiteralPath (Join-Path $partialPayload 'partial-update.txt') -DestinationPath $badPortable -Force
  $badPortableTarget=Join-Path $root 'portable-incomplete-package-target'
- Copy-InstallTree $pr $badPortableTarget
- $badPortableExe=Join-Path $badPortableTarget 'OpenFront Replay Coach.exe'
+ Copy-InstallTree $portableTarget $badPortableTarget
  $badPortableLog=Join-Path $root 'portable-incomplete-package.log'
- & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $Helper -Mode Portable -Target $badPortableTarget -Executable $badPortableExe -PackagePath $badPortable -LogPath $badPortableLog
- if($LASTEXITCODE -ne 1){throw "Incomplete portable package should be rejected without mutation; got $LASTEXITCODE"}
- if(!(Select-String -LiteralPath $badPortableLog -Pattern 'UPDATE_FAILED' -Quiet)){throw 'Incomplete portable package rejection was not logged'}
- if((Get-AppVersion $badPortableTarget) -ne $portableVersion){throw 'Incomplete portable package changed the installed version'}
- Start-Check $pe 'portable' $portableUserDataRoot $portableRunId $portableProfileEvidence
- # A deliberately corrupted rollback backup must fail closed; the original portable installation/profile remains independent.
- $portableFailedRestoreTarget=Join-Path $root 'portable-failed-restore-target'
- Copy-InstallTree $pr $portableFailedRestoreTarget
- $portableFailedRestoreLog=Join-Path $root 'portable-failed-restore.log'
- & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $Helper -Mode Portable -Target $portableFailedRestoreTarget -Executable (Join-Path $portableFailedRestoreTarget 'OpenFront Replay Coach.exe') -PackagePath $PortableZip -LogPath $portableFailedRestoreLog -FailAfterMutation -CorruptBackupForTest
- if($LASTEXITCODE -ne 90){throw "Portable intentionally damaged-backup rollback should fail closed with exit 90; got $LASTEXITCODE"}
- if(!(Select-String -LiteralPath $portableFailedRestoreLog -Pattern 'TEST_ONLY_ROLLBACK_BACKUP_CORRUPTED' -Quiet) -or !(Select-String -LiteralPath $portableFailedRestoreLog -Pattern 'ROLLBACK_FATAL' -Quiet)){throw 'Portable failed-rollback evidence missing'}
- Start-Check $pe 'portable' $portableUserDataRoot $portableRunId $portableProfileEvidence
- $retained=Select-String -LiteralPath $portableFailedRestoreLog -Pattern 'BACKUP_RETAINED (.+)
-}catch{Write-Error $_; Write-Host "DIAGNOSTICS_RETAINED $root";throw}
- | Select-Object -Last 1
- if($retained){Remove-Item -LiteralPath $retained.Matches[0].Groups[1].Value -Recurse -Force -ErrorAction SilentlyContinue}
+ & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $Helper -Mode Portable -Target $badPortableTarget -Executable (Join-Path $badPortableTarget 'OpenFront Replay Coach.exe') -PackagePath $badPortable -LogPath $badPortableLog
+ if($LASTEXITCODE -ne 1 -or !(Select-String -LiteralPath $badPortableLog -Pattern 'UPDATE_FAILED' -Quiet)){throw 'Incomplete portable archive was not rejected'}
+ if((Get-AppVersion $badPortableTarget) -ne $portableVersion){throw 'Incomplete portable archive changed baseline version'}
+ Start-Check $portableExe 'portable' $portableProfile $portableRunId $portableProfileEvidence
 
- $pt=Join-Path $root 'portable'; New-Item -ItemType Directory $pt|Out-Null; Expand-Archive $PreviousPortableZip $pt
- $peItem=Get-ChildItem $pt -Filter 'OpenFront Replay Coach.exe' -File -Recurse|Select-Object -First 1; if(!$peItem){throw 'Portable executable missing'}
- $pe=$peItem.FullName; $pr=$peItem.Directory.FullName
- $script:portableExeForVerification=$pe
- $portableMetadata=Get-AppMetadata $pr
- $portableVersion=[string]$portableMetadata.version
- if($portableVersion -ne '2.2.51'){throw "Expected portable baseline 2.2.51, got $portableVersion"}
- $portableAppName=[string]$portableMetadata.productName
- if([string]::IsNullOrWhiteSpace($portableAppName)){$portableAppName=[string]$portableMetadata.name}
- if([string]::IsNullOrWhiteSpace($portableAppName)){throw 'Baseline portable package has no Electron app name'}
- $currentStage=Join-Path $root 'current-portable-version'; Expand-Archive $PortableZip $currentStage
- $currentExe=Get-ChildItem $currentStage -Filter 'OpenFront Replay Coach.exe' -File -Recurse|Select-Object -First 1
- if(!$currentExe){throw 'Current portable package executable missing'}
- $currentVersion=Get-AppVersion $currentExe.Directory.FullName
- if([version]$currentVersion -le [version]$portableVersion){throw "Current package version $currentVersion is not newer than baseline $portableVersion"}
- Set-Content (Join-Path $pr 'test-extra-sentinel') 'preserve-me'
- $portableRunId=[guid]::NewGuid().ToString('N')
- $portableProfileEvidence=Join-Path $root 'portable-profile-evidence.json'
- $portableUserDataRoot=Prepare-UserData $pe (Join-Path $root 'portable-appdata') 'portable' $portableAppName $portableRunId $portableProfileEvidence; $plog=Join-Path $root 'portable.log'
- & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $Helper -Mode Portable -Target $pr -Executable $pe -PackagePath $PortableZip -LogPath $plog -FailAfterMutation
- if($LASTEXITCODE -ne 1){throw "Portable rollback exit was $LASTEXITCODE"}
- if((Get-AppVersion $pr) -ne $portableVersion){throw 'Portable rollback did not restore old application version'}
- if(Test-Path (Join-Path $pr '__ROLLBACK_TEST_EXTRA_FILE__.txt')){throw 'Portable left injected extra file'}
- if(Test-Path (Join-Path $pr '__ROLLBACK_TEST_EXTRA_DIRECTORY__')){throw 'Portable left injected extra directory'}
- if((Get-Content (Join-Path $pr 'test-extra-sentinel') -Raw).Trim() -ne 'preserve-me'){throw 'Portable did not restore extra baseline file'}
- 
- if(!(Select-String -LiteralPath $plog -Pattern 'FAILURE_INJECTED_AFTER_MUTATION' -Quiet)){throw 'Portable did not reach controlled post-mutation failure injection'}
- if(!(Select-String -LiteralPath $plog -Pattern 'ROLLBACK_VERIFIED' -Quiet)){throw 'Portable complete manifest/hash proof missing'}
- if(!(Test-Path ($plog+'.baseline-manifest.json')) -or !(Test-Path ($plog+'.restored-manifest.json'))){throw 'Portable baseline/restored manifests missing'}
- Start-Check $pe 'portable' $portableUserDataRoot $portableRunId $portableProfileEvidence; Write-Host "WINDOWS_PORTABLE_ROLLBACK_OK log=$plog"; Write-Host "WINDOWS_ROLLBACK_E2E_OK data=$root"
-}catch{Write-Error $_; Write-Host "DIAGNOSTICS_RETAINED $root";throw}
- | Select-Object -Last 1
- if($retained){Remove-Item -LiteralPath $retained.Matches[0].Groups[1].Value -Recurse -Force -ErrorAction SilentlyContinue}
- Write-Host "WINDOWS_ROLLBACK_E2E_OK data=$root"
-}catch{Write-Error $_; Write-Host "DIAGNOSTICS_RETAINED $root";throw}
- | Select-Object -Last 1
- if($retained){Remove-Item -LiteralPath $retained.Matches[0].Groups[1].Value -Recurse -Force -ErrorAction SilentlyContinue}
+ # Exercise failed rollback independently from the successful portable rollback.
+ $failedPortableTarget=Join-Path $root 'portable-failed-restore-target'
+ Copy-InstallTree $portableTarget $failedPortableTarget
+ Assert-FailedRestore $failedPortableTarget (Join-Path $failedPortableTarget 'OpenFront Replay Coach.exe') Portable $PortableZip (Join-Path $root 'portable-failed-restore.log') 'portable' $portableProfile $portableRunId $portableProfileEvidence $portableExe
 
- $pt=Join-Path $root 'portable'; New-Item -ItemType Directory $pt|Out-Null; Expand-Archive $PreviousPortableZip $pt
- $peItem=Get-ChildItem $pt -Filter 'OpenFront Replay Coach.exe' -File -Recurse|Select-Object -First 1; if(!$peItem){throw 'Portable executable missing'}
- $pe=$peItem.FullName; $pr=$peItem.Directory.FullName
- $script:portableExeForVerification=$pe
- $portableMetadata=Get-AppMetadata $pr
- $portableVersion=[string]$portableMetadata.version
- if($portableVersion -ne '2.2.51'){throw "Expected portable baseline 2.2.51, got $portableVersion"}
- $portableAppName=[string]$portableMetadata.productName
- if([string]::IsNullOrWhiteSpace($portableAppName)){$portableAppName=[string]$portableMetadata.name}
- if([string]::IsNullOrWhiteSpace($portableAppName)){throw 'Baseline portable package has no Electron app name'}
- $currentStage=Join-Path $root 'current-portable-version'; Expand-Archive $PortableZip $currentStage
- $currentExe=Get-ChildItem $currentStage -Filter 'OpenFront Replay Coach.exe' -File -Recurse|Select-Object -First 1
- if(!$currentExe){throw 'Current portable package executable missing'}
- $currentVersion=Get-AppVersion $currentExe.Directory.FullName
- if([version]$currentVersion -le [version]$portableVersion){throw "Current package version $currentVersion is not newer than baseline $portableVersion"}
- Set-Content (Join-Path $pr 'test-extra-sentinel') 'preserve-me'
- $portableRunId=[guid]::NewGuid().ToString('N')
- $portableProfileEvidence=Join-Path $root 'portable-profile-evidence.json'
- $portableUserDataRoot=Prepare-UserData $pe (Join-Path $root 'portable-appdata') 'portable' $portableAppName $portableRunId $portableProfileEvidence; $plog=Join-Path $root 'portable.log'
- & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $Helper -Mode Portable -Target $pr -Executable $pe -PackagePath $PortableZip -LogPath $plog -FailAfterMutation
- if($LASTEXITCODE -ne 1){throw "Portable rollback exit was $LASTEXITCODE"}
- if((Get-AppVersion $pr) -ne $portableVersion){throw 'Portable rollback did not restore old application version'}
- if(Test-Path (Join-Path $pr '__ROLLBACK_TEST_EXTRA_FILE__.txt')){throw 'Portable left injected extra file'}
- if(Test-Path (Join-Path $pr '__ROLLBACK_TEST_EXTRA_DIRECTORY__')){throw 'Portable left injected extra directory'}
- if((Get-Content (Join-Path $pr 'test-extra-sentinel') -Raw).Trim() -ne 'preserve-me'){throw 'Portable did not restore extra baseline file'}
- 
- if(!(Select-String -LiteralPath $plog -Pattern 'FAILURE_INJECTED_AFTER_MUTATION' -Quiet)){throw 'Portable did not reach controlled post-mutation failure injection'}
- if(!(Select-String -LiteralPath $plog -Pattern 'ROLLBACK_VERIFIED' -Quiet)){throw 'Portable complete manifest/hash proof missing'}
- if(!(Test-Path ($plog+'.baseline-manifest.json')) -or !(Test-Path ($plog+'.restored-manifest.json'))){throw 'Portable baseline/restored manifests missing'}
- Start-Check $pe 'portable' $portableUserDataRoot $portableRunId $portableProfileEvidence; Write-Host "WINDOWS_PORTABLE_ROLLBACK_OK log=$plog"; Write-Host "WINDOWS_ROLLBACK_E2E_OK data=$root"
-}catch{Write-Error $_; Write-Host "DIAGNOSTICS_RETAINED $root";throw}
+ Write-Host "WINDOWS_ROLLBACK_E2E_OK run=$root"
+}catch{
+ Write-Error $_
+ Write-Host "DIAGNOSTICS_RETAINED $root"
+ throw
+}

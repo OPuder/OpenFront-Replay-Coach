@@ -137,6 +137,12 @@ jobs:
           $sourceHash = (Get-FileHash -LiteralPath $sourceHelper -Algorithm SHA256).Hash
           $packagedHash = (Get-FileHash -LiteralPath $packagedHelper -Algorithm SHA256).Hash
           if ($sourceHash -ne $packagedHash) { throw 'Packaged Windows rollback helper differs from the tested source helper.' }
+          $sourceLockDiagnostic = (Resolve-Path scripts/windows-process-lock-diagnostics.ps1).Path
+          $packagedLockDiagnostic = Join-Path $PWD 'release/win-unpacked/resources/windows-process-lock-diagnostics.ps1'
+          if (-not (Test-Path -LiteralPath $packagedLockDiagnostic)) { throw 'Packaged Restart Manager lock diagnostic is missing from resources.' }
+          $sourceLockHash = (Get-FileHash -LiteralPath $sourceLockDiagnostic -Algorithm SHA256).Hash
+          $packagedLockHash = (Get-FileHash -LiteralPath $packagedLockDiagnostic -Algorithm SHA256).Hash
+          if ($sourceLockHash -ne $packagedLockHash) { throw 'Packaged Restart Manager diagnostic differs from the tested source.' }
           ./scripts/test-windows-update-rollback.ps1 -Installer $installer.FullName -PortableZip $portable.FullName -PreviousInstaller $env:PREVIOUS_INSTALLER -PreviousPortableZip $env:PREVIOUS_PORTABLE -Helper $packagedHelper
 
       - name: Upload Windows rollback logs and manifests

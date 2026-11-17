@@ -186,7 +186,7 @@ try{
   & robocopy.exe $newExe.Directory.FullName $Target /E /COPY:DAT /DCOPY:DAT /R:1 /W:1 /NFL /NDL /NJH /NJS /NP
   if($LASTEXITCODE -ge 8){throw "Portable copy failed: $LASTEXITCODE"}
  }else{
-  $installerProcess=Start-Process -FilePath $PackagePath -ArgumentList @('/S',"/D=$Target") -Wait -PassThru -ErrorAction Stop
+  $installerProcess=Start-Process -FilePath $PackagePath -ArgumentList @('/S',('"/D={0}"' -f $Target)) -Wait -PassThru -ErrorAction Stop
   $installerExit=$installerProcess.ExitCode
   if($installerExit -ne 0){throw "Installer failed: $installerExit"}
  }

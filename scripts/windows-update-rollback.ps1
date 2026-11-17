@@ -3,18 +3,24 @@ $ErrorActionPreference='Stop'
 $Target=[IO.Path]::GetFullPath($Target); $Executable=[IO.Path]::GetFullPath($Executable); $LogPath=[IO.Path]::GetFullPath($LogPath)
 New-Item -ItemType Directory -Path (Split-Path -Parent $LogPath) -Force | Out-Null
 function Log([string]$s){$line="[$(Get-Date -Format o)] $s"; Add-Content -LiteralPath $LogPath -Value $line; Write-Output $line}
+$lockOwnerContract=Join-Path $PSScriptRoot 'windows-process-lock-owner-contract.ps1'
+if(!(Test-Path -LiteralPath $lockOwnerContract)){throw "Restart Manager owner contract missing: $lockOwnerContract"}
+. $lockOwnerContract
 function Get-LockOwners {
  $diagnostic=Join-Path $PSScriptRoot 'windows-process-lock-diagnostics.ps1'
  if(!(Test-Path -LiteralPath $diagnostic)){throw "Restart Manager diagnostic missing: $diagnostic"}
- $raw=& powershell.exe -NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -File $diagnostic -Mode Inspect -Target $Target
+ $raw=@(& powershell.exe -NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -File $diagnostic -Mode Inspect -Target $Target)
  if($LASTEXITCODE -ne 0){throw "Restart Manager lock inspection failed: $LASTEXITCODE"}
- $json=($raw -join [Environment]::NewLine)
- if([string]::IsNullOrWhiteSpace($json)){return @()}
- $owners=@(ConvertFrom-Json -InputObject $json)
- foreach($owner in $owners){
+ $json=($raw -join [Environment]::NewLine).Trim()
+ $diagnosticResult=ConvertFrom-OpenFrontLockOwnerDiagnostic -Json $json
+ if($diagnosticResult.status -eq 'empty'){
+  Log 'RESTART_MANAGER_CONFIRMED_EMPTY owner_count=0' | Out-Null
+  return @()
+ }
+ foreach($owner in $diagnosticResult.owners){
   Log ("INSTALL_LOCK_OWNER pid={0} name={1} category={2} image={3} parent={4} appType={5} command={6}" -f $owner.processId,$owner.processName,$owner.category,$owner.executablePath,$owner.parentProcessId,$owner.applicationType,$owner.commandLine) | Out-Null
  }
- return $owners
+ return $diagnosticResult.owners
 }
 function Manifest([string]$root){
  if(!(Test-Path -LiteralPath $root -PathType Container)){throw "Missing tree: $root"}

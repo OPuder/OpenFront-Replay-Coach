@@ -133,9 +133,11 @@ try{
  $badInstallerTarget=Join-Path $root 'installer-incomplete-package-target'
  Copy-InstallTree $installerTarget $badInstallerTarget
  $badInstallerLog=Join-Path $root 'installer-incomplete-package.log'
- & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $Helper -Mode Installer -Target $badInstallerTarget -Executable (Join-Path $badInstallerTarget 'OpenFront Replay Coach.exe') -PackagePath $badInstaller -LogPath $badInstallerLog
+ $badInstallerReadyPath=Join-Path $installerProfile 'app-startup-ready.json'
+ & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $Helper -Mode Installer -Target $badInstallerTarget -Executable (Join-Path $badInstallerTarget 'OpenFront Replay Coach.exe') -PackagePath $badInstaller -LogPath $badInstallerLog -StartupReadyPath $badInstallerReadyPath -ExpectedVersion $currentVersion -PreviousVersion $currentVersion
  if($LASTEXITCODE -ne 1 -or !(Select-String -LiteralPath $badInstallerLog -Pattern 'ROLLBACK_VERIFIED' -Quiet)){throw 'Truncated installer package was not rejected with a verified restore'}
- if((Get-AppVersion $badInstallerTarget) -ne $installerVersion){throw 'Truncated installer package changed baseline version'}
+ if((Get-AppVersion $badInstallerTarget) -ne $currentVersion){throw 'Truncated installer package changed baseline version'}
+ Stop-ReadyProcess $badInstallerReadyPath
  Start-Check $installerExe 'installer' $installerProfile $installerRunId $installerProfileEvidence
 
  # A corrupted rollback backup must fail closed without touching the real user profile.

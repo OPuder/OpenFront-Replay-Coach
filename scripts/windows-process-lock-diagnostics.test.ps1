@@ -7,7 +7,9 @@ $resource=Join-Path $target 'locked-resource.bin'
 $ready=Join-Path $target 'ready.txt'
 $holderOutput=Join-Path $env:TEMP ('ofrc-lock-holder-'+[guid]::NewGuid().ToString('N')+'.out')
 $holderError=Join-Path $env:TEMP ('ofrc-lock-holder-'+[guid]::NewGuid().ToString('N')+'.err')
-$holderCode='$stream=[IO.File]::Open("'+$resource+'",[IO.FileMode]::Open,[IO.FileAccess]::ReadWrite,[IO.FileShare]::None); $pidHolder=$PID; Set-Content -LiteralPath "'+$ready+'" -Value $pidHolder; Start-Sleep -Seconds 90'
+$resourceLiteral="'"+$resource.Replace("'","''")+"'"
+$readyLiteral="'"+$ready.Replace("'","''")+"'"
+$holderCode='$stream=[IO.File]::Open('+ $resourceLiteral +',[IO.FileMode]::Open,[IO.FileAccess]::ReadWrite,[IO.FileShare]::None); $pidHolder=$PID; Set-Content -LiteralPath '+$readyLiteral+' -Value $pidHolder; Start-Sleep -Seconds 90'
 $encoded=[Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes($holderCode))
 $holder=Start-Process -FilePath powershell.exe -PassThru -WindowStyle Hidden -RedirectStandardOutput $holderOutput -RedirectStandardError $holderError -ArgumentList @('-NoProfile','-NonInteractive','-EncodedCommand',$encoded)
 try{

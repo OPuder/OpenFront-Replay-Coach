@@ -14,9 +14,11 @@ try{
  $deadline=(Get-Date).AddSeconds(20)
  while(!(Test-Path $ready) -and (Get-Date) -lt $deadline){Start-Sleep -Milliseconds 100}
  if(!(Test-Path $ready)){$alive=[bool](Get-Process -Id $holder.Id -ErrorAction SilentlyContinue);$stdout=if(Test-Path $holderOutput){Get-Content $holderOutput -Raw}else{''};$stderr=if(Test-Path $holderError){Get-Content $holderError -Raw}else{''};throw "Lock-holder process did not acquire its test file (pid=$($holder.Id), alive=$alive, stdout=$stdout, stderr=$stderr)"}
+ $reportedPid=[int](Get-Content -LiteralPath $ready -Raw).Trim()
+ if($reportedPid -ne $holder.Id){throw "Lock-holder readiness PID mismatch: ready=$reportedPid process=$($holder.Id)"}
  $reported=@(& powershell.exe -NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -File (Join-Path $PSScriptRoot 'windows-process-lock-diagnostics.ps1') -Mode Inspect -Target $target | ConvertFrom-Json)
  if($LASTEXITCODE -ne 0){throw 'Restart Manager diagnostic script failed'}
- if(!($reported | Where-Object { $_.processId -eq $holder.Id })){throw "Restart Manager did not identify lock holder PID $($holder.Id): $($reported|ConvertTo-Json -Compress)"}
+ if(!($reported | Where-Object { $_.processId -eq $reportedPid })){throw "Restart Manager did not identify lock holder PID $($holder.Id): $($reported|ConvertTo-Json -Compress)"}
  Write-Host "PROCESS_LOCK_OWNER_IDENTIFIED pid=$($holder.Id)"
 }finally{
  if(Get-Process -Id $holder.Id -ErrorAction SilentlyContinue){Stop-Process -Id $holder.Id -Force}

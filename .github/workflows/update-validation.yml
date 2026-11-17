@@ -48,6 +48,10 @@ jobs:
       - name: Validate Windows LocalStorage and IndexedDB rollback harness syntax
         run: node --check scripts/windows-profile-storage.mjs
 
+      - name: Identify Windows file-lock owners with Restart Manager
+        shell: pwsh
+        run: ./scripts/windows-process-lock-diagnostics.test.ps1
+
       - name: Verify updater contract tests
         run: node --test scripts/updater-contract.test.mjs
 

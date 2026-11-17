@@ -19,6 +19,9 @@ assert.match(windowsRollback, /Wait-Process/);
 assert.match(windowsRollback, /Expand-Archive/);
 assert.match(windowsRollback, /\$started/);
 assert.match(windowsRollback, /Backup verification failed/);
+assert.match(windowsRollback, /Rollback backup verification failed before restore/);
+assert.ok(windowsRollback.indexOf("Rollback backup verification failed before restore") < windowsRollback.indexOf("Log 'ROLLBACK_BEGIN removing complete target tree'"),
+  "A backup must be revalidated before the updater deletes any part of the existing installation.");
 assert.match(windowsRollback, /ROLLBACK_VERIFIED/);
 assert.match(windowsRollback, /REGISTRY_BASELINE_NONE/);
 assert.match(windowsRollback, /REGISTRY_ROLLBACK_VERIFIED baseline=none/);

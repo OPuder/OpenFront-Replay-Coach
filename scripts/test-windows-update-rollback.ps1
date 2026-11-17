@@ -47,6 +47,9 @@ function Assert-FailedRestore([string]$target,[string]$exe,[string]$mode,[string
  & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $Helper -Mode $mode -Target $target -Executable $exe -PackagePath $package -LogPath $log -FailAfterMutation -CorruptBackupForTest
  if($LASTEXITCODE -ne 90){throw "$label damaged-backup rollback should fail closed with exit 90; got $LASTEXITCODE"}
  if(!(Select-String -LiteralPath $log -Pattern 'TEST_ONLY_ROLLBACK_BACKUP_CORRUPTED' -Quiet) -or !(Select-String -LiteralPath $log -Pattern 'ROLLBACK_FATAL' -Quiet)){throw "$label failed-rollback diagnostics missing"}
+ if(!(Select-String -LiteralPath $log -Pattern 'Rollback backup verification failed before restore' -Quiet)){throw "$label did not verify the backup before deleting the mutated target"}
+ if(Test-Path (Join-Path $target 'resources/app.asar')){throw "$label destroyed the damaged target before validating the backup"}
+ if(!(Test-Path (Join-Path $target '__ROLLBACK_TEST_EXTRA_FILE__.txt'))){throw "$label unexpectedly cleaned the target after backup integrity failure"}
  Start-Check $originalExe $label $profile $runId $evidencePath
  $retained=Select-String -LiteralPath $log -Pattern 'BACKUP_RETAINED (.+)$' | Select-Object -Last 1
  if($retained){Remove-Item -LiteralPath $retained.Matches[0].Groups[1].Value -Recurse -Force -ErrorAction SilentlyContinue}

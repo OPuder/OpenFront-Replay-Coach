@@ -121,6 +121,9 @@ try{
  if($started){
   try{
    Stop-AppProcesses
+   $rollbackBackupManifest=Manifest $backup
+   Assert-Manifest $baseline $rollbackBackupManifest 'Rollback backup verification failed before restore'
+   Log "ROLLBACK_BACKUP_REVERIFIED entries=$($rollbackBackupManifest.Count)"
    Log 'ROLLBACK_BEGIN removing complete target tree'
    if(Test-Path -LiteralPath $Target){Remove-Item -LiteralPath $Target -Recurse -Force}
    New-Item -ItemType Directory -Path $Target -Force|Out-Null

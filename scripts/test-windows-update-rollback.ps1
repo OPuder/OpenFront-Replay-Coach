@@ -31,17 +31,38 @@ function Start-Check([string]$exe,[string]$label,[string]$profile,[string]$runId
  if($sentinel -ne "$label-$runId-user-data-preserved"){throw "$label user-data file sentinel changed"}
  Write-Host "ROLLBACK_RESTART_AND_WEB_STORAGE_OK $label profile=$profile"
 }
+function Stop-ReadyProcess([string]$readyPath){
+ if(!(Test-Path -LiteralPath $readyPath)){throw "Startup-ready evidence missing: $readyPath"}
+ $ready=Get-Content -LiteralPath $readyPath -Raw|ConvertFrom-Json
+ $pidValue=[int]$ready.processId
+ if(Get-Process -Id $pidValue -ErrorAction SilentlyContinue){
+  & taskkill.exe /PID $pidValue /T /F | Out-Null
+  if($LASTEXITCODE -ne 0 -and (Get-Process -Id $pidValue -ErrorAction SilentlyContinue)){throw "Could not stop confirmed test app process $pidValue"}
+  try{Wait-Process -Id $pidValue -Timeout 15 -ErrorAction Stop}catch{if(Get-Process -Id $pidValue -ErrorAction SilentlyContinue){throw "Confirmed test app process $pidValue did not exit"}}
+ }
+ Remove-Item -LiteralPath $readyPath -Force -ErrorAction SilentlyContinue
+}
+function Assert-SuccessfulUpdate([string]$target,[string]$exe,[string]$mode,[string]$package,[string]$log,[string]$profile,[string]$expectedVersion,[string]$previousVersion,[string]$label){
+ $readyPath=Join-Path $profile 'app-startup-ready.json'
+ & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $Helper -Mode $mode -Target $target -Executable $exe -PackagePath $package -LogPath $log -StartupReadyPath $readyPath -ExpectedVersion $expectedVersion -PreviousVersion $previousVersion
+ if($LASTEXITCODE -ne 0){throw "$label successful update helper returned $LASTEXITCODE"}
+ if(!(Select-String -LiteralPath $log -Pattern 'UPDATE_OK' -Quiet) -or !(Select-String -LiteralPath $log -Pattern 'APP_RESTART_CONFIRMED' -Quiet)){throw "$label update did not confirm renderer-ready restart"}
+ Stop-ReadyProcess $readyPath
+}
 function Copy-InstallTree([string]$source,[string]$destination){
  New-Item -ItemType Directory -Path $destination -Force|Out-Null
  & robocopy.exe $source $destination /MIR /COPY:DAT /DCOPY:DAT /R:1 /W:1 /NFL /NDL /NJH /NJS /NP
  if($LASTEXITCODE -ge 8){throw "Could not create isolated negative-test copy: $LASTEXITCODE"}
 }
-function Assert-ExpectedRollback([string]$target,[string]$exe,[string]$mode,[string]$package,[string]$log,[string]$expectedExit,[string]$label){
- & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $Helper -Mode $mode -Target $target -Executable $exe -PackagePath $package -LogPath $log -FailAfterMutation
+function Assert-ExpectedRollback([string]$target,[string]$exe,[string]$mode,[string]$package,[string]$log,[string]$expectedExit,[string]$label,[string]$profile,[string]$expectedVersion){
+ $readyPath=Join-Path $profile 'app-startup-ready.json'
+ & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $Helper -Mode $mode -Target $target -Executable $exe -PackagePath $package -LogPath $log -StartupReadyPath $readyPath -ExpectedVersion $expectedVersion -PreviousVersion $expectedVersion -FailAfterMutation
  if($LASTEXITCODE -ne [int]$expectedExit){throw "$label expected helper exit $expectedExit, got $LASTEXITCODE"}
  if(!(Select-String -LiteralPath $log -Pattern 'FAILURE_INJECTED_AFTER_MUTATION' -Quiet)){throw "$label did not fail after file mutations"}
  if(!(Select-String -LiteralPath $log -Pattern 'ROLLBACK_VERIFIED' -Quiet)){throw "$label complete inventory/hash rollback verification missing"}
+ if(!(Select-String -LiteralPath $log -Pattern 'ROLLBACK_COLD_START_CONFIRMED' -Quiet) -or !(Select-String -LiteralPath $log -Pattern 'APP_RESTART_CONFIRMED' -Quiet)){throw "$label rollback cold start was not confirmed"}
  if(!(Test-Path ($log+'.baseline-manifest.json')) -or !(Test-Path ($log+'.restored-manifest.json'))){throw "$label baseline/restored file manifests missing"}
+ Stop-ReadyProcess $readyPath
 }
 function Assert-FailedRestore([string]$target,[string]$exe,[string]$mode,[string]$package,[string]$log,[string]$label,[string]$profile,[string]$runId,[string]$evidencePath,[string]$originalExe){
  & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $Helper -Mode $mode -Target $target -Executable $exe -PackagePath $package -LogPath $log -FailAfterMutation -CorruptBackupForTest
@@ -80,8 +101,12 @@ try{
  $installerProfile=Prepare-UserData $installerExe (Join-Path $root 'installer-appdata') 'installer' $installerAppName $installerRunId $installerProfileEvidence
  Set-Content (Join-Path $installerTarget 'test-extra-sentinel') 'preserve-me'
  $installerLog=Join-Path $root 'installer.log'
- Assert-ExpectedRollback $installerTarget $installerExe Installer $Installer $installerLog 1 'Installer'
- if((Get-AppVersion $installerTarget) -ne $installerVersion){throw 'Installer rollback did not restore 2.2.51'}
+ $currentVersion=[string](Get-Content package.json -Raw|ConvertFrom-Json).version
+ Assert-SuccessfulUpdate $installerTarget $installerExe Installer $Installer (Join-Path $root 'installer-success.log') $installerProfile $currentVersion $installerVersion 'Installer'
+ if((Get-AppVersion $installerTarget) -ne $currentVersion){throw 'Installer did not install the expected current version'}
+ Start-Check $installerExe 'installer' $installerProfile $installerRunId $installerProfileEvidence
+ Assert-ExpectedRollback $installerTarget $installerExe Installer $Installer $installerLog 1 'Installer' $installerProfile $currentVersion
+ if((Get-AppVersion $installerTarget) -ne $currentVersion){throw 'Installer rollback did not restore the immediately preceding version'}
  if(Test-Path (Join-Path $installerTarget '__ROLLBACK_TEST_EXTRA_FILE__.txt')){throw 'Installer left injected extra file'}
  if(Test-Path (Join-Path $installerTarget '__ROLLBACK_TEST_EXTRA_DIRECTORY__')){throw 'Installer left injected extra directory'}
  if((Get-Content (Join-Path $installerTarget 'test-extra-sentinel') -Raw).Trim() -ne 'preserve-me'){throw 'Installer did not restore baseline sentinel file'}
@@ -134,8 +159,11 @@ try{
  $portableProfile=Prepare-UserData $portableExe (Join-Path $root 'portable-appdata') 'portable' $portableAppName $portableRunId $portableProfileEvidence
  Set-Content (Join-Path $portableTarget 'test-extra-sentinel') 'preserve-me'
  $portableLog=Join-Path $root 'portable.log'
- Assert-ExpectedRollback $portableTarget $portableExe Portable $PortableZip $portableLog 1 'Portable'
- if((Get-AppVersion $portableTarget) -ne $portableVersion){throw 'Portable rollback did not restore 2.2.51'}
+ Assert-SuccessfulUpdate $portableTarget $portableExe Portable $PortableZip (Join-Path $root 'portable-success.log') $portableProfile $currentVersion $portableVersion 'Portable'
+ if((Get-AppVersion $portableTarget) -ne $currentVersion){throw 'Portable did not install the expected current version'}
+ Start-Check $portableExe 'portable' $portableProfile $portableRunId $portableProfileEvidence
+ Assert-ExpectedRollback $portableTarget $portableExe Portable $PortableZip $portableLog 1 'Portable' $portableProfile $currentVersion
+ if((Get-AppVersion $portableTarget) -ne $currentVersion){throw 'Portable rollback did not restore the immediately preceding version'}
  if(Test-Path (Join-Path $portableTarget '__ROLLBACK_TEST_EXTRA_FILE__.txt')){throw 'Portable left injected extra file'}
  if(Test-Path (Join-Path $portableTarget '__ROLLBACK_TEST_EXTRA_DIRECTORY__')){throw 'Portable left injected extra directory'}
  if((Get-Content (Join-Path $portableTarget 'test-extra-sentinel') -Raw).Trim() -ne 'preserve-me'){throw 'Portable did not restore baseline sentinel file'}

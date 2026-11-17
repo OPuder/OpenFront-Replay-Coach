@@ -45,7 +45,10 @@ public static class OpenFrontRestartManager {
      rc=RmGetList(session,out needed,ref count,buffer,ref reasons);
      if(rc==234) continue;
      if(rc!=0) throw new InvalidOperationException("RmGetList data retrieval failed: "+rc+" needed="+needed+" count="+count);
-     if(count==0) throw new InvalidOperationException("RmGetList returned success with zero owners after reporting required entries");
+     if(count==0) {
+      if(needed==0) return new ProcessInfo[0];
+      throw new InvalidOperationException("RmGetList returned success with zero owners but a non-zero required count: needed="+needed);
+     }
      var output=new ProcessInfo[count];
      for(int i=0;i<count;i++) {
       output[i]=(ProcessInfo)Marshal.PtrToStructure(IntPtr.Add(buffer,i*size),typeof(ProcessInfo));

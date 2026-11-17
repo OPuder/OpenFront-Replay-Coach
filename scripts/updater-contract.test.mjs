@@ -16,6 +16,10 @@ assert.match(updater, /previousAttempt\?\.targetVersion === version/);
 assert.match(updater, /repeated restart|Wiederholter Neustart wird verhindert/);
 assert.match(updater, /clearAutoUpdateAttempt\(\)/);
 assert.match(windowsRollback, /Wait-Process/);
+assert.match(windowsRollback, /STOPPING_OLD_APP_BEFORE_UPDATE/);
+assert.match(windowsRollback, /Start-Process -FilePath \$PackagePath -ArgumentList/);
+assert.ok(windowsRollback.indexOf("STOPPING_OLD_APP_BEFORE_UPDATE") < windowsRollback.indexOf("Start-Process -FilePath $PackagePath"),
+  "The old app must be stopped before the installer or portable files are replaced.");
 assert.match(windowsRollback, /Expand-Archive/);
 assert.match(windowsRollback, /\$started/);
 assert.match(windowsRollback, /Backup verification failed/);

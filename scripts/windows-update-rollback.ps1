@@ -53,8 +53,14 @@ function Find-UninstallEntries {
  return $entries
 }
 function Stop-AppProcesses {
+ $targetPrefix=$Target.TrimEnd('\')+'\'
+ $processes=@(Get-CimInstance Win32_Process -ErrorAction SilentlyContinue | Where-Object {
+  $_.ExecutablePath -and ($_.ExecutablePath -ieq $Executable -or $_.ExecutablePath.StartsWith($targetPrefix,[StringComparison]::OrdinalIgnoreCase))
+ })
+ foreach($process in $processes){Stop-Process -Id $process.ProcessId -Force -ErrorAction SilentlyContinue}
  Get-Process -Name 'OpenFront Replay Coach' -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
- Start-Sleep -Milliseconds 500
+ foreach($process in $processes){try{Wait-Process -Id $process.ProcessId -Timeout 15 -ErrorAction Stop}catch{if(Get-Process -Id $process.ProcessId -ErrorAction SilentlyContinue){throw "Application process $($process.ProcessId) still holds the installation tree"}}}
+ Start-Sleep -Milliseconds 750
 }
 $backup=Join-Path $env:TEMP ('ofrc-rollback-'+[guid]::NewGuid().ToString('N')); $stage=Join-Path $env:TEMP ('ofrc-stage-'+[guid]::NewGuid().ToString('N'))
 $registryBackup=$backup+'.registry.reg'; $registryKeyPath=$null; $registryDisplayVersion=$null
@@ -84,6 +90,8 @@ try{
  $backupManifest | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath ($LogPath+'.backup-manifest.json')
  Assert-Manifest $baseline $backupManifest 'Backup verification failed'
  Log "BACKUP_VERIFIED $backup entries=$($baseline.Count)"
+ Log 'STOPPING_OLD_APP_BEFORE_UPDATE'
+ Stop-AppProcesses
  if($Mode -eq 'Portable'){
   New-Item -ItemType Directory -Path $stage -Force|Out-Null; Expand-Archive -LiteralPath $PackagePath -DestinationPath $stage -Force
   $newExe=Get-ChildItem -LiteralPath $stage -Filter 'OpenFront Replay Coach.exe' -File -Recurse|Select-Object -First 1
@@ -91,8 +99,9 @@ try{
   $started=$true; & robocopy.exe $newExe.Directory.FullName $Target /E /COPY:DAT /DCOPY:DAT /R:1 /W:1 /NFL /NDL /NJH /NJS /NP
   if($LASTEXITCODE -ge 8){throw "Portable copy failed: $LASTEXITCODE"}
  }else{
-  $started=$true; & $PackagePath '/S' "/D=$Target"
-  $installerExit=$LASTEXITCODE
+  $started=$true
+  $installerProcess=Start-Process -FilePath $PackagePath -ArgumentList @('/S',"/D=$Target") -Wait -PassThru -ErrorAction Stop
+  $installerExit=$installerProcess.ExitCode
   if($installerExit -ne 0){throw "Installer failed: $installerExit"}
  }
  Stop-AppProcesses

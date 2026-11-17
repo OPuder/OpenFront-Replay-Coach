@@ -60,6 +60,16 @@ assert.ok(releaseWorkflow.includes("grep -Eo '[[:xdigit:]]{64}'"), "Release work
 assert.match(releaseWorkflow, /Android signing certificate changed/);
 assert.match(releaseWorkflow, /needs\.build-android\.outputs\.signing_mode == 'permanent release key'/);
 assert.match(updater, /child\.once\('spawn', resolve\)/);
+assert.match(updater, /confirmWindowsAppReady/);
+assert.match(updater, /startupReadyPath/);
+assert.match(updater, /-StartupReadyPath/);
+assert.match(updater, /-ExpectedVersion/);
+assert.doesNotMatch(updater, /setTimeout\(resolve, 800\)/);
+assert.match(windowsRollback, /APP_RESTART_CONFIRMED/);
+assert.match(windowsRollback, /ROLLBACK_COLD_START_CONFIRMED/);
+assert.match(read("src/main/main.ts"), /did-finish-load[\s\S]*confirmWindowsAppReady/);
+assert.match(read("scripts/test-windows-update-rollback.ps1"), /Assert-SuccessfulUpdate/);
+assert.match(read("scripts/test-windows-update-rollback.ps1"), /APP_RESTART_CONFIRMED/);
 assert.match(updater, /child\.once\('error', reject\)/);
 assert.match(windowsRollback, /Add-Content -LiteralPath \$LogPath/);
 assert.match(updater, /The ZIP edition has no NSIS uninstaller/);

@@ -81,6 +81,7 @@ assert.match(updater, /windows-process-lock-owner-contract\\.ps1/);
 assert.match(updater, /packagedLockOwnerContractPath/);
 assert.match(updater, /windows-process-lock-owner-contract\.ps1/);
 assert.match(read("scripts/test-windows-update-rollback.ps1"), /helper-runtime/);
+assert.match(read("scripts/test-windows-update-rollback.ps1"), /windows-process-lock-owner-contract\.ps1/);
 assert.doesNotMatch(updater, /setTimeout\(resolve, 800\)/);
 assert.match(windowsRollback, /APP_RESTART_CONFIRMED/);
 assert.match(windowsRollback, /ROLLBACK_COLD_START_CONFIRMED/);

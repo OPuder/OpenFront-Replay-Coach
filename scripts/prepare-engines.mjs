@@ -40,7 +40,26 @@ for (const [lockHash, group] of dependencyGroups) {
     stdio: "inherit",
     shell: process.platform === "win32",
   });
-  if (install.status !== 0) throw new Error(`Dependency installation failed for lockfile group ${lockHash}`);
+  if (install.status !== 0) {
+    const diagnostic = {
+      command: process.platform === "win32" ? "npm.cmd ci --ignore-scripts" : "npm ci --ignore-scripts",
+      cwd: representativePath,
+      status: install.status,
+      signal: install.signal,
+      error: install.error ? {
+        name: install.error.name,
+        message: install.error.message,
+        code: install.error.code,
+        errno: install.error.errno,
+        syscall: install.error.syscall,
+        path: install.error.path,
+      } : null,
+      stdout: String(install.stdout ?? "").slice(-8000),
+      stderr: String(install.stderr ?? "").slice(-8000),
+    };
+    console.error("Historical engine dependency installation failed:", JSON.stringify(diagnostic));
+    throw new Error(`Dependency installation failed for lockfile group ${lockHash}`);
+  }
 
   for (const engine of group.slice(1)) {
     const target = path.join(path.resolve(engine.source), "node_modules");

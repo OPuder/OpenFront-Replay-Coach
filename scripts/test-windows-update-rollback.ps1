@@ -7,9 +7,12 @@ $helperDirectory=Join-Path $root 'helper-runtime'
 New-Item -ItemType Directory -Path $helperDirectory|Out-Null
 $packagedLockDiagnostic=Join-Path (Split-Path -Parent $Helper) 'windows-process-lock-diagnostics.ps1'
 if(!(Test-Path -LiteralPath $packagedLockDiagnostic)){throw 'Packaged Restart Manager diagnostic missing beside rollback helper'}
+$packagedLockOwnerContract=Join-Path (Split-Path -Parent $Helper) 'windows-process-lock-owner-contract.ps1'
+if(!(Test-Path -LiteralPath $packagedLockOwnerContract)){throw 'Packaged Restart Manager owner contract missing beside rollback helper'}
 $runtimeHelper=Join-Path $helperDirectory 'windows-update-rollback.ps1'
 Copy-Item -LiteralPath $Helper -Destination $runtimeHelper
 Copy-Item -LiteralPath $packagedLockDiagnostic -Destination (Join-Path $helperDirectory 'windows-process-lock-diagnostics.ps1')
+Copy-Item -LiteralPath $packagedLockOwnerContract -Destination (Join-Path $helperDirectory 'windows-process-lock-owner-contract.ps1')
 $Helper=$runtimeHelper
 
 function Get-AppMetadata([string]$installRoot){

@@ -72,6 +72,10 @@
       {
         "from": "scripts/windows-update-rollback.ps1",
         "to": "windows-update-rollback.ps1"
+      },
+      {
+        "from": "scripts/windows-process-lock-diagnostics.ps1",
+        "to": "windows-process-lock-diagnostics.ps1"
       }
     ],
     "extraFiles": [

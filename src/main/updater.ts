@@ -23,6 +23,18 @@ async function clearAutoUpdateAttempt(): Promise<void> {
   await fs.rm(autoUpdateAttemptPath(), { force: true }).catch(() => undefined);
 }
 
+const startupReadyPath = () => path.join(app.getPath('userData'), 'app-startup-ready.json');
+export async function confirmWindowsAppReady(): Promise<void> {
+  if (process.platform !== 'win32' || !app.isPackaged) return;
+  const ready = { version: app.getVersion(), processId: process.pid, confirmedAt: new Date().toISOString() };
+  await fs.mkdir(app.getPath('userData'), { recursive: true });
+  await fs.writeFile(startupReadyPath(), JSON.stringify(ready), 'utf8');
+  const attempt = await readAutoUpdateAttempt();
+  if (attempt && attempt.targetVersion === app.getVersion() && attempt.installedVersion !== app.getVersion()) {
+    await clearAutoUpdateAttempt();
+  }
+}
+
 function compareVersions(left: string, right: string): number {
   const parse = (value: string) => value.replace(/^v/i, '').split('.').slice(0, 3).map(part => Number.parseInt(part, 10) || 0);
   const a = parse(left); const b = parse(right);
@@ -82,11 +94,12 @@ async function isPortableInstall(executable: string): Promise<boolean> {
   // extracted it (including Program Files). Never infer edition from location.
   return true;
 }
-async function scheduleWindowsInstall(downloadPath: string, portable: boolean): Promise<void> {
+async function scheduleWindowsInstall(downloadPath: string, portable: boolean, version: string): Promise<void> {
   const executable = app.getPath('exe');
   const targetDirectory = process.env.PORTABLE_EXECUTABLE_DIR || path.dirname(executable);
   const helperPath = path.join(process.resourcesPath, 'windows-update-rollback.ps1');
   const logPath = path.join(app.getPath('userData'), 'update-install.log');
+  await fs.rm(startupReadyPath(), { force: true });
   await fs.access(helperPath);
   const child = spawn('powershell.exe', [
     '-NoLogo', '-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass',
@@ -97,13 +110,14 @@ async function scheduleWindowsInstall(downloadPath: string, portable: boolean): 
     '-PackagePath', downloadPath,
     '-LogPath', logPath,
     '-ProcessId', String(process.pid),
+    '-StartupReadyPath', startupReadyPath(),
+    '-ExpectedVersion', version,
   ], { detached: true, stdio: 'ignore', windowsHide: true });
   await new Promise<void>((resolve, reject) => {
     child.once('spawn', resolve);
     child.once('error', reject);
   });
   child.unref();
-  await new Promise(resolve => setTimeout(resolve, 800));
   app.quit();
 }
 let activeWindowsUpdate: Promise<{ scheduled: boolean; version: string }> | null = null;
@@ -122,7 +136,7 @@ async function installLatestWindowsUpdate(): Promise<{ scheduled: boolean; versi
     await clearAutoUpdateAttempt();
     await writeAutoUpdateAttempt(version);
     try {
-      await scheduleWindowsInstall(downloadPath, portable);
+      await scheduleWindowsInstall(downloadPath, portable, version);
     } catch (error) {
       await clearAutoUpdateAttempt();
       throw error;
@@ -154,10 +168,7 @@ export async function autoUpdateOnStartup(): Promise<boolean> {
   try {
     const release = await getLatestRelease();
     const version = release.tag_name.replace(/^v/i, '');
-    if (compareVersions(version, app.getVersion()) <= 0) {
-      await clearAutoUpdateAttempt();
-      return false;
-    }
+    if (compareVersions(version, app.getVersion()) <= 0) return false;
     const previousAttempt = await readAutoUpdateAttempt();
     if (previousAttempt?.targetVersion === version && previousAttempt.installedVersion === app.getVersion()) {
       console.error('[ReplayCoach] Automatisches Update ' + version + ' wurde bereits versucht, aber die installierte Version ist unverändert. Wiederholter Neustart wird verhindert; bitte Update manuell erneut starten.', previousAttempt.attemptedAt);

@@ -340,7 +340,7 @@ export function registerUpdaterIpc(): void {
       const result = await installLatestWindowsUpdate();
       logWindowsUpdateLifecycle('ipc-install-response-ready', result);
       if (result.scheduled) {
-        const shutdownTimer = setTimeout(() => {
+        setTimeout(() => {
           logWindowsUpdateLifecycle('main-process-shutdown-after-ipc-response');
           app.quit();
         }, 1500);

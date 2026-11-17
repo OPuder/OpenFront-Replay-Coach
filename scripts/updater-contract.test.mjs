@@ -109,7 +109,7 @@ assert.match(main, /createWindow\(\);\s*void autoUpdateOnStartup\(\);/);
 assert.doesNotMatch(main, /const updateScheduled = await autoUpdateOnStartup\(\)/);
 console.log("Updater contract tests passed: Windows installer/portable, Android verified APK handoff and Android APK handoff.");
 
-assert.match(updater, /await writeAutoUpdateAttempt\(version\);[\s\S]*?await scheduleWindowsInstall\(downloadPath, portable\)/);
+assert.match(updater, /await writeAutoUpdateAttempt\(version\);[\s\S]*?await scheduleWindowsInstall\(downloadPath, portable, version\)/);
 assert.match(updater, /getWindowsUpdateStatus/);
 assert.match(updater, /konnte nicht abgeschlossen werden/);
 assert.match(read("src/main/preload.ts"), /getUpdateStatus/);

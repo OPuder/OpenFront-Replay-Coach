@@ -3,7 +3,7 @@ import { execFileSync } from "node:child_process";
 import { parseExpectedWebViewPid, expectedWebViewSocketName, assertWebViewSocketPid, selectCoachWebViewTarget } from "./android-webview-target.mjs";
 
 const mode = process.argv[2];
-if (!["seed", "verify"].includes(mode)) throw new Error("Usage: node scripts/android-webview-storage.mjs <seed|verify>");
+if (!["seed", "verify", "snapshot"].includes(mode)) throw new Error("Usage: node scripts/android-webview-storage.mjs <seed|verify>");
 
 const adb = (...args) => execFileSync("adb", ["-s", "emulator-5554", ...args], { encoding: "utf8", timeout: 30000 }).trim();
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
@@ -83,6 +83,41 @@ const expression = mode === "seed" ? `
   if (!match || match.playerId !== playerId || match.game?.gameId !== gameId || match.analysisStatus !== "verified" || match.simulation?.summary !== "upgrade-regression-analysis") throw new Error("Replay match, profile relationship or analysis result was not preserved");
   if (!replay || replay.playerId !== playerId || replay.gameId !== match.game.gameId || replay.record?.marker !== "${marker}" || replay.record?.turns?.[0]?.units !== 123) throw new Error("Raw replay payload or match relationship was not preserved");
   return { preserved: true, profile: true, replay: true, analysis: true, trainingGoal: true, phaseHistory: true };
+` : mode === "verify" ? `
+(async () => {
+  const localStorageValues = Object.fromEntries(Object.keys(localStorage).sort().map(key => [key, localStorage.getItem(key)]));
+  const databaseMetadata = (await indexedDB.databases()).filter(item => item.name).sort((a, b) => a.name.localeCompare(b.name));
+  const databases = [];
+  for (const metadata of databaseMetadata) {
+    const db = await new Promise((resolve, reject) => {
+      const request = indexedDB.open(metadata.name);
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+      request.onblocked = () => reject(new Error("IndexedDB snapshot open blocked: " + metadata.name));
+    });
+    const stores = [];
+    for (const storeName of Array.from(db.objectStoreNames).sort()) {
+      const storeInfo = await new Promise((resolve, reject) => {
+        const tx = db.transaction([storeName], "readonly");
+        const store = tx.objectStore(storeName);
+        const request = store.getAll();
+        request.onsuccess = () => resolve({
+          name: storeName, keyPath: store.keyPath, autoIncrement: store.autoIncrement,
+          indexes: Array.from(store.indexNames).sort().map(indexName => {
+            const index = store.index(indexName);
+            return { name: index.name, keyPath: index.keyPath, unique: index.unique, multiEntry: index.multiEntry };
+          }),
+          records: request.result
+        });
+        request.onerror = () => reject(request.error);
+        tx.onerror = () => reject(tx.error);
+      });
+      stores.push(storeInfo);
+    }
+    databases.push({ name: db.name, version: db.version, stores });
+    db.close();
+  }
+  return { localStorage: localStorageValues, indexedDB: databases };
 })()
 `;
 

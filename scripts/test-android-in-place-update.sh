@@ -26,15 +26,39 @@ launch_app() {
   [[ "$component" == "$target/"* ]] || { diagnostics "$target"; fail "Invalid launcher activity: $component"; }
   output="$(timeout 120s adb -s emulator-5554 shell am start -W -n "$component" 2>&1)" || { printf '%s\n' "$output"; diagnostics "$target"; fail "ActivityManager failed to start app."; }
   printf '%s\n' "$output"
-  if ! grep -Fxq 'Status: ok' <<< "$output"; then diagnostics "$target"; fail "ActivityManager launch status was not exactly Status: ok."; fi
+  if ! grep -Fxq 'Status: ok' <<< "$output"; then
+    if ! grep -Fxq 'Status: timeout' <<< "$output"; then
+      diagnostics "$target"
+      fail "ActivityManager returned neither Status: ok nor the known cold-start timeout."
+    fi
+    # On a cold emulator, WebView provider initialization can exceed
+    # ActivityManager's own -W wait window although MainActivity is resumed.
+    # Do not accept that timeout: prove foreground ownership, then perform a
+    # second clean launch and require the exact successful Status: ok result.
+    log "$target cold-start exceeded ActivityManager wait window; checking actual resumed activity before a strict relaunch."
+    resumed=false
+    for attempt in $(seq 1 45); do
+      pid="$(timeout 10s adb -s emulator-5554 shell pidof "$target" 2>/dev/null | tr -d '\r' || true)"
+      foreground="$(timeout 15s adb -s emulator-5554 shell dumpsys activity activities 2>/dev/null | grep -E 'mResumedActivity|topResumedActivity' | tail -n 1 || true)"
+      if [[ -n "$pid" && "$foreground" == *"$target"* ]]; then resumed=true; break; fi
+      sleep 2
+    done
+    [[ "$resumed" == true ]] || { diagnostics "$target"; fail "Cold-start timeout did not reach a live resumed activity."; }
+    log "$target cold-start process became foreground; stopping it for a strict measured relaunch."
+    timeout 30s adb -s emulator-5554 shell am force-stop "$target" || { diagnostics "$target"; fail "Could not stop the cold-start warm-up process."; }
+    sleep 2
+    output="$(timeout 120s adb -s emulator-5554 shell am start -W -n "$component" 2>&1)" || { printf '%s\n' "$output"; diagnostics "$target"; fail "ActivityManager failed during strict relaunch."; }
+    printf '%s\n' "$output"
+    grep -Fxq 'Status: ok' <<< "$output" || { diagnostics "$target"; fail "Measured relaunch did not return exactly Status: ok."; }
+  fi
   for attempt in $(seq 1 90); do
     pid="$(timeout 10s adb -s emulator-5554 shell pidof "$target" 2>/dev/null | tr -d '\r' || true)"
-    resumed="$(timeout 15s adb -s emulator-5554 shell dumpsys activity activities 2>/dev/null | grep -E 'mResumedActivity|topResumedActivity' | tail -n 1 || true)"
-    if [[ -n "$pid" && "$resumed" == *"$target"* ]]; then log "$target foreground PID $pid"; return 0; fi
+    resumed_activity="$(timeout 15s adb -s emulator-5554 shell dumpsys activity activities 2>/dev/null | grep -E 'mResumedActivity|topResumedActivity' | tail -n 1 || true)"
+    if [[ -n "$pid" && "$resumed_activity" == *"$target"* ]]; then log "$target foreground PID $pid after Status: ok"; return 0; fi
     sleep 2
   done
   diagnostics "$target"
-  fail "App did not become live and resumed within 180 seconds."
+  fail "App did not become live and resumed within 180 seconds after Status: ok."
 }
 
 test -s "$apk" || fail "Initial APK is missing."

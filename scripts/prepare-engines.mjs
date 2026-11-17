@@ -9,9 +9,21 @@ if (!Array.isArray(engines) || engines.length === 0) throw new Error("No replay 
 const sources = [...new Set(engines.map(engine => engine.source))];
 const checkout = spawnSync("git", ["submodule", "update", "--init", "--depth", "1", "--", ...sources], {
   encoding: "utf8",
-  stdio: "inherit",
 });
-if (checkout.status !== 0) throw new Error("Could not initialize all exact OpenFront engine submodules.");
+if (checkout.stdout) process.stdout.write(checkout.stdout);
+if (checkout.stderr) process.stderr.write(checkout.stderr);
+if (checkout.status !== 0 || checkout.error) {
+  const diagnostic = {
+    command: "git submodule update --init --depth 1 -- " + sources.join(" "),
+    status: checkout.status,
+    signal: checkout.signal,
+    error: checkout.error ? { name: checkout.error.name, message: checkout.error.message, code: checkout.error.code, errno: checkout.error.errno, syscall: checkout.error.syscall, path: checkout.error.path } : null,
+    stdout: String(checkout.stdout ?? "").slice(-8000),
+    stderr: String(checkout.stderr ?? "").slice(-8000),
+  };
+  console.error("Historical engine checkout failed:", JSON.stringify(diagnostic));
+  throw new Error("Could not initialize all exact OpenFront engine submodules.");
+}
 
 // Historical revisions in this catalog share two immutable dependency lockfiles.
 // Install each lockfile once and link the identical node_modules tree into its
@@ -37,10 +49,12 @@ for (const [lockHash, group] of dependencyGroups) {
   console.log(`Installing shared dependencies for ${group.length} exact engines (lock ${lockHash.slice(0, 12)})`);
   const install = spawnSync(process.platform === "win32" ? "npm.cmd" : "npm", ["ci", "--ignore-scripts"], {
     cwd: representativePath,
-    stdio: "inherit",
+    encoding: "utf8",
     shell: process.platform === "win32",
   });
-  if (install.status !== 0) {
+  if (install.stdout) process.stdout.write(install.stdout);
+  if (install.stderr) process.stderr.write(install.stderr);
+  if (install.status !== 0 || install.error) {
     const diagnostic = {
       command: process.platform === "win32" ? "npm.cmd ci --ignore-scripts" : "npm ci --ignore-scripts",
       cwd: representativePath,
@@ -54,12 +68,13 @@ for (const [lockHash, group] of dependencyGroups) {
         syscall: install.error.syscall,
         path: install.error.path,
       } : null,
-      stdout: String(install.stdout ?? "").slice(-8000),
-      stderr: String(install.stderr ?? "").slice(-8000),
+      stdout: String(install.stdout ?? "").slice(-12000),
+      stderr: String(install.stderr ?? "").slice(-12000),
     };
     console.error("Historical engine dependency installation failed:", JSON.stringify(diagnostic));
     throw new Error(`Dependency installation failed for lockfile group ${lockHash}`);
   }
+  console.log(`Validated dependency group lock=${lockHash} engines=${group.map(engine => engine.commit).join(",")}`);
 
   for (const engine of group.slice(1)) {
     const target = path.join(path.resolve(engine.source), "node_modules");

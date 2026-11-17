@@ -259,6 +259,11 @@ function createWindow() {
     webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true, nodeIntegration: false, sandbox: true }
   });
   win.webContents.once('did-finish-load', () => {
+    // A fallback data: error page must never count as a successful app restart.
+    if (!win.webContents.getURL().startsWith('file://')) {
+      console.error('[ReplayCoach] Startup-Bestätigung ausgelassen: Der gepackte Renderer wurde nicht geladen.', win.webContents.getURL());
+      return;
+    }
     void confirmWindowsAppReady().catch(error => console.error('[ReplayCoach] Startup-Bestätigung für den Updater fehlgeschlagen:', error));
   });
   win.webContents.on('did-fail-load', (_event, errorCode, errorDescription, validatedURL, isMainFrame) => {

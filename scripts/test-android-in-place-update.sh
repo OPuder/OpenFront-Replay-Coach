@@ -26,7 +26,7 @@ launch_app() {
   [[ "$component" == "$target/"* ]] || { diagnostics "$target"; fail "Invalid launcher activity: $component"; }
   output="$(timeout 120s adb -s emulator-5554 shell am start -W -n "$component" 2>&1)" || { printf '%s\n' "$output"; diagnostics "$target"; fail "ActivityManager failed to start app."; }
   printf '%s\n' "$output"
-  if ! grep -Eq '^Status: ok
+  if ! grep -Fxq 'Status: ok' <<< "$output"; then diagnostics "$target"; fail "ActivityManager launch status was not exactly Status: ok."; fi
   for attempt in $(seq 1 90); do
     pid="$(timeout 10s adb -s emulator-5554 shell pidof "$target" 2>/dev/null | tr -d '\r' || true)"
     resumed="$(timeout 15s adb -s emulator-5554 shell dumpsys activity activities 2>/dev/null | grep -E 'mResumedActivity|topResumedActivity' | tail -n 1 || true)"

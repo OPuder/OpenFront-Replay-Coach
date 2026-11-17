@@ -52,7 +52,15 @@ launch_app() {
       sleep 2
     done
     [[ "$resumed" == true ]] || { diagnostics "$target"; fail "Cold-start timeout did not reach a live resumed activity."; }
-    log "$target cold-start process became foreground; stopping it for a strict measured relaunch."
+    webview_ready=false
+    expected_socket="webview_devtools_remote_$pid"
+    for attempt in $(seq 1 60); do
+      sockets="$(timeout 15s adb -s emulator-5554 shell cat /proc/net/unix 2>/dev/null || true)"
+      if grep -Fq "$expected_socket" <<< "$sockets"; then webview_ready=true; break; fi
+      sleep 1
+    done
+    [[ "$webview_ready" == true ]] || { diagnostics "$target"; fail "Cold-start warm-up did not expose the expected WebView renderer socket $expected_socket."; }
+    log "$target cold-start foreground activity and WebView renderer socket are ready; stopping it for a strict measured relaunch."
     timeout 30s adb -s emulator-5554 shell am force-stop "$target" || { diagnostics "$target"; fail "Could not stop the cold-start warm-up process."; }
     sleep 2
     output="$(timeout 120s adb -s emulator-5554 shell am start -W -n "$component" 2>&1)" || { printf '%s\n' "$output"; diagnostics "$target"; fail "ActivityManager failed during strict relaunch."; }

@@ -27,9 +27,9 @@ const local = {
   payload: "local-storage-integrity-".repeat(512),
 };
 const records = [
-  { id: "rollback-sentinel", runId, marker: "openfront-rollback-indexeddb" },
-  { id: "preferences", runId, theme: "dark", flags: ["map", "timeline", "coach"] },
   { id: "payload", runId, payload: "indexeddb-integrity-".repeat(512) },
+  { id: "preferences", runId, theme: "dark", flags: ["map", "timeline", "coach"] },
+  { id: "rollback-sentinel", runId, marker: "openfront-rollback-indexeddb" },
 ];
 
 try {
@@ -103,11 +103,11 @@ try {
 
   const snapshotExpression = "(async () => {" +
     "const localStorage={};for(let i=0;i<window.localStorage.length;i++){const k=window.localStorage.key(i);localStorage[k]=window.localStorage.getItem(k);}" +
-    "const db=await new Promise((resolve,reject)=>{const r=indexedDB.open('ofrc-rollback-validation');r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error);});" +
-    "if(!db.objectStoreNames.contains('evidence'))throw new Error('IndexedDB store missing');" +
-    "const data=await new Promise((resolve,reject)=>{const tx=db.transaction('evidence','readonly');const r=tx.objectStore('evidence').getAll();" +
-    "r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error);});db.close();" +
-    "return {localStorage,indexedDB:data};})()";
+    "const infos=(await indexedDB.databases()).filter(x=>x.name).sort((a,b)=>a.name.localeCompare(b.name));const indexedDBSnapshot=[];" +
+    "for(const info of infos){const db=await new Promise((resolve,reject)=>{const r=indexedDB.open(info.name);r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error);});" +
+    "const stores=[];for(const name of [...db.objectStoreNames].sort()){const records=await new Promise((resolve,reject)=>{const tx=db.transaction(name,'readonly');const r=tx.objectStore(name).getAll();r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error);});stores.push({name,records});}" +
+    "indexedDBSnapshot.push({name:db.name,version:db.version,stores});db.close();}" +
+    "return {localStorage,indexedDB:indexedDBSnapshot};})()";
   const result = await command("Runtime.evaluate", { expression: snapshotExpression, returnByValue: true, awaitPromise: true });
   if (result.exceptionDetails) throw new Error("Storage snapshot failed: " + result.exceptionDetails.text);
   const value = result.result?.value;
@@ -124,7 +124,7 @@ try {
     if (value.localStorage["ofrc.rollback.localStorage"] !== JSON.stringify(local) ||
         value.localStorage["ofrc.rollback.preferences"] !== JSON.stringify(local.preferences) ||
         value.localStorage["ofrc.rollback.large-value"] !== local.payload ||
-        JSON.stringify(value.indexedDB) !== JSON.stringify(records)) {
+        JSON.stringify(value.indexedDB.find(db => db.name === "ofrc-rollback-validation")?.stores.find(store => store.name === "evidence")?.records) !== JSON.stringify(records)) {
       throw new Error("Seeded storage does not exactly match expected complete test data");
     }
     console.log("WINDOWS_WEB_STORAGE_SEEDED", JSON.stringify({ runId, localStorageKeys: Object.keys(value.localStorage).length, indexedDBRecords: value.indexedDB.length }));

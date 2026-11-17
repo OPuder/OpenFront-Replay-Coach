@@ -190,9 +190,11 @@ try{
  $badPortableTarget=Join-Path $root 'portable-incomplete-package-target'
  Copy-InstallTree $portableTarget $badPortableTarget
  $badPortableLog=Join-Path $root 'portable-incomplete-package.log'
- & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $Helper -Mode Portable -Target $badPortableTarget -Executable (Join-Path $badPortableTarget 'OpenFront Replay Coach.exe') -PackagePath $badPortable -LogPath $badPortableLog
+ $badPortableReadyPath=Join-Path $portableProfile 'app-startup-ready.json'
+ & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $Helper -Mode Portable -Target $badPortableTarget -Executable (Join-Path $badPortableTarget 'OpenFront Replay Coach.exe') -PackagePath $badPortable -LogPath $badPortableLog -StartupReadyPath $badPortableReadyPath -ExpectedVersion $currentVersion -PreviousVersion $currentVersion
  if($LASTEXITCODE -ne 1 -or !(Select-String -LiteralPath $badPortableLog -Pattern 'UPDATE_FAILED' -Quiet)){throw 'Incomplete portable archive was not rejected'}
- if((Get-AppVersion $badPortableTarget) -ne $portableVersion){throw 'Incomplete portable archive changed baseline version'}
+ if((Get-AppVersion $badPortableTarget) -ne $currentVersion){throw 'Incomplete portable archive changed baseline version'}
+ Stop-ReadyProcess $badPortableReadyPath
  Start-Check $portableExe 'portable' $portableProfile $portableRunId $portableProfileEvidence
 
  # Exercise failed rollback independently from the successful portable rollback.

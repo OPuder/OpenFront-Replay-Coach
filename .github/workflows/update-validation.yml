@@ -45,6 +45,18 @@ jobs:
       - name: Install Coach dependencies once
         run: npm ci
 
+      - name: Parse-check Windows PowerShell diagnostics and test scripts
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          foreach ($path in @('scripts/windows-process-lock-diagnostics.ps1', 'scripts/windows-process-lock-diagnostics.test.ps1')) {
+            $tokens = $null
+            $errors = $null
+            [System.Management.Automation.Language.Parser]::ParseFile((Resolve-Path $path).Path, [ref]$tokens, [ref]$errors) | Out-Null
+            if ($errors.Count -gt 0) { $errors | Format-List | Out-String | Write-Error }
+            Write-Host "POWERSHELL_PARSE_OK $path"
+          }
+
       - name: Validate Windows LocalStorage and IndexedDB rollback harness syntax
         run: node --check scripts/windows-profile-storage.mjs
 

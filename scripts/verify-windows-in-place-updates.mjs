@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
-import { copyFileSync, createReadStream, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync } from "node:fs";
+import { copyFileSync, createReadStream, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { spawn, spawnSync, execFileSync } from "node:child_process";
 import { createServer } from "node:http";
 import path from "node:path";
@@ -227,7 +227,7 @@ async function verifyNsisUpdate() {
   } finally { stop(baselineSession.child); }
 }
 
-async function startLocalReleaseServer(candidateZip) {
+async function startLocalReleaseServer(candidateZip, assetName = newPortable) {
   const size = statSync(candidateZip).size;
   const sha256 = digest(candidateZip);
   let origin = "";
@@ -242,15 +242,15 @@ async function startLocalReleaseServer(candidateZip) {
         tag_name: "v" + version,
         html_url: "http://127.0.0.1/test-release",
         assets: [{
-          name: newPortable,
-          browser_download_url: origin + "/candidate.zip",
+          name: assetName,
+          browser_download_url: origin + "/candidate-asset",
           size,
           digest: "sha256:" + sha256,
         }],
       }));
       return;
     }
-    if (request.url === "/candidate.zip") {
+    if (request.url === "/candidate-asset") {
       response.writeHead(200, { "content-type": "application/zip", "content-length": size });
       createReadStream(candidateZip).pipe(response);
       return;
@@ -265,6 +265,61 @@ async function startLocalReleaseServer(candidateZip) {
   origin = "http://127.0.0.1:" + address.port;
   return { server, releaseUrl: origin + "/release", sha256, requests };
 }
+async function verifyNsisRollback() {
+  console.log("NSIS_ROLLBACK_BASELINE: exercising the production installer updater with a deliberately invalid but SHA-256-valid EXE.");
+  const installDirectory = path.join(temp, "ofrc-nsis-rollback");
+  const dataDirectory = path.join(temp, "ofrc-nsis-rollback-user-data");
+  const invalidInstaller = path.join(temp, newInstaller);
+  rmSync(installDirectory, { recursive: true, force: true });
+  rmSync(dataDirectory, { recursive: true, force: true });
+  writeFileSync(invalidInstaller, Buffer.alloc(1_100_000, 0));
+  const server = await startLocalReleaseServer(invalidInstaller, newInstaller);
+  const testEnv = { OFRC_UPDATE_TEST_MODE: "1", OFRC_UPDATE_TEST_RELEASE_URL: server.releaseUrl };
+  let baselineSession;
+  let restoredSession;
+  try {
+    const baseline = install(path.join(previous, oldInstaller), installDirectory);
+    baselineSession = await launch(baseline.executable, dataDirectory, 9234, "seed", testEnv, true);
+    const before = attachContext(baselineSession.helperResult.snapshot, baselineSession, dataDirectory);
+    assertFixtureRelationships(before, "baseline");
+    reportSnapshot("NSIS_ROLLBACK_BEFORE", before);
+    const beforeArchiveHash = digest(baseline.archive);
+    const beforeExecutableHash = digest(baseline.executable);
+    const scheduled = await invokeHelper("update", 9234, installDirectory);
+    assert.equal(scheduled.result?.scheduled, true, "NSIS updater did not schedule the deliberately invalid installer: " + JSON.stringify(scheduled));
+    await waitFor(() => baselineSession.child.exitCode !== null, 30000, "NSIS baseline process to exit after updater handoff");
+    const updateLog = path.join(before.electron.userDataPath, "update-install.log");
+    await waitFor(() => existsSync(updateLog) && readFileSync(updateLog, "utf8").includes("installer-rollback-verified"), 120000, "NSIS updater to reject the invalid installer and verify rollback");
+    assert.equal(digest(baseline.archive), beforeArchiveHash, "NSIS rollback did not restore the original app.asar.");
+    assert.equal(digest(baseline.executable), beforeExecutableHash, "NSIS rollback did not restore the original executable.");
+    await waitFor(() => isExecutableRunning(baseline.executable), 30000, "restored NSIS application to restart");
+    stopExecutable(baseline.executable);
+    restoredSession = await launch(baseline.executable, dataDirectory, 9234, "snapshot", testEnv, true);
+    const after = attachContext(restoredSession.helperResult.snapshot, restoredSession, dataDirectory);
+    reportSnapshot("NSIS_ROLLBACK_AFTER", after);
+    assertContextContinuity(before, after);
+    assertFixtureRelationships(after, "updated");
+    assertUpgradeSnapshotsEqual(before, after);
+    assert(server.requests.some(request => request.url === "/release"), "NSIS release lookup never reached the local test server.");
+    assert(server.requests.some(request => request.url === "/candidate-asset"), "NSIS invalid installer was not downloaded.");
+    console.log("WINDOWS_NSIS_ROLLBACK_OK invalid SHA-256-valid installer rejected; original executable/app.asar restored, relaunched, and complete LocalStorage/IndexedDB contents retained.");
+  } catch (error) {
+    const updateLogPath = path.join(dataDirectory, "electron-user-data", "update-install.log");
+    console.error("NSIS_ROLLBACK_FAILURE_DIAGNOSTICS", JSON.stringify({
+      releaseUrl: server.releaseUrl, serverRequests: server.requests,
+      appOutput: baselineSession?.childOutput?.slice(-12000) ?? "",
+      updaterLog: existsSync(updateLogPath) ? readFileSync(updateLogPath, "utf8").slice(-12000) : null,
+      error: String(error?.stack ?? error),
+    }));
+    throw error;
+  } finally {
+    if (baselineSession) stop(baselineSession.child);
+    if (restoredSession) stop(restoredSession.child);
+    try { server.server.close(); } catch {}
+    rmSync(invalidInstaller, { force: true });
+  }
+}
+
 async function verifyPortableUpdater() {
   console.log("PORTABLE_UPDATER_BASELINE: rebuilt v2.2.51 package from this commit; exercising the production Update Center IPC and PowerShell updater against loopback release metadata.");
   const portableDirectory = path.join(temp, "ofrc-portable-real-update");
@@ -378,6 +433,7 @@ async function verifyPortableRollback() {
 }
 
 await verifyNsisUpdate();
+await verifyNsisRollback();
 await verifyPortableUpdater();
 await verifyPortableRollback();
 console.log("WINDOWS_IN_PLACE_UPGRADE_SUITE_OK " + JSON.stringify({

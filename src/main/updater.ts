@@ -30,6 +30,17 @@ function compareVersions(left: string, right: string): number {
   for (let i = 0; i < 3; i++) if (a[i] !== b[i]) return a[i] > b[i] ? 1 : -1;
   return 0;
 }
+function logWindowsUpdateLifecycle(phase: string, details: Record<string, unknown> = {}): void {
+  const entry = { at: new Date().toISOString(), phase, pid: process.pid, ...details };
+  console.info('[ReplayCoach] Windows update lifecycle', entry);
+  try {
+    if (app.isReady()) {
+      appendFileSync(path.join(app.getPath('userData'), 'update-install.log'), JSON.stringify(entry) + String.fromCharCode(10), 'utf8');
+    }
+  } catch (error) {
+    console.error('[ReplayCoach] Could not persist update lifecycle diagnostic', { phase, error: String(error) });
+  }
+}
 function reportProgress(phase: string, percent: number) {
   for (const window of BrowserWindow.getAllWindows()) {
     if (!window.isDestroyed()) window.webContents.send('updates:progress', { phase, percent });
@@ -54,7 +65,7 @@ async function getLatestRelease(): Promise<Release> {
     testMode,
     nodeVersion: process.versions.node,
     proxyConfigured: Boolean(process.env.HTTPS_PROXY || process.env.https_proxy || process.env.HTTP_PROXY || process.env.http_proxy),
-    noProxyIncludesLoopback: /(^|[,\\s])(127\\.0\\.0\\.1|localhost)([,\\s]|$)/i.test(process.env.NO_PROXY || process.env.no_proxy || ''),
+    noProxyIncludesLoopback: (process.env.NO_PROXY || process.env.no_proxy || '').toLowerCase().split(',').map(value => value.trim()).some(value => value === '127.0.0.1' || value === 'localhost' || value === '*'),
   });
   let response: Response;
   try {

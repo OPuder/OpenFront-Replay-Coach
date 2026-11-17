@@ -165,7 +165,11 @@ assert.ok(releaseWorkflow.includes(String.raw`names.some(name => /-win\.zip$/i.t
 const portableAssetMatcher = /^OpenFront\.Replay\.Coach-[0-9]+\.[0-9]+\.[0-9]+-win\.zip$/i;
 assert.match("OpenFront.Replay.Coach-2.2.51-win.zip", portableAssetMatcher, "The actual electron-builder Windows portable ZIP filename must be detected.");
 assert.doesNotMatch("OpenFront.Replay.Coach-2.2.51-win.7z", portableAssetMatcher, "A different archive format must not satisfy the portable ZIP contract.");
-assert.ok(releaseWorkflow.includes("names.some(name => /-Android\.apk$/i.test(name))"), "Release verification must match the actual Android APK filename.");
+assert.ok(releaseWorkflow.includes(String.raw`names.some(name => /-Android\.apk$/i.test(name))`), "Release verification must match the actual Android APK filename.");
+const androidAssetMatcher = /^OpenFront-Replay-Coach-[0-9]+\.[0-9]+\.[0-9]+-Android\.apk$/i;
+assert.match("OpenFront-Replay-Coach-2.2.52-Android.apk", androidAssetMatcher, "The actual electron-builder Android APK filename must be detected.");
+assert.doesNotMatch("OpenFront-Replay-Coach-2.2.52-Android.zip", androidAssetMatcher, "A non-APK extension must not satisfy the Android release contract.");
+assert.doesNotMatch("OpenFront-Replay-Coach-2.2.52-Windows.apk", androidAssetMatcher, "An APK with the wrong platform suffix must not satisfy the Android release contract.");
 assert.ok(releaseWorkflow.includes(String.raw`names.some(name => /(?:\.Setup\.| Setup )[0-9.]+\.exe$/i.test(name))`), "Release verification must match both legacy dotted and current spaced NSIS installer filenames.");
 assert.ok(updater.includes(String.raw`/(?:\.Setup\.| Setup )[\d.]+\.exe$/i`), "The main-process updater must recognize current and legacy installer names.");
 assert.ok(renderer.includes(String.raw`/(?:\.Setup\.| Setup )[\d.]+\.exe$/i`), "The Update Center must recognize current and legacy installer names.");

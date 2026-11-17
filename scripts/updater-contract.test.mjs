@@ -246,7 +246,7 @@ assert.match(androidEmulatorDiagnostics, /adb -s emulator-5554 pull \/data\/anr/
 assert.match(androidEmulatorDiagnostics, /uiautomator dump \/sdcard\/window.xml/);
 assert.match(updateValidationWorkflow, /runs-on: ubuntu-24\.04/);
 function validateAndroidKvmWorkflow(workflow) {
-  assert.match(workflow, /android-apk-validation:[\s\\S]*?runs-on: ubuntu-24\.04/,
+  assert.match(workflow, /android-apk-validation:[\s\S]*?runs-on: ubuntu-24\.04/,
     "Android emulator job must use a Linux runner.");
   const preflightStart = workflow.indexOf('diag="$RUNNER_TEMP/ofrc-android-diagnostics"');
   const emulatorStart = workflow.indexOf("uses: reactivecircus/android-emulator-runner@v2");
@@ -256,9 +256,9 @@ function validateAndroidKvmWorkflow(workflow) {
   const preflight = workflow.slice(preflightStart, emulatorStart);
   for (const [pattern, message] of [
     [/sudo modprobe kvm/, "KVM kernel module must be enabled."],
-    [/GenuineIntel[\s\\S]*?sudo modprobe kvm_intel[\s\\S]*?AuthenticAMD[\s\\S]*?sudo modprobe kvm_amd/, "CPU-specific KVM module must be selected."],
-    [/\[\[ ! -e \/dev\/kvm \]\][\s\\S]*?exit 1/, "/dev/kvm absence must abort the job."],
-    [/sudo chmod 666 \/dev\/kvm[\s\\S]*?! -r \/dev\/kvm \|\| ! -w \/dev\/kvm[\s\\S]*?exit 1/, "/dev/kvm permissions must be applied and verified."],
+    [/GenuineIntel[\s\S]*?sudo modprobe kvm_intel[\s\S]*?AuthenticAMD[\s\S]*?sudo modprobe kvm_amd/, "CPU-specific KVM module must be selected."],
+    [/\[\[ ! -e \/dev\/kvm \]\][\s\S]*?exit 1/, "/dev/kvm absence must abort the job."],
+    [/sudo chmod 666 \/dev\/kvm[\s\S]*?! -r \/dev\/kvm \|\| ! -w \/dev\/kvm[\s\S]*?exit 1/, "/dev/kvm permissions must be applied and verified."],
     [/KVM_PREFLIGHT=PASS/, "Preflight must emit an explicit success marker."]
   ]) assert.match(preflight, pattern, message);
   const emulator = workflow.slice(emulatorStart);
@@ -273,7 +273,7 @@ test("Android KVM contract accepts the current semantic preflight", () => {
   assert.doesNotThrow(() => validateAndroidKvmWorkflow(updateValidationWorkflow));
 });
 test("Android KVM contract rejects a missing /dev/kvm guard", () => {
-  const broken = updateValidationWorkflow.replace(/if \\(\[\[ ! -e \/dev\/kvm \]\]\\)[\s\\S]*?fi/, "");
+  const broken = updateValidationWorkflow.replace(/if \[\[ ! -e \/dev\/kvm \]\]; then[\s\S]*?fi/, "");
   assert.throws(() => validateAndroidKvmWorkflow(broken), /\/dev\/kvm absence/);
 });
 test("Android KVM contract rejects preflight placed after emulator startup", () => {

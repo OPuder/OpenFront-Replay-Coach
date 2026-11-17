@@ -9,6 +9,14 @@ seed_apk="${OPENFRONT_SEED_APK:-$RUNNER_TEMP/openfront-coach-seed.apk}"
 seed_package_id="de.openfront.replaycoach.seed"
 
 log() { echo "::notice::[Android update regression] $*"; }
+capture_storage_snapshot() {
+  local pid="$1"
+  local destination="$2"
+  ANDROID_WEBVIEW_PID="$pid" node scripts/android-webview-storage.mjs snapshot |
+    tail -n 1 |
+    node -e 'const fs=require("node:fs");const value=JSON.parse(fs.readFileSync(0,"utf8"));if(!value.result?.localStorage||!Array.isArray(value.result?.indexedDB))process.exit(2);process.stdout.write(JSON.stringify(value.result,null,2));' > "$destination"
+  test -s "$destination" || fail "Could not capture complete LocalStorage/IndexedDB snapshot."
+}
 fail() { echo "::error::[Android update regression] $*"; exit 1; }
 diagnostics() {
   target="$1"
@@ -92,6 +100,7 @@ launch_app "$package_id"
 debug_pid="$(adb -s emulator-5554 shell pidof "$package_id" | tr -d '\r')"
 ANDROID_WEBVIEW_PID="$debug_pid" node scripts/android-webview-storage.mjs seed || { diagnostics "$package_id"; fail "Could not seed real WebView profile, replay, analysis and settings records."; }
 ANDROID_WEBVIEW_PID="$debug_pid" node scripts/android-webview-storage.mjs verify || { diagnostics "$package_id"; fail "Seeded debug profile/replay/analysis/settings data could not be read before update."; }
+capture_storage_snapshot "$debug_pid" "$RUNNER_TEMP/android-debug-storage-before.json"
 
 current_version="$(node -p "require('./package.json').version")"
 IFS='.' read -r major minor patch <<< "$current_version"
@@ -104,6 +113,8 @@ saved="$(timeout 30s adb -s emulator-5554 shell "run-as $package_id cat files/up
 launch_app "$package_id"
 debug_pid="$(adb -s emulator-5554 shell pidof "$package_id" | tr -d '\r')"
 ANDROID_WEBVIEW_PID="$debug_pid" node scripts/android-webview-storage.mjs verify || { diagnostics "$package_id"; fail "Profile, replay, analysis or settings data was not preserved in IndexedDB/localStorage."; }
+capture_storage_snapshot "$debug_pid" "$RUNNER_TEMP/android-debug-storage-after.json"
+diff -u "$RUNNER_TEMP/android-debug-storage-before.json" "$RUNNER_TEMP/android-debug-storage-after.json" || fail "Debug update changed LocalStorage or IndexedDB contents."
 expected_version_code="$((major * 1000000 + minor * 1000 + patch + 1))"
 installed_package="$(timeout 30s adb -s emulator-5554 shell dumpsys package "$package_id")" || fail "Could not inspect installed package metadata."
 grep -F "versionCode=$expected_version_code" <<< "$installed_package" >/dev/null || fail "Installed package does not have expected versionCode $expected_version_code."
@@ -159,6 +170,7 @@ launch_app "$seed_package_id"
 seed_pid="$(adb -s emulator-5554 shell pidof "$seed_package_id" | tr -d '\r')"
 ANDROID_WEBVIEW_PID="$seed_pid" node scripts/android-webview-storage.mjs seed || { diagnostics "$seed_package_id"; fail "Could not seed production profile/replay/analysis/settings data."; }
 ANDROID_WEBVIEW_PID="$seed_pid" node scripts/android-webview-storage.mjs verify || { diagnostics "$seed_package_id"; fail "Seeded upgrade data could not be read before update."; }
+capture_storage_snapshot "$seed_pid" "$RUNNER_TEMP/android-published-storage-before.json"
 adb -s emulator-5554 shell am force-stop "$seed_package_id"
 timeout 240s adb -s emulator-5554 install --no-streaming "$previous_release_apk" || fail "Could not install the actual previous published APK."
 previous_installed="$(timeout 30s adb -s emulator-5554 shell dumpsys package "$package_id")" || fail "Could not inspect the previous published installation."
@@ -197,6 +209,8 @@ for attempt in $(seq 1 30); do
   sleep 2
 done
 [[ -n "$production_pid" ]] || fail "Upgraded production APK did not remain running after launch."
+capture_storage_snapshot "$production_pid" "$RUNNER_TEMP/android-published-storage-after.json"
+diff -u "$RUNNER_TEMP/android-published-storage-before.json" "$RUNNER_TEMP/android-published-storage-after.json" || fail "Published APK update changed LocalStorage or IndexedDB contents."
 timeout 30s adb -s emulator-5554 shell am force-stop "$package_id"
 copy_webview_storage "$package_id" "$seed_package_id"
 launch_app "$seed_package_id"
@@ -219,4 +233,10 @@ negative_output="$(timeout --signal=INT --kill-after=15s 120s adb -s emulator-55
 grep -F "INSTALL_FAILED_UPDATE_INCOMPATIBLE" <<< "$negative_output" >/dev/null || { printf '%s\\n' "$negative_output"; fail "Android rejected the incompatible APK for an unexpected reason."; }
 still_installed="$(timeout 30s adb -s emulator-5554 shell dumpsys package "$package_id")" || fail "Could not inspect the installed package after rejecting the incompatible APK."
 grep -F "versionCode=$current_release_code" <<< "$still_installed" >/dev/null || fail "Rejected incompatible update damaged or replaced the installed production package."
-log "PASS: Android rejected the mismatched signing certificate with INSTALL_FAILED_UPDATE_INCOMPATIBLE and kept the valid production version installed."
+log "Launching the original production installation after rejecting the incompatible signer."
+launch_app "$package_id"
+production_pid="$(adb -s emulator-5554 shell pidof "$package_id" | tr -d '\r')"
+ANDROID_WEBVIEW_PID="$production_pid" node scripts/android-webview-storage.mjs verify || { diagnostics "$package_id"; fail "Original production installation did not remain functional after signature rejection."; }
+capture_storage_snapshot "$production_pid" "$RUNNER_TEMP/android-published-storage-after-negative-test.json"
+diff -u "$RUNNER_TEMP/android-published-storage-after.json" "$RUNNER_TEMP/android-published-storage-after-negative-test.json" || fail "Rejected signature update changed original LocalStorage or IndexedDB contents."
+log "PASS: Android rejected the mismatched signing certificate; original app relaunched and all LocalStorage/IndexedDB data remained identical."

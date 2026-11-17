@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import test from "node:test";
 import { readFileSync } from "node:fs";
 const read = path => readFileSync(new URL("../" + path, import.meta.url), "utf8");
 const updater = read("src/main/updater.ts");
@@ -244,13 +245,44 @@ assert.match(androidEmulatorDiagnostics, /dumpsys activity lastanr/);
 assert.match(androidEmulatorDiagnostics, /adb -s emulator-5554 pull \/data\/anr/);
 assert.match(androidEmulatorDiagnostics, /uiautomator dump \/sdcard\/window.xml/);
 assert.match(updateValidationWorkflow, /runs-on: ubuntu-24\.04/);
-assert.match(updateValidationWorkflow, /Enable and verify Linux KVM for Android emulator/);
-assert.match(updateValidationWorkflow, /test -e \/dev\/kvm/);
-assert.match(updateValidationWorkflow, /sudo chmod 666 \/dev\/kvm/);
-assert.match(updateValidationWorkflow, /arch: x86_64/);
-assert.match(updateValidationWorkflow, /cores: 4/);
-assert.match(updateValidationWorkflow, /-memory 4096/);
-assert.match(updateValidationWorkflow, /disable-linux-hw-accel: false/);
+function validateAndroidKvmWorkflow(workflow) {
+  assert.match(workflow, /android-apk-validation:[\\s\\S]*?runs-on: ubuntu-24\\.04/,
+    "Android emulator job must use a Linux runner.");
+  const preflightStart = workflow.indexOf('diag="$RUNNER_TEMP/ofrc-android-diagnostics"');
+  const emulatorStart = workflow.indexOf("uses: reactivecircus/android-emulator-runner@v2");
+  assert.ok(preflightStart >= 0, "KVM preflight diagnostic block is required.");
+  assert.ok(emulatorStart >= 0, "Android emulator runner is required.");
+  assert.ok(preflightStart < emulatorStart, "KVM preflight must run before emulator startup.");
+  const preflight = workflow.slice(preflightStart, emulatorStart);
+  for (const [pattern, message] of [
+    [/sudo modprobe kvm/, "KVM kernel module must be enabled."],
+    [/GenuineIntel[\\s\\S]*?sudo modprobe kvm_intel[\\s\\S]*?AuthenticAMD[\\s\\S]*?sudo modprobe kvm_amd/, "CPU-specific KVM module must be selected."],
+    [/\\[\\[ ! -e \/dev\/kvm \\]\\][\\s\\S]*?exit 1/, "/dev/kvm absence must abort the job."],
+    [/sudo chmod 666 \/dev\/kvm[\\s\\S]*?! -r \/dev\/kvm \\|\\| ! -w \/dev\/kvm[\\s\\S]*?exit 1/, "/dev/kvm permissions must be applied and verified."],
+    [/KVM_PREFLIGHT=PASS/, "Preflight must emit an explicit success marker."]
+  ]) assert.match(preflight, pattern, message);
+  const emulator = workflow.slice(emulatorStart);
+  assert.match(emulator, /arch: x86_64/, "Emulator architecture must be x86_64.");
+  assert.match(emulator, /cores: 4/);
+  assert.match(emulator, /-memory 4096/);
+  assert.match(emulator, /disable-linux-hw-accel: false/,
+    "Hardware acceleration must be mandatory; software fallback is forbidden.");
+}
+validateAndroidKvmWorkflow(updateValidationWorkflow);
+test("Android KVM contract accepts the current semantic preflight", () => {
+  assert.doesNotThrow(() => validateAndroidKvmWorkflow(updateValidationWorkflow));
+});
+test("Android KVM contract rejects a missing /dev/kvm guard", () => {
+  const broken = updateValidationWorkflow.replace(/if \\(\\[\\[ ! -e \/dev\/kvm \\]\\]\\)[\\s\\S]*?fi/, "");
+  assert.throws(() => validateAndroidKvmWorkflow(broken), /\\/dev\\/kvm absence/);
+});
+test("Android KVM contract rejects preflight placed after emulator startup", () => {
+  const start = updateValidationWorkflow.indexOf('diag="$RUNNER_TEMP/ofrc-android-diagnostics"');
+  const end = updateValidationWorkflow.indexOf("      - name: Test genuine published-APK in-place upgrade");
+  const block = updateValidationWorkflow.slice(start, end);
+  const moved = updateValidationWorkflow.replace(block, "").replace("      - name: Test genuine published-APK in-place upgrade", block + "      - name: Test genuine published-APK in-place upgrade");
+  assert.throws(() => validateAndroidKvmWorkflow(moved), /KVM preflight must run before emulator startup/);
+});
 assert.match(updateValidationWorkflow, /Capture host and ADB diagnostics after emulator action/);
 assert.match(updateValidationWorkflow, /android_capture_diagnostics "post-emulator-action"/);
 assert.match(androidEmulatorDiagnostics, /am start -W -n/);

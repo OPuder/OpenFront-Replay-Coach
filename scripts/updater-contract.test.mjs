@@ -161,7 +161,10 @@ assert.ok(
   "The permanent signing continuity gate must run after the published-APK emulator upgrade test."
 );
 
-assert.ok(releaseWorkflow.includes("names.some(name => /-win\.zip$/i.test(name))"), "Release verification must match the actual Windows portable ZIP filename.");
+assert.ok(releaseWorkflow.includes(String.raw`names.some(name => /-win\.zip$/i.test(name))`), "Release verification must match the actual Windows portable ZIP filename.");
+const portableAssetMatcher = /^OpenFront\.Replay\.Coach-[0-9]+\.[0-9]+\.[0-9]+-win\.zip$/i;
+assert.match("OpenFront.Replay.Coach-2.2.51-win.zip", portableAssetMatcher, "The actual electron-builder Windows portable ZIP filename must be detected.");
+assert.doesNotMatch("OpenFront.Replay.Coach-2.2.51-win.7z", portableAssetMatcher, "A different archive format must not satisfy the portable ZIP contract.");
 assert.ok(releaseWorkflow.includes("names.some(name => /-Android\.apk$/i.test(name))"), "Release verification must match the actual Android APK filename.");
 assert.ok(releaseWorkflow.includes(String.raw`names.some(name => /(?:\.Setup\.| Setup )[0-9.]+\.exe$/i.test(name))`), "Release verification must match both legacy dotted and current spaced NSIS installer filenames.");
 assert.ok(updater.includes(String.raw`/(?:\.Setup\.| Setup )[\d.]+\.exe$/i`), "The main-process updater must recognize current and legacy installer names.");

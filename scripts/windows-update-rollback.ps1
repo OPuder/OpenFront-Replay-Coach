@@ -138,7 +138,7 @@ function Start-And-ConfirmApp([string]$expectedVersion) {
   }
   if(Test-Path -LiteralPath $StartupReadyPath){
    try{$ready=Get-Content -LiteralPath $StartupReadyPath -Raw|ConvertFrom-Json}catch{$ready=$null}
-   if($ready -and [string]$ready.version -eq $expectedVersion -and [int]$ready.processId -eq [int]$appProcess.Id){
+   if($ready -and [string]$ready.version -eq $expectedVersion -and [int]$ready.processId -eq [int]$appProcess.Id -and (Get-Process -Id $appProcess.Id -ErrorAction SilentlyContinue)){
     Log ("APP_RESTART_CONFIRMED pid={0} version={1} renderer_ready_at={2}" -f $appProcess.Id,$ready.version,$ready.confirmedAt)
     return
    }

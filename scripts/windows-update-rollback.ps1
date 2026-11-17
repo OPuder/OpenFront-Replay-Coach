@@ -3,6 +3,19 @@ $ErrorActionPreference='Stop'
 $Target=[IO.Path]::GetFullPath($Target); $Executable=[IO.Path]::GetFullPath($Executable); $LogPath=[IO.Path]::GetFullPath($LogPath)
 New-Item -ItemType Directory -Path (Split-Path -Parent $LogPath) -Force | Out-Null
 function Log([string]$s){$line="[$(Get-Date -Format o)] $s"; Add-Content -LiteralPath $LogPath -Value $line; Write-Output $line}
+function Get-LockOwners {
+ $diagnostic=Join-Path $PSScriptRoot 'windows-process-lock-diagnostics.ps1'
+ if(!(Test-Path -LiteralPath $diagnostic)){throw "Restart Manager diagnostic missing: $diagnostic"}
+ $raw=& powershell.exe -NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -File $diagnostic -Mode Inspect -Target $Target
+ if($LASTEXITCODE -ne 0){throw "Restart Manager lock inspection failed: $LASTEXITCODE"}
+ $json=($raw -join [Environment]::NewLine)
+ if([string]::IsNullOrWhiteSpace($json)){return @()}
+ $owners=@(ConvertFrom-Json -InputObject $json)
+ foreach($owner in $owners){
+  Log ("INSTALL_LOCK_OWNER pid={0} name={1} category={2} image={3} parent={4} appType={5} command={6}" -f $owner.processId,$owner.processName,$owner.category,$owner.executablePath,$owner.parentProcessId,$owner.applicationType,$owner.commandLine)
+ }
+ return $owners
+}
 function Manifest([string]$root){
  if(!(Test-Path -LiteralPath $root -PathType Container)){throw "Missing tree: $root"}
  $base=[IO.Path]::GetFullPath($root).TrimEnd('\')+'\'
@@ -54,13 +67,49 @@ function Find-UninstallEntries {
 }
 function Stop-AppProcesses {
  $targetPrefix=$Target.TrimEnd('\')+'\'
- $processes=@(Get-CimInstance Win32_Process -ErrorAction SilentlyContinue | Where-Object {
-  $_.ExecutablePath -and ($_.ExecutablePath -ieq $Executable -or $_.ExecutablePath.StartsWith($targetPrefix,[StringComparison]::OrdinalIgnoreCase))
- })
- foreach($process in $processes){Stop-Process -Id $process.ProcessId -Force -ErrorAction SilentlyContinue}
- Get-Process -Name 'OpenFront Replay Coach' -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
- foreach($process in $processes){try{Wait-Process -Id $process.ProcessId -Timeout 15 -ErrorAction Stop}catch{if(Get-Process -Id $process.ProcessId -ErrorAction SilentlyContinue){throw "Application process $($process.ProcessId) still holds the installation tree"}}}
- Start-Sleep -Milliseconds 750
+ $snapshot=@(Get-CimInstance Win32_Process -ErrorAction Stop)
+ $byId=@{}; foreach($item in $snapshot){$byId[[int]$item.ProcessId]=$item}
+ $ownedIds=[Collections.Generic.HashSet[int]]::new()
+ foreach($item in $snapshot){
+  if($_ -and $false){} # keep the process selection explicit below
+  $path=[string]$item.ExecutablePath
+  if($path -and ($path -ieq $Executable -or $path.StartsWith($targetPrefix,[StringComparison]::OrdinalIgnoreCase))){
+   [void]$ownedIds.Add([int]$item.ProcessId)
+  }
+ }
+ if($ProcessId -gt 0){[void]$ownedIds.Add($ProcessId)}
+ $changed=$true
+ while($changed){
+  $changed=$false
+  foreach($item in $snapshot){
+   $parent=[int]$item.ParentProcessId
+   if($ownedIds.Contains($parent) -and !$ownedIds.Contains([int]$item.ProcessId)){
+    [void]$ownedIds.Add([int]$item.ProcessId);$changed=$true
+   }
+  }
+ }
+ $processes=@($ownedIds | ForEach-Object { Get-Process -Id $_ -ErrorAction SilentlyContinue })
+ foreach($process in $processes){
+  try{if($process.MainWindowHandle -ne 0){[void]$process.CloseMainWindow()}}catch{}
+ }
+ foreach($process in $processes){
+  try{Wait-Process -Id $process.Id -Timeout 20 -ErrorAction Stop}catch{}
+ }
+ foreach($id in $ownedIds){
+  $remaining=Get-Process -Id $id -ErrorAction SilentlyContinue
+  if($remaining){Stop-Process -Id $id -Force -ErrorAction Stop}
+ }
+ foreach($id in $ownedIds){
+  try{Wait-Process -Id $id -Timeout 15 -ErrorAction Stop}catch{
+   if(Get-Process -Id $id -ErrorAction SilentlyContinue){throw "Known application process $id remained alive after termination"}
+  }
+ }
+ $owners=@(Get-LockOwners)
+ if($owners.Count -gt 0){
+  $detail=($owners | ForEach-Object {"PID=$($_.processId) NAME=$($_.processName) TYPE=$($_.category) IMAGE=$($_.executablePath)"}) -join '; '
+  throw "Installation files remain locked by process(es): $detail"
+ }
+ Log 'INSTALL_TREE_LOCKS_CLEARED verified_by_restart_manager'
 }
 $backup=Join-Path $env:TEMP ('ofrc-rollback-'+[guid]::NewGuid().ToString('N')); $stage=Join-Path $env:TEMP ('ofrc-stage-'+[guid]::NewGuid().ToString('N'))
 $registryBackup=$backup+'.registry.reg'; $registryKeyPath=$null; $registryDisplayVersion=$null

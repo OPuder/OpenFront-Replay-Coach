@@ -302,7 +302,7 @@ assert.match(windowsInPlace, /const profilePath = path\.join\(dataDir, "electron
 assert.match(windowsInPlace, /NSIS_UPDATER_BASELINE/);
 assert.match(windowsInPlace, /invokeHelper\("update", 9231/);
 assert.match(windowsInPlace, /WINDOWS_NSIS_ROLLBACK_OK/);
-assert.match(windowsInPlace, /phase=installer-rollback-verified/);
+assert.match(updater, /Write-UpdateLog "installer-rollback-verified"/);
 assert.match(windowsInPlace, /phase=portable-install-verified/);
 assert.match(windowsStorage, /method: "Page\.close"/);
 assert.match(windowsStorage, /Chromium did not close cleanly/);

@@ -12,7 +12,7 @@ function Get-LockOwners {
  if([string]::IsNullOrWhiteSpace($json)){return @()}
  $owners=@(ConvertFrom-Json -InputObject $json)
  foreach($owner in $owners){
-  Log ("INSTALL_LOCK_OWNER pid={0} name={1} category={2} image={3} parent={4} appType={5} command={6}" -f $owner.processId,$owner.processName,$owner.category,$owner.executablePath,$owner.parentProcessId,$owner.applicationType,$owner.commandLine)
+  Log ("INSTALL_LOCK_OWNER pid={0} name={1} category={2} image={3} parent={4} appType={5} command={6}" -f $owner.processId,$owner.processName,$owner.category,$owner.executablePath,$owner.parentProcessId,$owner.applicationType,$owner.commandLine) | Out-Null
  }
  return $owners
 }
@@ -67,6 +67,8 @@ function Find-UninstallEntries {
 }
 function Stop-AppProcesses {
  $targetPrefix=$Target.TrimEnd('\')+'\'
+ $preexistingOwners=@(Get-LockOwners)
+ Log ("PRE_SHUTDOWN_LOCK_OWNER_COUNT count={0}" -f $preexistingOwners.Count) | Out-Null
  $snapshot=@(Get-CimInstance Win32_Process -ErrorAction Stop)
  $byId=@{}; foreach($item in $snapshot){$byId[[int]$item.ProcessId]=$item}
  $ownedIds=[Collections.Generic.HashSet[int]]::new()
@@ -74,6 +76,7 @@ function Stop-AppProcesses {
   $path=[string]$item.ExecutablePath
   if(([int]$item.ProcessId -ne $PID) -and $path -and ($path -ieq $Executable -or $path.StartsWith($targetPrefix,[StringComparison]::OrdinalIgnoreCase))){
    [void]$ownedIds.Add([int]$item.ProcessId)
+   Log ("APP_PROCESS_SELECTED pid={0} image={1} parent={2} command={3}" -f $item.ProcessId,$path,$item.ParentProcessId,$item.CommandLine) | Out-Null
   }
  }
  $changed=$true

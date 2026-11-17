@@ -139,9 +139,10 @@ function Start-And-ConfirmApp([string]$expectedVersion) {
 }
 $backup=Join-Path $env:TEMP ('ofrc-rollback-'+[guid]::NewGuid().ToString('N')); $stage=Join-Path $env:TEMP ('ofrc-stage-'+[guid]::NewGuid().ToString('N'))
 $registryBackup=$backup+'.registry.reg'; $registryKeyPath=$null; $registryDisplayVersion=$null
-$baseline=$null; $started=$false; $restored=$false; $updated=$false
+$baseline=$null; $appStopped=$false; $started=$false; $restored=$false; $updated=$false
 try{
  if($ProcessId -gt 0){try{Wait-Process -Id $ProcessId -Timeout 120 -ErrorAction Stop}catch{if(Get-Process -Id $ProcessId -ErrorAction SilentlyContinue){throw 'Application did not exit'}}}
+ $appStopped=$true
  if(!(Test-Path -LiteralPath $PackagePath -PathType Leaf)){throw 'Update package missing'}
  if(!(Test-Path -LiteralPath $Executable -PathType Leaf)){throw 'Installed executable missing'}
  $baseline=Manifest $Target; if($baseline.Count -eq 0){throw 'Install directory empty'}
@@ -239,6 +240,7 @@ try{
    Log 'ROLLBACK_COLD_START_CONFIRMED'
   }catch{Log ("ROLLBACK_FATAL "+($_|Out-String).Trim()); Log "BACKUP_RETAINED $backup"; exit 90}
  }else{if($null -ne $baseline){Assert-Manifest $baseline (Manifest $Target) 'Pre-update tree changed'};$restored=$true}
+ if(!$started -and $appStopped -and (Test-Path -LiteralPath $Executable)){Start-And-ConfirmApp $PreviousVersion;Log 'BASELINE_COLD_START_CONFIRMED'}
  if($restored){Remove-Item -LiteralPath $backup -Recurse -Force -ErrorAction SilentlyContinue}
  exit 1
 }finally{

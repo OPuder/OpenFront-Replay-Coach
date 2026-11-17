@@ -112,6 +112,7 @@ async function scheduleWindowsInstall(downloadPath: string, portable: boolean, v
     '-ProcessId', String(process.pid),
     '-StartupReadyPath', startupReadyPath(),
     '-ExpectedVersion', version,
+    '-PreviousVersion', app.getVersion(),
   ], { detached: true, stdio: 'ignore', windowsHide: true });
   await new Promise<void>((resolve, reject) => {
     child.once('spawn', resolve);

@@ -1,5 +1,6 @@
 import { app, BrowserWindow, ipcMain } from 'electron';
 import { createHash } from 'node:crypto';
+import { appendFileSync } from 'node:fs';
 import { spawn } from 'node:child_process';
 import fs from 'node:fs/promises';
 import os from 'node:os';
@@ -48,7 +49,13 @@ function resolveReleaseApiUrl(): string {
 async function getLatestRelease(): Promise<Release> {
   const endpoint = resolveReleaseApiUrl();
   const testMode = process.env.OFRC_UPDATE_TEST_MODE === '1';
-  if (testMode) console.info('[ReplayCoach] Update regression: release lookup started', endpoint);
+  logWindowsUpdateLifecycle('release-fetch-started', {
+    endpoint,
+    testMode,
+    nodeVersion: process.versions.node,
+    proxyConfigured: Boolean(process.env.HTTPS_PROXY || process.env.https_proxy || process.env.HTTP_PROXY || process.env.http_proxy),
+    noProxyIncludesLoopback: /(^|[,\\s])(127\\.0\\.0\\.1|localhost)([,\\s]|$)/i.test(process.env.NO_PROXY || process.env.no_proxy || ''),
+  });
   let response: Response;
   try {
     response = await fetch(endpoint, {
@@ -56,9 +63,10 @@ async function getLatestRelease(): Promise<Release> {
       cache: 'no-store', signal: AbortSignal.timeout(15000),
     });
   } catch (error) {
-    console.error('[ReplayCoach] Update release lookup failed', { endpoint, error: String(error) });
+    logWindowsUpdateLifecycle('release-fetch-failed', { endpoint, errorName: error instanceof Error ? error.name : typeof error, error: String(error) });
     throw error;
   }
+  logWindowsUpdateLifecycle('release-fetch-response', { endpoint, status: response.status, ok: response.ok });
   if (!response.ok) throw new Error('GitHub Update-Server antwortet mit HTTP ' + response.status + '.');
   const release = await response.json() as Release;
   if (!release.tag_name || !Array.isArray(release.assets)) throw new Error('Die GitHub-Release-Antwort ist unvollständig.');
@@ -97,7 +105,13 @@ function quotePowerShell(value: string): string {
   return "'" + value.replace(/'/g, "''") + "'";
 }
 function logWindowsUpdateLifecycle(phase: string, details: Record<string, unknown> = {}): void {
-  console.info('[ReplayCoach] Windows update lifecycle', { at: new Date().toISOString(), phase, pid: process.pid, ...details });
+  const entry = { at: new Date().toISOString(), phase, pid: process.pid, ...details };
+  console.info('[ReplayCoach] Windows update lifecycle', entry);
+  try {
+    if (app.isReady()) appendFileSync(path.join(app.getPath('userData'), 'update-install.log'), JSON.stringify(entry) + '\\n', 'utf8');
+  } catch (error) {
+    console.error('[ReplayCoach] Could not persist update lifecycle diagnostic', { phase, error: String(error) });
+  }
 }
 async function isPortableInstall(executable: string): Promise<boolean> {
   if (process.env.PORTABLE_EXECUTABLE_DIR) return true;
@@ -121,7 +135,11 @@ async function scheduleWindowsInstall(downloadPath: string, portable: boolean): 
     '$Executable = ' + quotePowerShell(executable),
     '$Download = ' + quotePowerShell(downloadPath),
     '$Log = ' + quotePowerShell(logPath),
+    'function Write-UpdateLog([string]$Phase) { Add-Content -LiteralPath $Log -Value ("[" + (Get-Date -Format o) + "] phase=" + $Phase + " helperPid=" + $PID + " parentPid=" + $ProcessIdToWait) }',
+    'Write-UpdateLog "helper-started"',
+    'Write-UpdateLog "waiting-for-parent-exit"',
     'try { Wait-Process -Id $ProcessIdToWait -ErrorAction SilentlyContinue } catch {}',
+    'Write-UpdateLog "parent-process-exited"',
     'Start-Sleep -Milliseconds 900'
   ].join('\n');
   const portableScript = [
@@ -315,7 +333,6 @@ export function registerUpdaterIpc(): void {
           logWindowsUpdateLifecycle('main-process-shutdown-after-ipc-response');
           app.quit();
         }, 1500);
-        shutdownTimer.unref?.();
       }
       return result;
     } catch (error) {

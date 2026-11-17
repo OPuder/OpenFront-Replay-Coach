@@ -1,4 +1,4 @@
-param([Parameter(Mandatory=$true)][ValidateSet('Installer','Portable')][string]$Mode,[Parameter(Mandatory=$true)][string]$Target,[Parameter(Mandatory=$true)][string]$Executable,[Parameter(Mandatory=$true)][string]$PackagePath,[Parameter(Mandatory=$true)][string]$LogPath,[int]$ProcessId=0,[switch]$FailAfterMutation,[switch]$CorruptBackupForTest)
+param([Parameter(Mandatory=$true)][ValidateSet('Installer','Portable')][string]$Mode,[Parameter(Mandatory=$true)][string]$Target,[Parameter(Mandatory=$true)][string]$Executable,[Parameter(Mandatory=$true)][string]$PackagePath,[Parameter(Mandatory=$true)][string]$LogPath,[int]$ProcessId=0,[string]$StartupReadyPath='',[string]$ExpectedVersion='',[string]$PreviousVersion='',[switch]$FailAfterMutation,[switch]$CorruptBackupForTest)
 $ErrorActionPreference='Stop'
 $Target=[IO.Path]::GetFullPath($Target); $Executable=[IO.Path]::GetFullPath($Executable); $LogPath=[IO.Path]::GetFullPath($LogPath)
 New-Item -ItemType Directory -Path (Split-Path -Parent $LogPath) -Force | Out-Null
@@ -112,6 +112,31 @@ function Stop-AppProcesses {
  }
  Log 'INSTALL_TREE_LOCKS_CLEARED verified_by_restart_manager'
 }
+function Start-And-ConfirmApp([string]$expectedVersion) {
+ if([string]::IsNullOrWhiteSpace($StartupReadyPath)){
+  Start-Process -FilePath $Executable|Out-Null
+  Log 'APP_RESTART_STARTED_WITHOUT_READY_HANDSHAKE'
+  return
+ }
+ if([string]::IsNullOrWhiteSpace($expectedVersion)){throw 'Expected app version is required for startup confirmation'}
+ Remove-Item -LiteralPath $StartupReadyPath -Force -ErrorAction SilentlyContinue
+ $appProcess=Start-Process -FilePath $Executable -PassThru -ErrorAction Stop
+ $deadline=(Get-Date).AddSeconds(120)
+ while((Get-Date) -lt $deadline){
+  if(!(Get-Process -Id $appProcess.Id -ErrorAction SilentlyContinue)){
+   throw "Application process $($appProcess.Id) exited before renderer startup confirmation"
+  }
+  if(Test-Path -LiteralPath $StartupReadyPath){
+   try{$ready=Get-Content -LiteralPath $StartupReadyPath -Raw|ConvertFrom-Json}catch{$ready=$null}
+   if($ready -and [string]$ready.version -eq $expectedVersion -and [int]$ready.processId -eq [int]$appProcess.Id){
+    Log ("APP_RESTART_CONFIRMED pid={0} version={1} renderer_ready_at={2}" -f $appProcess.Id,$ready.version,$ready.confirmedAt)
+    return
+   }
+  }
+  Start-Sleep -Milliseconds 250
+ }
+ throw "Application process $($appProcess.Id) did not confirm renderer readiness for version $expectedVersion within 120 seconds"
+}
 $backup=Join-Path $env:TEMP ('ofrc-rollback-'+[guid]::NewGuid().ToString('N')); $stage=Join-Path $env:TEMP ('ofrc-stage-'+[guid]::NewGuid().ToString('N'))
 $registryBackup=$backup+'.registry.reg'; $registryKeyPath=$null; $registryDisplayVersion=$null
 $baseline=$null; $started=$false; $restored=$false; $updated=$false
@@ -141,15 +166,15 @@ try{
  Assert-Manifest $baseline $backupManifest 'Backup verification failed'
  Log "BACKUP_VERIFIED $backup entries=$($baseline.Count)"
  Log 'STOPPING_OLD_APP_BEFORE_UPDATE'
+ $started=$true
  Stop-AppProcesses
  if($Mode -eq 'Portable'){
   New-Item -ItemType Directory -Path $stage -Force|Out-Null; Expand-Archive -LiteralPath $PackagePath -DestinationPath $stage -Force
   $newExe=Get-ChildItem -LiteralPath $stage -Filter 'OpenFront Replay Coach.exe' -File -Recurse|Select-Object -First 1
   if(!$newExe){throw 'Portable archive executable missing'}
-  $started=$true; & robocopy.exe $newExe.Directory.FullName $Target /E /COPY:DAT /DCOPY:DAT /R:1 /W:1 /NFL /NDL /NJH /NJS /NP
+  & robocopy.exe $newExe.Directory.FullName $Target /E /COPY:DAT /DCOPY:DAT /R:1 /W:1 /NFL /NDL /NJH /NJS /NP
   if($LASTEXITCODE -ge 8){throw "Portable copy failed: $LASTEXITCODE"}
  }else{
-  $started=$true
   $installerProcess=Start-Process -FilePath $PackagePath -ArgumentList @('/S',"/D=$Target") -Wait -PassThru -ErrorAction Stop
   $installerExit=$installerProcess.ExitCode
   if($installerExit -ne 0){throw "Installer failed: $installerExit"}
@@ -158,7 +183,7 @@ try{
  $criticalArchive=Join-Path $Target 'resources/app.asar'
  if(!(Test-Path -LiteralPath $criticalArchive)){throw 'Updated resources/app.asar missing'}
  $updatedAsarHash=(Get-FileHash -LiteralPath $criticalArchive -Algorithm SHA256).Hash.ToLowerInvariant()
- if($updatedAsarHash -eq $baselineAsar.hash){throw 'Update did not replace app.asar; refusing to report an update transaction'}
+ if($updatedAsarHash -eq $baselineAsar.hash -and !$FailAfterMutation){throw 'Update did not replace app.asar; refusing to report an update transaction'}
  Log "UPDATE_FILES_CHANGED old_app_asar=$($baselineAsar.hash) new_app_asar=$updatedAsarHash"
  if($FailAfterMutation){
   $criticalExecutable=Join-Path $Target 'OpenFront Replay Coach.exe'
@@ -174,7 +199,7 @@ try{
   throw 'Injected post-mutation failure'
  }
  if(!(Test-Path -LiteralPath $Executable)){throw 'Updated executable missing'}
- $updated=$true; Log 'UPDATE_OK'; Start-Process -FilePath $Executable|Out-Null
+ $updated=$true; Log 'UPDATE_OK'; Start-And-ConfirmApp $ExpectedVersion
 }catch{
  Log ("UPDATE_FAILED "+($_|Out-String).Trim())
  if($started){
@@ -210,9 +235,10 @@ try{
    $restored=$true
    $restoredManifest | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath ($LogPath+'.restored-manifest.json')
    Log "ROLLBACK_VERIFIED complete_inventory_hashes=$($baseline.Count)"
+   Start-And-ConfirmApp $PreviousVersion
+   Log 'ROLLBACK_COLD_START_CONFIRMED'
   }catch{Log ("ROLLBACK_FATAL "+($_|Out-String).Trim()); Log "BACKUP_RETAINED $backup"; exit 90}
  }else{if($null -ne $baseline){Assert-Manifest $baseline (Manifest $Target) 'Pre-update tree changed'};$restored=$true}
- if($started -and $restored -and (Test-Path -LiteralPath $Executable)){Log 'ROLLBACK_RELAUNCH_DEFERRED_TO_RUNTIME_VERIFIER'}
  if($restored){Remove-Item -LiteralPath $backup -Recurse -Force -ErrorAction SilentlyContinue}
  exit 1
 }finally{

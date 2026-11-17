@@ -71,13 +71,11 @@ function Stop-AppProcesses {
  $byId=@{}; foreach($item in $snapshot){$byId[[int]$item.ProcessId]=$item}
  $ownedIds=[Collections.Generic.HashSet[int]]::new()
  foreach($item in $snapshot){
-  if($_ -and $false){} # keep the process selection explicit below
   $path=[string]$item.ExecutablePath
-  if($path -and ($path -ieq $Executable -or $path.StartsWith($targetPrefix,[StringComparison]::OrdinalIgnoreCase))){
+  if(([int]$item.ProcessId -ne $PID) -and $path -and ($path -ieq $Executable -or $path.StartsWith($targetPrefix,[StringComparison]::OrdinalIgnoreCase))){
    [void]$ownedIds.Add([int]$item.ProcessId)
   }
  }
- if($ProcessId -gt 0){[void]$ownedIds.Add($ProcessId)}
  $changed=$true
  while($changed){
   $changed=$false

@@ -362,7 +362,7 @@ async function verifyPortableUpdater() {
     await waitFor(() => baselineSession.child.exitCode !== null, 30000, "baseline portable process to exit after handing off the update");
     const userDataPath = before.electron.userDataPath;
     const updateLog = path.join(userDataPath, "update-install.log");
-    await waitFor(() => existsSync(updateLog) && readFileSync(updateLog, "utf8").includes("Portable-Programmdateien geändert und verifiziert; starte Anwendung."),
+    await waitFor(() => existsSync(updateLog) && readFileSync(updateLog, "utf8").includes("phase=portable-install-verified"),
       120000, "the actual portable updater to verify and install the downloaded candidate ZIP");
     assert.notEqual(digest(baseline.archive), beforeHash, "Portable updater did not replace app.asar.");
     await waitFor(() => isExecutableRunning(baseline.executable), 30000, "the portable updater to restart the updated application");
@@ -429,7 +429,7 @@ async function verifyPortableRollback() {
     assert.equal(scheduled.result?.scheduled, true, "Portable updater did not schedule the deliberately invalid package: " + JSON.stringify(scheduled));
     await waitFor(() => baselineSession.child.exitCode !== null, 30000, "portable app to exit before rollback test");
     const updateLog = path.join(before.electron.userDataPath, "update-install.log");
-    await waitFor(() => existsSync(updateLog) && readFileSync(updateLog, "utf8").includes("Rollback erfolgreich; vorherige Version wurde wiederhergestellt."),
+    await waitFor(() => existsSync(updateLog) && readFileSync(updateLog, "utf8").includes("phase=portable-rollback-verified"),
       120000, "the detached updater to reject the incomplete package and verify rollback");
     await waitFor(() => isExecutableRunning(baseline.executable), 30000, "the restored portable application to restart");
     stopExecutable(baseline.executable);

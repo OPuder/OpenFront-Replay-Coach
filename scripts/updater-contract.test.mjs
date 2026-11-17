@@ -23,6 +23,8 @@ assert.match(windowsRollback, /INSTALL_TREE_LOCKS_CLEARED/);
 assert.doesNotMatch(windowsRollback, /Start-Sleep -Milliseconds 750/);
 assert.match(windowsLockDiagnostics, /RmRegisterResources/);
 assert.match(windowsLockDiagnostics, /RmGetList/);
+assert.match(windowsLockDiagnostics, /ExactSpelling=true/);
+assert.match(windowsLockDiagnostics, /StringBuilder\(33\)/);
 assert.match(windowsLockDiagnostics, /electron-renderer/);
 assert.match(windowsRollback, /STOPPING_OLD_APP_BEFORE_UPDATE/);
 assert.match(windowsRollback, /Start-Process -FilePath \$PackagePath -ArgumentList/);

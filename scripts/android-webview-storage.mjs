@@ -48,7 +48,7 @@ const expression = mode === "seed" ? `
   db.close();
   return { seeded: true, playerId, gameId, stores: ["profiles", "matches", "replay-records"], settings: true };
 })()
-` : `
+` : mode === "verify" ? `
 (async () => {
   const playerId = "upgrade-regression-player";
   const gameId = "upgrade-regression-game";
@@ -83,7 +83,7 @@ const expression = mode === "seed" ? `
   if (!match || match.playerId !== playerId || match.game?.gameId !== gameId || match.analysisStatus !== "verified" || match.simulation?.summary !== "upgrade-regression-analysis") throw new Error("Replay match, profile relationship or analysis result was not preserved");
   if (!replay || replay.playerId !== playerId || replay.gameId !== match.game.gameId || replay.record?.marker !== "${marker}" || replay.record?.turns?.[0]?.units !== 123) throw new Error("Raw replay payload or match relationship was not preserved");
   return { preserved: true, profile: true, replay: true, analysis: true, trainingGoal: true, phaseHistory: true };
-` : mode === "verify" ? `
+` : `
 (async () => {
   const localStorageValues = Object.fromEntries(Object.keys(localStorage).sort().map(key => [key, localStorage.getItem(key)]));
   const databaseMetadata = (await indexedDB.databases()).filter(item => item.name).sort((a, b) => a.name.localeCompare(b.name));

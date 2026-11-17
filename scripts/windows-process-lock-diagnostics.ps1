@@ -5,6 +5,7 @@ if(-not ('OpenFrontRestartManager' -as [type])) {
 Add-Type -TypeDefinition @'
 using System;
 using System.Runtime.InteropServices;
+using System.Text;
 public static class OpenFrontRestartManager {
  [StructLayout(LayoutKind.Sequential)] public struct UniqueProcess { public int ProcessId; public System.Runtime.InteropServices.ComTypes.FILETIME StartTime; }
  public enum AppType { Unknown=0, MainWindow=1, OtherWindow=2, Service=3, Explorer=4, Console=5, Critical=1000 }
@@ -15,12 +16,12 @@ public static class OpenFrontRestartManager {
   public AppType ApplicationType; public uint AppStatus; public uint SessionId;
   [MarshalAs(UnmanagedType.Bool)] public bool Restartable;
  }
- [DllImport("rstrtmgr.dll",CharSet=CharSet.Unicode)] static extern int RmStartSession(out uint h,int flags,string key);
- [DllImport("rstrtmgr.dll",CharSet=CharSet.Unicode)] static extern int RmRegisterResources(uint h,uint nf,string[] files,uint na,UniqueProcess[] apps,uint ns,string[] services);
- [DllImport("rstrtmgr.dll")] static extern int RmGetList(uint h,out uint needed,ref uint count,IntPtr affected,ref uint reasons);
- [DllImport("rstrtmgr.dll")] static extern int RmEndSession(uint h);
+ [DllImport("rstrtmgr.dll",CharSet=CharSet.Unicode,ExactSpelling=true)] static extern int RmStartSession(out uint h,int flags,StringBuilder key);
+ [DllImport("rstrtmgr.dll",CharSet=CharSet.Unicode,ExactSpelling=true)] static extern int RmRegisterResources(uint h,uint nf,string[] files,uint na,UniqueProcess[] apps,uint ns,string[] services);
+ [DllImport("rstrtmgr.dll",ExactSpelling=true)] static extern int RmGetList(uint h,out uint needed,ref uint count,IntPtr affected,ref uint reasons);
+ [DllImport("rstrtmgr.dll",ExactSpelling=true)] static extern int RmEndSession(uint h);
  public static ProcessInfo[] GetLockers(string[] files) {
-  uint session; int rc=RmStartSession(out session,0,Guid.NewGuid().ToString("N"));
+  uint session; var sessionKey=new StringBuilder(33); int rc=RmStartSession(out session,0,sessionKey);
   if(rc!=0) throw new InvalidOperationException("RmStartSession failed: "+rc);
   try {
    for(int offset=0;offset<files.Length;offset+=1000) {

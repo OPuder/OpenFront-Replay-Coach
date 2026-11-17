@@ -42,9 +42,43 @@ jobs:
       # Install the root lockfile before engine preparation. The preparation
       # script installs isolated dependency groups; running npm ci afterwards on
       # Windows can fail while replacing the prepared root dependency tree.
-      - name: Install Coach dependencies once
+      - name: Diagnose Windows Git Bash and install Coach dependencies
         shell: bash
-        run: npm ci
+        run: |
+          set -Eeuo pipefail
+          echo "=== Windows npm-ci diagnostic (no environment dump) ==="
+          printf 'working_directory='; pwd
+          printf 'PATH=%s\\n' "$PATH"
+          for executable in node npm; do
+            if command -v "$executable" >/dev/null 2>&1; then
+              printf '%s_path=' "$executable"
+              command -v "$executable"
+            else
+              echo "${executable}_resolution=MISSING"
+            fi
+          done
+          if command -v node >/dev/null 2>&1; then node --version; else echo "DIAGNOSIS=NODE_NOT_RESOLVABLE"; exit 127; fi
+          if command -v npm >/dev/null 2>&1; then npm --version; else echo "DIAGNOSIS=NPM_NOT_RESOLVABLE_IN_GIT_BASH"; exit 127; fi
+          if command -v where.exe >/dev/null 2>&1; then
+            where.exe node || true
+            where.exe npm || true
+          fi
+          echo "=== npm ci full output begins ==="
+          set +e
+          npm ci 2>&1 | tee "$RUNNER_TEMP/ofrc-windows-npm-ci.log"
+          npm_status=${PIPESTATUS[0]}
+          set -e
+          echo "npm_ci_exit_code=$npm_status"
+          if [[ $npm_status -eq 127 ]]; then
+            if grep -Eqi 'command not found|not recognized as an internal or external command' "$RUNNER_TEMP/ofrc-windows-npm-ci.log"; then
+              echo "DIAGNOSIS=EXTERNAL_COMMAND_OR_NPM_EXECUTABLE_NOT_FOUND"
+            elif grep -Eqi 'lifecycle|\bpreinstall\b|\binstall\b|\bpostinstall\b|command failed' "$RUNNER_TEMP/ofrc-windows-npm-ci.log"; then
+              echo "DIAGNOSIS=LIFECYCLE_SCRIPT_OR_EXTERNAL_PROGRAM_EXIT_127"
+            else
+              echo "DIAGNOSIS=EXIT_127_SOURCE_REQUIRES_FULL_LOG_REVIEW"
+            fi
+          fi
+          exit "$npm_status"
 
       - name: Prepare all exact historical OpenFront engines
         run: npm run prepare:engines

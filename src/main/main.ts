@@ -7,7 +7,7 @@ import { analyzeDetailedActions } from './decoder/DetailedAnalysis';
 import { buildCoachInsights } from './decoder/CoachInsights';
 import { assessReplayCompatibility } from './decoder/ReplayCompatibility';
 import { resolveReplayJsonExport } from './decoder/ReplayJsonExport';
-import { autoUpdateOnStartup, registerUpdaterIpc } from './updater';
+import { autoUpdateOnStartup, confirmWindowsAppReady, registerUpdaterIpc } from './updater';
 
 const isDev = !app.isPackaged;
 const API_BASE = 'https://api.openfront.io/public/game/';
@@ -257,6 +257,9 @@ function createWindow() {
   const win = new BrowserWindow({ width: 1440, height: 940, minWidth: 1050, minHeight: 700,
     title: 'OpenFront Replay Coach', backgroundColor: '#0b1020',
     webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true, nodeIntegration: false, sandbox: true }
+  });
+  win.webContents.once('did-finish-load', () => {
+    void confirmWindowsAppReady().catch(error => console.error('[ReplayCoach] Startup-Bestätigung für den Updater fehlgeschlagen:', error));
   });
   win.webContents.on('did-fail-load', (_event, errorCode, errorDescription, validatedURL, isMainFrame) => {
     console.error('[ReplayCoach] Renderer konnte nicht geladen werden:', { errorCode, errorDescription, validatedURL, isMainFrame, appPath: app.getAppPath(), exe: app.getPath('exe') });

@@ -102,7 +102,7 @@ try {
   }
 
   const snapshotExpression = "(async () => {" +
-    "const localStorage={};for(let i=0;i<window.localStorage.length;i++){const k=window.localStorage.key(i);localStorage[k]=window.localStorage.getItem(k);}" +
+    "const localStorage={};const keys=[];for(let i=0;i<window.localStorage.length;i++)keys.push(window.localStorage.key(i));keys.sort();for(const k of keys)localStorage[k]=window.localStorage.getItem(k);" +
     "const infos=(await indexedDB.databases()).filter(x=>x.name).sort((a,b)=>a.name.localeCompare(b.name));const indexedDBSnapshot=[];" +
     "for(const info of infos){const db=await new Promise((resolve,reject)=>{const r=indexedDB.open(info.name);r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error);});" +
     "const stores=[];for(const name of [...db.objectStoreNames].sort()){const records=await new Promise((resolve,reject)=>{const tx=db.transaction(name,'readonly');const r=tx.objectStore(name).getAll();r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error);});stores.push({name,records});}" +

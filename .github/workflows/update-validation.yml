@@ -49,7 +49,7 @@ jobs:
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
-          foreach ($path in @('scripts/windows-process-lock-diagnostics.ps1', 'scripts/windows-process-lock-diagnostics.test.ps1')) {
+          foreach ($path in @('scripts/windows-process-lock-diagnostics.ps1', 'scripts/windows-process-lock-owner-contract.ps1', 'scripts/windows-process-lock-diagnostics.test.ps1', 'scripts/windows-update-rollback.ps1')) {
             $tokens = $null
             $errors = $null
             [System.Management.Automation.Language.Parser]::ParseFile((Resolve-Path $path).Path, [ref]$tokens, [ref]$errors) | Out-Null

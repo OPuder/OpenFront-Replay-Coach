@@ -99,6 +99,7 @@ async function scheduleWindowsInstall(downloadPath: string, portable: boolean, v
   const targetDirectory = process.env.PORTABLE_EXECUTABLE_DIR || path.dirname(executable);
   const packagedHelperPath = path.join(process.resourcesPath, 'windows-update-rollback.ps1');
   const packagedLockDiagnosticPath = path.join(process.resourcesPath, 'windows-process-lock-diagnostics.ps1');
+  const packagedLockOwnerContractPath = path.join(process.resourcesPath, 'windows-process-lock-owner-contract.ps1');
   const helperDirectory = await fs.mkdtemp(path.join(os.tmpdir(), 'openfront-replay-coach-update-helper-'));
   const helperPath = path.join(helperDirectory, 'windows-update-rollback.ps1');
   const logPath = path.join(app.getPath('userData'), 'update-install.log');
@@ -106,6 +107,7 @@ async function scheduleWindowsInstall(downloadPath: string, portable: boolean, v
   await Promise.all([
     fs.copyFile(packagedHelperPath, helperPath),
     fs.copyFile(packagedLockDiagnosticPath, path.join(helperDirectory, 'windows-process-lock-diagnostics.ps1')),
+    fs.copyFile(packagedLockOwnerContractPath, path.join(helperDirectory, 'windows-process-lock-owner-contract.ps1')),
   ]);
   const child = spawn('powershell.exe', [
     '-NoLogo', '-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass',

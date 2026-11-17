@@ -76,6 +76,10 @@
       {
         "from": "scripts/windows-process-lock-diagnostics.ps1",
         "to": "windows-process-lock-diagnostics.ps1"
+      },
+      {
+        "from": "scripts/windows-process-lock-owner-contract.ps1",
+        "to": "windows-process-lock-owner-contract.ps1"
       }
     ],
     "extraFiles": [

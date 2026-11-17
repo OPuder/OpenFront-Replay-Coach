@@ -106,6 +106,16 @@ function Stop-AppProcesses {
   }
  }
  $owners=@(Get-LockOwners)
+ foreach($owner in $owners){
+  $ownerPid=[int]$owner.processId
+  if($ownerPid -ne $PID -and $owner.category -in @('installer-or-uninstaller','updater-helper')){
+   Log ("WAITING_FOR_INSTALLER_HELPER pid={0} category={1} image={2}" -f $ownerPid,$owner.category,$owner.executablePath) | Out-Null
+   try{Wait-Process -Id $ownerPid -Timeout 120 -ErrorAction Stop}catch{
+    if(Get-Process -Id $ownerPid -ErrorAction SilentlyContinue){throw "Installer/updater helper process $ownerPid still holds installation resources"}
+   }
+  }
+ }
+ $owners=@(Get-LockOwners)
  if($owners.Count -gt 0){
   $detail=($owners | ForEach-Object {"PID=$($_.processId) NAME=$($_.processName) TYPE=$($_.category) IMAGE=$($_.executablePath)"}) -join '; '
   throw "Installation files remain locked by process(es): $detail"

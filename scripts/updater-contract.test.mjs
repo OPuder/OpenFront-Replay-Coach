@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import test from "node:test";
 import { readFileSync } from "node:fs";
 const read = path => readFileSync(new URL("../" + path, import.meta.url), "utf8");
 const updater = read("src/main/updater.ts");
@@ -91,25 +92,90 @@ assert.match(releaseWorkflow, /names\.length === 3/);
 assert.match(releaseWorkflow, /-Android\.apk/);
 
 const updateValidationWorkflow = read(".github/workflows/update-validation.yml");
-assert.match(updateValidationWorkflow, /Build higher-version APK before emulator startup[\s\S]*?assembleDebug[\s\S]*?Test in-place Android update and preserve app data/);
+const androidSigningConfigurator = read("scripts/configure-android-signing.mjs");
+const androidReleaseUpgrade = read("scripts/test-android-release-upgrade.sh");
+const androidBaselineDownload = read("scripts/download-android-release-baseline.sh");
+const androidStorageInspector = read("scripts/inspect-android-upgrade-data.mjs");
+const androidStorageSnapshot = read("scripts/snapshot-android-web-storage.sh");
+const androidUnsignedNegative = read("scripts/create-android-unsigned-negative-apk.py");
+
+assert.match(updateValidationWorkflow, /Download and verify exact public v2\.2\.51 Android baseline/);
+assert.match(updateValidationWorkflow, /Build higher-version candidate with the permanent release key/);
+assert.match(updateValidationWorkflow, /Test genuine published-APK in-place upgrade on Android emulator[\s\S]*?bash scripts\/test-android-release-upgrade\.sh/);
+assert.match(updateValidationWorkflow, /Build separate non-debuggable production APK without test inspector/);
+assert.match(updateValidationWorkflow, /Download uploaded APK for byte-for-byte verification/);
+assert.match(updateValidationWorkflow, /Verify uploaded production APK hash and signature/);
+assert.match(updateValidationWorkflow, /Verify permanent Android release signing key and continuity[\s\S]*?if: always\(\) && \(github\.event_name != 'pull_request' \|\| github\.event\.pull_request\.head\.repo\.full_name == github\.repository\)/);
+assert.match(androidSigningGate, /ANDROID_UPGRADE_TEST_BUILD/);
+assert.match(androidSigningGate, /assembleDebug/);
+assert.match(androidSigningGate, /assembleRelease/);
+assert.match(androidSigningGate, /ANDROID_SIGNING_VERIFY_ONLY/);
+assert.match(androidSigningConfigurator, /signingConfig signingConfigs\.release/);
+assert.match(androidSigningConfigurator, /debuggable: "true"/);
+assert.match(androidSigningConfigurator, /debuggable: "false"/);
+assert.match(androidBaselineDownload, /v2\.2\.51/);
+assert.match(androidBaselineDownload, /8b2da877f5e4788c29e13f7788aaca34d07e969e1f03a0f1aff8e0cdc6c030fd/);
+assert.match(androidBaselineDownload, /apksigner/);
+assert.match(androidBaselineDownload, /versionCode='2002051'/);
+assert.match(androidReleaseUpgrade, /adb -s emulator-5554 install --no-streaming -r/);
+assert.match(androidReleaseUpgrade, /seed-android-baseline-ui\.sh/);
+assert.match(androidReleaseUpgrade, /snapshot-android-web-storage\.sh before/);
+assert.match(androidReleaseUpgrade, /inspect-android-upgrade-data\.mjs/);
+assert.match(androidReleaseUpgrade, /compare-android-web-storage\.mjs/);
+assert.match(androidReleaseUpgrade, /create-android-unsigned-negative-apk\.py/);
+assert.match(androidReleaseUpgrade, /unsigned negative APK/);
+assert.match(androidReleaseUpgrade, /apksigner" verify --verbose/);
+assert.match(androidReleaseUpgrade, /INSTALL_PARSE_FAILED_NO_CERTIFICATES\|INSTALL_FAILED_INVALID_APK/);
+assert.match(androidReleaseUpgrade, /keytool -genkeypair/);
+assert.match(androidReleaseUpgrade, /ofrc-android-negative-test\.p12/);
+assert.match(androidReleaseUpgrade, /openssl rand -hex 24/);
+assert.match(androidReleaseUpgrade, /apksigner" sign --ks/);
+assert.match(androidReleaseUpgrade, /INSTALL_FAILED_UPDATE_INCOMPATIBLE/);
+assert.match(androidReleaseUpgrade, /after-signature-mismatch-storage\.json/);
+assert.match(androidReleaseUpgrade, /compare-android-upgrade-snapshots\.mjs.*after-negative-test-storage\.json.*after-signature-mismatch-storage\.json/);
+assert.match(androidReleaseUpgrade, /rm -f "\$test_keystore" "\$test_signed_apk"/);
+assert.doesNotMatch(androidReleaseUpgrade, /echo "\$test_password"|cat "\$test_keystore"|upload-artifact.*test_keystore/);
+const androidBaselineUiSeed = read("scripts/seed-android-baseline-ui.sh");
+assert.match(androidBaselineUiSeed, /uiautomator dump --compressed/);
+assert.match(androidBaselineUiSeed, /UI hierarchy dump attempt/);
+assert.match(androidBaselineUiSeed, /dumpsys window/);
+assert.match(androidBaselineUiSeed, /two diagnostic UIAutomator attempts/);
+assert.match(androidReleaseUpgrade, /snapshot-android-web-storage\.sh after/);
+assert.match(androidReleaseUpgrade, /after-negative-test-storage\.json/);
+assert.match(androidReleaseUpgrade, /compare-android-upgrade-snapshots\.mjs/);
+assert.match(androidStorageInspector, /ofrc-android-upgrade-snapshot-v1/);
+assert.match(androidStorageInspector, /missingReplayRecords/);
+assert.match(androidStorageInspector, /orphanReplayRecords/);
+assert.match(androidStorageSnapshot, /adb root/);
+assert.match(androidStorageSnapshot, /IndexedDB/);
+assert.match(androidStorageSnapshot, /Local Storage/);
+assert.match(androidStorageSnapshot, /immutableTables/);
+assert.match(androidUnsignedNegative, /META-INF/);
+assert.match(androidUnsignedNegative, /No signing key was generated or used/);
 assert.match(androidUpdateRegression, /OPENFRONT_UPDATE_APK/);
 assert.doesNotMatch(androidUpdateRegression, /gradlew|assembleDebug/);
-assert.match(updateValidationWorkflow, /Test in-place Android update and preserve app data[\s\S]*?if: always\(\) && steps\.parse_apk\.outcome == 'success'/);
 
 assert.ok(
-  updateValidationWorkflow.indexOf("Test in-place Android update and preserve app data") <
+  updateValidationWorkflow.indexOf("Test genuine published-APK in-place upgrade on Android emulator") <
     updateValidationWorkflow.indexOf("Verify permanent Android release signing key and continuity"),
-  "The debug emulator update test must run before the signing gate modifies generated Gradle configuration."
+  "The permanent signing continuity gate must run after the published-APK emulator upgrade test."
 );
 
-assert.ok(releaseWorkflow.includes("names.some(name => /(?:\\.Setup\\.| Setup )[0-9.]+\\.exe$/i.test(name))"), "Release verification must match both legacy dotted and actual spaced NSIS installer filenames.");
-assert.ok(updater.includes(String.raw`/(?:\.Setup\.| Setup )[\d.]+\.exe$/i`), "The main-process updater must recognize the current and legacy installer names.");
-assert.ok(renderer.includes(String.raw`/(?:\.Setup\.| Setup )[\d.]+\.exe$/i`), "The Update Center must recognize the current and legacy installer names.");
+assert.ok(releaseWorkflow.includes(String.raw`names.some(name => /-win\.zip$/i.test(name))`), "Release verification must match the actual Windows portable ZIP filename.");
+const portableAssetMatcher = /^OpenFront\.Replay\.Coach-[0-9]+\.[0-9]+\.[0-9]+-win\.zip$/i;
+assert.match("OpenFront.Replay.Coach-2.2.51-win.zip", portableAssetMatcher, "The actual electron-builder Windows portable ZIP filename must be detected.");
+assert.doesNotMatch("OpenFront.Replay.Coach-2.2.51-win.7z", portableAssetMatcher, "A different archive format must not satisfy the portable ZIP contract.");
+assert.ok(releaseWorkflow.includes(String.raw`names.some(name => /-Android\.apk$/i.test(name))`), "Release verification must match the actual Android APK filename.");
+const androidAssetMatcher = /^OpenFront-Replay-Coach-[0-9]+\.[0-9]+\.[0-9]+-Android\.apk$/i;
+assert.match("OpenFront-Replay-Coach-2.2.52-Android.apk", androidAssetMatcher, "The actual electron-builder Android APK filename must be detected.");
+assert.doesNotMatch("OpenFront-Replay-Coach-2.2.52-Android.zip", androidAssetMatcher, "A non-APK extension must not satisfy the Android release contract.");
+assert.doesNotMatch("OpenFront-Replay-Coach-2.2.52-Windows.apk", androidAssetMatcher, "An APK with the wrong platform suffix must not satisfy the Android release contract.");
+assert.ok(releaseWorkflow.includes(String.raw`names.some(name => /(?:\.Setup\.| Setup )[0-9.]+\.exe$/i.test(name))`), "Release verification must match both legacy dotted and current spaced NSIS installer filenames.");
+assert.ok(updater.includes(String.raw`/(?:\.Setup\.| Setup )[\d.]+\.exe$/i`), "The main-process updater must recognize current and legacy installer names.");
+assert.ok(renderer.includes(String.raw`/(?:\.Setup\.| Setup )[\d.]+\.exe$/i`), "The Update Center must recognize current and legacy installer names.");
 const installerAssetMatcher = /(?:\.Setup\.| Setup )[\d.]+\.exe$/i;
 assert.match("OpenFront Replay Coach Setup 2.2.45.exe", installerAssetMatcher, "The current electron-builder NSIS filename must be detected.");
 assert.match("OpenFront.Replay.Coach.Setup.2.2.44.exe", installerAssetMatcher, "Legacy published installer filenames must remain supported.");
-assert.ok(releaseWorkflow.includes("names.some(name => /-win\\.zip$/i.test(name))"), "Release verification must match the actual Windows portable ZIP filename.");
-assert.ok(releaseWorkflow.includes("names.some(name => /-Android\\.apk$/i.test(name))"), "Release verification must match the actual Android APK filename.");
 
 
 const matchStore = read("src/renderer/matchStore.ts");
@@ -143,22 +209,12 @@ assert.ok(!releaseUpgradeWorkflow.includes("disable-animations: true"));
 assert.ok(releaseUpgradeScript.includes("PREVIOUS_APK"));
 assert.ok(releaseUpgradeScript.includes("for attempt in 1 2 3"));
 assert.ok(releaseUpgradeScript.includes("timeout --signal=INT --kill-after=15s 240s adb -s emulator-5554 install"));
-assert.ok(releaseUpgradeScript.includes("seq 1 9"));
-assert.ok(releaseUpgradeScript.includes("timeout 8s adb -s emulator-5554 shell cmd package list packages"));
 assert.ok(releaseUpgradeScript.includes("versionCode"));
-assert.ok(releaseUpgradeScript.includes("cmd package resolve-activity"));
-assert.ok(releaseUpgradeScript.includes("am start -W -n"));
 assert.ok(releaseUpgradeScript.includes("pidof"));
-assert.ok(releaseUpgradeScript.includes('for attempt in $(seq 1 60)'));
-assert.ok(releaseUpgradeScript.includes('launch_status=0'));
-assert.ok(releaseUpgradeScript.includes('grep -E "mResumedActivity|topResumedActivity"'));
 assert.ok(releaseUpgradeScript.includes("timeout 60s adb -s emulator-5554"));
-assert.ok(releaseUpgradeScript.includes("dumpsys activity activities"));
-assert.ok(releaseUpgradeScript.includes("FATAL EXCEPTION"));
-assert.ok(releaseUpgradeScript.includes("sleep 300"));
-assert.ok(releaseUpgradeScript.includes("five-minute idle soak"));
 const androidValidationWorkflow = read(".github/workflows/update-validation.yml");
 assert.ok(androidValidationWorkflow.includes("bash -n scripts/test-android-release-upgrade.sh"));
+assert.ok(androidValidationWorkflow.includes("bash -n scripts/android-emulator-diagnostics.sh"));
 
 
 const engineCacheWorkflows = [
@@ -171,3 +227,117 @@ const engineCacheWorkflows = [
 for (const workflow of engineCacheWorkflows) {
   assert.match(workflow, /Restore exact historical engine Git objects[\s\S]*?actions\/cache@v4[\s\S]*?path: \.git\/modules[\s\S]*?github\.job/);
 }
+
+const androidEmulatorDiagnostics = read("scripts/android-emulator-diagnostics.sh");
+assert.match(androidEmulatorDiagnostics, /adb kill-server/);
+assert.match(androidEmulatorDiagnostics, /adb start-server/);
+assert.match(androidEmulatorDiagnostics, /adb reconnect offline/);
+assert.match(androidEmulatorDiagnostics, /sys\.boot_completed/);
+assert.match(androidEmulatorDiagnostics, /seq 1 30/);
+assert.match(androidEmulatorDiagnostics, /seq 1 20/);
+assert.match(androidEmulatorDiagnostics, /timeout 60s adb -s emulator-5554 wait-for-device/);
+assert.match(androidEmulatorDiagnostics, /timeout 4s adb -s emulator-5554/);
+assert.match(androidEmulatorDiagnostics, /cmd package list packages/);
+assert.match(androidEmulatorDiagnostics, /QEMU emulator identity/);
+assert.match(androidEmulatorDiagnostics, /android_capture_diagnostics/);
+assert.match(androidEmulatorDiagnostics, /CLASSIFICATION=ADB_CONNECTION_FAILURE/);
+assert.match(androidEmulatorDiagnostics, /CLASSIFICATION=ACTIVITY_START_FAILURE/);
+assert.match(androidEmulatorDiagnostics, /CLASSIFICATION=APP_CRASH/);
+assert.match(androidEmulatorDiagnostics, /CLASSIFICATION=SYSTEM_ANR/);
+assert.match(androidEmulatorDiagnostics, /FATAL EXCEPTION/);
+assert.match(androidEmulatorDiagnostics, /screencap -p/);
+assert.match(androidEmulatorDiagnostics, /host_resource_snapshot/);
+assert.match(androidEmulatorDiagnostics, /guest_resource_snapshot/);
+assert.match(androidEmulatorDiagnostics, /dumpsys activity lastanr/);
+assert.match(androidEmulatorDiagnostics, /adb -s emulator-5554 pull \/data\/anr/);
+assert.match(androidEmulatorDiagnostics, /uiautomator dump \/sdcard\/window.xml/);
+assert.match(updateValidationWorkflow, /runs-on: ubuntu-24\.04/);
+function validateAndroidKvmWorkflow(workflow) {
+  assert.match(workflow, /android-apk-validation:[\s\S]*?runs-on: ubuntu-24\.04/,
+    "Android emulator job must use a Linux runner.");
+  const preflightStart = workflow.indexOf('diag="$RUNNER_TEMP/ofrc-android-diagnostics"');
+  const emulatorStart = workflow.indexOf("uses: reactivecircus/android-emulator-runner@v2");
+  assert.ok(preflightStart >= 0, "KVM preflight diagnostic block is required.");
+  assert.ok(emulatorStart >= 0, "Android emulator runner is required.");
+  assert.ok(preflightStart < emulatorStart, "KVM preflight must run before emulator startup.");
+  const preflight = workflow.slice(preflightStart, emulatorStart);
+  for (const [pattern, message] of [
+    [/sudo modprobe kvm/, "KVM kernel module must be enabled."],
+    [/GenuineIntel[\s\S]*?sudo modprobe kvm_intel[\s\S]*?AuthenticAMD[\s\S]*?sudo modprobe kvm_amd/, "CPU-specific KVM module must be selected."],
+    [/\[\[ ! -e \/dev\/kvm \]\][\s\S]*?exit 1/, "/dev/kvm absence must abort the job."],
+    [/sudo chmod 666 \/dev\/kvm[\s\S]*?! -r \/dev\/kvm \|\| ! -w \/dev\/kvm[\s\S]*?exit 1/, "/dev/kvm permissions must be applied and verified."],
+    [/KVM_PREFLIGHT=PASS/, "Preflight must emit an explicit success marker."]
+  ]) assert.match(preflight, pattern, message);
+  const emulator = workflow.slice(emulatorStart);
+  assert.match(emulator, /arch: x86_64/, "Emulator architecture must be x86_64.");
+  assert.match(emulator, /cores: 4/);
+  assert.match(emulator, /-memory 4096/);
+  assert.match(emulator, /disable-linux-hw-accel: false/,
+    "Hardware acceleration must be mandatory; software fallback is forbidden.");
+}
+validateAndroidKvmWorkflow(updateValidationWorkflow);
+test("Android KVM contract accepts the current semantic preflight", () => {
+  assert.doesNotThrow(() => validateAndroidKvmWorkflow(updateValidationWorkflow));
+});
+test("Android KVM contract rejects a missing /dev/kvm guard", () => {
+  const broken = updateValidationWorkflow.replace(/if \[\[ ! -e \/dev\/kvm \]\]; then[\s\S]*?fi/, "");
+  assert.throws(() => validateAndroidKvmWorkflow(broken), /\/dev\/kvm absence/);
+});
+test("Android KVM contract rejects preflight placed after emulator startup", () => {
+  const preflightMarker = '      - name: Enable, diagnose and verify Linux KVM before emulator startup';
+  const emulatorMarker = "      - name: Test genuine published-APK in-place upgrade";
+  const diagnosticsMarker = "      - name: Capture host and ADB diagnostics after emulator action";
+  const preflightStart = updateValidationWorkflow.indexOf(preflightMarker);
+  const emulatorStart = updateValidationWorkflow.indexOf(emulatorMarker);
+  const diagnosticsStart = updateValidationWorkflow.indexOf(diagnosticsMarker);
+  assert.ok(preflightStart >= 0 && emulatorStart > preflightStart && diagnosticsStart > emulatorStart,
+    "The workflow must contain the preflight, emulator runner and post-emulator diagnostics in order.");
+
+  const preflightEnd = updateValidationWorkflow.indexOf("      - name:", preflightStart + preflightMarker.length);
+  assert.ok(preflightEnd > preflightStart && preflightEnd < emulatorStart,
+    "The preflight must be a standalone workflow step immediately before the emulator runner.");
+  const preflightStep = updateValidationWorkflow.slice(preflightStart, preflightEnd);
+  const emulatorStep = updateValidationWorkflow.slice(emulatorStart, diagnosticsStart);
+  assert.match(emulatorStep, /uses: reactivecircus\/android-emulator-runner@v2/);
+
+  // Move the complete preflight step after the unchanged emulator step. The
+  // emulator runner itself remains at its original workflow position.
+  const moved = updateValidationWorkflow.slice(0, preflightStart) +
+    updateValidationWorkflow.slice(preflightEnd, diagnosticsStart) +
+    preflightStep +
+    updateValidationWorkflow.slice(diagnosticsStart);
+
+  assert.equal((moved.match(/uses: reactivecircus\/android-emulator-runner@v2/g) || []).length, 1,
+    "The negative fixture must retain exactly one emulator runner.");
+  assert.equal(moved.slice(moved.indexOf(emulatorMarker), moved.indexOf(diagnosticsMarker)),
+    emulatorStep,
+    "The emulator runner step must remain unchanged in the negative fixture.");
+  assert.throws(() => validateAndroidKvmWorkflow(moved), /KVM preflight must run before emulator startup/);
+});
+assert.match(updateValidationWorkflow, /Capture host and ADB diagnostics after emulator action/);
+assert.match(updateValidationWorkflow, /android_capture_diagnostics "post-emulator-action"/);
+assert.match(androidEmulatorDiagnostics, /am start -W -n/);
+const androidUpgradeBridge = read("src/renderer/androidUpgradeTestBridge.ts");
+assert.match(androidUpgradeBridge, /import \{ loadImportedMatch \} from "\.\/matchStore"/);
+assert.match(androidUpgradeBridge, /loadImportedMatch\(playerId, gameId\)/);
+assert.match(androidUpgradeBridge, /slice\(0, 2\)/);
+assert.match(androidUpgradeBridge, /replayRestored/);
+assert.match(androidUpgradeBridge, /recordGameId/);
+assert.match(androidUpgradeBridge, /engineCommit/);
+assert.match(androidStorageInspector, /Production matchStore rehydration failed after update/);
+assert.match(androidStorageInspector, /productionStoreRehydration/);
+assert.match(androidEmulatorDiagnostics, /mResumedActivity|topResumedActivity/);
+assert.match(updateValidationWorkflow, /ofrc-android-diagnostics/);
+assert.match(updateValidationWorkflow, /bash -n scripts\/android-emulator-diagnostics\.sh/);
+assert.match(androidReleaseUpgrade, /android_prepare_emulator/);
+assert.match(androidReleaseUpgrade, /android_launch_package/);
+assert.doesNotMatch(androidReleaseUpgrade, /sleep 300/);
+assert.match(androidBaselineUiSeed, /android_launch_package/);
+assert.match(androidBaselineUiSeed, /timeout 20s adb -s emulator-5554 shell uiautomator dump/);
+assert.ok(!androidBaselineUiSeed.includes("dump_ui || true"));
+assert.match(androidReleaseUpgrade, /install_apk "\$current_apk" true[\s\S]*?am force-stop "\$package_id"[\s\S]*?android_launch_package/);
+assert.ok(androidReleaseUpgrade.includes('android_launch_package "$package_id" "the valid signed app after unsigned-APK rejection"'));
+assert.ok(androidReleaseUpgrade.includes('android_launch_package "$package_id" "the original signed app after wrong-signer rejection"'));
+assert.match(androidReleaseUpgrade, /pre-update app process remained alive/);
+
+console.log("Android emulator diagnostics contract tests passed: bounded ADB restart/reconnect, separate boot/transport checks, early-failure log/screenshot capture, and classified launch outcomes.");

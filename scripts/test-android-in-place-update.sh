@@ -41,7 +41,27 @@ IFS='.' read -r major minor patch <<< "$current_version"
 next_version="$major.$minor.$((patch + 1))"
 test -s "$update_apk" || fail "Prebuilt higher-version APK is missing."
 log "Installing the prebuilt update APK for version $next_version."
-timeout 120s adb -s emulator-5554 install -r "$update_apk" || fail "Android rejected the in-place APK update."
+log "Candidate APK SHA-256: $(sha256sum "$update_apk" | awk '{print $1}')"
+install_started="$(date +%s)"
+install_output=""
+install_status=0
+install_output="$(timeout --signal=INT --kill-after=20s 300s adb -s emulator-5554 install --no-streaming -r "$update_apk" 2>&1)" || install_status=$?
+install_elapsed="$(( $(date +%s) - install_started ))"
+log "adb install exit=$install_status elapsed=${install_elapsed}s output: ${install_output:-<empty>}"
+if [[ "$install_status" -ne 0 ]]; then
+  log "ADB state after failed install:"
+  timeout 20s adb devices -l 2>&1 || true
+  timeout 20s adb -s emulator-5554 get-state 2>&1 || true
+  timeout 20s adb -s emulator-5554 shell df -h /data 2>&1 || true
+  timeout 20s adb -s emulator-5554 shell dumpsys package "$package_id" 2>&1 | tail -n 80 || true
+  log "Package Manager / installer diagnostics:"
+  timeout 30s adb -s emulator-5554 logcat -d -t 1200 2>&1 | grep -Ei "PackageManager|PackageInstaller|installd|INSTALL_FAILED|INSTALL_PARSE|INSTALL_TIMEOUT|signature|verif|FATAL EXCEPTION|AndroidRuntime" | tail -n 180 || true
+  if [[ "$install_status" -eq 124 || "$install_status" -eq 137 ]]; then
+    fail "adb install timed out after ${install_elapsed}s; no Package Manager rejection is inferred. See captured ADB and logcat diagnostics."
+  fi
+  fail "adb install failed with exit $install_status; Android Package Manager output: ${install_output:-<empty>}"
+fi
+[[ "$install_output" == *"Success"* ]] || fail "adb install returned zero but did not report Package Manager Success: ${install_output:-<empty>}"
 saved="$(timeout 30s adb -s emulator-5554 shell "run-as $package_id cat files/update-regression/sentinel.txt" | tr -d '\r')" || fail "Could not read the preserved app-data sentinel."
 [[ "$saved" == "keep-this-data" ]] || fail "App data was not preserved after adb -s emulator-5554 install -r."
 

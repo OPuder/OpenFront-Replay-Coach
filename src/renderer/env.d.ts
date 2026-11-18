@@ -1,6 +1,8 @@
 declare global {
   const __APP_VERSION__: string;
+  const __ANDROID_UPGRADE_TEST__: boolean;
   interface Window {
+    __OFRC_ANDROID_UPGRADE_TEST__?: { snapshot: () => Promise<unknown> };
     replayAPI: {
       openReplay: () => Promise<ReplaySummary | null>;
       installUpdate: () => Promise<{ scheduled: boolean; version: string }>;

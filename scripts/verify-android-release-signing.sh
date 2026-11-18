@@ -1,12 +1,19 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
+missing=()
 for name in ANDROID_KEYSTORE_BASE64 ANDROID_KEYSTORE_PASSWORD ANDROID_KEY_ALIAS ANDROID_KEY_PASSWORD; do
-  if [[ -z "${!name:-}" ]]; then
-    echo "::error::Missing required Android signing secret: $name. Release updates cannot be guaranteed without the permanent key."
-    exit 1
+  if [[ -n "${!name:-}" ]]; then
+    echo "::notice::Android signing input $name: configured (value withheld)."
+  else
+    echo "::error::Android signing input $name: missing (value withheld)."
+    missing+=("$name")
   fi
 done
+if (("${#missing[@]}" > 0)); then
+  echo "::error::Permanent Android signing validation blocked; missing inputs: ${missing[*]}."
+  exit 1
+fi
 
 directory="$(mktemp -d "${RUNNER_TEMP:-/tmp}/ofrc-release-signing-XXXXXX")"
 keystore="$directory/release.jks"
@@ -17,29 +24,41 @@ printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$keystore"
 test -s "$keystore"
 ANDROID_KEYSTORE_BASE64="$ANDROID_KEYSTORE_BASE64" node scripts/verify-android-keystore.mjs
 
-previous_tag="$(gh release list --limit 1 --json tagName --jq '.[0].tagName // empty')"
+previous_tag="${ANDROID_BASELINE_TAG:-$(gh release list --limit 1 --json tagName --jq '.[0].tagName // empty')}"
 if [[ -z "$previous_tag" ]]; then
   echo "::error::No previous published release is available to verify Android signing continuity."
   exit 1
 fi
 
-previous_dir="$directory/previous"
-mkdir -p "$previous_dir"
-gh release download "$previous_tag" --pattern '*-Android.apk' --dir "$previous_dir"
-previous_apk="$(find "$previous_dir" -type f -name '*.apk' -print -quit)"
+previous_apk="${PREVIOUS_APK:-}"
+if [[ -z "$previous_apk" ]]; then
+  previous_dir="$directory/previous"
+  mkdir -p "$previous_dir"
+  gh release download "$previous_tag" --pattern '*-Android.apk' --dir "$previous_dir"
+  previous_apk="$(find "$previous_dir" -type f -name '*.apk' -print -quit)"
+fi
 if [[ -z "$previous_apk" ]]; then
   echo "::error::The latest release $previous_tag has no Android APK; refusing an unverified signing transition."
   exit 1
 fi
 
 export ANDROID_KEYSTORE_PATH="$keystore"
-node scripts/configure-android-signing.mjs
-(
-  cd android
-  timeout 600s ./gradlew --no-daemon assembleRelease
-) || { echo "::error::A release APK could not be built with the permanent signing key."; exit 1; }
-current_apk="android/app/build/outputs/apk/release/app-release.apk"
-test -s "$current_apk"
+if [[ "${ANDROID_UPGRADE_TEST_BUILD:-0}" == "1" ]]; then
+  default_candidate_apk="android/app/build/outputs/apk/debug/app-debug.apk"
+  build_task="assembleDebug"
+else
+  default_candidate_apk="android/app/build/outputs/apk/release/app-release.apk"
+  build_task="assembleRelease"
+fi
+current_apk="${OPENFRONT_CURRENT_APK:-$default_candidate_apk}"
+if [[ "${ANDROID_SIGNING_VERIFY_ONLY:-0}" != "1" ]]; then
+  node scripts/configure-android-signing.mjs
+  (
+    cd android
+    timeout 600s ./gradlew --no-daemon "$build_task"
+  ) || { echo "::error::Android candidate APK could not be built with the permanent signing key."; exit 1; }
+fi
+test -s "$current_apk" || { echo "::error::Signed Android candidate APK is missing: $current_apk"; exit 1; }
 build_tools="$(find "$ANDROID_HOME/build-tools" -mindepth 1 -maxdepth 1 -type d | sort -V | tail -n 1)"
 apksigner="$build_tools/apksigner"
 "$apksigner" verify --verbose "$previous_apk"
@@ -57,4 +76,8 @@ if [[ -z "$previous_cert" || -z "$current_cert" || "$current_cert" != "$previous
   exit 1
 fi
 
-echo "Android signing readiness passed: permanent key matches published APK from $previous_tag."
+if [[ "${ANDROID_SIGNING_VERIFY_ONLY:-0}" == "1" ]]; then
+  echo "Android signing post-emulator verification passed: all four permanent signing inputs validated and candidate certificate matches published APK from $previous_tag."
+else
+  echo "Android signing readiness passed: permanent key matches published APK from $previous_tag."
+fi

@@ -411,7 +411,7 @@ jobs:
       - name: Validate signed Android release-upgrade script syntax
         run: bash -n scripts/test-android-release-upgrade.sh
 
-      - name: Install previous published APK and upgrade to exact signed release APK
+      - name: preflight: install APK then emulator
         timeout-minutes: 60
         uses: reactivecircus/android-emulator-runner@v2
         env:
@@ -464,14 +464,14 @@ jobs:
           generate_release_notes: true
           fail_on_unmatched_files: true
           body: |
-            ## Drei Ausgaben – eine Version
+            ## Drei Ausgaben â€“ eine Version
 
-            - **Windows Installer:** normal installieren, Desktop-Verknüpfung inklusive.
+            - **Windows Installer:** normal installieren, Desktop-VerknÃ¼pfung inklusive.
             - **Windows Portable:** ZIP entpacken und direkt starten, keine Installation.
-            - **Android APK:** Die App prüft beim Start auf Updates. Der Download wird nach Tippen auf Aktualisieren gestartet, vorgeprüft und anschließend Androids Installationsdialog geöffnet. Eine Bestätigung bleibt aus Sicherheitsgründen erforderlich. Keine Cloudflare-Anmeldung und kein Play-Store-Konto erforderlich.
-            Die Windows- und Android-Ausgaben enthalten die gemeinsame, getestete Coaching-Oberfläche. Android lädt öffentliche OpenFront-Daten über seine native HTTP-Schnittstelle.
+            - **Android APK:** Die App prÃ¼ft beim Start auf Updates. Der Download wird nach Tippen auf Aktualisieren gestartet, vorgeprÃ¼ft und anschlieÃŸend Androids Installationsdialog geÃ¶ffnet. Eine BestÃ¤tigung bleibt aus SicherheitsgrÃ¼nden erforderlich. Keine Cloudflare-Anmeldung und kein Play-Store-Konto erforderlich.
+            Die Windows- und Android-Ausgaben enthalten die gemeinsame, getestete Coaching-OberflÃ¤che. Android lÃ¤dt Ã¶ffentliche OpenFront-Daten Ã¼ber seine native HTTP-Schnittstelle.
 
-            **Android-Signierung:** ${{ needs.build-android.outputs.signing_mode }}. Für zuverlässige Updates muss der dauerhafte Schlüssel einmalig als vier GitHub-Actions-Secrets eingerichtet werden; siehe `docs/ANDROID_SIGNING.md`. Den privaten Schlüssel niemals ins Repository committen.
+            **Android-Signierung:** ${{ needs.build-android.outputs.signing_mode }}. FÃ¼r zuverlÃ¤ssige Updates muss der dauerhafte SchlÃ¼ssel einmalig als vier GitHub-Actions-Secrets eingerichtet werden; siehe `docs/ANDROID_SIGNING.md`. Den privaten SchlÃ¼ssel niemals ins Repository committen.
 
             **Start:** siehe START_HERE.txt.
           files: |

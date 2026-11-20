@@ -201,7 +201,8 @@ assert.match(androidReleaseUpgrade, /compare-android-upgrade-snapshots\.mjs.*aft
 assert.match(androidReleaseUpgrade, /rm -f "\$test_keystore" "\$test_signed_apk"/);
 assert.doesNotMatch(androidReleaseUpgrade, /echo "\$test_password"|cat "\$test_keystore"|upload-artifact.*test_keystore/);
 const androidBaselineUiSeed = read("scripts/seed-android-baseline-ui.sh");
-assert.match(androidBaselineUiSeed, /uiautomator dump --compressed/);
+assert.match(androidBaselineUiSeed, /uiautomator dump \/sdcard\/ofrc-window\.xml/);
+assert.doesNotMatch(androidBaselineUiSeed, /uiautomator dump --compressed/);
 assert.match(androidBaselineUiSeed, /UI hierarchy dump attempt/);
 assert.match(androidBaselineUiSeed, /dumpsys window/);
 assert.match(androidBaselineUiSeed, /two diagnostic UIAutomator attempts/);

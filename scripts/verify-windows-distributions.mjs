@@ -154,17 +154,42 @@ const expand = spawnSync("powershell.exe", ["-NoProfile", "-NonInteractive", "-C
 if (expand.error || expand.status !== 0) {
   failures.push({ kind: "portable ZIP extraction", status: expand.status, error: expand.error?.message, stdout: expand.stdout, stderr: expand.stderr });
 } else {
-  const portableExe = path.join(portableDir, "OpenFront Replay Coach.exe");
-  const portableAsar = path.join(portableDir, "resources", "app.asar");
-  if (!existsSync(portableExe) || !existsSync(portableAsar) || statSync(portableExe).size <= 1_000_000 || statSync(portableAsar).size <= 1_000) {
-    failures.push({ kind: "portable ZIP contents", executableExists: existsSync(portableExe), appAsarExists: existsSync(portableAsar) });
+  const portableEntries = [];
+  const collectPortableEntries = directory => {
+    for (const entry of readdirSync(directory, { withFileTypes: true })) {
+      const file = path.join(directory, entry.name);
+      if (entry.isDirectory()) collectPortableEntries(file);
+      else if (entry.isFile()) portableEntries.push(file);
+    }
+  };
+  collectPortableEntries(portableDir);
+  const portableExecutables = portableEntries.filter(file => path.basename(file) === "OpenFront Replay Coach.exe");
+  const portableAsars = portableEntries.filter(file =>
+    path.basename(file) === "app.asar" && path.basename(path.dirname(file)).toLowerCase() === "resources");
+  if (portableExecutables.length !== 1 || portableAsars.length !== 1) {
+    failures.push({
+      kind: "portable ZIP contents",
+      executableMatches: portableExecutables.map(file => path.relative(portableDir, file)),
+      appAsarMatches: portableAsars.map(file => path.relative(portableDir, file)),
+      archiveEntries: portableEntries.slice(0, 40).map(file => path.relative(portableDir, file)),
+    });
   } else {
+    const portableExe = portableExecutables[0];
+    const portableAsar = portableAsars[0];
+    if (statSync(portableExe).size <= 1_000_000 || statSync(portableAsar).size <= 1_000) {
+      failures.push({
+        kind: "portable ZIP contents",
+        executable: { path: path.relative(portableDir, portableExe), bytes: statSync(portableExe).size },
+        appAsar: { path: path.relative(portableDir, portableAsar), bytes: statSync(portableAsar).size },
+      });
+    } else {
     const portablePe = inspectPe(portableExe);
     if (portablePe.architecture !== "x64") {
       failures.push({ kind: "portable application architecture", expected: "x64", actual: portablePe.architecture, portablePe });
     } else {
       console.log("PORTABLE_APPLICATION_ARCHITECTURE_OK", JSON.stringify(portablePe));
       runRendererSmoke("portable ZIP", portableExe);
+    }
     }
   }
 }

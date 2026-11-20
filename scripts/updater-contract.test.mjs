@@ -293,25 +293,38 @@ test("Android KVM contract rejects preflight placed after emulator startup", () 
   assert.ok(preflightStart >= 0 && emulatorStart > preflightStart && diagnosticsStart > emulatorStart,
     "The workflow must contain the preflight, emulator runner and post-emulator diagnostics in order.");
 
-  const preflightEnd = updateValidationWorkflow.indexOf("      - name:", preflightStart + preflightMarker.length);
-  assert.ok(preflightEnd > preflightStart && preflightEnd < emulatorStart,
+  const nextStepPattern = /^      - (?:name|uses):/gm;
+  nextStepPattern.lastIndex = preflightStart + preflightMarker.length;
+  const preflightEnd = nextStepPattern.exec(updateValidationWorkflow)?.index ?? -1;
+  assert.ok(preflightEnd > preflightStart && preflightEnd === emulatorStart,
     "The preflight must be a standalone workflow step immediately before the emulator runner.");
   const preflightStep = updateValidationWorkflow.slice(preflightStart, preflightEnd);
-  const emulatorStep = updateValidationWorkflow.slice(emulatorStart, diagnosticsStart);
+  nextStepPattern.lastIndex = emulatorStart + emulatorMarker.length;
+  const emulatorEnd = nextStepPattern.exec(updateValidationWorkflow)?.index ?? -1;
+  assert.equal(emulatorEnd, diagnosticsStart,
+    "The diagnostics step must immediately follow the complete emulator step.");
+  const emulatorStep = updateValidationWorkflow.slice(emulatorStart, emulatorEnd);
+  nextStepPattern.lastIndex = diagnosticsStart + diagnosticsMarker.length;
+  const diagnosticsEnd = nextStepPattern.exec(updateValidationWorkflow)?.index ?? updateValidationWorkflow.length;
+  const diagnosticsStep = updateValidationWorkflow.slice(diagnosticsStart, diagnosticsEnd);
   assert.match(emulatorStep, /uses: reactivecircus\/android-emulator-runner@v2/);
+  assert.match(diagnosticsStep, /android_capture_diagnostics "post-emulator-action"/);
 
   // Move the complete preflight step after the unchanged emulator step. The
   // emulator runner itself remains at its original workflow position.
   const moved = updateValidationWorkflow.slice(0, preflightStart) +
-    updateValidationWorkflow.slice(preflightEnd, diagnosticsStart) +
+    updateValidationWorkflow.slice(preflightEnd, emulatorStart) +
+    emulatorStep +
     preflightStep +
     updateValidationWorkflow.slice(diagnosticsStart);
 
   assert.equal((moved.match(/uses: reactivecircus\/android-emulator-runner@v2/g) || []).length, 1,
     "The negative fixture must retain exactly one emulator runner.");
-  assert.equal(moved.slice(moved.indexOf(emulatorMarker), moved.indexOf(diagnosticsMarker)),
+  assert.equal(moved.slice(moved.indexOf(emulatorMarker), moved.indexOf(preflightMarker)),
     emulatorStep,
     "The emulator runner step must remain unchanged in the negative fixture.");
+  assert.ok(moved.indexOf(diagnosticsMarker) > moved.indexOf(preflightMarker),
+    "The diagnostics step must remain after the moved preflight step.");
   assert.throws(() => validateAndroidKvmWorkflow(moved), /KVM preflight must run before emulator startup/);
 });
 assert.match(updateValidationWorkflow, /Capture host and ADB diagnostics after emulator action/);

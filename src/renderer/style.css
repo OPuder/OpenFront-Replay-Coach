@@ -2361,3 +2361,13 @@ body{
 .adaptive-training-evidence>small,.adaptive-training-target{color:#7f97aa;font-size:8px;line-height:1.5}
 .adaptive-training-target{display:block;margin-top:5px;color:#b5c7d4}
 @media(max-width:560px){.adaptive-training-heading{align-items:flex-start;flex-direction:column;gap:5px}.adaptive-training-evidence{flex-direction:column;gap:2px}}
+
+
+.coach-focus-list{display:grid;gap:10px;margin:12px 0 0;padding:0;list-style:none}
+.coach-focus-list li{display:grid;grid-template-columns:23px minmax(0,1fr);gap:9px;align-items:start;padding:9px 10px;border:1px solid #30465b;border-radius:9px;background:#0b1a29}
+.coach-focus-list li>span{display:grid;place-items:center;width:22px;height:22px;border-radius:6px;background:#624b2a;color:#f4d49a;font:800 10px 'Cascadia Code',monospace}
+.coach-focus-list li>div{min-width:0}
+.coach-focus-list li b{display:block;color:#eef5fc;font-size:11px;line-height:1.35}
+.coach-focus-list li small{display:block;margin-top:3px;color:#a4b7c9;font-size:9px}
+.coach-focus-list li p{margin:5px 0 0;color:#c0cfdd;font-size:10px;line-height:1.45}
+@media(max-width:560px){.coach-focus-list li{padding:8px}.coach-focus-list li p{font-size:9px}}

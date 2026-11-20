@@ -1,0 +1,78 @@
+import assert from 'node:assert/strict';
+import { spawn } from 'node:child_process';
+import { app, BrowserWindow } from 'electron';
+
+const port=5187;
+let server, window;
+const watchdog=setTimeout(()=>{
+  console.error('Replay visualization UI test exceeded its 120-second watchdog');
+  process.exit(124);
+},120000);
+watchdog.unref();
+const wait=async url=>{for(let i=0;i<80;i++){try{const r=await fetch(url);if(r.ok)return;}catch{}await new Promise(resolve=>setTimeout(resolve,250));}throw new Error('Vite UI test server did not start');};
+async function main(){
+  app.commandLine.appendSwitch('no-sandbox');app.commandLine.appendSwitch('disable-gpu');await app.whenReady();
+  server=spawn('node',['node_modules/vite/bin/vite.js','--host','127.0.0.1','--port',String(port),'--strictPort'],{stdio:'ignore'});
+  await wait('http://127.0.0.1:'+port+'/scripts/replay-visualization-ui-test.html');
+  window=new BrowserWindow({show:true,width:375,height:900,webPreferences:{contextIsolation:true,nodeIntegration:false,sandbox:true}});
+  await window.loadURL('http://127.0.0.1:'+port+'/scripts/replay-visualization-ui-test.html');
+  window.show();
+  window.focus();
+  for(let i=0;i<80;i++){
+    const ready=await window.webContents.executeJavaScript("typeof window.__uiTest==='function' && !!document.querySelector('canvas.replay-viz-territory')");
+    if(ready)break;
+    await new Promise(resolve=>setTimeout(resolve,100));
+    if(i===79)throw new Error('Replay visualization did not render in the browser harness');
+  }
+  const results=[];
+  for(const width of [320,375,768,1440]){
+    window.setSize(width,900);
+    await new Promise(resolve=>setTimeout(resolve,80));
+    const state=await window.webContents.executeJavaScript('window.__uiTest()');
+    assert.ok(state.scrollWidth<=state.width,'Horizontal overflow at '+width+'px: '+JSON.stringify(state));
+    assert.ok(state.hasTerritory,'Territory overlay missing at '+width+'px');
+    assert.ok(state.hasMovement,'Engine movement overlay missing at '+width+'px');
+    assert.ok(state.hasTerritoryChanges,'Territory-change overlay missing at '+width+'px');
+    assert.ok(state.hasTerritoryTransfer,'Actual owner transfer summary missing at '+width+'px');
+    assert.ok(state.hasPriorityCards,'All three prioritized coaching cards must render at '+width+'px (found '+state.priorityCardCount+')');
+    assert.ok(state.hasConsequence,'Priority card must explain the consequence at '+width+'px');
+    assert.ok(state.hasAlternative,'Priority card must show a better alternative at '+width+'px');
+    assert.ok(state.hasAffectedPlayers,'Priority card must identify resolved affected players at '+width+'px');
+    assert.ok(state.hasMissingTimestampLabel,'A finding without a timestamp must be explicitly labelled at '+width+'px');
+    assert.ok(state.missingTimestampCardDisabled,'A finding without a timestamp must not trigger an invented timeline jump at '+width+'px');
+    assert.ok(state.hasNoMissingTimestampMarker,'A finding without a timestamp must not create a timeline marker at '+width+'px');
+    assert.ok(state.hasAffectedOverlay,'Affected-territory overlay missing at '+width+'px');
+    assert.ok(state.buttons.every(button=>button.name.length>0),'Unlabelled button at '+width+'px');
+    results.push({width,scrollWidth:state.scrollWidth,buttons:state.buttons.length,territory:state.hasTerritory,movement:state.hasMovement,territoryChanges:state.hasTerritoryChanges,missingTimestampLabel:state.hasMissingTimestampLabel,missingTimestampDisabled:state.missingTimestampCardDisabled});
+  }
+  await window.webContents.executeJavaScript("document.querySelector('.replay-viz-priority-card').click()");
+  const coached=await window.webContents.executeJavaScript('window.__uiTest()');
+  assert.equal(coached.selectedTime,'00:10','Selecting a prioritized finding must synchronize the map/timeline playhead');
+  assert.equal(coached.selectedFrame,'Engine-Frame 100','Selecting a finding must show the engine map snapshot at that finding time');
+  assert.ok(coached.hasDecision,'Selected finding must expose its decision context');
+  assert.ok(coached.hasEvidenceSeparation,'Replay evidence and coach assessment must be visibly distinguished');
+  await window.webContents.executeJavaScript(`document.querySelector('.replay-viz-marker[aria-label^="00:15"]').click()`);
+  const selected=await window.webContents.executeJavaScript("window.__uiTest()");
+  assert.equal(selected.selectedTime,'00:15','Selecting a timeline marker must update the coaching time');
+  assert.equal(selected.selectedFrame,'Engine-Frame 150','Selecting a later timeline marker must advance the rendered map snapshot');
+  assert.equal(selected.buttons.filter(button=>button.pressed==='true').length,1,'Exactly one timeline marker must be selected');
+  window.setFocusable(true);
+  window.show();
+  window.focus();
+  window.webContents.focus();
+  await window.webContents.executeJavaScript("window.focus(); document.body.setAttribute('tabindex','-1'); document.body.focus()");
+  await new Promise(resolve=>setTimeout(resolve,200));
+  const keyboardReady=await window.webContents.executeJavaScript("document.hasFocus() && document.activeElement===document.body");
+  assert.equal(keyboardReady,true,'Electron window and document must own focus before dispatching Tab');
+  await window.webContents.sendInputEvent({type:'keyDown',keyCode:'TAB'});
+  await window.webContents.sendInputEvent({type:'keyUp',keyCode:'TAB'});
+  // Electron queues native input delivery separately from executeJavaScript.
+  // Allow the renderer's focus update to commit before asserting keyboard access.
+  await new Promise(resolve=>setTimeout(resolve,120));
+  const focus=await window.webContents.executeJavaScript("(() => { const first=document.querySelector('.replay-viz-priority-card'); const active=document.activeElement; return {tag:active?.tagName,role:active?.getAttribute('role'),label:active?.getAttribute('aria-label')||active?.textContent?.trim(),isFirstIntendedButton:active===first}; })()");
+  assert.equal(focus.tag,'BUTTON','Keyboard Tab must focus an interactive control');
+  assert.equal(focus.isFirstIntendedButton,true,'Keyboard Tab must focus the first intended coaching button in DOM order');
+  console.log(JSON.stringify({responsiveViewports:results,keyboardFocus:focus},null,2));
+  window.destroy();server.kill();app.exit(0);process.exit(0);
+}
+main().catch(error=>{console.error(error);if(window)window.destroy();if(server)server.kill();app.exit(1);process.exit(1);});

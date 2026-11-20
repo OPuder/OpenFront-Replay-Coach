@@ -482,7 +482,17 @@ ipcMain.handle('replay:open', async () => {
 });
 
 registerUpdaterIpc();
+ipcMain.handle('diagnostics:is-upgrade-test', () => process.env.OFRC_UPGRADE_DIAGNOSTICS === '1');
 app.whenReady().then(() => {
+  if (process.env.OFRC_UPGRADE_DIAGNOSTICS === '1') {
+    console.info('OFRC_UPGRADE_CONTEXT=' + JSON.stringify({
+      userDataPath: app.getPath('userData'),
+      appDataPath: app.getPath('appData'),
+      executablePath: app.getPath('exe'),
+      appPath: app.getAppPath(),
+      version: app.getVersion(),
+    }));
+  }
   // Show the app immediately. The release check and verified download run in
   // the background so a slow GitHub connection never looks like a failed launch.
   createWindow();

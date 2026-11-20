@@ -10,6 +10,8 @@ const versionCode = major * 1_000_000 + minor * 1_000 + patch;
 const gradlePath = "android/app/build.gradle";
 const gradle = readFileSync(gradlePath, "utf8");
 
+// Rewrite only the app version fields. Keep the generated Capacitor Gradle
+// configuration intact, including any release signing configuration.
 if (!/versionCode\s+\d+/.test(gradle) || !/versionName\s+["'][^"']+["']/.test(gradle)) {
   throw new Error("Could not find versionCode and versionName in generated Android Gradle file.");
 }

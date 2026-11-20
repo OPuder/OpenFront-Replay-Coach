@@ -4,15 +4,16 @@ on:
   pull_request:
     branches: [main]
   push:
-    branches: [main]
+    branches: [main, feature/release-update-system]
   workflow_dispatch:
 
 permissions:
   contents: read
 
 concurrency:
-  group: replay-compatibility-${{ github.ref }}
+  group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
+
 
 jobs:
   replay-compatibility:

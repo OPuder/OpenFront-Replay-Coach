@@ -35,12 +35,22 @@ for (const [lockHash, group] of dependencyGroups) {
   const representative = group[0];
   const representativePath = path.resolve(representative.source);
   console.log(`Installing shared dependencies for ${group.length} exact engines (lock ${lockHash.slice(0, 12)})`);
-  const install = spawnSync(process.platform === "win32" ? "npm.cmd" : "npm", ["ci", "--ignore-scripts"], {
-    cwd: representativePath,
-    stdio: "inherit",
-    shell: process.platform === "win32",
-  });
-  if (install.status !== 0) throw new Error(`Dependency installation failed for lockfile group ${lockHash}`);
+  let install;
+  for (let attempt = 1; attempt <= 2; attempt++) {
+    install = spawnSync(process.platform === "win32" ? "npm.cmd" : "npm", ["ci", "--ignore-scripts", "--no-audit", "--no-fund"], {
+      cwd: representativePath,
+      stdio: "inherit",
+      shell: process.platform === "win32",
+    });
+    if (install.status === 0) break;
+    const failure = install.error?.message ?? `exit ${install.status ?? "unknown"} / signal ${install.signal ?? "none"}`;
+    console.error(`npm ci attempt ${attempt}/2 failed for lockfile group ${lockHash.slice(0, 12)}: ${failure}`);
+    if (attempt < 2) await new Promise(resolve => setTimeout(resolve, 5000));
+  }
+  if (install.status !== 0) {
+    const failure = install.error?.message ?? `exit ${install.status ?? "unknown"} / signal ${install.signal ?? "none"}`;
+    throw new Error(`Dependency installation failed for lockfile group ${lockHash}: ${failure}`);
+  }
 
   for (const engine of group.slice(1)) {
     const target = path.join(path.resolve(engine.source), "node_modules");

@@ -217,8 +217,6 @@ async function main() {
   const hashMismatchResult = batch.outcomes.find(item => item.gameId === "hash-mismatch");
   const malformedResult = batch.outcomes.find(item => item.gameId === "malformed-replay");
   const levantResult = batch.outcomes.find(item => item.gameId === "Levant");
-  const hashMismatchResult = batch.outcomes.find(item => item.gameId === "hash-mismatch");
-  const malformedResult = batch.outcomes.find(item => item.gameId === "malformed-replay");
   assert.equal(europeResult?.status, "verified");
   assert.equal(europeResult?.recordedHashes, 1006);
   assert.equal(europeResult?.verifiedHashes, 1006);
@@ -257,8 +255,9 @@ async function main() {
   const persisted = await window.webContents.executeJavaScript("window.__verifyBatchStoreTest()", true);
   assert.equal(persisted.length, 5, "All selected match records must survive refresh");
   for (const gameId of ["Europe", "Levant"]) {
-    const item = persisted.find(entry => entry.gameId === gameId);
-    const report = batch.coaching.find(entry => entry.matchId === gameId);
+    const matchId = replayIds[gameId];
+    const item = persisted.find(entry => entry.gameId === matchId);
+    const report = batch.coaching.find(entry => entry.matchId === matchId);
     assert.ok(report, gameId + " coaching report must be available for post-reload comparison");
     assert.equal(item?.analysisStatus, "verified");
     assert.equal(item?.simulationStatus, "verified");

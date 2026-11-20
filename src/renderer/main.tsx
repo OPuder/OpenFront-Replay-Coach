@@ -21,6 +21,8 @@ import { StrategyPlaybook } from './StrategyPlaybook';
 import { compactBatchMatchForUi, mergeReplayPlayerCounts, preferReplayPlayerCount, selectGamesToAnalyze, selectGamesToImport } from './AutoLibrarySync';
 import { getReplayDisplayState } from './replayPresentation';
 import { buildReplayEngineCoverageReport } from './ReplayEngineCoverage';
+import { ReplayVisualization } from './ReplayVisualization';
+import { toReplayCoachFindings } from './ReplayCoachIntegration';
 
 if (__ANDROID_UPGRADE_TEST__) {
   // This module is tree-shaken from production builds; only the dedicated
@@ -33,6 +35,9 @@ if (__ANDROID_UPGRADE_TEST__) {
 // Electron provides its API through the isolated preload; normal browsers use
 // the browser adapter so the same React interface powers Windows and Android.
 installBrowserReplayAPI();
+window.__OFRC_LOCAL_LIBRARY_RESTORE_COMPLETE__ = false;
+window.__OFRC_LOCAL_LIBRARY_RESTORE_ERROR__ = null;
+window.__OFRC_LOCAL_LIBRARY_RESTORE_RESULT__ = null;
 type BatchMatchItem = Omit<StoredMatchEntry, 'status' | 'analysisStatus'> & {
   status: StoredMatchEntry['status'] | 'queued' | 'running';
   analysisStatus?: StoredAnalysisStatus | 'queued' | 'running';
@@ -135,18 +140,28 @@ function App() {
   React.useEffect(()=>{setLibraryPage(0);},[gameFilter,modeFilter,typeFilter,gameSearch]);
   React.useEffect(() => {
     let active=true;
+    window.__OFRC_LOCAL_LIBRARY_RESTORE_COMPLETE__ = false;
     const restore=async()=>{
       try {
+        const diagnosticsEnabled = typeof window.replayAPI.isUpgradeDiagnosticsEnabled === 'function'
+          ? await window.replayAPI.isUpgradeDiagnosticsEnabled()
+          : false;
+        if(!active) return;
         const savedId=window.localStorage.getItem('ofrc:last-player-id');
-        if(!savedId) return;
+        if(!savedId) { if(active) window.__OFRC_LOCAL_LIBRARY_RESTORE_RESULT__ = { playerId: null, profileLoaded: false, profilePublicId: null, matchIds: [] }; return; }
         const [cachedPage,cachedMatches]=await Promise.all([loadPlayerLibrary(savedId),loadImportedMatches(savedId)]);
         if(!active) return;
+        const profilePublicId = cachedPage && typeof cachedPage.profile?.publicID === 'string' ? cachedPage.profile.publicID : null;
+        window.__OFRC_LOCAL_LIBRARY_RESTORE_RESULT__ = { playerId: savedId, profileLoaded: Boolean(cachedPage), profilePublicId, matchIds: cachedMatches.map(item=>item.game.gameId) };
         // Render the complete local library immediately; network refresh must not
         // hold the desktop UI hostage while OpenFront paginates old match history.
-        const cachedMatchesRefreshed=cachedMatches.map(refreshStoredMatch);
+        const cachedMatchesRefreshed=diagnosticsEnabled ? cachedMatches : cachedMatches.map(refreshStoredMatch);
         setPlayerId(savedId);
         setPlayerPage(cachedPage);
         setBatchMatches(cachedMatchesRefreshed.map(compactBatchMatchForUi));
+        // Upgrade regression runs inspect the exact restored cache before any
+        // online refresh or automatic analysis is allowed to mutate it.
+        if(diagnosticsEnabled) return;
         void refreshStoredMatches(savedId,cachedMatches).catch(storageError=>console.warn('[ReplayCoach] Lokale Kompatibilitätsdaten konnten nicht aktualisiert werden:',storageError));
         // Let Electron paint the restored workspace before network sync and automatic replay work begin.
         await new Promise(resolve=>window.setTimeout(resolve,1500));
@@ -161,7 +176,10 @@ function App() {
           console.warn('[ReplayCoach] Online-Abgleich beim Start fehlgeschlagen; nutze lokalen Stand:',syncError);
         }
       } catch(e) {
+        if(active) window.__OFRC_LOCAL_LIBRARY_RESTORE_ERROR__ = e instanceof Error ? e.message : String(e);
         console.warn('[ReplayCoach] Gespeicherte Spielbibliothek konnte nicht geladen werden:',e);
+      } finally {
+        if(active) window.__OFRC_LOCAL_LIBRARY_RESTORE_COMPLETE__ = true;
       }
     };
     void restore();
@@ -564,10 +582,8 @@ function App() {
             </div>
             {longitudinalReport.status==='ready' ? <div className="coach-spotlight-grid">
               <article className="coach-spotlight-item focus">
-                <span><Brain size={14}/> TRAININGSFOKUS</span>
-                <b>{longitudinalReport.recurringFindings[0]?.title ?? (longitudinalReport.weakestPhase? `Phase: ${longitudinalReport.weakestPhase.label}` : 'Noch kein wiederkehrender Fehler bestätigt')}</b>
-                <p>{longitudinalReport.recurringFindings[0]?.trainingRule ?? (longitudinalReport.weakestPhase? `Vergleiche in ${longitudinalReport.weakestPhase.label} die Entscheidungen und belegten Zustandswechsel in deinen Replays.` : 'Der Coach erfindet keine Schwäche. Verifiziere weitere Partien, damit wiederkehrende Muster sichtbar werden.')}</p>
-                {longitudinalReport.recurringFindings[0] && <small>{longitudinalReport.recurringFindings[0].occurrences} von {longitudinalReport.recurringFindings[0].comparableMatches} vergleichbaren Partien</small>}
+                <span><Brain size={14}/> DEINE 3 WICHTIGSTEN TRAININGSFOKUSSE</span>
+                {longitudinalReport.trainingGoals.length>0 ? <ol className="coach-focus-list">{longitudinalReport.trainingGoals.slice(0,3).map((goal,index)=><li key={goal.id}><span>{index+1}</span><div><b>{goal.title}</b><small>{goal.occurrences}/{goal.comparableMatches} vergleichbare Partien · {goal.status==='regressing'?'Rückschritt':goal.status==='improving'?'Verbessert':goal.status==='active'?'Wiederkehrend':'Vorläufig'}</small><p>{goal.trainingRule}</p></div></li>)}</ol> : longitudinalReport.recurringFindings.length>0 ? <ol className="coach-focus-list">{longitudinalReport.recurringFindings.slice(0,3).map((finding,index)=><li key={finding.id}><span>{index+1}</span><div><b>{finding.title}</b><small>{finding.occurrences}/{finding.comparableMatches} vergleichbare Partien</small><p>{finding.trainingRule}</p></div></li>)}</ol> : <p>{longitudinalReport.weakestPhase? `Vergleiche in ${longitudinalReport.weakestPhase.label} die Entscheidungen und belegten Zustandswechsel in deinen Replays.` : 'Der Coach erfindet keine Schwäche. Verifiziere weitere Partien, damit wiederkehrende Muster sichtbar werden.'}</p>}
               </article>
               <article className="coach-spotlight-item strength">
                 <span><ShieldCheck size={14}/> DAS MACHST DU GUT</span>
@@ -908,7 +924,12 @@ function CoachPanel({apiResult,preferredPlayerPublicId,decodedActions,simulation
     : null;
 
   const { ordered: orderedEngineInsights, primary: primaryEngineInsights, supporting: supportingEngineInsights } = selectPrimaryCoachInsights(engineInsights);
-  const replayTimeline = buildReplayTimeline(timeline, primaryEngineInsights);
+  const proCoachFindings = simulationResult?.status === 'verified' && selectedClientId && proCoachReport
+    ? toReplayCoachFindings(proCoachReport.findings, apiResult.gameId, selectedClientId, selectedActionReviews, simulationResult.samples)
+    : [];
+  const replayTimeline = [...buildReplayTimeline(timeline, primaryEngineInsights), ...proCoachFindings.flatMap(finding =>
+    finding.timestampSeconds === null ? [] : [{ id: 'pro-' + finding.id, time: finding.timestampSeconds, title: finding.title, detail: finding.consequence, kind: 'Strategisches Coaching', turn: null, insight: undefined }],
+  )].sort((a,b)=>a.time-b.time);
   const selectedTimelineEntry = replayTimeline.find(event => event.id === selectedTimelineId) ?? replayTimeline[0] ?? null;
   React.useEffect(()=>{setSelectedTimelineId(null);},[apiResult.gameId]);
   const leadEngineInsight = primaryEngineInsights[0] ?? null;
@@ -1244,7 +1265,25 @@ function CoachPanel({apiResult,preferredPlayerPublicId,decodedActions,simulation
         <div className="replay-stage-map"><MapPreview map={apiResult.mapName} src={apiResult.previewUrl}/><div className="replay-stage-overlay"><span className="eyebrow">DEINE PARTIE</span><h3>{apiResult.mapName}</h3><p>{apiResult.gameMode} · {apiResult.gameType} · {clock(apiResult.durationSeconds??0)}</p><button className="studio-button primary" onClick={onOpenReplay}><Gamepad2 size={16}/>Original-Replay öffnen</button></div></div>
         <div className="replay-stage-side"><span className="eyebrow">MATCH-ÜBERSICHT</span><div><b>{fmt(apiResult.playerCount??0)}</b><small>Spieler</small></div><div><b>{fmt(playerActions.length)}</b><small>Deine Aktionen</small></div><div><b>{fmt(replayTimeline.length)}</b><small>Markierte Zeitpunkte</small></div><p>Wähle einen Moment. Die Coach-Marker zeigen deine wichtigsten Lernpunkte.</p></div>
       </div>
-      <div className="replay-timeline-panel"><div className="overview-heading"><div><span className="eyebrow">MATCH-TIMELINE</span><h3>Wichtige Momente deiner Partie</h3></div><span className="source-label">{primaryEngineInsights.length} priorisierte Coach-Marker</span></div>
+      <ReplayVisualization
+        mapName={apiResult.mapName}
+        mapPreview={apiResult.previewUrl}
+        durationSeconds={apiResult.durationSeconds ?? 0}
+        samples={simulationResult?.status === 'verified' ? simulationResult.samples : []}
+        findings={proCoachFindings}
+        events={replayTimeline.map(event => ({
+          id: event.id,
+          title: event.title,
+          kind: event.kind,
+          detail: event.detail,
+          time: event.time,
+          isCoach: Boolean(event.insight) || event.id.startsWith('pro-'),
+        }))}
+        selectedEventId={selectedTimelineEntry?.id ?? null}
+        onSelectEvent={setSelectedTimelineId}
+        onOpenReplay={onOpenReplay}
+      />
+      <div className="replay-timeline-panel"><div className="overview-heading"><div><span className="eyebrow">MATCH-TIMELINE</span><h3>Wichtige Momente deiner Partie</h3></div><span className="source-label">{primaryEngineInsights.length + proCoachFindings.length} priorisierte Coach-Marker</span></div>
         {replayTimeline.length ? <div className="event-timeline">{replayTimeline.map((event,i)=><button type="button" aria-pressed={selectedTimelineEntry?.id===event.id} className={`event-item replay-event-button ${selectedTimelineEntry?.id===event.id?'is-selected':''} ${event.insight?'is-coach-event':''}`} key={event.id} onClick={()=>setSelectedTimelineId(event.id)}><span className="event-marker"><span>{String(i+1).padStart(2,'0')}</span></span><span className="event-copy"><span><b>{event.title}</b><span className="event-type">{event.kind}</span></span><span>{event.detail}</span></span><time>{clock(event.time)}</time></button>)}</div> : <p className="empty-note">Für diese Partie wurden keine markierbaren Ereignisse gefunden.</p>}
         {selectedTimelineEntry && <article className="replay-event-detail">
           <div className="replay-event-detail-main"><span className="eyebrow">{selectedTimelineEntry.kind} · AUSGEWÄHLTER ZEITPUNKT</span><h4>{selectedTimelineEntry.title}</h4><p>{selectedTimelineEntry.detail}</p>

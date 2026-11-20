@@ -21,7 +21,7 @@ dump_ui() {
   local dump_output="" pull_output=""
   for attempt in 1 2; do
     rm -f "$ui_xml"
-    timeout 20s adb -s emulator-5554 shell uiautomator dump --compressed /sdcard/ofrc-window.xml >"$RUNNER_TEMP/ofrc-uiautomator-dump.log" 2>&1 || {
+    timeout 20s adb -s emulator-5554 shell uiautomator dump /sdcard/ofrc-window.xml >"$RUNNER_TEMP/ofrc-uiautomator-dump.log" 2>&1 || {
       dump_output="$(cat "$RUNNER_TEMP/ofrc-uiautomator-dump.log" 2>/dev/null || true)"
       log "UI hierarchy dump attempt $attempt/2 failed: ${dump_output:-no diagnostic output}"
     }

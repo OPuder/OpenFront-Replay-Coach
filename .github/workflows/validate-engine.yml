@@ -19,14 +19,14 @@ on:
       # PR #148 adds Android updater contract coverage; keep this gate in its six-workflow acceptance set.
       - ".github/workflows/validate-engine.yml"
   push:
-    branches: [main]
-    paths:
-      - ".gitmodules"
-      - "vendor/**"
-      - ".github/workflows/validate-engine.yml"
+    branches: [main, feature/release-update-system]
 
 permissions:
   contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   validate-engine:

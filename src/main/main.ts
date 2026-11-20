@@ -7,7 +7,7 @@ import { analyzeDetailedActions } from './decoder/DetailedAnalysis';
 import { buildCoachInsights } from './decoder/CoachInsights';
 import { assessReplayCompatibility } from './decoder/ReplayCompatibility';
 import { resolveReplayJsonExport } from './decoder/ReplayJsonExport';
-import { autoUpdateOnStartup, registerUpdaterIpc } from './updater';
+import { autoUpdateOnStartup, confirmWindowsAppReady, registerUpdaterIpc } from './updater';
 
 const isDev = !app.isPackaged;
 const API_BASE = 'https://api.openfront.io/public/game/';
@@ -258,6 +258,14 @@ function createWindow() {
     title: 'OpenFront Replay Coach', backgroundColor: '#0b1020',
     webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true, nodeIntegration: false, sandbox: true }
   });
+  win.webContents.once('did-finish-load', () => {
+    // A fallback data: error page must never count as a successful app restart.
+    if (!win.webContents.getURL().startsWith('file://')) {
+      console.error('[ReplayCoach] Startup-Bestätigung ausgelassen: Der gepackte Renderer wurde nicht geladen.', win.webContents.getURL());
+      return;
+    }
+    void confirmWindowsAppReady().catch(error => console.error('[ReplayCoach] Startup-Bestätigung für den Updater fehlgeschlagen:', error));
+  });
   win.webContents.on('did-fail-load', (_event, errorCode, errorDescription, validatedURL, isMainFrame) => {
     console.error('[ReplayCoach] Renderer konnte nicht geladen werden:', { errorCode, errorDescription, validatedURL, isMainFrame, appPath: app.getAppPath(), exe: app.getPath('exe') });
   });
@@ -474,7 +482,17 @@ ipcMain.handle('replay:open', async () => {
 });
 
 registerUpdaterIpc();
+ipcMain.handle('diagnostics:is-upgrade-test', () => process.env.OFRC_UPGRADE_DIAGNOSTICS === '1');
 app.whenReady().then(() => {
+  if (process.env.OFRC_UPGRADE_DIAGNOSTICS === '1') {
+    console.info('OFRC_UPGRADE_CONTEXT=' + JSON.stringify({
+      userDataPath: app.getPath('userData'),
+      appDataPath: app.getPath('appData'),
+      executablePath: app.getPath('exe'),
+      appPath: app.getAppPath(),
+      version: app.getVersion(),
+    }));
+  }
   // Show the app immediately. The release check and verified download run in
   // the background so a slow GitHub connection never looks like a failed launch.
   createWindow();

@@ -3,9 +3,13 @@ declare global {
   const __ANDROID_UPGRADE_TEST__: boolean;
   interface Window {
     __OFRC_ANDROID_UPGRADE_TEST__?: { snapshot: () => Promise<unknown> };
+    __OFRC_LOCAL_LIBRARY_RESTORE_COMPLETE__?: boolean;
+    __OFRC_LOCAL_LIBRARY_RESTORE_ERROR__?: string | null;
+    __OFRC_LOCAL_LIBRARY_RESTORE_RESULT__?: { playerId: string | null; profileLoaded: boolean; profilePublicId: string | null; matchIds: string[] } | null;
     replayAPI: {
       openReplay: () => Promise<ReplaySummary | null>;
       installUpdate: () => Promise<{ scheduled: boolean; version: string }>;
+      isUpgradeDiagnosticsEnabled: () => Promise<boolean>;
       getUpdateStatus: () => Promise<{ failed: boolean; message: string } | null>;
       onUpdateProgress: (callback: (progress: { phase: string; percent: number }) => void) => () => void;
       loadPlayer: (

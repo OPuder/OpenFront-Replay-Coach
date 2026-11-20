@@ -45,10 +45,10 @@ jobs:
         run: npm ci
 
       - name: Prepare all exact historical OpenFront engines
-        run: npm run prepare:engines
+        run: npm run prepare:engines 2>&1 | tee historical-engine-prepare.log
 
       - name: Build all exact replay engine worker bundles
-        run: npm run build:engine
+        run: npm run build:engine 2>&1 | tee replay-engine-build.log
 
       - name: Verify source pin and engine checkout cannot drift
         run: npm run validate:engine-pin
@@ -61,14 +61,28 @@ jobs:
           OPENFRONT_REPLAY_EXPECTED_PLAYERS: "2"
           OPENFRONT_REPLAY_EXPECTED_TURNS: "1334"
           OPENFRONT_REPLAY_EXPECTED_HASHES: "1006"
-        run: npm run test:coach
+        run: npm run test:coach 2>&1 | tee coach-regression-tests.log
 
       - name: Verify the actual Levant replay metadata
         env:
           OPENFRONT_REPLAY_ID: dLNCLHCvMK
           OPENFRONT_REPLAY_EXPECTED_COMMIT: bc3e3334c573c4959ec6a6745df6826d07233b4d
           OPENFRONT_REPLAY_EXPECTED_MAP: Levant
-        run: node --import ./vendor/OpenFrontIO/node_modules/tsx/dist/loader.mjs --test scripts/public-replay-compatibility.test.mjs
+        run: node --import ./vendor/OpenFrontIO/node_modules/tsx/dist/loader.mjs --test scripts/public-replay-compatibility.test.mjs 2>&1 | tee public-replay-tests.log
 
       - name: Run Europe and Levant as one mixed-engine batch, verify every hash, cancellation and IndexedDB persistence
-        run: xvfb-run -a ./node_modules/.bin/electron --no-sandbox scripts/replay-engine-batch-browser-test.mjs
+        run: xvfb-run -a ./node_modules/.bin/electron --no-sandbox scripts/replay-engine-batch-browser-test.mjs 2>&1 | tee mixed-engine-browser-tests.log
+
+      - name: Upload replay validation diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: replay-validation-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            historical-engine-prepare.log
+            replay-engine-build.log
+            coach-regression-tests.log
+            public-replay-tests.log
+            mixed-engine-browser-tests.log
+          if-no-files-found: ignore
+          retention-days: 14

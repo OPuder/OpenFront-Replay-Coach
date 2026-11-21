@@ -8,8 +8,12 @@
     "strict": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
-    "types": ["node", "electron"]
+    "types": [
+      "node",
+      "electron"
+    ]
   },
-  "include": ["src/main/**/*.ts"],
-  "exclude": ["src/main/**/*.test.*"]
+  "include": [
+    "src/main/**/*.ts"
+  ]
 }

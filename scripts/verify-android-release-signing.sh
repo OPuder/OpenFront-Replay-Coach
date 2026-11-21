@@ -44,8 +44,8 @@ fi
 
 export ANDROID_KEYSTORE_PATH="$keystore"
 if [[ "${ANDROID_UPGRADE_TEST_BUILD:-0}" == "1" ]]; then
-  default_candidate_apk="android/app/build/outputs/apk/debug/app-debug.apk"
-  build_task="assembleDebug"
+  default_candidate_apk="android/app/build/outputs/apk/release/app-release.apk"
+  build_task="assembleRelease"
 else
   default_candidate_apk="android/app/build/outputs/apk/release/app-release.apk"
   build_task="assembleRelease"

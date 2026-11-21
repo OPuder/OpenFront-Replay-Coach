@@ -1,8 +1,4 @@
-<<<<<<< HEAD
-﻿# OpenFront Replay Coach – Agent Configuration
-=======
 # OpenFront Replay Coach – Agent Configuration
->>>>>>> temp-main
 
 ## Project Mission
 Provide an automated coaching platform that captures, processes, and visualizes gameplay replays, enabling players to analyze performance, discover patterns, and improve skills.
@@ -16,14 +12,14 @@ Provide an automated coaching platform that captures, processes, and visualizes 
 
 ## QA & Regression
 - Each agent has an associated test suite.
-- QA agent runs nightly regression tests on the <code>qa/</code> branch.
+- QA agent runs nightly regression tests on the `<code>qa/</code>` branch.
 - Pull requests must reference a corresponding QA job that passes.
 
 ## GitHub Safety Rules
 - Never commit sensitive data to any branch.
 - All commits are WIP‑tagged until code reviews approve.
 - Draft PRs are used for major changes; no automatic merges.
-- Release is only performed from a protected <code>release/</code> branch after QA approval.
+- Release is only performed from a protected `<code>release/</code>` branch after QA approval.
 
 ## Agent Roles
 | ID | Role | Description |
@@ -34,16 +30,9 @@ Provide an automated coaching platform that captures, processes, and visualizes 
 | 03 | UX & Visualization | Translates insights into interactive visual representations for coaches and players. |
 | 04 | Platform & Update System | Maintains the Windows/Android runtime, manages updates, ensures compatibility. |
 | 05 | QA, Regression & Release | Automates testing, verifies stability, prepares releases. |
+
+## Release Requirements
+- Releases must be versioned via package.json and tagged in Git.
+- Automated CI must build the Electron app and publish to the distribution channel.
+- Only a `<code>release/*</code>` branch can trigger the release pipeline.
 - All tests must pass on the release branch before merge.
-  ## Release Requirements
-  - Releases must be versioned via package.json and tagged in Git.
-  - Automated CI must build the Electron app and publish to the distribution channel.
-  - Only a <code>release/*</code> branch can trigger the release pipeline.
-  - All tests must pass on the release branch before merge.
-<<<<<<< HEAD
-- Only a elease/* branch can trigger the release pipeline.
-- All tests must pass on the release branch before merge.
-=======
-- Only a <code>release/*</code> branch can trigger the release pipeline.
-- All tests must pass on the release branch before merge.
->>>>>>> temp-main

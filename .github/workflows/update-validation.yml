@@ -2,18 +2,75 @@ name: Update system validation
 
 on:
   pull_request:
+    branches: [main]
+    # Do not start Windows packaging and the Android emulator for docs-only or
+    # unrelated repository maintenance changes.
+    paths:
+      - ".github/workflows/**"
+      - "package.json"
+      - "package-lock.json"
+      - ".node-version"
+      - "tsconfig*.json"
+      - "vite.config.ts"
+      - "capacitor.config.*"
+      - "android-updater-template/**"
+      - "engine-build/**"
+      - "vendor/**"
+      - "src/**"
+      - "scripts/**"
+      - "android/**"
+      - "START_HERE.txt"
   push:
     branches: [main]
   workflow_dispatch:
 
 permissions:
   contents: read
+  pull-requests: read
 
 concurrency:
   group: update-validation-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
+  change-scope:
+    name: Identify Android upgrade-sensitive changes
+    runs-on: ubuntu-latest
+    outputs:
+      android_upgrade: ${{ steps.filter.outputs.android_upgrade }}
+    steps:
+      - name: Classify changed files
+        uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          base: main
+          filters: |
+            android_upgrade:
+              - 'android/**'
+              - 'android-updater-template/**'
+              - 'capacitor.config.*'
+              - 'package.json'
+              - 'package-lock.json'
+              - '.github/workflows/update-validation.yml'
+              - 'scripts/configure-android-signing.mjs'
+              - 'scripts/install-android-updater-plugin.mjs'
+              - 'scripts/seed-android-baseline-ui.sh'
+              - 'scripts/test-android-*.sh'
+              - 'scripts/download-android-release-baseline.sh'
+              - 'scripts/verify-android-release-signing.sh'
+              - 'scripts/inspect-android-upgrade-data.mjs'
+              - 'scripts/snapshot-android-web-storage.sh'
+              - 'scripts/compare-android-web-storage.mjs'
+              - 'scripts/compare-android-upgrade-snapshots.mjs'
+              - 'scripts/create-android-unsigned-negative-apk.py'
+              - 'src/main/updater.ts'
+              - 'src/main/preload.ts'
+              - 'src/renderer/UpdateCenter.tsx'
+              - 'src/renderer/matchStore.ts'
+              - 'src/renderer/env.d.ts'
+              - 'src/renderer/androidUpgradeTestBridge.ts'
+
   updater-contract-and-build:
     name: Updater contracts, typecheck and Windows packaging
     runs-on: windows-latest
@@ -131,6 +188,7 @@ jobs:
           retention-days: 7
 
   android-apk-validation:
+    needs: change-scope
     name: Android APK parse, identity, version and signature validation
     # Hosted macOS runners are themselves VMs and do not expose nested HVF to
     # Android's QEMU (qemu-system-aarch64 exits with HV_UNSUPPORTED). Use the
@@ -350,7 +408,10 @@ jobs:
           } | tee -a "$diag/kvm-preflight.log"
 
       - name: Test genuine published-APK in-place upgrade on Android emulator
-        if: success()
+        # Full real-device upgrade simulation is reserved for update/storage/
+        # signing changes. Ordinary coaching/UI changes still build and sign
+        # the production APK below, without paying the emulator startup cost.
+        if: success() && (github.event_name != 'pull_request' || needs.change-scope.outputs.android_upgrade == 'true')
         timeout-minutes: 60
         uses: reactivecircus/android-emulator-runner@v2.38.0
         env:

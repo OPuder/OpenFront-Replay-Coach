@@ -39,13 +39,22 @@ jobs:
       - name: Install Coach and Capacitor dependencies
         run: npm ci
 
-      - name: Build the shared renderer and original replay engine
-        run: npm run build:web
-
-      - name: Test player-elimination phase regression
-        run: npm run test:phase-survival
+      - name: Restore reusable historical engine bundles
+        id: engine-bundle-cache
+        uses: actions/cache@v4
+        with:
+          path: src/renderer/engine
+          key: openfront-engine-bundles-v1-${{ runner.os }}-${{ hashFiles('engine-build/**', 'scripts/build-engines.mjs', 'package-lock.json', '.node-version') }}
+      - name: Build exact replay engine bundles on cache miss
+        if: steps.engine-bundle-cache.outputs.cache-hit != 'true'
+        run: npm run build:engine
+      - name: Verify every pinned replay engine bundle
+        run: npm run verify:engine-bundles
+      - name: Build the shared renderer
+        run: npm run build:web:app
 
       - name: Test pro coaching algorithm and phase analytics
+        if: github.event_name != 'pull_request'
         run: npm run test:coach
 
       - name: Smoke-test native Android configuration

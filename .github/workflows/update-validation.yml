@@ -217,7 +217,6 @@ jobs:
             sudo apt-get install --no-install-recommends -y tesseract-ocr tesseract-ocr-deu
           fi
           tesseract --list-langs | grep -E '^(deu|eng)
-        run: |
           set -Eeuo pipefail
           VITE_ANDROID_UPGRADE_TEST=1 npm run build:web:app
           grep -R "__OFRC_ANDROID_UPGRADE_TEST__" dist >/dev/null || { echo "Test-only storage inspector was not bundled."; exit 1; }

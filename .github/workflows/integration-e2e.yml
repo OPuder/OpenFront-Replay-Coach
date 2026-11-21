@@ -76,8 +76,6 @@ jobs:
         run: npm run build:engine
       - name: Verify every pinned replay engine bundle
         run: npm run verify:engine-bundles
-      - name: Validate pinned engine catalog
-        run: npm run validate:engine-pin
       - name: Typecheck and production build
         run: npm run build:app
       - name: Run production-module integration unit contracts

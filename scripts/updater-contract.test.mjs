@@ -161,7 +161,7 @@ assert.match(androidBaselineUiSeed, /UI hierarchy dump attempt/);
 assert.match(androidBaselineUiSeed, /dumpsys window/);
 assert.match(androidBaselineUiSeed, /UI hierarchy dump attempt \$attempt\/2 failed/);
 assert.match(androidBaselineUiSeed, /UIAutomator hierarchy unavailable; continuing with screenshot OCR/);
-assert.match(androidBaselineUiSeed, /ocr_find_bounds\("\$needle" "\$occurrence" \|\| true\)/);
+assert.match(androidBaselineUiSeed, /ocr_find_bounds "\$needle" "\$occurrence" \|\| true/);
 assert.match(androidReleaseUpgrade, /snapshot-android-web-storage\.sh after/);
 assert.match(androidReleaseUpgrade, /after-negative-test-storage\.json/);
 assert.match(androidReleaseUpgrade, /compare-android-upgrade-snapshots\.mjs/);

@@ -224,6 +224,16 @@ jobs:
           npx cap sync android
           node scripts/install-android-updater-plugin.mjs
 
+      - name: Restore Gradle dependency and wrapper cache
+        uses: actions/cache@v6
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: gradle-${{ runner.os }}-${{ hashFiles('android/**/*.gradle*', 'android/gradle/wrapper/gradle-wrapper.properties', 'package-lock.json') }}
+          restore-keys: |
+            gradle-${{ runner.os }}-
+
       - name: Set Android version from package.json
         run: node scripts/set-android-version.mjs "$(node -p 'require("./package.json").version')"
 

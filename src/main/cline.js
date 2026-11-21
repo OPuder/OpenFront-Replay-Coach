@@ -52,66 +52,46 @@ async function saveTasks(updatedTask) {
   const idx = all.findIndex(t => t.id === updatedTask.id);
   if (idx !== -1) all[idx] = updatedTask;
   else all.push(updatedTask);
-  await fs.writeFile(TASK_QUEUE_FILE, JSON.stringify(all, null, 2), 'utf-8');
-}
-
-// Helper: lock utilities
-function lockFilePath(id) {
-  return path.join(LOCK_DIR, `${id}.lock`);
-}
-function createLock(id, leaseMs) {
-  const expiry = Date.now() + leaseMs;
-  fsSync.writeFileSync(lockFilePath(id), expiry.toString(), 'utf-8');
-}
-function isLocked(id) {
-  try {
-    const data = fs.readFileSync(lockFilePath(id), 'utf-8');
-    const expiry = parseInt(data, 10);
-    return Date.now() < expiry;
-  } catch (_) {
-    return false;
-  }
-}
-function deleteLock(id) {
-  try { fs.unlinkSync(lockFilePath(id)); } catch (_) {}
-}
-
 async function processTask(task) {
   console.log(`--- Processing task ${task.id}: ${task.description}`);
   const entry = agentRegistry[task.role];
   if (!entry) throw new Error(`Unknown agent role ${task.role}`);
-    const leaseMs = parseInt(process.env.LEASE_MS, 10) || 300000; // 5 minutes
-    const hb = setInterval(() => createLock(task.id, leaseMs), 10000);
+  const leaseMs = parseInt(process.env.LEASE_MS, 10) || 300000; // 5 minutes
+  const hb = setInterval(() => createLock(task.id, leaseMs), 10000);
+  try {
+    if (isLocked(task.id)) {
+      console.log(`Task ${task.id} already locked – skipping.`);
+      return;
+    }
+    createLock(task.id, leaseMs);
+    task.status = 'running';
+    await saveTasks(task);
+    const preStatus = execSync('git status --porcelain', { encoding: 'utf-8' });
+    await entry.agent.run();
+    const postStatus = execSync('git status --porcelain', { encoding: 'utf-8' });
+    const preLines = preStatus.split('\n').filter(Boolean);
+    const postLines = postStatus.split('\n').filter(Boolean);
+    const changedFiles = postLines
+      .filter(l => !preLines.includes(l))
+      .map(l => l.trim().split(' ')[1]);
     try {
-      // Claim lock
-      if (isLocked(task.id)) {
-        console.log(`Task ${task.id} already locked – skipping.`);
-        return;
-      }
-      createLock(task.id, leaseMs);
-      task.status = 'running';
-      const allTasks = await loadTasks();
-      const idx = allTasks.findIndex(t => t.id === task.id);
-      if (idx !== -1) allTasks[idx] = task;
-      await saveTasks(allTasks);
-      // Snapshot before agent runs
-      const preStatus = execSync('git status --porcelain', { encoding: 'utf-8' });
-      await entry.agent.run();
-      // Snapshot after agent runs
-      const postStatus = execSync('git status --porcelain', { encoding: 'utf-8' });
-      const preLines = preStatus.split('\n').filter(Boolean);
-      const postLines = postStatus.split('\n').filter(Boolean);
-      const changedFiles = postLines
-        .filter(l => !preLines.includes(l))
-        .map(l => l.trim().split(' ')[1]);
-      task.status = 'completed';
-      // Integration tests after agent work
-      try {
-        execSync('npm run test:integration-e2e', { stdio: 'inherit' });
-        console.log('Integration tests passed.');
-      } catch (e) {
-        console.error('Integration tests failed:', e.message);
+      execSync('npm run test:integration-e2e', { stdio: 'inherit' });
+      console.log('Integration tests passed.');
     } catch (e) {
+      console.error('Integration tests failed:', e.message);
+      throw e;
+    }
+    task.status = 'completed';
+  } catch (e) {
+    task.status = 'failed';
+    task.result = e.message;
+    console.error(`❌ Task ${task.id} failed: ${e.message}`);
+  } finally {
+    clearInterval(hb);
+    deleteLock(task.id);
+    await saveTasks(task);
+  }
+}
       task.status = 'failed';
       task.result = e.message;
       console.error(`❌ Task ${task.id} failed: ${e.message}`);

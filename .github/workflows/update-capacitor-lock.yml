@@ -30,6 +30,12 @@ jobs:
         with:
           node-version: "24.15.0"
 
+      - name: Set up repository-pinned npm
+        run: |
+          npm install --global npm@12.1.0
+          node --version
+          npm --version
+
       - name: Generate the reproducible npm lockfile
         run: npm install --package-lock-only --ignore-scripts --no-audit --no-fund
 

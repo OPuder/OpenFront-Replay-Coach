@@ -32,7 +32,7 @@ for (const engine of engines) {
 }
 
 if (process.env.OPENFRONT_SKIP_ENGINE_DEPENDENCIES === "1") {
-  console.log("Skipping historical engine npm installs because verified engine bundles were restored from cache.");
+  console.log("Skipping historical engine npm installs because OPENFRONT_SKIP_ENGINE_DEPENDENCIES=1.");
 } else {
   for (const [lockHash, group] of dependencyGroups) {
     const representative = group[0];

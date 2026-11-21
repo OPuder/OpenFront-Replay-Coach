@@ -3,6 +3,7 @@ set -Eeuo pipefail
 
 package_id="de.openfront.replaycoach"
 player_id="5SVg4WbI"
+log "Published baseline is non-debuggable; use OCR when UIAutomator exposes only the WebView container."
 ui_xml="$RUNNER_TEMP/ofrc-android-ui.xml"
 
 log() { echo "::notice::[Android baseline UI seed] $*"; }

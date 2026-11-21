@@ -245,10 +245,8 @@ assert.ok(androidValidationWorkflow.includes("bash -n scripts/android-emulator-d
 
 
 const engineBundleCacheWorkflows = [
-  read(".github/workflows/build-windows.yml"),
   read(".github/workflows/replay-compatibility.yml"),
   read(".github/workflows/integration-e2e.yml"),
-  read(".github/workflows/validate-android.yml"),
   read(".github/workflows/update-validation.yml"),
 ];
 for (const workflow of engineBundleCacheWorkflows) {

@@ -228,7 +228,20 @@ window.__runBatchReplayTest = async (gameIds) => {
         /oligenole/i.test(String(player?.displayName ?? player?.name ?? player?.username ?? "")));
       if (!selected?.clientID) throw new Error(`Fixture ${item.gameId} does not contain the required OligenOle player`);
       const clientId = String(selected.clientID);
-      const simulation = await simulateReplay(record, buildReplayEngineAssets(record), onProgress, 50, clientId, signal);
+      let lastLoggedPhase = "";
+      let lastLoggedBucket = -1;
+      const reportProgress = (percent: number, phase: string) => {
+        onProgress(percent, phase);
+        const bucket = Math.floor(percent / 10);
+        if (phase !== lastLoggedPhase || bucket !== lastLoggedBucket) {
+          console.log(`[replay-e2e] ${item.gameId}: ${phase} (${percent}%)`);
+          lastLoggedPhase = phase;
+          lastLoggedBucket = bucket;
+        }
+      };
+      console.log(`[replay-e2e] Starting hash-verified simulation for ${item.gameId}`);
+      const simulation = await simulateReplay(record, buildReplayEngineAssets(record), reportProgress, 50, clientId, signal);
+      console.log(`[replay-e2e] Simulation finished for ${item.gameId}: ${simulation.status}, ${simulation.verifiedHashes} verified hashes`);
       if (simulation.status !== "verified") throw new Error(`Fixture ${item.gameId} has no hash-verified simulation`);
       if (simulation.playerReview?.clientID !== clientId) throw new Error(`Simulation selected a different player for ${item.gameId}`);
       if (!simulation.playerReview?.clientID) throw new Error(`No reconstructed player review for ${item.gameId}`);

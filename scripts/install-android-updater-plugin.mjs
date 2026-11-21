@@ -30,7 +30,7 @@ if (!activity.includes("registerPlugin(ApkUpdaterPlugin.class)")) {
 }
 if (!activity.includes("WebView.setWebContentsDebuggingEnabled")) {
   activity = activity.replace("super.onCreate(savedInstanceState);",
-    "super.onCreate(savedInstanceState);\n        if (BuildConfig.OFRC_ANDROID_UPGRADE_TEST) {\n            WebView.setWebContentsDebuggingEnabled(true);\n        }");
+    "if (BuildConfig.OFRC_ANDROID_UPGRADE_TEST) {\n            WebView.setWebContentsDebuggingEnabled(true);\n        }\n        super.onCreate(savedInstanceState);");
 }
 if (!activity.includes("registerPlugin(ApkUpdaterPlugin.class)") || !activity.includes("WebView.setWebContentsDebuggingEnabled(true)")) {
   throw new Error("Capacitor MainActivity could not be configured for the updater plugin and test-only WebView inspector.");

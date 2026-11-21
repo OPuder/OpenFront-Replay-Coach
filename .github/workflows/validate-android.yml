@@ -20,12 +20,12 @@ jobs:
     timeout-minutes: 60
     steps:
       - name: Check out source
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           submodules: false
 
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: "24.15.0"
           cache: npm
@@ -35,7 +35,7 @@ jobs:
 
       - name: Restore reusable historical engine bundles
         id: engine-bundle-cache
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: src/renderer/engine
           key: openfront-engine-bundles-v1-${{ runner.os }}-${{ hashFiles('engine-build/**', 'scripts/build-engines.mjs', '.node-version') }}
@@ -65,13 +65,13 @@ jobs:
         run: node scripts/smoke-test-android-config.mjs
 
       - name: Set up Java
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v6
         with:
           distribution: temurin
           java-version: "21"
 
       - name: Set up Android SDK
-        uses: android-actions/setup-android@v4
+        uses: android-actions/setup-android@v4.0.4
         with:
           packages: "platforms;android-36 build-tools;36.0.0"
 
@@ -133,7 +133,7 @@ jobs:
           echo "Verified APK signing mode: $APK_SIGNING_MODE"
 
       - name: Upload validated Android APK
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: OpenFront-Replay-Coach-Android-Validated
           path: ${{ env.APK_PATH }}

@@ -257,7 +257,7 @@ jobs:
           packages: "platforms;android-36 build-tools;36.0.0"
 
       - name: Verify preinstalled GNU timeout and checksum utilities
-        if: if: success() && (github.event_name != 'pull_request' || needs.change-scope.outputs.android_upgrade == 'true')
+        if: success() && (github.event_name != 'pull_request' || needs.change-scope.outputs.android_upgrade == 'true')
         shell: bash
         run: |
           set -Eeuo pipefail
@@ -269,7 +269,7 @@ jobs:
           printf 'gnu-tools-verified=true\\n' | tee "$RUNNER_TEMP/ofrc-gnu-tools.log"
 
       - name: Ensure German and English OCR for published WebView UI
-        if: if: success() && (github.event_name != 'pull_request' || needs.change-scope.outputs.android_upgrade == 'true')
+        if: success() && (github.event_name != 'pull_request' || needs.change-scope.outputs.android_upgrade == 'true')
         shell: bash
         run: |
           set -Eeuo pipefail
@@ -280,10 +280,15 @@ jobs:
           fi
           tesseract --list-langs | grep -E '^(deu|eng)'
 
-      - name: Build test-only renderer and generate Android project
-        if: if: success() && (github.event_name != 'pull_request' || needs.change-scope.outputs.android_upgrade == 'true')
+      - name: Build Android renderer and generate native project
+        env:
+          ANDROID_UPGRADE_REQUIRED: ${{ github.event_name != 'pull_request' || needs.change-scope.outputs.android_upgrade == 'true' }}
         run: |
-          VITE_ANDROID_UPGRADE_TEST=1 npm run build:web:app
+          if [[ "$ANDROID_UPGRADE_REQUIRED" == "true" ]]; then
+            VITE_ANDROID_UPGRADE_TEST=1 npm run build:web:app
+          else
+            VITE_ANDROID_UPGRADE_TEST=0 npm run build:web:app
+          fi
           npx cap add android
           npx cap sync android
           node scripts/install-android-updater-plugin.mjs
@@ -302,13 +307,13 @@ jobs:
         run: node scripts/set-android-version.mjs "$(node -p 'require("./package.json").version')"
 
       - name: Download and verify exact public v2.2.51 Android baseline
-        if: if: success() && (github.event_name != 'pull_request' || needs.change-scope.outputs.android_upgrade == 'true')
+        if: success() && (github.event_name != 'pull_request' || needs.change-scope.outputs.android_upgrade == 'true')
         env:
           GH_TOKEN: ${{ github.token }}
         run: bash scripts/download-android-release-baseline.sh
 
       - name: Build higher-version candidate with the permanent release key
-        if: if: success() && (github.event_name != 'pull_request' || needs.change-scope.outputs.android_upgrade == 'true')
+        if: success() && (github.event_name != 'pull_request' || needs.change-scope.outputs.android_upgrade == 'true')
         id: release_candidate
         env:
           ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
@@ -322,14 +327,14 @@ jobs:
         run: bash scripts/verify-android-release-signing.sh
 
       - name: Preserve non-debuggable release-signed upgrade-test APK
-        if: if: success() && (github.event_name != 'pull_request' || needs.change-scope.outputs.android_upgrade == 'true')
+        if: success() && (github.event_name != 'pull_request' || needs.change-scope.outputs.android_upgrade == 'true')
         run: |
           set -Eeuo pipefail
           test -s android/app/build/outputs/apk/release/app-release.apk
           cp android/app/build/outputs/apk/release/app-release.apk "$RUNNER_TEMP/openfront-coach-android-upgrade-test.apk"
 
       - name: Verify baseline and candidate package metadata, version and hashes
-        if: if: success() && (github.event_name != 'pull_request' || needs.change-scope.outputs.android_upgrade == 'true')
+        if: success() && (github.event_name != 'pull_request' || needs.change-scope.outputs.android_upgrade == 'true')
         shell: bash
         run: |
           set -Eeuo pipefail
@@ -366,7 +371,7 @@ jobs:
           echo "OPENFRONT_CURRENT_APK=$candidate" >> "$GITHUB_ENV"
 
       - name: Enable, diagnose and verify Linux KVM before emulator startup
-        if: if: success() && (github.event_name != 'pull_request' || needs.change-scope.outputs.android_upgrade == 'true')
+        if: success() && (github.event_name != 'pull_request' || needs.change-scope.outputs.android_upgrade == 'true')
         shell: bash
         run: |
           set -Eeuo pipefail
@@ -478,6 +483,7 @@ jobs:
       - name: Build separate non-debuggable production APK without test inspector
         if: success()
         env:
+          ANDROID_UPGRADE_REQUIRED: ${{ github.event_name != 'pull_request' || needs.change-scope.outputs.android_upgrade == 'true' }}
           ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
@@ -488,12 +494,11 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -Eeuo pipefail
-          VITE_ANDROID_UPGRADE_TEST=0 npm run build:web:app
-          if [[ ! -d android ]]; then
-            npx cap add android
+          if [[ "$ANDROID_UPGRADE_REQUIRED" == "true" ]]; then
+            VITE_ANDROID_UPGRADE_TEST=0 npm run build:web:app
+            npx cap sync android
+            node scripts/install-android-updater-plugin.mjs
           fi
-          npx cap sync android
-          node scripts/install-android-updater-plugin.mjs
           node scripts/set-android-version.mjs "$(node -p "require('./package.json').version")"
           bash scripts/verify-android-release-signing.sh
           production_apk="android/app/build/outputs/apk/release/app-release.apk"

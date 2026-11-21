@@ -51,9 +51,12 @@ test('Coverage reports supported commit correctly', () => {
      try {
        execSync('npm test:coach', { stdio: 'inherit' });
        console.log('Regression test passed.');
-     } catch (e) {
-       console.error('Regression test failed:', e.message);
-       throw e;
-     }
+      } catch (e) {
+        // `e` is of type `unknown`. Use a type assertion to access the
+        // message property safely.
+        const errorMessage = (e as any).message ?? String(e);
+        console.error('Regression test failed:', errorMessage);
+        throw e;
+      }
    },
 };

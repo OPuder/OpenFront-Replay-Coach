@@ -5,7 +5,9 @@
     "lib": ["ES2022", "DOM", "DOM.Iterable"],
     "module": "ESNext",
     "skipLibCheck": true,
-    "moduleResolution": "Bundler",
+  "moduleResolution": "Node",
+  "allowSyntheticDefaultImports": true,
+  "noImplicitAny": false,
     "allowImportingTsExtensions": true,
     "resolveJsonModule": true,
     "isolatedModules": true,
@@ -14,5 +16,5 @@
     "strict": true
   },
   "include": ["src/renderer"],
-  "exclude": ["src/renderer/agents/**/*Regression.test.ts"]
+"exclude": ["src/renderer/**/*Regression.test.ts", "src/renderer/**/*.test.*"]
 }

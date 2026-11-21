@@ -3,3 +3,10 @@ dist
 dist-electron
 release
 *.log
+# Temporary and backup files from editors or CI runs
+*.tmp
+*.backup.*
+temp-*.txt
+src/renderer/agents/*.js
+src/main/cline.js
+task-queue.json

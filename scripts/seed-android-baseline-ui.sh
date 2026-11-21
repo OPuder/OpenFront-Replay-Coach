@@ -251,14 +251,14 @@ for index, (_, text) in enumerate(lines):
             if match:
                 print(match.group(1))
                 raise SystemExit
-print(0)
+print("missing")
 PY
 }
 
 replay_count=0
 poll_started=$SECONDS
 attempt=0
-while (( SECONDS - poll_started < 480 )); do
+while (( SECONDS - poll_started < 120 )); do
   attempt=$((attempt + 1))
   # The published APK exposes only a WebView container. Re-dumping the full
   # UIAutomator hierarchy on every poll can block for 20-50 seconds; bounded
@@ -270,7 +270,11 @@ while (( SECONDS - poll_started < 480 )); do
   fi
   sleep 2
 done
-[[ "$replay_count" =~ ^[0-9]+$ ]] && (( replay_count >= 3 )) || fail "The actual app UI did not show at least three saved replay records within 8 minutes; last observed count=$replay_count."
+if [[ ! "$replay_count" =~ ^[0-9]+$ ]]; then
+  final_ocr="$(ocr_text 2>/dev/null | tr '\n' ' ' || true)"
+  fail "Could not read the REPLAYS GESPEICHERT metric within 2 minutes. This is an OCR/label detection failure, not proof of zero imported records. Last OCR screen text: ${final_ocr:0:1600}"
+fi
+(( replay_count >= 3 )) || fail "The published app UI showed only $replay_count saved replays after 2 minutes; expected at least 3."
 log "UI confirms $replay_count locally saved replays. Opening a not-yet-reviewed match from the real UI."
 
 # Automatic background analysis handles one replay at a time. Open a later
@@ -283,7 +287,7 @@ tap_text "Coach öffnen" 1 exact
 training_goal=false
 coach_poll_started=$SECONDS
 coach_attempt=0
-while (( SECONDS - coach_poll_started < 480 )); do
+while (( SECONDS - coach_poll_started < 180 )); do
   coach_attempt=$((coach_attempt + 1))
   # OCR is sufficient to detect this visible WebView action. Bound each OCR
   # call and the complete wait so a stalled OCR process cannot extend CI.

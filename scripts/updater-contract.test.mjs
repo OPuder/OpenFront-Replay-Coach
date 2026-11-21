@@ -102,17 +102,24 @@ const androidUnsignedNegative = read("scripts/create-android-unsigned-negative-a
 assert.match(updateValidationWorkflow, /Download and verify exact public v2\.2\.51 Android baseline/);
 assert.match(updateValidationWorkflow, /Build higher-version candidate with the permanent release key/);
 assert.match(updateValidationWorkflow, /Test genuine published-APK in-place upgrade on Android emulator[\s\S]*?bash scripts\/test-android-release-upgrade\.sh/);
+assert.match(updateValidationWorkflow, /Preserve non-debuggable release-signed upgrade-test APK/);
+assert.match(updateValidationWorkflow, /app-release\\.apk/);
+assert.doesNotMatch(updateValidationWorkflow, /app-debug\\.apk/);
 assert.match(updateValidationWorkflow, /Build separate non-debuggable production APK without test inspector/);
 assert.match(updateValidationWorkflow, /Download uploaded APK for byte-for-byte verification/);
 assert.match(updateValidationWorkflow, /Verify uploaded production APK hash and signature/);
 assert.match(updateValidationWorkflow, /Verify permanent Android release signing key and continuity[\s\S]*?if: always\(\) && \(github\.event_name != 'pull_request' \|\| github\.event\.pull_request\.head\.repo\.full_name == github\.repository\)/);
 assert.match(androidSigningGate, /ANDROID_UPGRADE_TEST_BUILD/);
-assert.match(androidSigningGate, /assembleDebug/);
+assert.doesNotMatch(androidSigningGate, /assembleDebug/,
+  "The published-APK upgrade test must not substitute a Debug APK.");
 assert.match(androidSigningGate, /assembleRelease/);
+assert.match(androidSigningGate, /app-release\\.apk/);
 assert.match(androidSigningGate, /ANDROID_SIGNING_VERIFY_ONLY/);
 assert.match(androidSigningConfigurator, /signingConfig signingConfigs\.release/);
-assert.match(androidSigningConfigurator, /debuggable: "true"/);
 assert.match(androidSigningConfigurator, /debuggable: "false"/);
+assert.match(androidSigningConfigurator, /OFRC_ANDROID_UPGRADE_TEST/);
+assert.match(read("scripts/install-android-updater-plugin.mjs"), /WebView\\.setWebContentsDebuggingEnabled\\(true\\)/);
+assert.match(read("scripts/install-android-updater-plugin.mjs"), /BuildConfig\\.OFRC_ANDROID_UPGRADE_TEST/);
 assert.match(androidBaselineDownload, /v2\.2\.51/);
 assert.match(androidBaselineDownload, /8b2da877f5e4788c29e13f7788aaca34d07e969e1f03a0f1aff8e0cdc6c030fd/);
 assert.match(androidBaselineDownload, /apksigner/);

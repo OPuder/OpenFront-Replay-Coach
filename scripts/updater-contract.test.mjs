@@ -106,6 +106,11 @@ assert.match(updateValidationWorkflow, /if: success\(\) && \(github\.event_name 
 assert.match(updateValidationWorkflow, /pull_request:[\s\S]*?paths:[\s\S]*?src\/\*\*/);
 assert.match(updateValidationWorkflow, /id: source-checkout[\s\S]*?steps\.source-checkout\.outcome == 'success'/);
 assert.match(updateValidationWorkflow, /steps\.release_candidate\.outcome == 'success'/);
+assert.match(updateValidationWorkflow, /Build Android renderer and generate native project[\\s\\S]*?ANDROID_UPGRADE_REQUIRED[\\s\\S]*?npx cap add android/);
+assert.match(updateValidationWorkflow, /if \\[\\[ "\\$ANDROID_UPGRADE_REQUIRED" == "true" \\]\\]; then[\\s\\S]*?VITE_ANDROID_UPGRADE_TEST=1/);
+assert.match(updateValidationWorkflow, /Ensure German and English OCR for published WebView UI[\\s\\S]*?if: success\\(\\) && \\(github\\.event_name != 'pull_request' \\|\\| needs\\.change-scope\\.outputs\\.android_upgrade == 'true'\\)/);
+assert.match(updateValidationWorkflow, /Download and verify exact public v2\\.2\\.51 Android baseline[\\s\\S]*?if: success\\(\\) && \\(github\\.event_name != 'pull_request' \\|\\| needs\\.change-scope\\.outputs\\.android_upgrade == 'true'\\)/);
+assert.match(updateValidationWorkflow, /Build separate non-debuggable production APK without test inspector[\\s\\S]*?ANDROID_UPGRADE_REQUIRED/);
 assert.match(updateValidationWorkflow, /Build higher-version candidate with the permanent release key/);
 assert.match(updateValidationWorkflow, /Test genuine published-APK in-place upgrade on Android emulator[\s\S]*?bash scripts\/test-android-release-upgrade\.sh/);
 assert.match(updateValidationWorkflow, /Preserve non-debuggable release-signed upgrade-test APK/);

@@ -57,7 +57,8 @@ for node in root.iter("node"):
     attrs = node.attrib
     text = " ".join((attrs.get("text", ""), attrs.get("content-desc", ""), attrs.get("hint", "")))
     if mode == "edit":
-        if attrs.get("class") != "android.widget.EditText":
+        # Handle both legacy EditText and modern TextInputEditText
+        if attrs.get("class") not in ("android.widget.EditText", "android.widget.TextInputEditText"):
             continue
     elif mode == "exact":
         if attrs.get("text", "").strip().lower() != needle.lower():

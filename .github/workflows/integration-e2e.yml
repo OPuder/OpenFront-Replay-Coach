@@ -38,6 +38,7 @@ concurrency:
 jobs:
   integration-contracts:
     runs-on: ubuntu-latest
+    timeout-minutes: 45
     steps:
       # Initialize only the top-level OpenFront engine submodules through
       # prepare:engines. Recursive checkout follows OpenFrontIO's unrelated
@@ -84,4 +85,5 @@ jobs:
         if: github.event_name != 'pull_request'
         run: npm run test:coach
       - name: Run real Europe and Levant replay → simulation → coaching → timeline → IndexedDB flow
+        timeout-minutes: 35
         run: xvfb-run -a ./node_modules/.bin/electron --no-sandbox scripts/replay-engine-batch-browser-test.mjs

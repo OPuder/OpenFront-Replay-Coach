@@ -20,10 +20,10 @@ jobs:
     timeout-minutes: 60
     steps:
       - name: Check out source
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Restore exact historical engine Git objects
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: .git/modules
           key: openfront-engine-git-${{ runner.os }}-${{ github.job }}-${{ hashFiles('.gitmodules', 'engine-build/engines.json') }}
@@ -31,7 +31,7 @@ jobs:
             openfront-engine-git-${{ runner.os }}-
 
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: "24.15.0"
           cache: npm
@@ -82,7 +82,7 @@ jobs:
 
       - name: Restore reusable historical engine bundles
         id: engine-bundle-cache
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: src/renderer/engine
           key: openfront-engine-bundles-v1-${{ runner.os }}-${{ hashFiles('engine-build/**', 'scripts/build-engines.mjs', '.node-version') }}
@@ -130,7 +130,7 @@ jobs:
         run: node scripts/smoke-test-windows.mjs
 
       - name: Upload verified Windows packages
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: updater-validation-windows
           path: |
@@ -148,10 +148,10 @@ jobs:
     timeout-minutes: 90
     steps:
       - name: Check out source
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Restore exact historical engine Git objects
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: .git/modules
           key: openfront-engine-git-${{ runner.os }}-${{ github.job }}-${{ hashFiles('.gitmodules', 'engine-build/engines.json') }}
@@ -159,7 +159,7 @@ jobs:
             openfront-engine-git-${{ runner.os }}-
 
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: "24.15.0"
           cache: npm
@@ -169,7 +169,7 @@ jobs:
 
       - name: Restore reusable historical engine bundles
         id: engine-bundle-cache
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: src/renderer/engine
           key: openfront-engine-bundles-v1-${{ runner.os }}-${{ hashFiles('engine-build/**', 'scripts/build-engines.mjs', '.node-version') }}
@@ -207,13 +207,13 @@ jobs:
           python3 -m py_compile scripts/create-android-unsigned-negative-apk.py
 
       - name: Set up Java
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v6
         with:
           distribution: temurin
           java-version: "21"
 
       - name: Set up Android SDK
-        uses: android-actions/setup-android@v4
+        uses: android-actions/setup-android@v4.0.4
         with:
           packages: "platforms;android-36 build-tools;36.0.0"
 
@@ -355,7 +355,7 @@ jobs:
       - name: Test genuine published-APK in-place upgrade on Android emulator
         if: success()
         timeout-minutes: 60
-        uses: reactivecircus/android-emulator-runner@v2
+        uses: reactivecircus/android-emulator-runner@v2.38.0
         env:
           PREVIOUS_APK: ${{ runner.temp }}/ofrc-android-baseline/OpenFront-Replay-Coach-2.2.51-Android.apk
           OPENFRONT_CURRENT_APK: ${{ runner.temp }}/openfront-coach-android-upgrade-test.apk
@@ -392,7 +392,7 @@ jobs:
 
       - name: Upload complete Android emulator diagnostics
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: android-baseline-ui-diagnostics
           path: |
@@ -464,7 +464,7 @@ jobs:
         run: bash scripts/verify-android-release-signing.sh
 
       - name: Upload validated production APK
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: updater-validation-android
           path: android/app/build/outputs/apk/release/app-release.apk
@@ -472,7 +472,7 @@ jobs:
           retention-days: 7
 
       - name: Download uploaded APK for byte-for-byte verification
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: updater-validation-android
           path: ${{ runner.temp }}/verified-android-artifact

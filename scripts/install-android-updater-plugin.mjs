@@ -37,6 +37,40 @@ if (!activity.includes("registerPlugin(ApkUpdaterPlugin.class)") || !activity.in
 }
 await writeFile(activityPath, activity);
 
+// Keep BuildConfig available for every Android build variant. The default is
+// always false; the signed release upgrade-test build explicitly overrides it.
+const gradlePath = path.join(root, "android/app/build.gradle");
+let gradle = await readFile(gradlePath, "utf8");
+function findClosingBrace(source, openingIndex, label) {
+  let depth = 0;
+  for (let index = openingIndex; index < source.length; index += 1) {
+    if (source[index] === "{") depth += 1;
+    else if (source[index] === "}") {
+      depth -= 1;
+      if (depth === 0) return index;
+    }
+  }
+  throw new Error("Could not locate the end of the " + label + " block.");
+}
+const androidMatch = /android\s*\{/.exec(gradle);
+if (!androidMatch) throw new Error("Generated Android Gradle file has no android block.");
+const androidOpen = gradle.indexOf("{", androidMatch.index);
+let androidClose = findClosingBrace(gradle, androidOpen, "android");
+if (!/buildFeatures\s*\{/.test(gradle.slice(androidOpen, androidClose))) {
+  gradle = gradle.slice(0, androidOpen + 1) + "\n    buildFeatures { buildConfig true }" + gradle.slice(androidOpen + 1);
+  androidClose = findClosingBrace(gradle, androidOpen, "android");
+}
+const defaultMatch = /defaultConfig\s*\{/.exec(gradle);
+if (!defaultMatch) throw new Error("Generated Android Gradle file has no defaultConfig block.");
+const defaultOpen = gradle.indexOf("{", defaultMatch.index);
+const defaultClose = findClosingBrace(gradle, defaultOpen, "defaultConfig");
+let defaultBlock = gradle.slice(defaultOpen + 1, defaultClose);
+if (!/buildConfigField\s+"boolean",\s*"OFRC_ANDROID_UPGRADE_TEST"/.test(defaultBlock)) {
+  defaultBlock += '\n        buildConfigField "boolean", "OFRC_ANDROID_UPGRADE_TEST", "false"\n    ';
+  gradle = gradle.slice(0, defaultOpen + 1) + defaultBlock + gradle.slice(defaultClose);
+}
+await writeFile(gradlePath, gradle);
+
 let manifest = await readFile(manifestPath, "utf8");
 if (!manifest.includes("android.permission.REQUEST_INSTALL_PACKAGES")) {
   manifest = manifest.replace("<application", '<uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />\n\n    <application');

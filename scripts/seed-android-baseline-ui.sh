@@ -55,14 +55,14 @@ capture_screen() {
 
 ocr_text() {
   capture_screen
-  timeout 20s tesseract "$screen_path" stdout -l deu+eng --psm 6 2>/dev/null
+  timeout 8s tesseract "$screen_path" stdout -l deu+eng --psm 6 2>/dev/null
 }
 
 ocr_find_bounds() {
   local needle="$1"
   local occurrence="${2:-1}"
   capture_screen
-  timeout 20s tesseract "$screen_path" stdout -l deu+eng --psm 6 tsv >"$ocr_tsv" 2>/dev/null
+  timeout 8s tesseract "$screen_path" stdout -l deu+eng --psm 6 tsv >"$ocr_tsv" 2>/dev/null
   python3 - "$needle" "$occurrence" "$ocr_tsv" <<'PY'
 import csv
 import re
@@ -223,7 +223,7 @@ tap_text "Partien" last exact
 read_metric() {
   local label="$1"
   capture_screen
-  timeout 20s tesseract "$screen_path" stdout -l deu+eng --psm 6 tsv >"$ocr_tsv" 2>/dev/null
+  timeout 8s tesseract "$screen_path" stdout -l deu+eng --psm 6 tsv >"$ocr_tsv" 2>/dev/null
   python3 - "$ocr_tsv" "$label" <<'PY'
 import csv
 import re
@@ -256,14 +256,17 @@ PY
 }
 
 replay_count=0
-for attempt in $(seq 1 240); do
+poll_started=$SECONDS
+attempt=0
+while (( SECONDS - poll_started < 480 )); do
+  attempt=$((attempt + 1))
   # The published APK exposes only a WebView container. Re-dumping the full
-  # UIAutomator hierarchy on every poll can block for 20-50 seconds; OCR is
-  # the intended signal here and is substantially cheaper.
+  # UIAutomator hierarchy on every poll can block for 20-50 seconds; bounded
+  # OCR is the intended signal here.
   replay_count="$(read_metric "REPLAYS GESPEICHERT")"
   if [[ "$replay_count" =~ ^[0-9]+$ ]] && (( replay_count >= 3 )); then break; fi
   if (( attempt % 5 == 0 )); then
-    log "Still waiting for three UI-confirmed saved replays (poll $attempt/240; observed=${replay_count:-unknown})."
+    log "Still waiting for three UI-confirmed saved replays (elapsed=$((SECONDS - poll_started))s; poll=$attempt; observed=${replay_count:-unknown})."
   fi
   sleep 2
 done
@@ -278,17 +281,20 @@ adb -s emulator-5554 shell input swipe 520 1550 520 600 450
 sleep 2
 tap_text "Coach öffnen" 1 exact
 training_goal=false
-for attempt in $(seq 1 240); do
-  # OCR is sufficient to detect this visible WebView action. Avoid a blocking
-  # UIAutomator dump on every poll; retain the same eight-minute upper bound.
+coach_poll_started=$SECONDS
+coach_attempt=0
+while (( SECONDS - coach_poll_started < 480 )); do
+  coach_attempt=$((coach_attempt + 1))
+  # OCR is sufficient to detect this visible WebView action. Bound each OCR
+  # call and the complete wait so a stalled OCR process cannot extend CI.
   if ocr_contains "Als Trainingsziel übernehmen"; then
     training_goal=true
     break
   fi
-  if (( attempt % 10 == 0 )); then
-    log "Still waiting for the evidence-backed Coach training action (poll $attempt/240)."
+  if (( coach_attempt % 5 == 0 )); then
+    log "Still waiting for the evidence-backed Coach training action (elapsed=$((SECONDS - coach_poll_started))s; poll=$coach_attempt)."
   fi
-  if (( attempt % 5 == 0 )); then adb -s emulator-5554 shell input swipe 520 1550 520 600 450 >/dev/null 2>&1 || true; fi
+  if (( coach_attempt % 5 == 0 )); then adb -s emulator-5554 shell input swipe 520 1550 520 600 450 >/dev/null 2>&1 || true; fi
   sleep 2
 done
 if [[ "$training_goal" == true ]]; then

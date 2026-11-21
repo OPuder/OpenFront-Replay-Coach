@@ -104,6 +104,48 @@ jobs:
           echo "release_sha=$release_sha" >> "$GITHUB_OUTPUT"
           echo "Selected v$next_version at $release_sha"
 
+  build-engine-bundles:
+    name: Build exact pinned replay engine bundles once
+    needs: prepare-release
+    if: needs.prepare-release.outputs.skip != 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - name: Check out the exact release source
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.prepare-release.outputs.release_sha }}
+          submodules: false
+
+      - name: Set up the pinned Node.js toolchain
+        uses: actions/setup-node@v7
+        with:
+          node-version-file: .node-version
+          cache: npm
+
+      - name: Set up pinned npm
+        run: npm install --global npm@12.1.0
+
+      - name: Install Coach dependencies
+        run: npm ci
+
+      - name: Prepare all exact historical OpenFront engines
+        run: npm run prepare:engines
+
+      - name: Build all exact replay engine workers once
+        run: npm run build:engine
+
+      - name: Verify every pinned replay engine bundle
+        run: npm run verify:engine-bundles
+
+      - name: Upload the validated cross-platform replay engine bundles
+        uses: actions/upload-artifact@v7
+        with:
+          name: openfront-engine-bundles
+          path: src/renderer/engine/replay-engine-*.js
+          if-no-files-found: error
+          retention-days: 1
+
   validate-engine:
     name: Validate exact OpenFront engine revision
     needs: prepare-release
@@ -134,7 +176,7 @@ jobs:
 
   validate-replay:
     name: Validate real replay fixtures and mixed-engine analysis
-    needs: prepare-release
+    needs: [prepare-release, build-engine-bundles]
     if: needs.prepare-release.outputs.skip != 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 45
@@ -156,19 +198,12 @@ jobs:
       - name: Install Coach dependencies
         run: npm ci
 
-      - name: Restore reusable historical engine bundles
-        id: engine-bundle-cache
-        uses: actions/cache@v6
+      - name: Download the single validated replay engine bundle artifact
+        uses: actions/download-artifact@v8
         with:
+          name: openfront-engine-bundles
           path: src/renderer/engine
-          key: openfront-engine-bundles-v1-${{ runner.os }}-${{ hashFiles('engine-build/**', 'scripts/build-engines.mjs', '.node-version') }}
-      - name: Prepare exact historical OpenFront engines on cache miss
-        if: steps.engine-bundle-cache.outputs.cache-hit != 'true'
-        run: npm run prepare:engines
 
-      - name: Build exact replay engine bundles on cache miss
-        if: steps.engine-bundle-cache.outputs.cache-hit != 'true'
-        run: npm run build:engine
       - name: Verify every pinned replay engine bundle
         run: npm run verify:engine-bundles
 
@@ -195,7 +230,7 @@ jobs:
 
   build-windows:
     name: Build Windows installer and portable ZIP
-    needs: prepare-release
+    needs: [prepare-release, build-engine-bundles]
     if: needs.prepare-release.outputs.skip != 'true'
     runs-on: windows-latest
     timeout-minutes: 60
@@ -213,19 +248,12 @@ jobs:
       - name: Set up pinned npm
         run: npm install --global npm@12.1.0
 
-      - name: Restore reusable historical engine bundles
-        id: engine-bundle-cache
-        uses: actions/cache@v6
+      - name: Download the single validated replay engine bundle artifact
+        uses: actions/download-artifact@v8
         with:
+          name: openfront-engine-bundles
           path: src/renderer/engine
-          key: openfront-engine-bundles-v1-${{ runner.os }}-${{ hashFiles('engine-build/**', 'scripts/build-engines.mjs', '.node-version') }}
-      - name: Prepare exact historical OpenFront engines on cache miss
-        if: steps.engine-bundle-cache.outputs.cache-hit != 'true'
-        run: npm run prepare:engines
 
-      - name: Build exact replay engine bundles on cache miss
-        if: steps.engine-bundle-cache.outputs.cache-hit != 'true'
-        run: npm run build:engine
       - name: Verify every pinned replay engine bundle
         run: npm run verify:engine-bundles
 
@@ -257,7 +285,7 @@ jobs:
 
   build-android:
     name: Build installable Android APK
-    needs: prepare-release
+    needs: [prepare-release, build-engine-bundles]
     if: needs.prepare-release.outputs.skip != 'true'
     # Keep Android emulator upgrade tests on the stable LTS runner (ubuntu-latest is 26.04).
     runs-on: ubuntu-22.04
@@ -279,19 +307,12 @@ jobs:
       - name: Set up pinned npm
         run: npm install --global npm@12.1.0
 
-      - name: Restore reusable historical engine bundles
-        id: engine-bundle-cache
-        uses: actions/cache@v6
+      - name: Download the single validated replay engine bundle artifact
+        uses: actions/download-artifact@v8
         with:
+          name: openfront-engine-bundles
           path: src/renderer/engine
-          key: openfront-engine-bundles-v1-${{ runner.os }}-${{ hashFiles('engine-build/**', 'scripts/build-engines.mjs', '.node-version') }}
-      - name: Prepare exact historical OpenFront engines on cache miss
-        if: steps.engine-bundle-cache.outputs.cache-hit != 'true'
-        run: npm run prepare:engines
 
-      - name: Build exact replay engine bundles on cache miss
-        if: steps.engine-bundle-cache.outputs.cache-hit != 'true'
-        run: npm run build:engine
       - name: Verify every pinned replay engine bundle
         run: npm run verify:engine-bundles
 
@@ -442,7 +463,7 @@ jobs:
 
   publish-release:
     name: Publish Windows and Android editions as one GitHub Release
-    needs: [prepare-release, validate-engine, validate-replay, build-windows, build-android]
+    needs: [prepare-release, build-engine-bundles, validate-engine, validate-replay, build-windows, build-android]
     if: needs.prepare-release.outputs.skip != 'true' && needs.build-android.outputs.signing_mode == 'permanent release key'
     runs-on: ubuntu-latest
     permissions:

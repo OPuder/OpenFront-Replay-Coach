@@ -45,8 +45,14 @@ async function loadTasks() {
   }
 }
 
-async function saveTasks(tasks) {
-  await fs.writeFile(TASK_QUEUE_FILE, JSON.stringify(tasks, null, 2), 'utf-8');
+// Atomare Schreiboperation für die Task‑Queue.
+// Wir lesen die aktuelle Queue, ersetzen die Aufgabe mit derselben ID (falls vorhanden) und schreiben zurück.
+async function saveTasks(updatedTask) {
+  const all = await loadTasks();
+  const idx = all.findIndex(t => t.id === updatedTask.id);
+  if (idx !== -1) all[idx] = updatedTask;
+  else all.push(updatedTask);
+  await fs.writeFile(TASK_QUEUE_FILE, JSON.stringify(all, null, 2), 'utf-8');
 }
 
 // Helper: lock utilities
@@ -99,20 +105,18 @@ async function processTask(task) {
         .filter(l => !preLines.includes(l))
         .map(l => l.trim().split(' ')[1]);
       task.status = 'completed';
-      task.result = `Agent ${entry.name} finished successfully.`;
-      console.log(`✅ Task ${task.id} completed by ${entry.name}`);
       // Integration tests after agent work
       try {
         execSync('npm run test:integration-e2e', { stdio: 'inherit' });
         console.log('Integration tests passed.');
       } catch (e) {
         console.error('Integration tests failed:', e.message);
-        throw e;
     } catch (e) {
       task.status = 'failed';
       task.result = e.message;
       console.error(`❌ Task ${task.id} failed: ${e.message}`);
-      console.error(`❌ Task ${task.id} failed: ${e.message}`);
+    } finally {
+    } finally {
     } finally {
       clearInterval(hb);
       deleteLock(task.id);

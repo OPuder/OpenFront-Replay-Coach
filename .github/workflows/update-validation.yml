@@ -255,18 +255,18 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: bash scripts/verify-android-release-signing.sh
 
-      - name: Preserve isolated test APK for emulator upgrade
+      - name: Preserve non-debuggable release-signed upgrade-test APK
         run: |
           set -Eeuo pipefail
-          test -s android/app/build/outputs/apk/debug/app-debug.apk
-          cp android/app/build/outputs/apk/debug/app-debug.apk "$RUNNER_TEMP/openfront-coach-android-upgrade-test.apk"
+          test -s android/app/build/outputs/apk/release/app-release.apk
+          cp android/app/build/outputs/apk/release/app-release.apk "$RUNNER_TEMP/openfront-coach-android-upgrade-test.apk"
 
       - name: Verify baseline and candidate package metadata, version and hashes
         shell: bash
         run: |
           set -Eeuo pipefail
           baseline="$PREVIOUS_APK"
-          candidate="android/app/build/outputs/apk/debug/app-debug.apk"
+          candidate="android/app/build/outputs/apk/release/app-release.apk"
           test -s "$baseline"
           test -s "$candidate"
           build_tools="$(find "$ANDROID_HOME/build-tools" -mindepth 1 -maxdepth 1 -type d | sort -V | tail -n 1)"
@@ -283,7 +283,10 @@ jobs:
           grep -F "package: name='de.openfront.replaycoach'" <<< "$candidate_badging" >/dev/null
           grep -F "versionName='$current_version'" <<< "$candidate_badging" >/dev/null
           grep -F "versionCode='$expected_version_code'" <<< "$candidate_badging" >/dev/null
-          grep -F "application-debuggable" <<< "$("$build_tools/aapt" dump badging "$candidate")" >/dev/null || { echo "Test candidate is not debuggable; WebView storage inspection would be unavailable." >&2; exit 1; }
+          if grep -F "application-debuggable" <<< "$("$build_tools/aapt" dump badging "$candidate")" >/dev/null; then
+            echo "Upgrade-test candidate must be a non-debuggable RELEASE APK." >&2
+            exit 1
+          fi
           baseline_code="$(sed -E "s/.*versionCode='([0-9]+)'.*/\1/" <<< "$baseline_badging")"
           candidate_code="$(sed -E "s/.*versionCode='([0-9]+)'.*/\1/" <<< "$candidate_badging")"
           (( candidate_code > baseline_code )) || { echo "Candidate versionCode is not newer than baseline." >&2; exit 1; }

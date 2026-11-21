@@ -172,7 +172,9 @@ tap_text() {
   local mode="${3:-text}"
   local coords=""
   for attempt in $(seq 1 20); do
-    dump_ui || fail "UIAutomator could not produce a readable hierarchy after two bounded attempts."
+    if ! dump_ui; then
+      log "UIAutomator hierarchy unavailable; continuing with screenshot OCR for '$needle'."
+    fi
     coords="$(find_bounds "$needle" "$mode" "$occurrence" 2>/dev/null || true)"
     if [[ -z "$coords" ]]; then
       coords="$(ocr_find_bounds "$needle" "$occurrence" || true)"
@@ -195,7 +197,9 @@ android_prepare_emulator || fail "Baseline emulator preparation failed; inspect 
 log "Launching the genuine published v2.2.51 APK and classifying ADB, ActivityManager and crash failures."
 android_launch_package "$package_id" "the published v2.2.51 baseline APK" || fail "Published baseline app launch failed; see classified emulator diagnostics."
 sleep 20
-dump_ui || fail "Could not inspect the published app UI after two diagnostic UIAutomator attempts."
+if ! dump_ui; then
+  log "Published baseline exposes no readable UIAutomator hierarchy; locating the profile field through OCR."
+fi
 coords="$(find_bounds "" edit 2>/dev/null || true)"
 if [[ -z "$coords" ]]; then
   coords="$(ocr_find_bounds "OpenFront-Profillink" 1 || true)"
@@ -253,7 +257,9 @@ PY
 
 replay_count=0
 for attempt in $(seq 1 240); do
-  dump_ui || fail "UIAutomator could not produce a readable hierarchy after two bounded attempts."
+  if ! dump_ui; then
+    log "UIAutomator hierarchy unavailable while reading replay count; using OCR."
+  fi
   replay_count="$(read_metric "REPLAYS GESPEICHERT")"
   if [[ "$replay_count" =~ ^[0-9]+$ ]] && (( replay_count >= 3 )); then break; fi
   sleep 2
@@ -270,7 +276,9 @@ sleep 2
 tap_text "Coach öffnen" 1 exact
 training_goal=false
 for attempt in $(seq 1 240); do
-  dump_ui || fail "UIAutomator could not produce a readable hierarchy after two bounded attempts."
+  if ! dump_ui; then
+    log "UIAutomator hierarchy unavailable while checking Coach UI; using OCR."
+  fi
   if ocr_contains "Als Trainingsziel übernehmen"; then
     training_goal=true
     break

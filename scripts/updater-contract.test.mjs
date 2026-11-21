@@ -105,6 +105,8 @@ assert.match(updateValidationWorkflow, /Test genuine published-APK in-place upgr
 assert.match(updateValidationWorkflow, /Preserve non-debuggable release-signed upgrade-test APK/);
 const baselineUiSeed = read("scripts/seed-android-baseline-ui.sh");
 assert.match(baselineUiSeed, /ocr_find_bounds/);
+assert.ok(baselineUiSeed.indexOf("log() {") < baselineUiSeed.indexOf('log "Published baseline is non-debuggable'),
+  "The Android baseline seed logger must be defined before its first invocation.");
 assert.match(baselineUiSeed, /tesseract/);
 assert.match(baselineUiSeed, /OpenFront-Profillink/);
 assert.match(updateValidationWorkflow, /app-release\.apk/);

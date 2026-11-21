@@ -216,7 +216,7 @@ jobs:
             sudo apt-get update
             sudo apt-get install --no-install-recommends -y tesseract-ocr tesseract-ocr-deu
           fi
-          tesseract --list-langs | grep -E '^(deu|eng)      - name: Build renderer with test-only Android storage inspector
+          tesseract --list-langs | grep -E '^(deu|eng)
         run: |
           set -Eeuo pipefail
           VITE_ANDROID_UPGRADE_TEST=1 npm run build:web:app

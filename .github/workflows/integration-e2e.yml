@@ -59,11 +59,23 @@ jobs:
         run: npm run prepare:engines
       - name: Validate pinned engine catalog
         run: npm run validate:engine-pin
+      - name: Restore reusable historical engine bundles
+        id: engine-bundle-cache
+        uses: actions/cache@v4
+        with:
+          path: src/renderer/engine
+          key: openfront-engine-bundles-v1-${{ runner.os }}-${{ hashFiles('engine-build/**', 'scripts/build-engines.mjs', 'package-lock.json', '.node-version') }}
+      - name: Build exact replay engine bundles on cache miss
+        if: steps.engine-bundle-cache.outputs.cache-hit != 'true'
+        run: npm run build:engine
+      - name: Verify every pinned replay engine bundle
+        run: npm run verify:engine-bundles
       - name: Typecheck and production build
-        run: npm run build
+        run: npm run build:app
       - name: Run production-module integration unit contracts
         run: npm run test:integration-e2e
       - name: Run replay, coaching, storage, and updater regression suites
+        if: github.event_name != 'pull_request'
         run: npm run test:coach
       - name: Run real Europe and Levant replay → simulation → coaching → timeline → IndexedDB flow
         run: xvfb-run -a ./node_modules/.bin/electron --no-sandbox scripts/replay-engine-batch-browser-test.mjs

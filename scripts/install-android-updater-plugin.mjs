@@ -56,7 +56,15 @@ const androidMatch = /android\s*\{/.exec(gradle);
 if (!androidMatch) throw new Error("Generated Android Gradle file has no android block.");
 const androidOpen = gradle.indexOf("{", androidMatch.index);
 let androidClose = findClosingBrace(gradle, androidOpen, "android");
-if (!/buildFeatures\s*\{/.test(gradle.slice(androidOpen, androidClose))) {
+const featuresMatch = /buildFeatures\s*\{/.exec(gradle.slice(androidOpen, androidClose));
+if (featuresMatch) {
+  const featureOpen = androidOpen + featuresMatch.index + featuresMatch[0].lastIndexOf("{");
+  const featureClose = findClosingBrace(gradle, featureOpen, "buildFeatures");
+  let featureBlock = gradle.slice(featureOpen + 1, featureClose);
+  if (/buildConfig\s+false/.test(featureBlock)) featureBlock = featureBlock.replace(/buildConfig\s+false/, "buildConfig true");
+  else if (!/buildConfig\s+true/.test(featureBlock)) featureBlock += "\n        buildConfig true\n    ";
+  gradle = gradle.slice(0, featureOpen + 1) + featureBlock + gradle.slice(featureClose);
+} else {
   gradle = gradle.slice(0, androidOpen + 1) + "\n    buildFeatures { buildConfig true }" + gradle.slice(androidOpen + 1);
   androidClose = findClosingBrace(gradle, androidOpen, "android");
 }

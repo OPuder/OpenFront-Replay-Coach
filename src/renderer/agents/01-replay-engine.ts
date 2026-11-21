@@ -48,12 +48,12 @@ test('Coverage reports supported commit correctly', () => {
      await fs.writeFile(testPath, testContent, 'utf-8');
      console.log('Created regression test.');
      // 5. Run unit tests
-     try {
-       execSync('npm test:coach', { stdio: 'inherit' });
-       console.log('Regression test passed.');
-     } catch (e) {
-       console.error('Regression test failed:', e.message);
-       throw e;
-     }
+    try {
+      execSync('npm test:coach', { stdio: 'inherit' });
+      console.log('Regression test passed.');
+    } catch (e: unknown) {
+      console.error('Regression test failed:', (e as any).message);
+      throw e;
+    }
    },
 };

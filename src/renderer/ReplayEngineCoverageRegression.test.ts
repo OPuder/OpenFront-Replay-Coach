@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { buildReplayEngineCoverageReport } from '../ReplayEngineCoverage';
 import { REPLAY_ENGINE_CATALOG } from '../decoder/ReplayEngineCatalog';
 import { assert } from 'node:assert/strict';

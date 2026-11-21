@@ -83,14 +83,27 @@ jobs:
       - name: Prepare all exact historical OpenFront engines
         run: npm run prepare:engines
 
+      - name: Restore reusable historical engine bundles
+        id: engine-bundle-cache
+        uses: actions/cache@v4
+        with:
+          path: src/renderer/engine
+          key: openfront-engine-bundles-v1-${{ runner.os }}-${{ hashFiles('engine-build/**', 'scripts/build-engines.mjs', 'package-lock.json', '.node-version') }}
+      - name: Build exact replay engine bundles on cache miss
+        if: steps.engine-bundle-cache.outputs.cache-hit != 'true'
+        run: npm run build:engine
+      - name: Verify every pinned replay engine bundle
+        run: npm run verify:engine-bundles
+
       - name: Verify updater contract tests
         run: node --test scripts/updater-contract.test.mjs
 
       - name: Run full coaching and replay regression suite
+        if: github.event_name != 'pull_request'
         run: npm run test:coach
 
       - name: Build Windows application
-        run: npm run build
+        run: npm run build:app
 
       - name: Package Windows installer and portable edition
         run: npx electron-builder --win nsis zip --publish never
@@ -158,6 +171,18 @@ jobs:
       - name: Install Coach dependencies once
         run: npm ci
 
+      - name: Restore reusable historical engine bundles
+        id: engine-bundle-cache
+        uses: actions/cache@v4
+        with:
+          path: src/renderer/engine
+          key: openfront-engine-bundles-v1-${{ runner.os }}-${{ hashFiles('engine-build/**', 'scripts/build-engines.mjs', 'package-lock.json', '.node-version') }}
+      - name: Build exact replay engine bundles on cache miss
+        if: steps.engine-bundle-cache.outputs.cache-hit != 'true'
+        run: npm run build:engine
+      - name: Verify every pinned replay engine bundle
+        run: npm run verify:engine-bundles
+
       - name: Verify updater contract tests
         run: node --test scripts/updater-contract.test.mjs
 
@@ -203,7 +228,7 @@ jobs:
       - name: Build renderer with test-only Android storage inspector
         run: |
           set -Eeuo pipefail
-          VITE_ANDROID_UPGRADE_TEST=1 npm run build:web
+          VITE_ANDROID_UPGRADE_TEST=1 npm run build:web:app
           grep -R "__OFRC_ANDROID_UPGRADE_TEST__" dist >/dev/null || { echo "Test-only storage inspector was not bundled."; exit 1; }
 
       - name: Generate Android project and updater plugin
@@ -391,7 +416,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -Eeuo pipefail
-          VITE_ANDROID_UPGRADE_TEST=0 npm run build:web
+          VITE_ANDROID_UPGRADE_TEST=0 npm run build:web:app
           npx cap sync android
           node scripts/set-android-version.mjs "$(node -p "require('./package.json').version")"
           bash scripts/verify-android-release-signing.sh

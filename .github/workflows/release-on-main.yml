@@ -344,7 +344,6 @@ jobs:
       - name: Set the Android application version
         env:
           RELEASE_VERSION: ${{ needs.prepare-release.outputs.version }}
-          PREVIOUS_APK: ${{ steps.apk.outputs.previous_apk }}
         run: node scripts/set-android-version.mjs "$RELEASE_VERSION"
 
       - name: Build permanently signed release APK

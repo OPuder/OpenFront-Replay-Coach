@@ -2,12 +2,16 @@
   "compilerOptions": {
     "target": "ES2022",
     "useDefineForClassFields": true,
-    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "lib": [
+      "ES2022",
+      "DOM",
+      "DOM.Iterable"
+    ],
     "module": "ESNext",
     "skipLibCheck": true,
-  "moduleResolution": "Node",
-  "allowSyntheticDefaultImports": true,
-  "noImplicitAny": false,
+    "moduleResolution": "Node",
+    "allowSyntheticDefaultImports": true,
+    "noImplicitAny": true,
     "allowImportingTsExtensions": true,
     "resolveJsonModule": true,
     "isolatedModules": true,
@@ -15,6 +19,7 @@
     "jsx": "react-jsx",
     "strict": true
   },
-  "include": ["src/renderer"],
-"exclude": ["src/renderer/**/*Regression.test.ts", "src/renderer/**/*.test.*"]
+  "include": [
+    "src/renderer"
+  ]
 }

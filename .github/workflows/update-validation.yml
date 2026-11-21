@@ -219,8 +219,9 @@ jobs:
           fi
           tesseract --list-langs | grep -E '^(deu|eng)'
 
-      - name: Build renderer with test-only Android storage inspector
+      - name: Build test-only renderer and generate Android project
         run: |
+          VITE_ANDROID_UPGRADE_TEST=1 npm run build:web:app
           npx cap add android
           npx cap sync android
           node scripts/install-android-updater-plugin.mjs

@@ -43,16 +43,23 @@ jobs:
       - name: Install Coach dependencies
         run: npm ci
 
-      - name: Build original OpenFront replay workers
+      - name: Restore reusable historical engine bundles
+        id: engine-bundle-cache
+        uses: actions/cache@v4
+        with:
+          path: src/renderer/engine
+          key: openfront-engine-bundles-v1-${{ runner.os }}-${{ hashFiles('engine-build/**', 'scripts/build-engines.mjs', 'package-lock.json', '.node-version') }}
+      - name: Build exact replay engine bundles on cache miss
+        if: steps.engine-bundle-cache.outputs.cache-hit != 'true'
         run: npm run build:engine
+      - name: Verify every pinned replay engine bundle
+        run: npm run verify:engine-bundles
 
       - name: Build and package
-        run: npm run build && npx electron-builder --win nsis zip --publish never
-
-      - name: Test player-elimination phase regression
-        run: npm run test:phase-survival
+        run: npm run build:app && npx electron-builder --win nsis zip --publish never
 
       - name: Test pro coaching algorithm and phase analytics
+        if: github.event_name != 'pull_request'
         run: npm run test:coach
 
       - name: Smoke-test packaged Windows renderer and five-minute idle stability

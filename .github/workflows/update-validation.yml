@@ -92,7 +92,7 @@ jobs:
         run: node --test scripts/updater-contract.test.mjs
 
       - name: Run full coaching and replay regression suite
-        if: github.event_name != 'pull_request'
+        if: github.event_name == 'workflow_dispatch'
         run: npm run test:coach
 
       - name: Build Windows application

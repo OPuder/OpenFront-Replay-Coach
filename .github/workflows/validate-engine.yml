@@ -76,8 +76,10 @@ jobs:
       - name: Verify every pinned replay engine bundle
         run: npm run verify:engine-bundles
 
-      - name: Install Coach build dependencies
-        run: npm ci
+      - name: Prepare all exact historical OpenFront engines
+        env:
+          OPENFRONT_SKIP_ENGINE_DEPENDENCIES: "1"
+        run: npm run prepare:engines
 
 
       - name: Verify all engine pins and runtime mappings

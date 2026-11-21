@@ -7,6 +7,10 @@ release
 *.tmp
 *.backup.*
 temp-*.txt
+# Build artifacts (generated engine bundles)
+src/renderer/engine/replay-engine-*.js
+# Temporary test scripts and workflows
+test.js
+workflow-full.txt
+# Ignore generated JS wrappers for agents (compiled from TS)
 src/renderer/agents/*.js
-src/main/cline.js
-task-queue.json

@@ -3,6 +3,9 @@
  */
 const fs = require('fs').promises;
 const path = require('path');
+const { execSync } = require('child_process');
+
+// Import agent implementations (JS wrappers)
 const { replayEngineAgent } = require('../renderer/agents/01-replay-engine.js');
 const { coachingIntelligenceAgent } = require('../renderer/agents/02-coaching-intelligence.js');
 const { uxVisualizationAgent } = require('../renderer/agents/03-ux-visualization.js');
@@ -57,10 +60,19 @@ async function processTask(task) {
     console.log(`✅ Task ${task.id} completed by ${entry.name}`);
     // Run integration tests after successful agent run
     try {
-      const { execSync } = require('child_process');
       console.log('Running integration tests...');
       execSync('npm run test:integration-e2e', { stdio: 'inherit' });
       console.log('Integration tests passed.');
+      // Commit any changes produced by the agent
+      const status = execSync('git status --porcelain', { encoding: 'utf-8' });
+      if (status.trim()) {
+        console.log('Staging changes for commit.');
+        execSync('git add .', { stdio: 'inherit' });
+        execSync(`git commit -m "Agent ${entry.name} applied changes for task ${task.id}"`, { stdio: 'inherit' });
+        console.log('Committed changes.');
+      } else {
+        console.log('No changes to commit.');
+      }
     } catch (testErr) {
       console.error('Integration tests failed:', testErr.message);
       task.status = 'failed';

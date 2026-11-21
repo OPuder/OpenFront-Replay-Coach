@@ -7,3 +7,6 @@ release
 *.tmp
 *.backup.*
 temp-*.txt
+src/renderer/agents/*.js
+src/main/cline.js
+task-queue.json

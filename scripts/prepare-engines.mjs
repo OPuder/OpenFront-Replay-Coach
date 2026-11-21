@@ -31,21 +31,26 @@ for (const engine of engines) {
   dependencyGroups.set(lockHash, group);
 }
 
-for (const [lockHash, group] of dependencyGroups) {
-  const representative = group[0];
-  const representativePath = path.resolve(representative.source);
-  console.log(`Installing shared dependencies for ${group.length} exact engines (lock ${lockHash.slice(0, 12)})`);
-  const install = spawnSync(process.platform === "win32" ? "npm.cmd" : "npm", ["ci", "--ignore-scripts"], {
-    cwd: representativePath,
-    stdio: "inherit",
-    shell: process.platform === "win32",
-  });
-  if (install.status !== 0) throw new Error(`Dependency installation failed for lockfile group ${lockHash}`);
-
-  for (const engine of group.slice(1)) {
-    const target = path.join(path.resolve(engine.source), "node_modules");
-    if (existsSync(target)) rmSync(target, { recursive: true, force: true });
-    symlinkSync(path.join(representativePath, "node_modules"), target, process.platform === "win32" ? "junction" : "dir");
+if (process.env.OPENFRONT_SKIP_ENGINE_DEPENDENCIES === "1") {
+  console.log("Skipping historical engine npm installs because verified engine bundles were restored from cache.");
+} else {
+  for (const [lockHash, group] of dependencyGroups) {
+    const representative = group[0];
+    const representativePath = path.resolve(representative.source);
+    console.log(`Installing shared dependencies for ${group.length} exact engines (lock ${lockHash.slice(0, 12)})`);
+    const install = spawnSync(process.platform === "win32" ? "npm.cmd" : "npm", ["ci", "--ignore-scripts"], {
+      cwd: representativePath,
+      stdio: "inherit",
+      shell: process.platform === "win32",
+    });
+    if (install.status !== 0) throw new Error(`Dependency installation failed for lockfile group ${lockHash}`);
+  
+    for (const engine of group.slice(1)) {
+      const target = path.join(path.resolve(engine.source), "node_modules");
+      if (existsSync(target)) rmSync(target, { recursive: true, force: true });
+      symlinkSync(path.join(representativePath, "node_modules"), target, process.platform === "win32" ? "junction" : "dir");
+    }
   }
+  
 }
 console.log(`Prepared ${engines.length} exact OpenFront replay engines across ${dependencyGroups.size} immutable dependency groups.`);

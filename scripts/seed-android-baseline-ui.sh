@@ -55,14 +55,14 @@ capture_screen() {
 
 ocr_text() {
   capture_screen
-  tesseract "$screen_path" stdout -l deu+eng --psm 6 2>/dev/null
+  timeout 20s tesseract "$screen_path" stdout -l deu+eng --psm 6 2>/dev/null
 }
 
 ocr_find_bounds() {
   local needle="$1"
   local occurrence="${2:-1}"
   capture_screen
-  tesseract "$screen_path" stdout -l deu+eng --psm 6 tsv >"$ocr_tsv" 2>/dev/null
+  timeout 20s tesseract "$screen_path" stdout -l deu+eng --psm 6 tsv >"$ocr_tsv" 2>/dev/null
   python3 - "$needle" "$occurrence" "$ocr_tsv" <<'PY'
 import csv
 import re
@@ -223,7 +223,7 @@ tap_text "Partien" last exact
 read_metric() {
   local label="$1"
   capture_screen
-  tesseract "$screen_path" stdout -l deu+eng --psm 6 tsv >"$ocr_tsv" 2>/dev/null
+  timeout 20s tesseract "$screen_path" stdout -l deu+eng --psm 6 tsv >"$ocr_tsv" 2>/dev/null
   python3 - "$ocr_tsv" "$label" <<'PY'
 import csv
 import re
@@ -262,7 +262,7 @@ for attempt in $(seq 1 240); do
   # the intended signal here and is substantially cheaper.
   replay_count="$(read_metric "REPLAYS GESPEICHERT")"
   if [[ "$replay_count" =~ ^[0-9]+$ ]] && (( replay_count >= 3 )); then break; fi
-  if (( attempt % 15 == 0 )); then
+  if (( attempt % 5 == 0 )); then
     log "Still waiting for three UI-confirmed saved replays (poll $attempt/240; observed=${replay_count:-unknown})."
   fi
   sleep 2
@@ -285,7 +285,7 @@ for attempt in $(seq 1 240); do
     training_goal=true
     break
   fi
-  if (( attempt % 30 == 0 )); then
+  if (( attempt % 10 == 0 )); then
     log "Still waiting for the evidence-backed Coach training action (poll $attempt/240)."
   fi
   if (( attempt % 5 == 0 )); then adb -s emulator-5554 shell input swipe 520 1550 520 600 450 >/dev/null 2>&1 || true; fi

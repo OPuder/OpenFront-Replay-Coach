@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { buildReplayEngineCoverageReport } from './ReplayEngineCoverage';
-import { REPLAY_ENGINE_CATALOG } from './decoder/ReplayEngineCatalog';
+import { REPLAY_ENGINE_CATALOG } from '../main/decoder/ReplayEngineCatalog';
 
 test('Coverage reports supported commit correctly', () => {
   const [engine] = REPLAY_ENGINE_CATALOG;

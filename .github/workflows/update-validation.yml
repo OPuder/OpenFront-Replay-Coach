@@ -186,6 +186,7 @@ jobs:
           node --check scripts/compare-android-web-storage.mjs
           node --check scripts/compare-android-upgrade-snapshots.mjs
           node --check scripts/configure-android-signing.mjs
+          node --check scripts/install-android-updater-plugin.mjs
           python3 -m py_compile scripts/create-android-unsigned-negative-apk.py
 
       - name: Set up Java

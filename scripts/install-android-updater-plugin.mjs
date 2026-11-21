@@ -15,22 +15,22 @@ await cp(path.join(templateRoot, "replay_coach_update_paths.xml"), path.join(xml
 
 let activity = await readFile(activityPath, "utf8");
 if (!activity.includes("import android.os.Bundle;")) {
-  activity = activity.replace(/package\\s+de\\.openfront\\.replaycoach\\s*;/,
-    "package de.openfront.replaycoach;\\n\\nimport android.os.Bundle;");
+  activity = activity.replace(/package\s+de\.openfront\.replaycoach\s*;/,
+    "package de.openfront.replaycoach;\n\nimport android.os.Bundle;");
 }
 if (!activity.includes("import android.webkit.WebView;")) {
-  activity = activity.replace("import android.os.Bundle;", "import android.os.Bundle;\\nimport android.webkit.WebView;");
+  activity = activity.replace("import android.os.Bundle;", "import android.os.Bundle;\nimport android.webkit.WebView;");
 }
 if (!activity.includes("import de.openfront.replaycoach.ApkUpdaterPlugin;")) {
-  activity = activity.replace("import android.webkit.WebView;", "import android.webkit.WebView;\\nimport de.openfront.replaycoach.ApkUpdaterPlugin;");
+  activity = activity.replace("import android.webkit.WebView;", "import android.webkit.WebView;\nimport de.openfront.replaycoach.ApkUpdaterPlugin;");
 }
 if (!activity.includes("registerPlugin(ApkUpdaterPlugin.class)")) {
-  activity = activity.replace(/public class MainActivity extends BridgeActivity\\s*\\{\\s*\\}/,
-    "public class MainActivity extends BridgeActivity {\\n    @Override\\n    public void onCreate(Bundle savedInstanceState) {\\n        registerPlugin(ApkUpdaterPlugin.class);\\n        super.onCreate(savedInstanceState);\\n    }\\n}");
+  activity = activity.replace(/public class MainActivity extends BridgeActivity\s*\{\s*\}/,
+    "public class MainActivity extends BridgeActivity {\n    @Override\n    public void onCreate(Bundle savedInstanceState) {\n        registerPlugin(ApkUpdaterPlugin.class);\n        super.onCreate(savedInstanceState);\n    }\n}");
 }
 if (!activity.includes("WebView.setWebContentsDebuggingEnabled")) {
   activity = activity.replace("super.onCreate(savedInstanceState);",
-    "super.onCreate(savedInstanceState);\\n        if (BuildConfig.OFRC_ANDROID_UPGRADE_TEST) {\\n            WebView.setWebContentsDebuggingEnabled(true);\\n        }");
+    "super.onCreate(savedInstanceState);\n        if (BuildConfig.OFRC_ANDROID_UPGRADE_TEST) {\n            WebView.setWebContentsDebuggingEnabled(true);\n        }");
 }
 if (!activity.includes("registerPlugin(ApkUpdaterPlugin.class)") || !activity.includes("WebView.setWebContentsDebuggingEnabled(true)")) {
   throw new Error("Capacitor MainActivity could not be configured for the updater plugin and test-only WebView inspector.");

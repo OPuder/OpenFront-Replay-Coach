@@ -53,23 +53,27 @@ jobs:
       - name: Set up upstream npm
         run: npm install --global npm@12.1.0
 
-      - name: Prepare all exact historical OpenFront engines
-        run: npm run prepare:engines
-
-      - name: Install Coach build dependencies
-        run: npm ci
-
       - name: Restore reusable historical engine bundles
         id: engine-bundle-cache
         uses: actions/cache@v4
         with:
           path: src/renderer/engine
           key: openfront-engine-bundles-v1-${{ runner.os }}-${{ hashFiles('engine-build/**', 'scripts/build-engines.mjs', 'package-lock.json', '.node-version') }}
+
+      - name: Prepare all exact historical OpenFront engines
+        env:
+          OPENFRONT_SKIP_ENGINE_DEPENDENCIES: ${{ steps.engine-bundle-cache.outputs.cache-hit == 'true' && '1' || '0' }}
+        run: npm run prepare:engines
+
       - name: Build exact replay engine bundles on cache miss
         if: steps.engine-bundle-cache.outputs.cache-hit != 'true'
         run: npm run build:engine
       - name: Verify every pinned replay engine bundle
         run: npm run verify:engine-bundles
+
+      - name: Install Coach build dependencies
+        run: npm ci
+
 
       - name: Verify all engine pins and runtime mappings
         run: npm run validate:engine-pin

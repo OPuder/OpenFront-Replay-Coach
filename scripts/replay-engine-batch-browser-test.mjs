@@ -256,7 +256,9 @@ async function main() {
   assert.equal(persisted.length, 5, "All selected match records must survive refresh");
   for (const gameId of ["Europe", "Levant"]) {
     const item = persisted.find(entry => entry.gameId === gameId);
-    const report = batch.coaching.find(entry => entry.matchId === gameId);
+    const replayId = replayIds[gameId];
+    assert.ok(replayId, `${gameId} must map to its canonical replay ID`);
+    const report = batch.coaching.find(entry => entry.matchId === replayId);
     assert.ok(report, gameId + " coaching report must be available for post-reload comparison");
     assert.equal(item?.analysisStatus, "verified");
     assert.equal(item?.simulationStatus, "verified");

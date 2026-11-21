@@ -5,6 +5,11 @@ on:
     branches: [main]
     paths:
       - "docs/INTEGRATION_E2E.md"
+      - ".gitmodules"
+      - "engine-build/**"
+      - "vendor/**"
+      - "package-lock.json"
+      - ".node-version"
       - "scripts/integration-e2e-contract.test.mjs"
       - "scripts/replay-engine-test.ts"
       - "scripts/replay-engine-batch-browser-test.mjs"

@@ -16,6 +16,9 @@ concurrency:
 
 jobs:
   build-android:
+    # The full signed APK and published-APK upgrade validation runs once in update-validation.yml for PRs.
+    # Keep this standalone APK build for manual dispatch and explicit release-branch pushes.
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     timeout-minutes: 60
     steps:

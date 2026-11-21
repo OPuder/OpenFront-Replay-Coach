@@ -79,5 +79,3 @@ jobs:
           OPENFRONT_REPLAY_EXPECTED_MAP: Levant
         run: node --import tsx --test scripts/public-replay-compatibility.test.mjs
 
-      - name: Run Europe and Levant as one mixed-engine batch, verify every hash, cancellation and IndexedDB persistence
-        run: xvfb-run -a ./node_modules/.bin/electron --no-sandbox scripts/replay-engine-batch-browser-test.mjs

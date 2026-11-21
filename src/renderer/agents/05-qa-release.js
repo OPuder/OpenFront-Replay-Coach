@@ -1,0 +1,1 @@
+module.exports = require('./05-qa-release.ts');

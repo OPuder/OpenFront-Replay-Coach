@@ -22,6 +22,14 @@ import { compactBatchMatchForUi, mergeReplayPlayerCounts, preferReplayPlayerCoun
 import { getReplayDisplayState } from './replayPresentation';
 import { buildReplayEngineCoverageReport } from './ReplayEngineCoverage';
 
+if (__ANDROID_UPGRADE_TEST__) {
+  // This module is tree-shaken from production builds; only the dedicated
+  // signed upgrade-test APK exposes the read-only storage inspection bridge.
+  void import('./androidUpgradeTestBridge').then(({ installAndroidUpgradeTestBridge }) => {
+    void installAndroidUpgradeTestBridge();
+  }).catch(error => console.error('[Android upgrade test] Inspector initialization failed:', error));
+}
+
 // Electron provides its API through the isolated preload; normal browsers use
 // the browser adapter so the same React interface powers Windows and Android.
 installBrowserReplayAPI();

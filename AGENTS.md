@@ -1,4 +1,8 @@
+<<<<<<< HEAD
 ﻿# OpenFront Replay Coach – Agent Configuration
+=======
+# OpenFront Replay Coach – Agent Configuration
+>>>>>>> temp-main
 
 ## Project Mission
 Provide an automated coaching platform that captures, processes, and visualizes gameplay replays, enabling players to analyze performance, discover patterns, and improve skills.
@@ -30,9 +34,16 @@ Provide an automated coaching platform that captures, processes, and visualizes 
 | 03 | UX & Visualization | Translates insights into interactive visual representations for coaches and players. |
 | 04 | Platform & Update System | Maintains the Windows/Android runtime, manages updates, ensures compatibility. |
 | 05 | QA, Regression & Release | Automates testing, verifies stability, prepares releases. |
-
-## Release Requirements
-- Releases must be versioned via package.json and tagged in Git.
-- Automated CI must build the Electron app and publish to the distribution channel.
+- All tests must pass on the release branch before merge.
+  ## Release Requirements
+  - Releases must be versioned via package.json and tagged in Git.
+  - Automated CI must build the Electron app and publish to the distribution channel.
+  - Only a <code>release/*</code> branch can trigger the release pipeline.
+  - All tests must pass on the release branch before merge.
+<<<<<<< HEAD
 - Only a elease/* branch can trigger the release pipeline.
 - All tests must pass on the release branch before merge.
+=======
+- Only a <code>release/*</code> branch can trigger the release pipeline.
+- All tests must pass on the release branch before merge.
+>>>>>>> temp-main

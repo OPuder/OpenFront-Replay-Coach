@@ -217,16 +217,25 @@ assert.ok(androidValidationWorkflow.includes("bash -n scripts/test-android-relea
 assert.ok(androidValidationWorkflow.includes("bash -n scripts/android-emulator-diagnostics.sh"));
 
 
-const engineCacheWorkflows = [
+const engineBundleCacheWorkflows = [
   read(".github/workflows/build-windows.yml"),
   read(".github/workflows/replay-compatibility.yml"),
-  read(".github/workflows/validate-engine.yml"),
+  read(".github/workflows/integration-e2e.yml"),
+  read(".github/workflows/validate-android.yml"),
   read(".github/workflows/update-validation.yml"),
   read(".github/workflows/release-on-main.yml"),
 ];
-for (const workflow of engineCacheWorkflows) {
-  assert.match(workflow, /Restore exact historical engine Git objects[\s\S]*?actions\/cache@v4[\s\S]*?path: \.git\/modules[\s\S]*?github\.job/);
+for (const workflow of engineBundleCacheWorkflows) {
+  assert.match(workflow, /Restore reusable historical engine bundles[\s\S]*?actions\/cache@v6[\s\S]*?path: src\/renderer\/engine/);
+  assert.match(workflow, /cache-hit != 'true'[\s\S]*?npm run build:engine/);
 }
+for (const workflow of engineBundleCacheWorkflows) {
+  assert.doesNotMatch(workflow, /path: \.git\/modules/,
+    "Build/test workflows must not restore the multi-gigabyte Git submodule cache.");
+}
+const enginePinWorkflow = read(".github/workflows/validate-engine.yml");
+assert.match(enginePinWorkflow, /Restore exact historical engine Git objects[\s\S]*?actions\/cache@v6[\s\S]*?path: \.git\/modules[\s\S]*?github\.job/);
+assert.match(enginePinWorkflow, /OPENFRONT_SKIP_ENGINE_DEPENDENCIES: "1"/);
 
 const androidEmulatorDiagnostics = read("scripts/android-emulator-diagnostics.sh");
 assert.match(androidEmulatorDiagnostics, /adb kill-server/);

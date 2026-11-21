@@ -43,13 +43,10 @@ if [[ -z "$previous_apk" ]]; then
 fi
 
 export ANDROID_KEYSTORE_PATH="$keystore"
-if [[ "${ANDROID_UPGRADE_TEST_BUILD:-0}" == "1" ]]; then
-  default_candidate_apk="android/app/build/outputs/apk/release/app-release.apk"
-  build_task="assembleRelease"
-else
-  default_candidate_apk="android/app/build/outputs/apk/release/app-release.apk"
-  build_task="assembleRelease"
-fi
+# Both the upgrade-test candidate and production artifact are RELEASE variants.
+# The candidate differs only by its test-only WebView inspector BuildConfig flag.
+default_candidate_apk="android/app/build/outputs/apk/release/app-release.apk"
+build_task="assembleRelease"
 current_apk="${OPENFRONT_CURRENT_APK:-$default_candidate_apk}"
 if [[ "${ANDROID_SIGNING_VERIFY_ONLY:-0}" != "1" ]]; then
   node scripts/configure-android-signing.mjs

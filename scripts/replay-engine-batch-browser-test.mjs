@@ -217,8 +217,6 @@ async function main() {
   const hashMismatchResult = batch.outcomes.find(item => item.gameId === "hash-mismatch");
   const malformedResult = batch.outcomes.find(item => item.gameId === "malformed-replay");
   const levantResult = batch.outcomes.find(item => item.gameId === "Levant");
-  const hashMismatchResult = batch.outcomes.find(item => item.gameId === "hash-mismatch");
-  const malformedResult = batch.outcomes.find(item => item.gameId === "malformed-replay");
   assert.equal(europeResult?.status, "verified");
   assert.equal(europeResult?.recordedHashes, 1006);
   assert.equal(europeResult?.verifiedHashes, 1006);

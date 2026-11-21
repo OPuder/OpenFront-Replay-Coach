@@ -152,8 +152,8 @@ jobs:
       - name: Install Coach dependencies
         run: npm ci
 
-      - name: Verify exact replay engine bundles
-        run: npm run verify:engine-bundles
+      - name: Verify all engine pins and runtime mappings
+        run: npm run validate:engine-pin
 
   validate-replay:
     name: Validate real replay fixtures and mixed-engine analysis

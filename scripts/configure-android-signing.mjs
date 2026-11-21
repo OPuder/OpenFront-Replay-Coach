@@ -33,13 +33,14 @@ function findClosingBrace(source, openingIndex, label) {
   throw new Error("Could not locate the end of the " + label + " block.");
 }
 
-function updateBuildType(source, type, { signWithRelease, debuggable }) {
+function updateBuildType(source, type, { signWithRelease, debuggable, upgradeTestBuild }) {
   const pattern = "buildTypes\\s*\\{[\\s\\S]*?\\b" + type + "\\s*\\{";
   const match = new RegExp(pattern).exec(source);
   if (!match) throw new Error("Could not locate the " + type + " build type.");
   const open = source.indexOf("{", match.index + match[0].lastIndexOf(type));
   const close = findClosingBrace(source, open, type);
   let block = source.slice(open + 1, close).trimEnd();
+
   if (signWithRelease) {
     if (/signingConfig\s+signingConfigs\.[A-Za-z0-9_]+/.test(block)) {
       block = block.replace(/signingConfig\s+signingConfigs\.[A-Za-z0-9_]+/, "signingConfig signingConfigs.release");
@@ -54,31 +55,40 @@ function updateBuildType(source, type, { signWithRelease, debuggable }) {
       block += "\n            debuggable " + debuggable;
     }
   }
+
+  const inspectorValue = upgradeTestBuild ? "true" : "false";
+  const fieldPattern = /buildConfigField\s+"boolean",\s*"OFRC_ANDROID_UPGRADE_TEST",\s*"(?:true|false)"/;
+  const field = 'buildConfigField "boolean", "OFRC_ANDROID_UPGRADE_TEST", "' + inspectorValue + '"';
+  if (fieldPattern.test(block)) block = block.replace(fieldPattern, field);
+  else block += "\n            " + field;
+
   block += "\n        ";
   return source.slice(0, open + 1) + block + source.slice(close);
 }
 
-gradle = updateBuildType(gradle, "release", { signWithRelease: true, debuggable: "false" });
-if (upgradeTestBuild) {
-  // Capacitor's generated app/build.gradle may omit an explicit debug block;
-  // create one so the test APK is BuildConfig.DEBUG and uses the permanent key.
-  const hasDebugBlock = /buildTypes\s*\{[\s\S]*?\bdebug\s*\{/.test(gradle);
-  if (!hasDebugBlock) {
-    const buildTypesMatch = /buildTypes\s*\{/.exec(gradle);
-    if (!buildTypesMatch) throw new Error("Could not locate buildTypes to add the isolated test variant.");
-    const buildTypesOpen = gradle.indexOf("{", buildTypesMatch.index);
-    const buildTypesClose = findClosingBrace(gradle, buildTypesOpen, "buildTypes");
-    const closingLineStart = gradle.lastIndexOf("\n", buildTypesClose) + 1;
-    gradle = gradle.slice(0, closingLineStart)
-      + "        debug {\n            signingConfig signingConfigs.release\n            debuggable true\n        }\n"
-      + gradle.slice(closingLineStart);
-  }
-  // The test variant is debuggable for WebView inspection but uses the exact
-  // same permanent signing key as the non-debuggable production release.
-  gradle = updateBuildType(gradle, "debug", { signWithRelease: true, debuggable: "true" });
+const androidMatch = /android\s*\{/.exec(gradle);
+if (!androidMatch) throw new Error("Could not locate the Android Gradle block.");
+const androidOpen = gradle.indexOf("{", androidMatch.index);
+const androidClose = findClosingBrace(gradle, androidOpen, "android");
+const featuresMatch = /buildFeatures\s*\{/.exec(gradle.slice(androidOpen, androidClose));
+if (featuresMatch) {
+  const featureOpen = androidOpen + featuresMatch.index + featuresMatch[0].lastIndexOf("{");
+  const featureClose = findClosingBrace(gradle, featureOpen, "buildFeatures");
+  let featureBlock = gradle.slice(featureOpen + 1, featureClose);
+  if (/buildConfig\s+false/.test(featureBlock)) featureBlock = featureBlock.replace(/buildConfig\s+false/, "buildConfig true");
+  else if (!/buildConfig\s+true/.test(featureBlock)) featureBlock += "\n        buildConfig true\n    ";
+  gradle = gradle.slice(0, featureOpen + 1) + featureBlock + gradle.slice(featureClose);
+} else {
+  gradle = gradle.slice(0, androidOpen + 1) + "\n    buildFeatures { buildConfig true }" + gradle.slice(androidOpen + 1);
 }
+
+gradle = updateBuildType(gradle, "release", {
+  signWithRelease: true,
+  debuggable: "false",
+  upgradeTestBuild,
+});
 
 writeFileSync(gradlePath, gradle);
 console.log(upgradeTestBuild
-  ? "Configured permanent-key debug test APK; production release remains non-debuggable."
-  : "Configured permanent-key non-debuggable production APK.");
+  ? "Configured a non-debuggable, permanently signed RELEASE upgrade-test APK with the test-only WebView inspector enabled."
+  : "Configured a non-debuggable, permanently signed production APK with the test-only WebView inspector disabled.");

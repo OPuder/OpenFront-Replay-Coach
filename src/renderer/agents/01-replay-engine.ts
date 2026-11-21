@@ -54,7 +54,7 @@ test('Coverage reports supported commit correctly', () => {
       } catch (e) {
         // `e` is of type `unknown`. Use a type assertion to access the
         // message property safely.
-        const errorMessage = (e as any).message ?? String(e);
+        const errorMessage = e instanceof Error ? e.message : String(e);
         console.error('Regression test failed:', errorMessage);
         throw e;
       }

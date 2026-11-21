@@ -200,12 +200,10 @@ jobs:
         with:
           packages: "platforms;android-36 build-tools;36.0.0"
 
-      - name: Install and verify GNU timeout and checksum utilities
+      - name: Verify preinstalled GNU timeout and checksum utilities
         shell: bash
         run: |
           set -Eeuo pipefail
-          sudo apt-get update
-          sudo apt-get install --no-install-recommends -y coreutils
           command -v timeout
           command -v sha256sum
           timeout --version | head -n 1

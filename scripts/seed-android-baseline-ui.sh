@@ -43,6 +43,74 @@ dump_ui() {
   return 1
 }
 
+screen_path="$RUNNER_TEMP/ofrc-baseline-screen.png"
+ocr_tsv="$RUNNER_TEMP/ofrc-baseline-screen.tsv"
+
+capture_screen() {
+  timeout 30s adb -s emulator-5554 exec-out screencap -p >"$screen_path" 2>"$RUNNER_TEMP/ofrc-screencap.log"
+  [[ -s "$screen_path" ]] || fail "Could not capture the Android WebView screen for OCR."
+}
+
+ocr_text() {
+  capture_screen
+  tesseract "$screen_path" stdout -l deu+eng --psm 6 2>/dev/null
+}
+
+ocr_find_bounds() {
+  local needle="$1"
+  local occurrence="${2:-1}"
+  capture_screen
+  tesseract "$screen_path" stdout -l deu+eng --psm 6 tsv >"$ocr_tsv" 2>/dev/null
+  python3 - "$needle" "$occurrence" "$ocr_tsv" <<'PY'
+import csv
+import re
+import sys
+from collections import defaultdict
+
+needle, occurrence, path = sys.argv[1:]
+needle = re.sub(r"\s+", " ", needle).strip().casefold()
+groups = defaultdict(list)
+with open(path, newline="", encoding="utf-8") as stream:
+    for row in csv.DictReader(stream, delimiter="\t"):
+        if row.get("level") != "5":
+            continue
+        text = row.get("text", "").strip()
+        if not text:
+            continue
+        key = (row["block_num"], row["par_num"], row["line_num"])
+        groups[key].append(row)
+
+matches = []
+for rows in groups.values():
+    rows.sort(key=lambda row: int(row["left"]))
+    line = " ".join(row["text"].strip() for row in rows)
+    if needle not in re.sub(r"\s+", " ", line).casefold():
+        continue
+    x1 = min(int(row["left"]) for row in rows)
+    y1 = min(int(row["top"]) for row in rows)
+    x2 = max(int(row["left"]) + int(row["width"]) for row in rows)
+    y2 = max(int(row["top"]) + int(row["height"]) for row in rows)
+    matches.append((y1, x1, (x1 + x2) // 2, (y1 + y2) // 2, line))
+
+matches.sort(key=lambda item: (item[0], item[1]))
+if not matches:
+    raise SystemExit(1)
+if occurrence == "last":
+    match = matches[-1]
+else:
+    index = max(1, int(occurrence)) - 1
+    match = matches[min(index, len(matches) - 1)]
+print(f"{match[2]} {match[3]}")
+PY
+}
+
+ocr_contains() {
+  local needle="$1"
+  local text
+  text="$(ocr_text || true)"
+  grep -qiF "$needle" <<<"$text"
+}
+
 find_bounds() {
   local needle="$1"
   local mode="$2"
@@ -103,15 +171,19 @@ tap_text() {
   local coords=""
   for attempt in $(seq 1 20); do
     dump_ui || fail "UIAutomator could not produce a readable hierarchy after two bounded attempts."
-    coords="$(find_bounds "$needle" "$mode" "$occurrence" || true)"
+    coords="$(find_bounds "$needle" "$mode" "$occurrence" 2>/dev/null || true)"
+    if [[ -z "$coords" ]]; then
+      coords="$(ocr_find_bounds "$needle" "$occurrence" || true)"
+    fi
     if [[ -n "$coords" ]]; then
       read -r x y <<< "$coords"
+      log "Tapping '$needle' at $x,$y (UI hierarchy or German/English WebView OCR)."
       adb -s emulator-5554 shell input tap "$x" "$y"
       return 0
     fi
     sleep 2
   done
-  fail "Could not find the UI control '$needle'. Captured UI: $(cat "$ui_xml" 2>/dev/null | head -c 4000)"
+  fail "Could not find the UI control '$needle' in UIAutomator or OCR. Captured UI: $(cat "$ui_xml" 2>/dev/null | head -c 4000)"
 }
 
 log "Rechecking ADB transport and boot state before launching the published baseline."
@@ -120,42 +192,54 @@ log "Launching the genuine published v2.2.51 APK and classifying ADB, ActivityMa
 android_launch_package "$package_id" "the published v2.2.51 baseline APK" || fail "Published baseline app launch failed; see classified emulator diagnostics."
 sleep 20
 dump_ui || fail "Could not inspect the published app UI after two diagnostic UIAutomator attempts."
-coords="$(find_bounds "" edit || true)"
-[[ -n "$coords" ]] || fail "Could not locate the profile input field in the actual app UI."
+coords="$(find_bounds "" edit 2>/dev/null || true)"
+if [[ -z "$coords" ]]; then
+  coords="$(ocr_find_bounds "OpenFront-Profillink" 1 || true)"
+fi
+[[ -n "$coords" ]] || fail "Could not locate the profile input field in the WebView via UIAutomator or OCR."
 read -r input_x input_y <<< "$coords"
+log "Entering the archived player ID through the real published app UI at $input_x,$input_y."
 adb -s emulator-5554 shell input tap "$input_x" "$input_y"
 adb -s emulator-5554 shell input text "$player_id"
 adb -s emulator-5554 shell input keyevent 4
 tap_text "Konto laden"
 
-profile_ready=false
-for attempt in $(seq 1 90); do
-  dump_ui || fail "UIAutomator could not produce a readable hierarchy after two bounded attempts."
-  if grep -qi "Konto geladen" "$ui_xml" || grep -qi "Spieler-ID:" "$ui_xml"; then
-    profile_ready=true
-    break
-  fi
-  sleep 2
-done
-[[ "$profile_ready" == true ]] || fail "The real UI did not finish loading the archived player's public profile."
-log "The public profile loaded through the app UI. Waiting for automatic import of full replay records."
-
-tap_text "Partien" 1 exact
+# The published baseline is a non-debuggable WebView app, so Android exposes
+# only the WebView container to UIAutomator. OCR follows the visible UI, and
+# the post-upgrade inspector verifies the imported records in real IndexedDB.
+sleep 20
+tap_text "Partien" last exact
 read_metric() {
   local label="$1"
-  python3 - "$ui_xml" "$label" <<'PY'
-import sys, xml.etree.ElementTree as ET
-try:
-    nodes = list(ET.parse(sys.argv[1]).getroot().iter("node"))
-except Exception:
-    print(0); raise SystemExit
-label = sys.argv[2].upper()
-for index, node in enumerate(nodes):
-    if label in node.attrib.get("text", "").upper():
-        for candidate in nodes[index+1:index+9]:
-            value = candidate.attrib.get("text", "").strip().replace(",", "")
-            if value.isdigit():
-                print(value); raise SystemExit
+  capture_screen
+  tesseract "$screen_path" stdout -l deu+eng --psm 6 tsv >"$ocr_tsv" 2>/dev/null
+  python3 - "$ocr_tsv" "$label" <<'PY'
+import csv
+import re
+import sys
+from collections import defaultdict
+
+path, label = sys.argv[1:]
+label = re.sub(r"\s+", " ", label).strip().casefold()
+groups = defaultdict(list)
+with open(path, newline="", encoding="utf-8") as stream:
+    for row in csv.DictReader(stream, delimiter="\t"):
+        if row.get("level") == "5" and row.get("text", "").strip():
+            groups[(row["block_num"], row["par_num"], row["line_num"])].append(row)
+lines = []
+for rows in groups.values():
+    rows.sort(key=lambda row: int(row["left"]))
+    text = " ".join(row["text"].strip() for row in rows)
+    y = min(int(row["top"]) for row in rows)
+    lines.append((y, text))
+lines.sort()
+for index, (_, text) in enumerate(lines):
+    if label in re.sub(r"\s+", " ", text).casefold():
+        for _, candidate in lines[index:index+8]:
+            match = re.search(r"\b(\d{1,6})\b", candidate.replace(",", ""))
+            if match:
+                print(match.group(1))
+                raise SystemExit
 print(0)
 PY
 }
@@ -180,7 +264,7 @@ tap_text "Coach öffnen" 1 exact
 training_goal=false
 for attempt in $(seq 1 240); do
   dump_ui || fail "UIAutomator could not produce a readable hierarchy after two bounded attempts."
-  if grep -qi "Als Trainingsziel übernehmen" "$ui_xml"; then
+  if ocr_contains "Als Trainingsziel übernehmen"; then
     training_goal=true
     break
   fi

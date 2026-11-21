@@ -33,7 +33,7 @@ function findClosingBrace(source, openingIndex, label) {
   throw new Error("Could not locate the end of the " + label + " block.");
 }
 
-function updateBuildType(source, type, { signWithRelease, debuggable, upgradeTestBuild }) {
+function updateBuildType(source, type, { signWithRelease, debuggable }) {
   const pattern = "buildTypes\\s*\\{[\\s\\S]*?\\b" + type + "\\s*\\{";
   const match = new RegExp(pattern).exec(source);
   if (!match) throw new Error("Could not locate the " + type + " build type.");
@@ -56,12 +56,6 @@ function updateBuildType(source, type, { signWithRelease, debuggable, upgradeTes
     }
   }
 
-  const inspectorValue = upgradeTestBuild ? "true" : "false";
-  const fieldPattern = /buildConfigField\s+"boolean",\s*"OFRC_ANDROID_UPGRADE_TEST",\s*"(?:true|false)"/;
-  const field = 'buildConfigField "boolean", "OFRC_ANDROID_UPGRADE_TEST", "' + inspectorValue + '"';
-  if (fieldPattern.test(block)) block = block.replace(fieldPattern, field);
-  else block += "\n            " + field;
-
   block += "\n        ";
   return source.slice(0, open + 1) + block + source.slice(close);
 }
@@ -82,10 +76,21 @@ if (featuresMatch) {
   gradle = gradle.slice(0, androidOpen + 1) + "\n    buildFeatures { buildConfig true }" + gradle.slice(androidOpen + 1);
 }
 
+const defaultMatch = /defaultConfig\s*\{/.exec(gradle);
+if (!defaultMatch) throw new Error("Could not locate the Android defaultConfig block.");
+const defaultOpen = gradle.indexOf("{", defaultMatch.index);
+const defaultClose = findClosingBrace(gradle, defaultOpen, "defaultConfig");
+let defaultBlock = gradle.slice(defaultOpen + 1, defaultClose);
+const inspectorValue = upgradeTestBuild ? "true" : "false";
+const fieldPattern = /buildConfigField\s+"boolean",\s*"OFRC_ANDROID_UPGRADE_TEST",\s*"(?:true|false)"/;
+const field = 'buildConfigField "boolean", "OFRC_ANDROID_UPGRADE_TEST", "' + inspectorValue + '"';
+if (fieldPattern.test(defaultBlock)) defaultBlock = defaultBlock.replace(fieldPattern, field);
+else defaultBlock += "\n        " + field + "\n    ";
+gradle = gradle.slice(0, defaultOpen + 1) + defaultBlock + gradle.slice(defaultClose);
+
 gradle = updateBuildType(gradle, "release", {
   signWithRelease: true,
   debuggable: "false",
-  upgradeTestBuild,
 });
 
 writeFileSync(gradlePath, gradle);

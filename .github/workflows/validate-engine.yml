@@ -13,15 +13,6 @@ on:
       - "package-lock.json"
       - ".node-version"
       - "package.json"
-      - "scripts/updater-contract.test.mjs"
-      - "scripts/android-emulator-diagnostics.sh"
-      - "scripts/seed-android-baseline-ui.sh"
-      - "scripts/test-android-release-upgrade.sh"
-      - "scripts/inspect-android-upgrade-data.mjs"
-      - "scripts/api-turn-decoder.test.mjs"
-      - "src/main/decoder/ApiTurnDecoder.ts"
-      - "src/renderer/androidUpgradeTestBridge.ts"
-      # PR #148 adds Android updater contract coverage; keep this gate in its six-workflow acceptance set.
       - ".github/workflows/validate-engine.yml"
   push:
     branches: [main]

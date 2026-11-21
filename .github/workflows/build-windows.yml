@@ -18,10 +18,10 @@ jobs:
     timeout-minutes: 60
     steps:
       - name: Check out source
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Restore exact historical engine Git objects
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: .git/modules
           key: openfront-engine-git-${{ runner.os }}-${{ github.job }}-${{ hashFiles('.gitmodules', 'engine-build/engines.json') }}
@@ -29,7 +29,7 @@ jobs:
             openfront-engine-git-${{ runner.os }}-
 
       - name: Set up upstream Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: "24.15.0"
           cache: npm
@@ -39,7 +39,7 @@ jobs:
 
       - name: Restore reusable historical engine bundles
         id: engine-bundle-cache
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: src/renderer/engine
           key: openfront-engine-bundles-v1-${{ runner.os }}-${{ hashFiles('engine-build/**', 'scripts/build-engines.mjs', '.node-version') }}
@@ -71,7 +71,7 @@ jobs:
         run: node scripts/smoke-test-windows.mjs
 
       - name: Upload installer and portable ZIP
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: OpenFront-Replay-Coach-Windows
           path: |

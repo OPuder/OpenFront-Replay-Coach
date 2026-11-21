@@ -197,6 +197,7 @@ jobs:
     timeout-minutes: 90
     steps:
       - name: Check out source
+        id: source-checkout
         uses: actions/checkout@v7
 
       - name: Set up Node.js
@@ -432,7 +433,7 @@ jobs:
           script: bash scripts/test-android-release-upgrade.sh
 
       - name: Capture host and ADB diagnostics after emulator action
-        if: always()
+        if: always() && steps.source-checkout.outcome == 'success'
         shell: bash
         run: |
           set -Eeuo pipefail
@@ -508,7 +509,7 @@ jobs:
           echo "OPENFRONT_PRODUCTION_SHA256=$production_sha256" >> "$GITHUB_ENV"
 
       - name: Verify permanent Android release signing key and continuity
-        if: always() && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
+        if: always() && steps.source-checkout.outcome == 'success' && steps.release_candidate.outcome == 'success' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
         env:
           ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}

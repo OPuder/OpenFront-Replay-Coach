@@ -2,6 +2,7 @@
  * Minimal Cline orchestrator – CommonJS version for easy execution with `node`.
  */
 const fs = require('fs').promises;
+const fsSync = require('fs');
 const path = require('path');
 const { execSync } = require('child_process');
 
@@ -33,6 +34,7 @@ class Task {
 }
 
 const TASK_QUEUE_FILE = path.resolve(process.cwd(), 'task-queue.json');
+const LOCK_DIR = path.resolve(process.cwd(), 'src', 'main', 'task-queue.lock');
 
 async function loadTasks() {
   try {
@@ -47,43 +49,75 @@ async function saveTasks(tasks) {
   await fs.writeFile(TASK_QUEUE_FILE, JSON.stringify(tasks, null, 2), 'utf-8');
 }
 
+// Helper: lock utilities
+function lockFilePath(id) {
+  return path.join(LOCK_DIR, `${id}.lock`);
+}
+function createLock(id, leaseMs) {
+  const expiry = Date.now() + leaseMs;
+  fsSync.writeFileSync(lockFilePath(id), expiry.toString(), 'utf-8');
+}
+function isLocked(id) {
+  try {
+    const data = fs.readFileSync(lockFilePath(id), 'utf-8');
+    const expiry = parseInt(data, 10);
+    return Date.now() < expiry;
+  } catch (_) {
+    return false;
+  }
+}
+function deleteLock(id) {
+  try { fs.unlinkSync(lockFilePath(id)); } catch (_) {}
+}
+
 async function processTask(task) {
   console.log(`--- Processing task ${task.id}: ${task.description}`);
   const entry = agentRegistry[task.role];
   if (!entry) throw new Error(`Unknown agent role ${task.role}`);
-  try {
-    task.status = 'running';
-    await saveTasks([task]);
-    await entry.agent.run();
-    task.status = 'completed';
-    task.result = `Agent ${entry.name} finished successfully.`;
-    console.log(`✅ Task ${task.id} completed by ${entry.name}`);
-    // Run integration tests after successful agent run
+    const leaseMs = parseInt(process.env.LEASE_MS, 10) || 300000; // 5 minutes
+    const hb = setInterval(() => createLock(task.id, leaseMs), 10000);
     try {
-      console.log('Running integration tests...');
-      execSync('npm run test:integration-e2e', { stdio: 'inherit' });
-      console.log('Integration tests passed.');
-      // Commit any changes produced by the agent
-      const status = execSync('git status --porcelain', { encoding: 'utf-8' });
-      if (status.trim()) {
-        console.log('Staging changes for commit.');
-        execSync('git add .', { stdio: 'inherit' });
-        execSync(`git commit -m "Agent ${entry.name} applied changes for task ${task.id}"`, { stdio: 'inherit' });
-        console.log('Committed changes.');
-      } else {
-        console.log('No changes to commit.');
+      // Claim lock
+      if (isLocked(task.id)) {
+        console.log(`Task ${task.id} already locked – skipping.`);
+        return;
       }
-    } catch (testErr) {
-      console.error('Integration tests failed:', testErr.message);
+      createLock(task.id, leaseMs);
+      task.status = 'running';
+      const allTasks = await loadTasks();
+      const idx = allTasks.findIndex(t => t.id === task.id);
+      if (idx !== -1) allTasks[idx] = task;
+      await saveTasks(allTasks);
+      // Snapshot before agent runs
+      const preStatus = execSync('git status --porcelain', { encoding: 'utf-8' });
+      await entry.agent.run();
+      // Snapshot after agent runs
+      const postStatus = execSync('git status --porcelain', { encoding: 'utf-8' });
+      const preLines = preStatus.split('\n').filter(Boolean);
+      const postLines = postStatus.split('\n').filter(Boolean);
+      const changedFiles = postLines
+        .filter(l => !preLines.includes(l))
+        .map(l => l.trim().split(' ')[1]);
+      task.status = 'completed';
+      task.result = `Agent ${entry.name} finished successfully.`;
+      console.log(`✅ Task ${task.id} completed by ${entry.name}`);
+      // Integration tests after agent work
+      try {
+        execSync('npm run test:integration-e2e', { stdio: 'inherit' });
+        console.log('Integration tests passed.');
+      } catch (e) {
+        console.error('Integration tests failed:', e.message);
+        throw e;
+    } catch (e) {
       task.status = 'failed';
-      task.result += ` | Test failure: ${testErr.message}`;
+      task.result = e.message;
+      console.error(`❌ Task ${task.id} failed: ${e.message}`);
+      console.error(`❌ Task ${task.id} failed: ${e.message}`);
+    } finally {
+      clearInterval(hb);
+      deleteLock(task.id);
     }
-  } catch (e) {
-    task.status = 'failed';
-    task.result = e.message;
-    console.error(`❌ Task ${task.id} failed: ${e.message}`);
-  }
-  await saveTasks([task]);
+    await saveTasks([task]);
 }
 
 async function runOrchestrator() {

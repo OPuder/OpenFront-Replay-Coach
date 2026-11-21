@@ -104,6 +104,8 @@ assert.match(updateValidationWorkflow, /Identify Android upgrade-sensitive chang
 assert.match(updateValidationWorkflow, /android_upgrade:[\s\S]*?src\/renderer\/matchStore\.ts/);
 assert.match(updateValidationWorkflow, /if: success\(\) && \(github\.event_name != 'pull_request' \|\| needs\.change-scope\.outputs\.android_upgrade == 'true'\)/);
 assert.match(updateValidationWorkflow, /pull_request:[\s\S]*?paths:[\s\S]*?src\/\*\*/);
+assert.match(updateValidationWorkflow, /id: source-checkout[\s\S]*?steps\.source-checkout\.outcome == 'success'/);
+assert.match(updateValidationWorkflow, /steps\.release_candidate\.outcome == 'success'/);
 assert.match(updateValidationWorkflow, /Build higher-version candidate with the permanent release key/);
 assert.match(updateValidationWorkflow, /Test genuine published-APK in-place upgrade on Android emulator[\s\S]*?bash scripts\/test-android-release-upgrade\.sh/);
 assert.match(updateValidationWorkflow, /Preserve non-debuggable release-signed upgrade-test APK/);

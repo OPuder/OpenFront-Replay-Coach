@@ -14,6 +14,9 @@ concurrency:
 
 jobs:
   build-windows:
+    # PR Windows installer/portable packaging is executed once in update-validation.yml.
+    # Keep this standalone full build for manual dispatch and explicit branch builds.
+    if: github.event_name != 'pull_request'
     runs-on: windows-latest
     timeout-minutes: 60
     steps:

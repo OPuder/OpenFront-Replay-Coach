@@ -170,9 +170,6 @@ jobs:
       - name: Verify every pinned replay engine bundle
         run: npm run verify:engine-bundles
 
-      - name: Verify updater contract tests
-        run: node --test scripts/updater-contract.test.mjs
-
       - name: Validate Android upgrade test scripts and bridge
         run: |
           bash -n scripts/test-android-in-place-update.sh

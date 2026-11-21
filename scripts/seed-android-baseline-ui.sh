@@ -48,36 +48,51 @@ find_bounds() {
   local mode="$2"
   local occurrence="${3:-1}"
   python3 - "$ui_xml" "$needle" "$mode" "$occurrence" <<'PY'
-import sys, xml.etree.ElementTree as ET
+import re
+import sys
+import xml.etree.ElementTree as ET
+
 path, needle, mode, occurrence = sys.argv[1:]
 occurrence = max(1, int(occurrence))
-root = ET.parse(path).getroot()
+try:
+    root = ET.parse(path).getroot()
+except (OSError, ET.ParseError) as error:
+    print(f"UI hierarchy parse failed: {error}", file=sys.stderr)
+    raise SystemExit(2)
+
 matches = []
 for node in root.iter("node"):
     attrs = node.attrib
-    text = " ".join((attrs.get("text", ""), attrs.get("content-desc", ""), attrs.get("hint", "")))
+    label = " ".join((attrs.get("text", ""), attrs.get("content-desc", ""), attrs.get("hint", "")))
     if mode == "edit":
-        # Handle both legacy EditText and modern TextInputEditText
         if attrs.get("class") not in ("android.widget.EditText", "android.widget.TextInputEditText"):
             continue
-    elif mode == "exact":
-        if attrs.get("text", "").strip().lower() != needle.lower():
+        if attrs.get("enabled") != "true" or attrs.get("clickable") != "true":
             continue
-    elif needle.lower() not in text.lower():
+    elif mode == "exact":
+        if attrs.get("text", "").strip().casefold() != needle.casefold():
+            continue
+    elif needle.casefold() not in label.casefold():
         continue
-    bounds = attrs.get("bounds", "")
-    try:
-        left_top, right_bottom = bounds.strip("[]").split("][")
-        x1, y1 = map(int, left_top.split(","))
-        x2, y2 = map(int, right_bottom.split(","))
-    except Exception:
+
+    coordinates = re.fullmatch(r"\[(\d+),(\d+)\]\[(\d+),(\d+)\]", attrs.get("bounds", ""))
+    if not coordinates:
         continue
-    area = (x2 - x1) * (y2 - y1)
-    matches.append((area, len(matches), (x1+x2)//2, (y1+y2)//2, text))
+    x1, y1, x2, y2 = map(int, coordinates.groups())
+    if x2 <= x1 or y2 <= y1:
+        continue
+    # For the profile form, choose the uppermost editable field, not the
+    # similarly sized quick-import field farther down the dashboard.
+    matches.append((y1, x1, (x1 + x2) // 2, (y1 + y2) // 2, label))
+
 if matches:
     matches.sort(key=lambda item: (item[0], item[1]))
     _, _, x, y, _ = matches[min(occurrence - 1, len(matches) - 1)]
     print(f"{x} {y}")
+elif mode == "edit":
+    print("No enabled editable fields found. Classes: " + ", ".join(
+        sorted({node.attrib.get("class", "<missing>") for node in root.iter("node")})
+    ), file=sys.stderr)
 PY
 }
 

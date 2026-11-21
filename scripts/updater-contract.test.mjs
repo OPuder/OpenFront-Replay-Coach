@@ -235,16 +235,24 @@ const engineBundleCacheWorkflows = [
   read(".github/workflows/integration-e2e.yml"),
   read(".github/workflows/validate-android.yml"),
   read(".github/workflows/update-validation.yml"),
-  read(".github/workflows/release-on-main.yml"),
 ];
 for (const workflow of engineBundleCacheWorkflows) {
-  assert.match(workflow, /Restore reusable historical engine bundles[\s\S]*?actions\/cache@v6[\s\S]*?path: src\/renderer\/engine/);
-  assert.match(workflow, /cache-hit != 'true'[\s\S]*?npm run build:engine/);
+  assert.match(workflow, /Restore reusable historical engine bundles[\\s\\S]*?actions\\/cache@v6[\\s\\S]*?path: src\\/renderer\\/engine/);
+  assert.match(workflow, /cache-hit != 'true'[\\s\\S]*?npm run build:engine/);
 }
 for (const workflow of engineBundleCacheWorkflows) {
-  assert.doesNotMatch(workflow, /path: \.git\/modules/,
+  assert.doesNotMatch(workflow, /path: \\.git\\/modules/,
     "Build/test workflows must not restore the multi-gigabyte Git submodule cache.");
 }
+const releaseEngineBundleWorkflow = read(".github/workflows/release-on-main.yml");
+assert.match(releaseEngineBundleWorkflow, /build-engine-bundles:[\\s\\S]*?npm run prepare:engines[\\s\\S]*?npm run build:engine[\\s\\S]*?npm run verify:engine-bundles[\\s\\S]*?actions\\/upload-artifact@v7[\\s\\S]*?name: openfront-engine-bundles/);
+assert.equal((releaseEngineBundleWorkflow.match(/run: npm run build:engine/g) || []).length, 1,
+  "The release workflow must build historical replay engines exactly once.");
+for (const job of ["validate-replay", "build-windows", "build-android"]) {
+  assert.match(releaseEngineBundleWorkflow, new RegExp(job + ":[\\s\\S]*?needs: \\[prepare-release, build-engine-bundles\\][\\s\\S]*?actions/download-artifact@v8[\\s\\S]*?name: openfront-engine-bundles[\\s\\S]*?npm run verify:engine-bundles"));
+}
+assert.doesNotMatch(releaseEngineBundleWorkflow, /Restore reusable historical engine bundles/,
+  "Release downstream jobs must consume the one validated engine artifact, not build independently.");
 const enginePinWorkflow = read(".github/workflows/validate-engine.yml");
 assert.match(enginePinWorkflow, /Restore exact historical engine Git objects[\s\S]*?actions\/cache@v6[\s\S]*?path: \.git\/modules[\s\S]*?github\.job/);
 assert.match(enginePinWorkflow, /OPENFRONT_SKIP_ENGINE_DEPENDENCIES: "1"/);

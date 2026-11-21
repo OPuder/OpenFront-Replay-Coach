@@ -183,7 +183,9 @@ tap_text() {
     fi
     sleep 2
   done
-  fail "Could not find the UI control '$needle' in UIAutomator or OCR. Captured UI: $(cat "$ui_xml" 2>/dev/null | head -c 4000)"
+  local ocr_dump
+  ocr_dump="$(ocr_text 2>/dev/null | tr '\n' ' ' || true)"
+  fail "Could not find the UI control '$needle' in UIAutomator or OCR. OCR text: ${ocr_dump:0:1200}. Captured UI: $(cat "$ui_xml" 2>/dev/null | head -c 4000)"
 }
 
 log "Rechecking ADB transport and boot state before launching the published baseline."
@@ -196,7 +198,10 @@ coords="$(find_bounds "" edit 2>/dev/null || true)"
 if [[ -z "$coords" ]]; then
   coords="$(ocr_find_bounds "OpenFront-Profillink" 1 || true)"
 fi
-[[ -n "$coords" ]] || fail "Could not locate the profile input field in the WebView via UIAutomator or OCR."
+if [[ -z "$coords" ]]; then
+  ocr_dump="$(ocr_text 2>/dev/null | tr '\n' ' ' || true)"
+  fail "Could not locate the profile input field in the WebView via UIAutomator or OCR. OCR text: ${ocr_dump:0:1200}"
+fi
 read -r input_x input_y <<< "$coords"
 log "Entering the archived player ID through the real published app UI at $input_x,$input_y."
 adb -s emulator-5554 shell input tap "$input_x" "$input_y"

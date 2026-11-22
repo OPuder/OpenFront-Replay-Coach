@@ -244,7 +244,7 @@ screen_text = sys.argv[1]
 # The published app shows the actual profile import total as "0 von N Partien"
 # while long-term analysis is being built; it does not expose a
 # "REPLAYS GESPEICHERT" label on this dashboard.
-matches = re.findall(r"\\b\\d+\\s+von\\s+(\\d+)\\s+Partien\\b", screen_text, re.IGNORECASE)
+matches = re.findall(r"\b\d+\s+von\s+(\d+)\s+Partien\b", screen_text, re.IGNORECASE)
 print(matches[-1] if matches else "missing")
 PY
 }

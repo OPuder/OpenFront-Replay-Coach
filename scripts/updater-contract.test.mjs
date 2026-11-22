@@ -194,6 +194,9 @@ assert.ok(releaseUpgradeScript.includes("dumpsys activity activities"));
 assert.ok(releaseUpgradeScript.includes("FATAL EXCEPTION"));
 assert.ok(releaseUpgradeScript.includes("sleep 300"));
 assert.ok(releaseUpgradeScript.includes("five-minute idle soak"));
+assert.ok(releaseUpgradeScript.includes("svc power stayon true"));
+assert.ok(releaseUpgradeScript.includes("screen_off_timeout 2147483647"));
+assert.ok(releaseUpgradeScript.includes("dumpsys activity exit-info"));
 const androidValidationWorkflow = read(".github/workflows/update-validation.yml");
 assert.match(androidValidationWorkflow, /bash -n scripts\/test-android-release-upgrade\.sh[\s\S]*?bash -n scripts\/test-android-in-place-update\.sh[\s\S]*?bash -n scripts\/verify-android-release-signing\.sh/);
 

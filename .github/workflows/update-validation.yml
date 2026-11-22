@@ -181,6 +181,8 @@ jobs:
           sudo apt-get update
           sudo apt-get install --no-install-recommends -y tesseract-ocr tesseract-ocr-deu
           tesseract --list-langs
+      - name: Set up Java
+        uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: "21"

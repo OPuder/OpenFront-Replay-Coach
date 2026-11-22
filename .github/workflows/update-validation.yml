@@ -176,11 +176,6 @@ jobs:
           node --check scripts/configure-android-signing.mjs
           python3 -m py_compile scripts/create-android-unsigned-negative-apk.py
 
-      - name: Install Tesseract OCR for the non-debuggable Android WebView baseline
-        run: |
-          sudo apt-get update
-          sudo apt-get install --no-install-recommends -y tesseract-ocr tesseract-ocr-deu
-          tesseract --list-langs
       - name: Set up Java
         uses: actions/setup-java@v4
         with:

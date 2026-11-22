@@ -338,33 +338,48 @@ seed_verified_match() {
     timeout 10s adb -s emulator-5554 shell input keycombination 113 29 >/dev/null 2>&1 || fail "Could not select the previous library search query."
   fi
   timeout 10s adb -s emulator-5554 shell input text "$game_id" || fail "Could not enter archived match ID $game_id in the library search."
-  # Android keeps the soft keyboard open after input text. While it is open,
-  # the replay card and its Coach button are pushed below the visible WebView
-  # viewport (UIAutomator reports [0,0][0,0], OCR sees only the keyboard).
-  # Dismiss the IME before checking for or tapping the filtered replay action.
-  timeout 10s adb -s emulator-5554 shell input keyevent 4 || fail "Could not dismiss the Android keyboard after entering archived match ID $game_id."
+  # The search is a controlled WebView input. Commit the IME composition with
+  # ENTER before hiding the keyboard; BACK can cancel an active composition on
+  # some Android images and leave gameSearch empty without an obvious error.
+  timeout 10s adb -s emulator-5554 shell input keyevent 66 || fail "Could not commit archived match ID $game_id in the library search."
+  sleep 2
+  timeout 10s adb -s emulator-5554 shell input keyevent 4 || fail "Could not dismiss the Android keyboard after committing archived match ID $game_id."
   sleep 2
 
-  local filtered=false visible_coach_button=""
+  # Do not scroll blindly while the filter is still unconfirmed: doing so can
+  # move the input and card off-screen and make a failed search look like a
+  # missing Coach button. First require the exact one-result state and ID.
+  local filtered=false visible_coach_button="" search_screen_text=""
   for attempt in $(seq 1 12); do
     if dump_ui && grep -F "$game_id" "$ui_xml" >/dev/null &&
-       grep -F "1 aktuell gefiltert" "$ui_xml" >/dev/null &&
-       grep -F "Coach öffnen" "$ui_xml" >/dev/null; then
-      visible_coach_button="$(find_bounds "Coach öffnen" exact 1 2>/dev/null || true)"
-      if [[ -n "$visible_coach_button" ]]; then
-        filtered=true
-        break
-      fi
+       grep -F "1 aktuell gefiltert" "$ui_xml" >/dev/null; then
+      filtered=true
+      break
     fi
-    # The library summary and engine coverage precede the replay cards. Scroll
-    # the WebView content until the matching card's action has real screen
-    # bounds; text existing in the accessibility tree is not enough.
+    if (( attempt % 3 == 0 )); then
+      search_screen_text="$(ocr_text 2>/dev/null | tr '\n' ' ' || true)"
+      log "Waiting for exact library search result $game_id (attempt $attempt/12). Current screen: ${search_screen_text:0:500}"
+    fi
+    sleep 2
+  done
+  [[ "$filtered" == true ]] || fail "The library search did not reduce the results to exactly one match for $game_id after committing the Android input. Last screen: ${search_screen_text:0:1200}; UI: $(cat "$ui_xml" 2>/dev/null | head -c 2500)"
+
+  # The library summary and engine coverage precede replay cards. Once the
+  # unique result is proven, scroll the card into the viewport and require
+  # non-zero screen bounds before tapping its action.
+  for attempt in $(seq 1 8); do
+    if dump_ui; then
+      visible_coach_button="$(find_bounds "Coach öffnen" exact 1 2>/dev/null || true)"
+      if [[ -n "$visible_coach_button" ]]; then break; fi
+    fi
     timeout 10s adb -s emulator-5554 shell input swipe 500 780 500 350 500 >/dev/null 2>&1 || true
     sleep 1
   done
-  [[ "$filtered" == true ]] || fail "The archived match $game_id was filtered but its Coach action never became visible after dismissing the keyboard and scrolling the library."
+  [[ -n "$visible_coach_button" ]] || fail "The unique archived match $game_id was filtered correctly, but its Coach action has no visible screen bounds after scrolling. UI: $(cat "$ui_xml" 2>/dev/null | head -c 3000)"
 
-  tap_text "Coach öffnen" 1 exact
+  read -r coach_x coach_y <<< "$visible_coach_button"
+  log "Tapping the visible Coach action for $game_id at $coach_x,$coach_y."
+  timeout 10s adb -s emulator-5554 shell input tap "$coach_x" "$coach_y" || fail "ADB tap failed for the visible Coach action on $game_id."
   log "Opened archived match $game_id. Waiting for its actual Original-Engine result."
 
   local started=$SECONDS state=""

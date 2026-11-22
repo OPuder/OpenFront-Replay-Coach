@@ -447,7 +447,7 @@ jobs:
         if: always() && steps.source-checkout.outcome == 'success' && (github.event_name != 'pull_request' || needs.change-scope.outputs.android_upgrade == 'true')
         uses: actions/upload-artifact@v7
         with:
-          name: android-baseline-ui-diagnostics
+          name: android-upgrade-diagnostics
           path: |
             ${{ runner.temp }}/ofrc-android-diagnostics/**
             ${{ runner.temp }}/ofrc-gnu-tools.log

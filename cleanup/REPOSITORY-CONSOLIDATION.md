@@ -310,7 +310,7 @@ All closures below are **not merges**. Their source branches remain available fo
 
 ### Exact current integration heads and validation
 
-- PR #157: `d32c9e6d2ec449088cc8abd9e0c3caaa9d116e34` — replay/engine/Windows/Android/integration workflows are running. Earlier heads failed the UI seed because the published non-debuggable WebView exposed no EditText; OCR is now installed explicitly and matching accepts multiple profile-field labels. The previous head also exposed an outdated contract assertion and duplicate `release_candidate` step IDs; both were corrected.
+- PR #157: current branch head (this ledger revision is committed to the same branch) — replay/engine/Windows/Android/integration workflows must pass on the final exact SHA. Earlier heads failed the UI seed because the published non-debuggable WebView exposed no EditText; OCR is now installed explicitly and matching accepts multiple profile-field labels. The previous head also exposed an outdated contract assertion and duplicate `release_candidate` step IDs; both were corrected.
 - PR #156: `77a7b970a32fbc49d0c2b733424311c011e83a50` — redesigned CI workflows are running. The Android validation file had an accidentally duplicated 19-step pipeline; the second copy was removed. OCR tooling and emulator idle-soak safeguards are included.
 - PR #146: `3b259dd80a021f22d32a78bc02f9118e58dae9fc` — new exact-head checks were triggered after correcting the Windows updater contract assertion. Previous checks on the prior head failed only at that outdated assertion; the latest run must be checked independently.
 - PR #134: `54e6d029d24c9567ca5db06ec44598aabbed36ec` — evidence-limit documentation from #127 was added; exact-head tests still need to be checked.

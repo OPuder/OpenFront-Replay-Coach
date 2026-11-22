@@ -38,6 +38,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       android_upgrade: ${{ steps.filter.outputs.android_upgrade }}
+      windows_upgrade: ${{ steps.filter.outputs.windows_upgrade }}
     steps:
       - name: Classify changed files
         uses: dorny/paths-filter@v3
@@ -69,9 +70,25 @@ jobs:
               - 'src/renderer/matchStore.ts'
               - 'src/renderer/env.d.ts'
               - 'src/renderer/androidUpgradeTestBridge.ts'
+            windows_upgrade:
+              - '.github/workflows/update-validation.yml'
+              - 'package.json'
+              - 'package-lock.json'
+              - 'src/main/updater.ts'
+              - 'src/main/main.ts'
+              - 'src/main/preload.ts'
+              - 'src/renderer/UpdateCenter.tsx'
+              - 'src/renderer/updatePreferences.ts'
+              - 'src/renderer/matchStore.ts'
+              - 'src/renderer/main.tsx'
+              - 'scripts/windows-*.mjs'
+              - 'scripts/verify-windows-in-place-updates.mjs'
+              - 'scripts/updater-contract.test.mjs'
+              - 'scripts/set-release-version.mjs'
 
   updater-contract-and-build:
     name: Updater contracts, typecheck and Windows packaging
+    needs: change-scope
     runs-on: windows-latest
     timeout-minutes: 60
     steps:
@@ -145,7 +162,9 @@ jobs:
         run: npm run verify:engine-bundles
 
       - name: Verify updater contract tests
-        run: node --test scripts/updater-contract.test.mjs
+        run: |
+          node --check scripts/verify-windows-in-place-updates.mjs
+          node --test scripts/updater-contract.test.mjs scripts/windows-upgrade-storage-contract.test.mjs
 
       - name: Run full coaching and replay regression suite
         if: github.event_name == 'workflow_dispatch'
@@ -175,6 +194,54 @@ jobs:
 
       - name: Launch packaged Windows app and verify renderer
         run: node scripts/smoke-test-windows.mjs
+
+      - name: Download published v2.2.51 NSIS installer
+        if: github.event_name != 'pull_request' || needs.change-scope.outputs.windows_upgrade == 'true'
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $previous = Join-Path $env:RUNNER_TEMP 'previous-windows-release'
+          New-Item -ItemType Directory -Path $previous -Force | Out-Null
+          gh release download v2.2.51 --repo $env:GITHUB_REPOSITORY --pattern 'OpenFront.Replay.Coach.Setup.2.2.51.exe' --dir $previous
+          if (-not (Test-Path (Join-Path $previous 'OpenFront.Replay.Coach.Setup.2.2.51.exe'))) { throw 'Published v2.2.51 installer missing.' }
+
+      - name: Build updater-enabled portable baseline for the real updater regression
+        if: github.event_name != 'pull_request' || needs.change-scope.outputs.windows_upgrade == 'true'
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $candidateVersion = node -p "require('./package.json').version"
+          $releasePath = (Resolve-Path release).Path
+          $candidatePackages = Join-Path $env:RUNNER_TEMP 'candidate-release-packages'
+          New-Item -ItemType Directory -Path $candidatePackages -Force | Out-Null
+          Copy-Item -Path (Join-Path $releasePath '*') -Destination $candidatePackages -Recurse -Force
+          try {
+            node scripts/set-release-version.mjs 2.2.51
+            npm run build:app
+            npx electron-builder --win zip --publish never
+            $baseline = Join-Path $env:RUNNER_TEMP 'portable-updater-baseline.zip'
+            $built = Join-Path (Resolve-Path release).Path 'OpenFront Replay Coach-2.2.51-win.zip'
+            if (-not (Test-Path -LiteralPath $built)) { throw 'Updater-enabled portable baseline package was not created.' }
+            Copy-Item -LiteralPath $built -Destination $baseline -Force
+            if ((Get-Item -LiteralPath $baseline).Length -lt 1000000) { throw 'Updater-enabled portable baseline package is implausibly small.' }
+          } finally {
+            node scripts/set-release-version.mjs $candidateVersion
+            if (Test-Path -LiteralPath release) { Remove-Item -LiteralPath release -Recurse -Force }
+            New-Item -ItemType Directory -Path release -Force | Out-Null
+            Copy-Item -Path (Join-Path $candidatePackages '*') -Destination release -Recurse -Force
+          }
+
+      - name: Test Windows in-place upgrades, rollback and user data retention
+        if: github.event_name != 'pull_request' || needs.change-scope.outputs.windows_upgrade == 'true'
+        timeout-minutes: 35
+        env:
+          PREVIOUS_RELEASE_DIR: ${{ runner.temp }}\\previous-windows-release
+          CURRENT_RELEASE_DIR: release
+          PORTABLE_UPDATE_BASELINE: ${{ runner.temp }}\\portable-updater-baseline.zip
+          OFRC_UPGRADE_DIAGNOSTICS: '1'
+        run: node scripts/verify-windows-in-place-updates.mjs
 
       - name: Upload verified Windows packages
         uses: actions/upload-artifact@v7

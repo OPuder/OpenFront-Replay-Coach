@@ -130,6 +130,8 @@ async function launch(executable, dataDir, port, mode, extraEnv = {}, requireEle
   // predates the main-process diagnostics added to the candidate build.
   const profilePath = path.join(dataDir, "electron-user-data");
   mkdirSync(profilePath, { recursive: true });
+  const contextFile = path.join(dataDir, "electron-upgrade-context.json");
+  rmSync(contextFile, { force: true });
   const localProxyBypass = extraEnv.OFRC_UPDATE_TEST_MODE === "1" && extraEnv.OFRC_UPDATE_TEST_RELEASE_URL
     ? {
         NO_PROXY: [process.env.NO_PROXY, "127.0.0.1,localhost"].filter(Boolean).join(","),
@@ -140,6 +142,7 @@ async function launch(executable, dataDir, port, mode, extraEnv = {}, requireEle
     ...process.env, ...extraEnv, ...localProxyBypass,
     APPDATA: appData, LOCALAPPDATA: localData,
     OFRC_UPGRADE_DIAGNOSTICS: "1",
+    OFRC_UPGRADE_CONTEXT_FILE: contextFile,
   };
   const child = spawn(executable, [
     "--user-data-dir=" + profilePath,
@@ -152,9 +155,16 @@ async function launch(executable, dataDir, port, mode, extraEnv = {}, requireEle
   child.stderr.on("data", chunk => { childOutput += String(chunk); });
   try {
     const helperResult = await invokeHelper(mode, port, path.dirname(executable));
+    const readPackagedContext = () => {
+      if (existsSync(contextFile)) {
+        try { return JSON.parse(readFileSync(contextFile, "utf8")); }
+        catch (error) { throw new UpgradeContextError("Packaged Electron wrote malformed upgrade context: " + String(error)); }
+      }
+      return readElectronContext(childOutput);
+    };
     const electronContext = requireElectronDiagnostics
-      ? await waitFor(() => readElectronContext(childOutput), 10000, "Electron userData diagnostics from the packaged main process")
-      : readElectronContext(childOutput);
+      ? await waitFor(readPackagedContext, 10000, "Electron userData diagnostics file from the packaged main process")
+      : readPackagedContext();
     return { child, helperResult, get childOutput() { return childOutput; }, electronContext, appData, localData, executable };
   } catch (error) {
     const diagnostic = {

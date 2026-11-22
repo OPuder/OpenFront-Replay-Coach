@@ -1,6 +1,6 @@
 # Repository Consolidation
 
-**Status:** Active consolidation; coaching engine selectively imported; source branches are preserved.
+**Status:** Active consolidation; coaching engine and replay visualization selectively imported; source branches are preserved.
 **Consolidation branch:** `integration/repository-consolidation`
 **Base branch:** `main`
 **Base SHA at creation:** `5e6e8ef4f041febd18b9d9750d61ba52814330c2`
@@ -179,12 +179,15 @@ work/alternative-development
 
 ### PR #145 — replay visualization
 
-**Decision: not imported yet; requires conflict-aware integration.**
+**Decision: selectively integrated into the consolidation branch; validation pending.**
 
-- Exact head: `1fa70d3d88dc2f80746641054fa78ba957e656b3`.
-- It modifies replay harness files that have since changed on main, so whole-file copying would risk overwriting newer main fixes.
+- Exact source head: `1fa70d3d88dc2f80746641054fa78ba957e656b3`.
+- Imported the new components `ReplayCoachIntegration.ts`, `ReplayTerritory.ts`, `ReplayVisualization.tsx`, `ReplayVisualization.css`, their focused tests and two data-contract documents.
+- Integrated the component into the current main-based `main.tsx` rather than copying the stale full renderer file. Updated `ReplaySimulation.ts` to capture exact tile-owner snapshots and explicit unit target tiles; action turn numbers are mapped to zero-based ReplayReader frames. Updated engine declarations and the `test:coach` script.
+- Replay harness files from the PR were not copied wholesale because they overlap with newer main changes. They still need targeted real-fixture integration tests.
 - Source-head Actions included failures in Replay Compatibility, Android APK, Update System Validation and Windows Build; Pinned Engine succeeded.
 - The documented 30/40/30 Early/Mid/Late split remains a coarse relative-time heuristic, not actual strategic phase detection.
+- Consolidated implementation commits: `dc407ca80f246dbae4298defa133815e0dd4e5d4`, `e5bfc3b45c419aac8c151a528530c7a121164876`, `1a34b9e1dfe4616084390d0d774383c4125fe2a4`, `1d125fda1b926c5a02f9b84210298e23286868a8`, `52880d3ec2d73106321534e3843aee11019cf165`.
 
 ### PR #146 — release/update system
 
@@ -201,7 +204,7 @@ work/alternative-development
 | PR #147 / `feature/coaching-engine` | `7b7df44128c2b9fcb099c9714a65b9ec8015379f` | Selectively imported | 4 coaching implementation files + 2 coaching test files; commit `df6baf5c6f7de24368b0298cf389688d633308a1` | `df6baf5c6f7de24368b0298cf389688d633308a1` | Source SHA: Windows, Replay Compatibility, Update Validation, Android all success; consolidated SHA tests pending | No overlapping main edits in the six imported paths since PR base |
 | PR #156 / `feature/build-fix` | `b65e2a83b167b1482115736c2800958c976deffa` | Hold / reject wholesale | None | — | Four reported PR workflows successful; workflow deletions are a blocker | Review selected non-workflow changes separately |
 | PR #151 / `integration/replay-coach-mainline` | `d54b84d617c733c5f463029ac33e7c3d3ec3e27a` | Hold / selective review | None from this PR as a whole | — | Android, Integration E2E, Replay Compatibility, Pinned Engine success; Windows Build and Update Validation failed | Large, stale, overlapping integration |
-| PR #145 / `feature/ux-replay-visualization` | `1fa70d3d88dc2f80746641054fa78ba957e656b3` | Hold / conflict-aware review | None yet | — | Replay, Android, Update Validation, Windows failed; Pinned Engine success | Replay harness overlaps newer main changes |
+| PR #145 / `feature/ux-replay-visualization` | `1fa70d3d88dc2f80746641054fa78ba957e656b3` | Selectively integrated | New components, tests, docs, current-main adapters; commits listed above | Current consolidation head | PR #157 CI pending | Replay harness was not copied wholesale |
 | PR #146 / `feature/release-update-system` | `ac36c1844d85b33715534033ee11ce0104ca8671` | Hold pending exact-head validation | None | — | No PR-triggered workflow runs returned for this SHA | Runtime rollback and signed upgrade evidence still required |
 
 
@@ -221,9 +224,28 @@ The live comparison pass covered the inventoried source branches. These are revi
 - **CI diagnostics:** `ci/retain-replay-validation-reports` is a focused workflow-only change; review its artifact retention and exact current workflow context before import.
 - **No net file delta vs main in compare:** `feature/queue-safe`, `feature/queue-safe-clean`, `fix/kvm-contract-step-boundaries`, and `release/branch-cleanup` currently compare as behind-only with no changed paths. This makes them low-priority cleanup candidates, not yet safe-to-delete proof; inspect their commit ancestry/content and PR references before recommending removal.
 
+## Draft integration PR
+
+- PR #157: https://github.com/OPuder/OpenFront-Replay-Coach/pull/157
+- Draft only; base `main`, head `integration/repository-consolidation`.
+- Head at creation: `52880d3ec2d73106321534e3843aee11019cf165`.
+- Six PR workflows were observed starting on this exact head: Replay Compatibility, Integration E2E, Android APK, Windows Build, Pinned Engine, Update System Validation.
+- PR #157 is not a merge recommendation. Recheck workflow completion against the latest head after any further commits.
+
+## Branch deletion candidates — approval required
+
+A live compare against current main returned `ahead_by=0` and `behind_by>0` for the following branches, and GitHub PR search returned no PRs (open or closed) with these heads:
+
+- `feature/queue-safe` — behind 7, no changed paths.
+- `feature/queue-safe-clean` — behind 6, no changed paths.
+- `fix/kvm-contract-step-boundaries` — behind 10, no changed paths; historical commit message intentionally introduced a test bug, but branch tip is contained in main.
+- `release/branch-cleanup` — behind 15, no changed paths.
+
+They are strong deletion candidates because their tips are ancestors of main and no PR references were found. **No branch was deleted.** Deletion still requires explicit user approval.
+
 ## Validation status of this consolidation
 
-The coaching engine import is committed, but **no tests have yet been executed on the consolidated SHA**. The four successful Actions workflows recorded above belong to source SHA #147, not to this branch. No full build, lint/typecheck, replay fixture, Windows package, or Android signed-upgrade check is claimed as passed for the consolidation. A temporary or draft PR/CI run, or a local checkout with the repository and dependencies, is still required to validate the integrated branch.
+The coaching engine and replay visualization imports are committed. **No test result is yet confirmed for the latest consolidated SHA**. The four successful Actions workflows recorded above belong to source SHA #147, not to this branch. No full build, lint/typecheck, replay fixture, Windows package, or Android signed-upgrade check is claimed as passed for the consolidation. A temporary or draft PR/CI run, or a local checkout with the repository and dependencies, is still required to validate the integrated branch.
 
 ## Completion criteria
 

@@ -369,7 +369,9 @@ assert.match(updateValidationWorkflow, /ofrc-android-diagnostics/);
 assert.match(updateValidationWorkflow, /bash -n scripts\/android-emulator-diagnostics\.sh/);
 assert.match(androidReleaseUpgrade, /android_prepare_emulator/);
 assert.match(androidReleaseUpgrade, /android_launch_package/);
-assert.doesNotMatch(androidReleaseUpgrade, /sleep 300/);
+assert.match(androidReleaseUpgrade, /sleep 300/);
+assert.match(androidReleaseUpgrade, /five-minute idle soak/);
+assert.match(androidReleaseUpgrade, /svc power stayon true/);
 assert.match(androidReleaseUpgrade, /install_apk "\$current_apk" true[\s\S]*?am force-stop "\$package_id"[\s\S]*?android_launch_package/);
 assert.match(androidReleaseUpgrade, /previous app process remained alive/);
 

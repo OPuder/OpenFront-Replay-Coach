@@ -136,6 +136,12 @@ assert.match(baselineUiSeed, /REPLAY GELADEN · ENGINE FEHLT/);
 assert.match(baselineUiSeed, /create_verified_training_goal/);
 assert.match(baselineUiSeed, /tap_edit_field\(\)/);
 assert.match(baselineUiSeed, /find_bounds "" edit/);
+assert.match(baselineUiSeed, /input text "\$game_id"[\s\S]*?input keyevent 4/,
+  "The Android library search must dismiss the soft keyboard before locating replay actions.");
+assert.match(baselineUiSeed, /1 aktuell gefiltert/);
+assert.match(baselineUiSeed, /find_bounds "Coach öffnen" exact 1/);
+assert.match(baselineUiSeed, /input swipe 500 780 500 350 500/,
+  "The seed must scroll the library until the filtered replay's Coach action has visible bounds.");
 assert.doesNotMatch(baselineUiSeed, /tap_text "Karte oder Match-ID suchen"/);
 assert.match(baselineUiSeed, /tap_text "Coach öffnen" 1 exact/);
 assert.match(baselineUiSeed, /tap_text "Als Trainingsziel übernehmen" 1 text/);

@@ -204,6 +204,7 @@ assert.ok(releaseUpgradeScript.includes("screen_off_timeout 2147483647"));
 assert.ok(releaseUpgradeScript.includes("sleep 300"));
 assert.ok(releaseUpgradeScript.includes("five-minute idle soak"));
 assert.ok(releaseUpgradeScript.includes("dumpsys activity activities"));
+assert.ok(releaseUpgradeScript.includes("dumpsys activity exit-info"));
 assert.ok(releaseUpgradeScript.includes("timeout 60s adb -s emulator-5554"));
 const androidValidationWorkflow = read(".github/workflows/update-validation.yml");
 assert.ok(androidValidationWorkflow.includes("bash -n scripts/test-android-release-upgrade.sh"));

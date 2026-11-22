@@ -481,3 +481,13 @@ Nach erfolgreicher Integration der neuen CI-/Release-Architektur muss für jeden
 Offene PRs: #157, #156, #146 und #134. PR #122 ist geschlossen, nicht gemergt. Kein PR wurde in diesem Schritt gemergt, kein Branch gelöscht und `main` wurde nicht verändert. Die Branch-Löschliste ist eine Empfehlung zur lokalen Ausführung durch den Nutzer.
 
 **Nächster Schritt:** zuerst die fünf sofortigen Löschkandidaten lokal anhand der Remote-Refs prüfen und löschen; die drei Workflow-Branches erst nach Integration der neuen PR-#156-Architektur erneut bewerten.
+
+
+### Additional exact-HEAD retirement verification
+
+A further pass checked whether merged PR source branches had moved after their merge:
+
+- `feature/qa-replay-compatibility`: PR #144 is merged, and the live branch tip is exactly the merged PR head `35b2882e4e12183e28d30b14025de747a3d32793` (0 ahead / 0 behind against that SHA). **Add to the immediate deletion list.**
+- `fix/signed-android-release-upgrade-mainline`: PR #128 is merged, but the live branch has **five commits after** the merged PR head `e1978702c7f15c6e6234b717c8b5a09209875ad0`, changing `release-on-main.yml`, `update-validation.yml`, `test-windows-portable-upgrade.mjs` and `updater-contract.test.mjs`. **Do not delete.** Review those follow-up changes against PR #156/#146 first.
+
+The immediate deletion list is therefore now six branches: the previous five plus `feature/qa-replay-compatibility`. The five-branch PowerShell command previously provided must be extended to include that branch. No branch was deleted by this review.

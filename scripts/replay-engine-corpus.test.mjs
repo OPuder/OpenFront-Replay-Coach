@@ -14,6 +14,7 @@ const expectedCommits = [
   "8b5d071eed95f07c701b32e4c64e95b03f8577c1",
   "80bff198b68f02e18e986b5535835c0e3ff6cbba",
   "7f34e15908286d490715c6e4af8c47df5b1b3fcc",
+  "445721718207b6e0f068258cd8ff2eccd13d198e",
 ];
 
 test("all replay engine commits discovered in the supplied corpus are pinned exactly", () => {

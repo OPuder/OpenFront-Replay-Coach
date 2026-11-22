@@ -339,10 +339,26 @@ seed_verified_match() {
   if [[ "$clear_search" == "true" ]]; then
     timeout 10s adb -s emulator-5554 shell input keycombination 113 29 >/dev/null 2>&1 || fail "Could not select the previous library search query."
   fi
-  timeout 10s adb -s emulator-5554 shell input text "$game_id" || fail "Could not enter archived match ID $game_id in the library search."
-  # The search is a controlled WebView input. Commit the IME composition with
-  # ENTER before hiding the keyboard; BACK can cancel an active composition on
-  # some Android images and leave gameSearch empty without an obvious error.
+  # Android shell input can silently drop mixed-case IME characters in the
+  # published non-debuggable WebView. Search is case-insensitive in the app,
+  # so send lowercase and verify it reached the focused EditText before submit.
+  local search_query
+  search_query="$(printf '%s' "$game_id" | tr '[:upper:]' '[:lower:]')"
+  timeout 10s adb -s emulator-5554 shell input text "$search_query" || fail "Could not enter archived match ID $game_id in the library search."
+  local typed=false
+  for attempt in $(seq 1 6); do
+    if dump_ui && grep -Fi "text=\"$search_query\"" "$ui_xml" >/dev/null; then
+      typed=true
+      break
+    fi
+    if ocr_text 2>/dev/null | grep -Fi "$search_query" >/dev/null; then
+      typed=true
+      break
+    fi
+    sleep 1
+  done
+  [[ "$typed" == true ]] || fail "ADB input did not populate the library search field for $game_id; refusing to treat an empty search as a match."
+  # Commit the verified query with ENTER before hiding the keyboard.
   timeout 10s adb -s emulator-5554 shell input keyevent 66 || fail "Could not commit archived match ID $game_id in the library search."
   sleep 2
   timeout 10s adb -s emulator-5554 shell input keyevent 4 || fail "Could not dismiss the Android keyboard after committing archived match ID $game_id."
@@ -353,7 +369,7 @@ seed_verified_match() {
   # missing Coach button. First require the exact one-result state and ID.
   local filtered=false visible_coach_button="" search_screen_text=""
   for attempt in $(seq 1 12); do
-    if dump_ui && grep -F "$game_id" "$ui_xml" >/dev/null &&
+    if dump_ui && grep -Fi "$game_id" "$ui_xml" >/dev/null &&
        grep -F "1 aktuell gefiltert" "$ui_xml" >/dev/null; then
       filtered=true
       break

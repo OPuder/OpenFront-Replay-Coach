@@ -40,4 +40,4 @@ For changes affecting a platform or shared application behavior, inspect the cor
 
 ## Release verification
 
-Before publishing, verify artifact names, non-zero sizes, expected package identity/version/signature, and install/launch behavior where supported. Required user-facing deliverables are the Windows installer, Windows portable package and Android APK. Web/PWA remains a supported mobile-compatible route where applicable, but must not be represented as a native install package.
+Before publishing, verify artifact names, non-zero sizes, expected package identity/version/signature, and install/launch behavior where supported. Required user-facing deliverables are the Windows installer, Windows portable package and Android APK. The web build remains available for browser access. Release deliverables remain the Windows installer, Windows portable ZIP and permanently signed Android APK; do not reintroduce a PWA service worker into native release packages.

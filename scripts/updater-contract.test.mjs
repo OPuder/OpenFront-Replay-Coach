@@ -187,6 +187,10 @@ assert.match(appRenderer, /function navigateTo\([\s\S]*?engineReviewRunId\.curre
 
 const releaseUpgradeWorkflow = read(".github/workflows/release-on-main.yml");
 const releaseUpgradeScript = read("scripts/test-android-release-upgrade.sh");
+const baselineUiSeed = read("scripts/seed-android-baseline-ui.sh");
+assert.ok(baselineUiSeed.includes("ocr_find_bounds"));
+assert.ok(baselineUiSeed.includes('tesseract "$screen_path" stdout -l deu+eng'));
+assert.ok(baselineUiSeed.includes("OpenFront-Profillink"));
 assert.ok(releaseUpgradeWorkflow.includes('echo "previous_apk=$previous_apk" >> "$GITHUB_OUTPUT"'));
 assert.ok(releaseUpgradeWorkflow.includes("PREVIOUS_APK: ${{ steps.apk.outputs.previous_apk }}"));
 assert.ok(releaseUpgradeWorkflow.includes("Install previous published APK and upgrade to exact signed release APK"));

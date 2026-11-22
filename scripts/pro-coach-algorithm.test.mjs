@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { buildProCoachReport } from '../src/main/decoder/ProCoachAlgorithm.ts';
+import { analyzeDetailedActions } from '../src/main/decoder/DetailedAnalysis.ts';
 import { buildEngineCoachInsights } from '../src/main/decoder/EngineCoachInsights.ts';
 import { selectPrimaryCoachInsights } from '../src/main/decoder/CoachInsightSelection.ts';
 import { buildReplayTimeline } from '../src/main/decoder/CoachTimeline.ts';
@@ -557,4 +558,31 @@ test('two weak incoming attackers without losses are pressure, not defensive ove
  ]);
  assert.ok(!insights.some(item=>item.id==='defensive-overload'));
  assert.ok(insights.some(item=>item.id==='defensive-resilience'));
+});
+
+
+test('summarizes very large action histories without min/max argument overflow', () => {
+  const actions = Array.from({ length: 150_000 }, (_, index) => ({
+    seconds: 0, type: 'attack', category: 'Militär', clientId: 'player-1',
+    details: 'Truppen: ' + String((index % 9) + 1),
+  }));
+  const report = analyzeDetailedActions(actions, 60);
+  assert.equal(report.attackTroops.count, 150_000);
+  assert.equal(report.attackTroops.min, 1);
+  assert.equal(report.attackTroops.max, 9);
+  assert.equal(report.attackTroops.total, 749_991);
+});
+
+test('match development score uses arithmetic median for an even number of valid phases', () => {
+  const samples = [
+    sample(0,{tiles:100,goldEarned:0}),
+    sample(900,{tiles:145,goldEarned:0}),
+    sample(1800,{tiles:190,goldEarned:0}),
+    sample(4200,{tiles:190,goldEarned:0}),
+    sample(5100,{tiles:197,goldEarned:0}),
+    sample(6000,{tiles:205,goldEarned:0}),
+  ];
+  const report = buildProCoachReport(samples,[],'p1',600);
+  assert.equal(report.phases.filter(phase=>phase.momentumIndex!==null&&phase.activeSamples>=3).length,2);
+  assert.equal(report.matchScore,71,'two valid phase indexes should use their arithmetic median, not the larger value');
 });

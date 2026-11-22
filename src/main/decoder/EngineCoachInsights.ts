@@ -172,6 +172,29 @@ export function buildEngineCoachInsights(
     });
   }
 
+  const diplomacyActions = actionReviews
+    .filter(action => ["allianceRequest", "allianceExtension", "breakAlliance", "allianceReject"].includes(action.type))
+    .sort((a, b) => a.seconds - b.seconds);
+  if (diplomacyActions.length > 0) {
+    const requests = diplomacyActions.filter(action => action.type === "allianceRequest").length;
+    const extensions = diplomacyActions.filter(action => action.type === "allianceExtension").length;
+    const breaks = diplomacyActions.filter(action => action.type === "breakAlliance").length;
+    const rejections = diplomacyActions.filter(action => action.type === "allianceReject").length;
+    findings.push({
+      id: "diplomacy-activity",
+      kind: "observation",
+      title: "Bündnisaktionen im Replay erfasst",
+      summary: requests + " Bündnisanfragen, " + extensions + " Verlängerungen, " + breaks + " Bündnisbrüche und " + rejections + " Ablehnungen sind als Spielerbefehle dokumentiert.",
+      evidence: diplomacyActions.slice(0, 6).map(action =>
+        clock(action.seconds) + " · " + action.type + " · " + (action.targetName ?? (action.targetId ? "Ziel " + action.targetId : "Partner nicht aufgelöst")),
+      ).join(" · "),
+      nextStep: "Prüfe nach Anfragen und Verlängerungen, ob der aktive Verbündetenstand tatsächlich stieg. Vergleiche Bündnisbrüche mit den folgenden Fronten und eingehenden Angriffen, bevor du ihren strategischen Nutzen bewertest.",
+      seconds: diplomacyActions[0].seconds,
+      confidence: diplomacyActions.length >= 3 ? "high" : "medium",
+      limitation: "Eine Anfrage oder Verlängerung ist keine bestätigte Allianz. Ein Bruchbefehl belegt die Aktion, aber weder Motivation noch strategischen Nutzen. Partnerzuordnung und Annahme können im Replay unvollständig sein.",
+    });
+  }
+
   const orderedSamples = [...samples].sort((a, b) => a.frame - b.frame);
   const firstOwnSample = orderedSamples.map(sample => sample.players.find(player => player.clientID === review.clientID)).find((player): player is EngineSamplePlayer => Boolean(player));
   const lastOwnSample = [...orderedSamples].reverse().map(sample => sample.players.find(player => player.clientID === review.clientID)).find((player): player is EngineSamplePlayer => Boolean(player));
@@ -249,18 +272,45 @@ export function buildEngineCoachInsights(
   if (attacks.length > 0) {
     const territoryAt10s = attacks.filter((action) => action.delta10s!.tiles > 0).length;
     const territoryAt30s = attacks.filter((action) => action.delta30s!.tiles > 0).length;
-    const troopDownNoTerritory = attacks.filter((action) => action.delta30s!.troops < 0 && action.delta30s!.tiles <= 0);
+    const troopDownNoTerritory = attacks.filter((action) => {
+      const ownLoss = Math.max(0, -action.delta30s!.troops);
+      const targetLoss = Math.max(0, -(action.targetDelta30s?.troops ?? 0));
+      return ownLoss > targetLoss && action.delta30s!.tiles <= 0 &&
+        (action.targetDelta30s?.tiles ?? 0) >= 0 && action.targetDelta30s != null;
+    });
+    const favorableTroopTrades = attacks.filter((action) => {
+      const ownLoss = Math.max(0, -action.delta30s!.troops);
+      const targetLoss = Math.max(0, -(action.targetDelta30s?.troops ?? 0));
+      return ownLoss > 0 && targetLoss > ownLoss && action.delta30s!.tiles >= 0 &&
+        (action.targetDelta30s?.tiles ?? 0) >= 0 && action.targetDelta30s != null;
+    });
+    const evenTroopTrades = attacks.filter((action) => {
+      const ownLoss = Math.max(0, -action.delta30s!.troops);
+      const targetLoss = Math.max(0, -(action.targetDelta30s?.troops ?? 0));
+      return ownLoss > 0 && targetLoss === ownLoss && action.delta30s!.tiles >= 0 &&
+        (action.targetDelta30s?.tiles ?? 0) >= 0 && action.targetDelta30s != null;
+    });
+    const mixedTerritoryTrades = attacks.filter(action => {
+      if (!action.targetDelta30s) return false;
+      const ownLoss = Math.max(0, -action.delta30s!.troops);
+      const targetLoss = Math.max(0, -action.targetDelta30s.troops);
+      return ownLoss > 0 && targetLoss > ownLoss && action.delta30s!.tiles < 0 &&
+        action.targetDelta30s.tiles >= 0;
+    });
+    const tradeEvidence = [...troopDownNoTerritory, ...favorableTroopTrades, ...evenTroopTrades, ...mixedTerritoryTrades];
     findings.push({
       id: "attack-response-windows",
-      kind: troopDownNoTerritory.length > 0 ? "review" : "observation",
-      title: "Was nach deinen Angriffsbefehlen sichtbar wurde",
-      summary: `Bei ${territoryAt10s} von ${attacks.length} Angriffen stieg dein Gebiet im 10-Sekunden-Fenster; nach 30 Sekunden war das bei ${territoryAt30s} Angriffen der Fall. Bei ${troopDownNoTerritory.length} Fenstern sanken die eigenen Truppen, ohne dass im selben Zeitraum eigener Gebietszuwachs sichtbar wurde.`,
-      evidence: troopDownNoTerritory.slice(0, 4).map((action) =>
-        `${clock(action.seconds)} · Gebiet ${action.delta30s!.tiles > 0 ? "+" : ""}${action.delta30s!.tiles.toLocaleString("de-DE")} · Truppen ${action.delta30s!.troops > 0 ? "+" : ""}${action.delta30s!.troops.toLocaleString("de-DE")}`
-      ).join(" · ") || "Kein Angriff mit gleichzeitigem Truppenrückgang und ausbleibendem Gebietszuwachs im 30-Sekunden-Fenster erfasst.",
-      nextStep: "Öffne zuerst die markierten Angriffe. Prüfe Zielverteidigung, Marsch-/Transportzeit und ob ein anderer Frontabschnitt im selben Zeitraum eigene Gebiete verändert hat.",
-      seconds: troopDownNoTerritory[0]?.seconds ?? null,
-      limitation: "Das sind Netto-Veränderungen bis 10 bzw. 30 Sekunden nach dem Befehl. Andere zeitgleiche Ereignisse wirken mit; ein Angriff kann später eintreffen und wird hier nicht automatisch als erfolgreich oder gescheitert bewertet.",
+      kind: troopDownNoTerritory.length > 0 || mixedTerritoryTrades.length > 0 ? "review" : "observation",
+      title: troopDownNoTerritory.length > 0 ? "Angriffe mit ungünstigem Truppenverhältnis prüfen" :
+        mixedTerritoryTrades.length > 0 ? "Truppentausch mit eigenem Gebietsverlust prüfen" :
+          favorableTroopTrades.length > 0 ? "Günstige Truppentausche nach Angriffen beobachtet" : "Was nach deinen Angriffsbefehlen sichtbar wurde",
+      summary: `Bei ${territoryAt10s} von ${attacks.length} Angriffen stieg dein Gebiet im 10-Sekunden-Fenster; nach 30 Sekunden war das bei ${territoryAt30s} Angriffen der Fall. Ohne positive Gebietsreaktion: ${favorableTroopTrades.length} günstige Truppentausche ohne eigenen Gebietsverlust, ${evenTroopTrades.length} ausgeglichene, ${mixedTerritoryTrades.length} gemischte Tauschfenster mit eigenem Gebietsverlust und ${troopDownNoTerritory.length} ungünstige beobachtete Truppenverhältnisse.`,
+      evidence: tradeEvidence.slice(0, 4).map((action) =>
+        `${clock(action.seconds)} · eigenes Gebiet ${action.delta30s!.tiles} · eigene Truppen ${action.delta30s!.troops} · Zielgebiet ${action.targetDelta30s?.tiles ?? "n/v"} · Zieltruppen ${action.targetDelta30s?.troops ?? "n/v"}`
+      ).join(" · ") || "Keine auswertbaren Truppenverhältnisse ohne Gebietsreaktion erfasst.",
+      nextStep: "Öffne die markierten Angriffe und vergleiche beide Truppenänderungen mit der Gebietsreaktion. Ein günstiger Truppentausch ist kein Vorteil, wenn du dabei strategisch wichtiges eigenes Gebiet verlierst; prüfe außerdem Zielverteidigung, Reisezeit und parallele Zielbindungen.",
+      seconds: tradeEvidence[0]?.seconds ?? null,
+      limitation: "Das sind Netto-Veränderungen bis 10 bzw. 30 Sekunden nach dem Befehl. Andere zeitgleiche Ereignisse wirken mit; Truppenverluste beim Ziel können durch andere Angreifer entstehen und beweisen keinen eigenen Kampferfolg.",
     });
   }
 
@@ -445,18 +495,31 @@ export function buildEngineCoachInsights(
     });
   }
 
-  // Positive defensive evidence: incoming attacks were recorded, and the
-  // player's territory was stable or higher in a later 10–30 second sample.
-  // This describes resilience in the observed state, not proven interception.
+  // Defensive pressure is evaluated separately from own offensive commitments.
+  // Only distinct active enemy attackers count; own active outgoing attacks exclude
+  // the window so defensive overload is never inferred from an offensive split.
   if (review.clientID && samples.length > 1) {
     const ordered = [...samples].sort((a, b) => a.frame - b.frame);
+    const defensiveOverloadWindows: Array<{
+      seconds: number;
+      durationSeconds: number;
+      attackerNames: string[];
+      incomingTroops: number;
+      ownTroops: number;
+      pressureShare: number;
+      territoryDelta: number;
+      troopDelta: number;
+      troopLossShare: number;
+      territoryLossShare: number;
+    }> = [];
     const defensiveWindows: Array<{
       seconds: number;
       durationSeconds: number;
-      incomingAttacks: number;
+      attackerCount: number;
       incomingTroops: number;
       territoryDelta: number;
       troopDelta: number;
+      troopLossShare: number;
     }> = [];
     let nextAllowedFrame = -1;
 
@@ -464,7 +527,16 @@ export function buildEngineCoachInsights(
       const beforeSample = ordered[i];
       if (beforeSample.frame < nextAllowedFrame) continue;
       const ownBefore = beforeSample.players.find(player => player.clientID === review.clientID);
-      if (!ownBefore?.alive || ownBefore.incomingAttacks <= 0) continue;
+      if (!ownBefore?.alive) continue;
+      const activeOutgoing = ownBefore.outgoingAttackDetails.filter(attack =>
+        !attack.retreating && attack.troops > 0
+      );
+      if (activeOutgoing.length > 0) continue;
+
+      const activeIncoming = ownBefore.incomingAttackDetails.filter(attack =>
+        !attack.retreating && attack.troops > 0 && Number.isFinite(attack.attackerID)
+      );
+      if (activeIncoming.length === 0) continue;
 
       let afterSample: EngineStateSample | null = null;
       for (let j = i + 1; j < ordered.length; j++) {
@@ -477,20 +549,92 @@ export function buildEngineCoachInsights(
       }
       if (!afterSample) continue;
       const ownAfter = afterSample.players.find(player => player.clientID === review.clientID);
-      if (!ownAfter?.alive || ownAfter.tiles < ownBefore.tiles) continue;
-      const incomingTroops = ownBefore.incomingAttackDetails.reduce((sum, attack) => sum + Math.max(0, attack.troops), 0);
-      if (incomingTroops <= 0) continue;
+      if (!ownAfter?.alive) continue;
 
+      const attackersById = new Map<number, { id: number; troops: number }>();
+      for (const attack of activeIncoming) {
+        const current = attackersById.get(attack.attackerID);
+        if (current) current.troops += attack.troops;
+        else attackersById.set(attack.attackerID, { id: attack.attackerID, troops: attack.troops });
+      }
+      const attackers = [...attackersById.values()];
+      const attackerNames = attackers.map(attacker =>
+        beforeSample.players.find(player => player.id === attacker.id)?.name ?? `Spieler ${attacker.id}`
+      );
+      const incomingTroops = activeIncoming.reduce((sum, attack) => sum + attack.troops, 0);
       const durationFrames = afterSample.frame - beforeSample.frame;
-      defensiveWindows.push({
-        seconds: beforeSample.frame / 10,
-        durationSeconds: Math.round(durationFrames / 10),
-        incomingAttacks: ownBefore.incomingAttacks,
-        incomingTroops,
-        territoryDelta: ownAfter.tiles - ownBefore.tiles,
-        troopDelta: ownAfter.troops - ownBefore.troops,
+      const territoryDelta = ownAfter.tiles - ownBefore.tiles;
+      const troopDelta = ownAfter.troops - ownBefore.troops;
+      const troopLoss = Math.max(0, -troopDelta);
+      const territoryLoss = Math.max(0, -territoryDelta);
+      const pressureShare = ownBefore.troops > 0 ? incomingTroops / ownBefore.troops : 0;
+      const troopLossShare = ownBefore.troops > 0 ? troopLoss / ownBefore.troops : 0;
+      const territoryLossShare = ownBefore.tiles > 0 ? territoryLoss / ownBefore.tiles : 0;
+
+      const overloaded = attackers.length >= 2 && (
+        pressureShare >= 0.25 || territoryLoss > 0 || troopLossShare >= 0.15
+      );
+      if (overloaded) {
+        defensiveOverloadWindows.push({
+          seconds: beforeSample.frame / 10,
+          durationSeconds: Math.round(durationFrames / 10),
+          attackerNames,
+          incomingTroops,
+          ownTroops: ownBefore.troops,
+          pressureShare,
+          territoryDelta,
+          troopDelta,
+          troopLossShare,
+          territoryLossShare,
+        });
+        nextAllowedFrame = afterSample.frame;
+        continue;
+      }
+
+      // Resilience is positive evidence only when own offense is inactive and
+      // territory did not fall; multiple attackers alone do not imply overload.
+      if (territoryDelta >= 0 && troopLossShare < 0.15) {
+        defensiveWindows.push({
+          seconds: beforeSample.frame / 10,
+          durationSeconds: Math.round(durationFrames / 10),
+          attackerCount: attackers.length,
+          incomingTroops,
+          territoryDelta,
+          troopDelta,
+          troopLossShare,
+        });
+        nextAllowedFrame = afterSample.frame;
+      }
+    }
+
+    if (defensiveOverloadWindows.length > 0) {
+      const rankedOverloadWindows = [...defensiveOverloadWindows].sort((a, b) =>
+        Math.max(b.pressureShare, b.troopLossShare, b.territoryLossShare) -
+        Math.max(a.pressureShare, a.troopLossShare, a.territoryLossShare)
+      );
+      const worst = rankedOverloadWindows[0];
+      const peakPressureShare = Math.max(...defensiveOverloadWindows.map(window => window.pressureShare));
+      // A severe loss in any observed window must not be hidden by another
+      // window with a larger incoming-pressure ratio but smaller consequences.
+      const highPriority = defensiveOverloadWindows.some(window =>
+        window.pressureShare >= 0.75 || window.troopLossShare >= 0.25 || window.territoryLossShare >= 0.1
+      );
+      findings.push({
+        id: "defensive-overload",
+        kind: "review",
+        priority: highPriority ? "high" : "medium",
+        title: "Defensive Mehrgegner-Belastung ohne eigene Angriffe",
+        summary: `In ${defensiveOverloadWindows.length} Zeitfenstern griffen mindestens zwei verschiedene Gegner gleichzeitig an, während keine eigenen aktiven Angriffe liefen. Der höchste eingehende Druck entsprach ${Math.round(peakPressureShare * 100)} % deines eigenen Truppenbestands.`,
+        evidence: rankedOverloadWindows.slice(0, 4).map(window =>
+          `${clock(window.seconds)} · ${window.attackerNames.length} gegnerische Spieler (${window.attackerNames.join(", ")}) · eingehend ${window.incomingTroops.toLocaleString("de-DE")} / eigene Truppen ${window.ownTroops.toLocaleString("de-DE")} (${Math.round(window.pressureShare * 100)} %) · nach ${window.durationSeconds} s: Gebiet ${window.territoryDelta > 0 ? "+" : ""}${window.territoryDelta.toLocaleString("de-DE")} · Truppen ${window.troopDelta > 0 ? "+" : ""}${window.troopDelta.toLocaleString("de-DE")} · eigene aktive Angriffe 0`
+        ).join(" · "),
+        decision: "Du hattest in diesen Momenten keine eigenen aktiven Angriffe; mindestens zwei verschiedene Gegner setzten gleichzeitig Truppen gegen dich ein.",
+        alternative: "Priorisiere die bedrohten Grenzen und halte eine mobile Reserve zurück. Eröffne keine neue Zielfront, solange mehrere Gegner gleichzeitig Druck ausüben und Gebiet oder Truppenbestand bereits sinken.",
+        nextStep: "Öffne die Zeitstempel auf der Karte, prüfe welche Grenzen gleichzeitig unter Druck standen und vergleiche Reserve, Gebiet und Truppenbestand im folgenden 10–30-Sekunden-Fenster.",
+        seconds: worst.seconds,
+        confidence: "medium",
+        limitation: "Verschiedene Angreifer-IDs belegen mehrere gegnerische Angreifer, aber nicht zwingend geografisch getrennte Fronten. Angriffe können noch unterwegs sein; die Zustandsänderung im Folgefenster kann auch durch Produktion, passive Eroberung oder weitere Ereignisse beeinflusst sein.",
       });
-      nextAllowedFrame = afterSample.frame;
     }
 
     if (defensiveWindows.length > 0) {
@@ -498,12 +642,12 @@ export function buildEngineCoachInsights(
         id: "defensive-resilience",
         kind: "strength",
         priority: "medium",
-        title: "Gebiet trotz eingehendem Angriffsdruck gehalten",
-        summary: `In ${defensiveWindows.length} überprüften Zeitfenstern waren eingehende Angriffe erfasst; dein Gebietsbestand blieb über mindestens 10 Sekunden stabil oder stieg.`,
+        title: "Gebiet bei begrenzten eigenen Verlusten trotz Angriffsdruck gehalten",
+        summary: `In ${defensiveWindows.length} überprüften Zeitfenstern blieb dein Gebietsbestand stabil oder stieg, während keine eigenen aktiven Angriffe liefen.`,
         evidence: defensiveWindows.slice(0, 4).map(window =>
-          `${clock(window.seconds)} · ${window.incomingAttacks} eingehende Angriffe / ${window.incomingTroops.toLocaleString("de-DE")} Truppen · Gebiet ${window.territoryDelta > 0 ? "+" : ""}${window.territoryDelta.toLocaleString("de-DE")} · Truppen ${window.troopDelta > 0 ? "+" : ""}${window.troopDelta.toLocaleString("de-DE")}`
+          `${clock(window.seconds)} · ${window.attackerCount} gegnerische Spieler / ${window.incomingTroops.toLocaleString("de-DE")} Truppen · Gebiet ${window.territoryDelta > 0 ? "+" : ""}${window.territoryDelta.toLocaleString("de-DE")} · Truppen ${window.troopDelta > 0 ? "+" : ""}${window.troopDelta.toLocaleString("de-DE")}`
         ).join(" · "),
-        decision: "Dein Gebietsbestand blieb in diesen Fenstern trotz registrierter eingehender Angriffe stabil oder wuchs.",
+        decision: "Dein Gebietsbestand blieb in diesen Fenstern trotz registrierter eingehender Angriffe stabil oder wuchs, während keine eigenen Angriffe aktiv waren.",
         alternative: "Vergleiche diese Situationen mit späteren Gebietsverlusten: Waren deine Reserven, Frontverteilung oder Verbündeten-Unterstützung anders?",
         nextStep: "Prüfe diese Zeitpunkte auf der Karte und notiere, welche Positionierung oder Reserve du beibehalten solltest, wenn du erneut unter Druck gerätst.",
         seconds: defensiveWindows[0].seconds,
@@ -550,7 +694,7 @@ export function buildEngineCoachInsights(
         (front.incomingAttackTroops > 0 && reserveAfterCommand < front.incomingAttackTroops)
       );
     const heavyCommitment = projectedCommitment !== null && projectedCommitment >= 0.8;
-    const overloaded = splitCommitment || exposedReserve || heavyCommitment;
+    const overloaded = opensSecondOrLaterFront && (splitCommitment || exposedReserve || heavyCommitment);
 
     const pressure = action.targetPressureBefore;
     const own30 = action.delta30s;

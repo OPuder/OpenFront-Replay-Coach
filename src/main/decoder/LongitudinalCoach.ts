@@ -55,7 +55,11 @@ export interface LongitudinalTrainingGoal {
   target: string;
   examples: Array<{ gameId: string; mapName: string; evidence: string }>;
 }
+export interface LongitudinalCohortOption { key: string; label: string; matches: number; }
+
 export interface LongitudinalCoachReport {
+  cohortOptions: LongitudinalCohortOption[];
+  selectedCohortKey: string | null;
   status: "ready" | "insufficient-data";
   importedMatches: number;
   verifiedMatches: number;
@@ -190,6 +194,7 @@ function buildMatchReport(input: LongitudinalMatchInput): NormalizedMatch | null
  */
 export function buildLongitudinalCoachReport(
   matches: readonly LongitudinalMatchInput[],
+  selectedCohortKey?: string | null,
 ): LongitudinalCoachReport {
   // De-duplicate stable game IDs before calculating confidence and patterns.
   // Duplicate imports must never manufacture recurring evidence.
@@ -218,10 +223,21 @@ export function buildLongitudinalCoachReport(
   const groups = new Map<string, NormalizedMatch[]>();
   for (const entry of verified) {
     const key = comparableKey(entry.input);
-    groups.set(key, [...(groups.get(key) ?? []), entry]);
+    const group = groups.get(key);
+    if (group) group.push(entry);
+    else groups.set(key, [entry]);
   }
-  const selectedGroup = [...groups.entries()]
-    .sort((a, b) => b[1].length - a[1].length || a[0].localeCompare(b[0]))[0];
+  const orderedGroups = [...groups.entries()]
+    .sort((a, b) => b[1].length - a[1].length || a[0].localeCompare(b[0]));
+  const cohortOptions = orderedGroups.map(([key, entries]) => ({
+    key,
+    label: comparableLabel(entries[0].input),
+    matches: entries.length,
+  }));
+  // Preserve a chosen comparison group as new matches arrive; fall back to the
+  // largest verified cohort if the selected group is no longer available.
+  const selectedGroup = orderedGroups.find(([key]) => key === selectedCohortKey) ?? orderedGroups[0];
+  const effectiveCohortKey = selectedGroup?.[0] ?? null;
   const comparable = selectedGroup?.[1] ?? [];
   const groupLabel = comparable[0] ? comparableLabel(comparable[0].input) : "Noch keine vergleichbare Gruppe";
   const phaseIds = [
@@ -444,6 +460,8 @@ export function buildLongitudinalCoachReport(
     : `Für belastbare Langzeitmuster werden mindestens zwei vollständig hash-verifizierte Partien desselben Modus und Spieltyps benötigt. Aktuell vergleichbar: ${comparable.length}.`;
 
   return {
+    cohortOptions,
+    selectedCohortKey: effectiveCohortKey,
     status,
     importedMatches: imported.length,
     verifiedMatches: verified.length,

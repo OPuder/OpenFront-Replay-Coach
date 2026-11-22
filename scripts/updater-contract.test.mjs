@@ -137,8 +137,8 @@ assert.match(androidBaselineDownload, /8b2da877f5e4788c29e13f7788aaca34d07e969e1
 assert.match(androidBaselineDownload, /apksigner/);
 assert.match(androidBaselineDownload, /versionCode='2002051'/);
 assert.match(androidReleaseUpgrade, /adb -s emulator-5554 install --no-streaming -r/);
-assert.match(androidReleaseUpgrade, /versionCode=\\$current_version_code/);
-assert.match(androidReleaseUpgrade, /android_launch_package "\\$package_id" "the updated release APK"/);
+assert.ok(androidReleaseUpgrade.includes('grep -F "versionCode=$current_version_code"'));
+assert.ok(androidReleaseUpgrade.includes('android_launch_package "$package_id" "the updated release APK"'));
 assert.match(androidReleaseUpgrade, /apksigner" verify --verbose/);
 assert.match(androidUpdateRegression, /OPENFRONT_UPDATE_APK/);
 assert.doesNotMatch(androidUpdateRegression, /gradlew|assembleDebug/);

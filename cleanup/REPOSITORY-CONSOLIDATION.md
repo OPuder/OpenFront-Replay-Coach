@@ -281,9 +281,7 @@ This section supersedes the earlier PR-state and branch-triage snapshots above.
 |---:|---|---|
 | #157 | `integration/repository-consolidation` | Draft integration of coaching engine and replay visualization; includes Android OCR seed fix and duplicate Android workflow removal. Exact-head CI is running. |
 | #156 | `feature/build-fix` | Draft candidate for the redesigned CI/release architecture; retains replay diagnostics, OCR setup, emulator wake-lock and idle-soak safeguards. Exact-head CI is running. |
-| #147 | `feature/coaching-engine` | Source PR for coaching engine; keep until #157 integration is validated. |
 | #146 | `feature/release-update-system` | Release/update implementation; now includes Windows elevation retry and more resilient Android upgrade checks. Exact-head CI rerun required. |
-| #145 | `feature/ux-replay-visualization` | Source PR for replay visualization; keep until #157 integration is validated. |
 | #138 | `fix/full-replay-phase-timeline-main-current` | Full-match phase and median-score coaching. |
 | #134 | `coach/exact-spawn-metrics-mainline-v3` | Exact spawn-position coaching and evidence limits; includes the documentation formerly in #127. |
 | #132 | `perf/replay-safety-mainline-v4` | Large-replay safety and malformed-input regression coverage. |
@@ -303,6 +301,8 @@ All closures below are **not merges**. Their source branches remain available fo
 | #136 | APK-container and engine-install diagnostics ported into #146/#156; emulator resources superseded by KVM-preflight validation in #156. |
 | #140 | Windows elevation retry ported to #146; emulator resource policy handled by #156. |
 | #143 | Emulator wake-lock, five-minute idle soak and process-exit diagnostics ported to #146 and #156. |
+| #145 | Replay visualization files and tests verified in #157; integration source PR closed to leave one review target. |
+| #147 | Coaching engine files and core tests verified in #157; integration source PR closed to leave one review target. |
 | #141 | Package Manager readiness, bounded non-streaming installs and upgrade persistence checks ported to #146. |
 | #139 | Large-replay safety covered by #132; emulator resources superseded by #156. |
 | #97 | Replay diagnostic artifact retention ported into the redesigned replay workflow in #156. |
@@ -335,4 +335,4 @@ The connected GitHub tools expose branch listing, comparison and creation but no
 
 ### Consolidation state
 
-The repository has fewer active PR review targets (10 instead of 21 in the previous inventory). The remaining 11 PRs are retained because each represents a distinct workstream or is a necessary source PR for the current integration. The repository is **not yet fully clean**: branch retirement remains pending, and the current CI heads must finish successfully before any merge or final branch deletion.
+The repository has fewer active PR review targets (8 instead of 21 in the previous inventory). The remaining 11 PRs are retained because each represents a distinct workstream or is a necessary source PR for the current integration. The repository is **not yet fully clean**: branch retirement remains pending, and the current CI heads must finish successfully before any merge or final branch deletion.

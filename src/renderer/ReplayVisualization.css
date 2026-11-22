@@ -1,0 +1,151 @@
+.replay-viz{margin:14px 0 16px;padding:17px;border:1px solid #35516d;border-radius:16px;background:linear-gradient(145deg,#13263b,#0b1928 82%);box-shadow:0 16px 40px #0003;min-width:0}
+.replay-viz-top{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;margin-bottom:14px}
+.replay-viz-top h3{margin:5px 0;font-size:17px;letter-spacing:-.35px;color:#f2f7ff}
+.replay-viz-top p{margin:0;color:#9eb2c8;font-size:10px;line-height:1.5}
+.replay-viz-status{display:flex;align-items:center;gap:7px;white-space:nowrap;padding:7px 9px;border:1px solid #31506a;border-radius:999px;background:#0b1a2a;color:#a9cce0;font:9px 'Cascadia Code',monospace}
+.replay-viz-live-dot{width:7px;height:7px;border-radius:50%;background:#68d6b2;box-shadow:0 0 0 4px #68d6b21c}
+.replay-viz-grid{display:grid;grid-template-columns:minmax(0,1.55fr) minmax(230px,.8fr);gap:11px}
+.replay-viz-map,.replay-viz-focus{min-width:0;overflow:hidden;border:1px solid #2a435c;border-radius:12px;background:#0b1928}
+.replay-viz-map-head{height:37px;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:0 12px;border-bottom:1px solid #273f56;color:#c4d8e8;font-size:10px}
+.replay-viz-map-head span:first-child{display:flex;align-items:center;gap:7px;font-weight:800}
+.replay-viz-map-head svg{color:#7fd4e3}
+.replay-viz-map-head span:last-child{font:8px 'Cascadia Code',monospace;color:#7895ae}
+.replay-viz-map-canvas{position:relative;height:auto;min-height:160px;max-height:420px;overflow:hidden;background:radial-gradient(ellipse at 50% 55%,#1a3e4d,#0a1928 72%)}
+.replay-viz-map-canvas>img{width:100%;height:100%;display:block;object-fit:cover;filter:saturate(.84) contrast(1.06)}
+.replay-viz-map-overlay{position:absolute;left:12px;right:12px;bottom:11px;display:flex;justify-content:space-between;align-items:flex-end;gap:8px;padding:22px 10px 0;background:linear-gradient(transparent,#071321d9);color:#eff7ff}
+.replay-viz-map-overlay span{display:flex;align-items:center;gap:5px;color:#9cc4dc;font:8px 'Cascadia Code',monospace}
+.replay-viz-map-overlay b{font-size:10px}
+.replay-viz-map-placeholder{position:absolute;inset:0;overflow:hidden;background:radial-gradient(ellipse at 40% 50%,#183849 0,#0a1927 68%)}
+.replay-viz-continent{position:absolute;background:linear-gradient(145deg,#7f9d87,#426d68 70%,#254d53);border:2px solid #9bb39a;filter:drop-shadow(0 8px 9px #0008)}
+.continent-a{width:43%;height:58%;left:13%;top:19%;border-radius:64% 38% 55% 43%;transform:rotate(-18deg)}
+.continent-b{width:31%;height:47%;right:12%;top:29%;border-radius:40% 63% 38% 59%;transform:rotate(17deg)}
+.replay-viz-map-label{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:6px;color:#b9d0df;text-align:center;background:#07152355}
+.replay-viz-map-label b{font-size:11px}.replay-viz-map-label small{font-size:9px;color:#94aabe}
+.replay-viz-map-note{display:flex;align-items:center;gap:7px;padding:9px 11px;color:#91a8bd;font-size:9px;line-height:1.4;border-top:1px solid #21384d}
+.replay-viz-map-note svg{flex:none;color:#d2b16d}
+.replay-viz-focus{padding:13px;display:flex;flex-direction:column;min-height:292px}
+.replay-viz-focus-head{display:flex;align-items:center;justify-content:space-between;padding-bottom:12px;border-bottom:1px solid #253c52}
+.replay-viz-focus-head span{font:8px 'Cascadia Code',monospace;letter-spacing:.1em;color:#8eabc4}
+.replay-viz-focus-head b{font:700 20px 'Cascadia Code',monospace;color:#f3f8ff}
+.replay-viz-event-tag{display:inline-flex;align-items:center;gap:5px;align-self:flex-start;margin-top:13px;padding:5px 7px;border-radius:5px;font:8px 'Cascadia Code',monospace;letter-spacing:.06em;text-transform:uppercase}
+.replay-viz-event-tag.coach{color:#f2ca7e;border:1px solid #715b35;background:#3c301c}
+.replay-viz-event-tag.event{color:#a9d7e9;border:1px solid #31536a;background:#142f43}
+.replay-viz-focus h4{margin:12px 0 6px;color:#f0f6fc;font-size:15px;line-height:1.3}
+.replay-viz-focus>p{margin:0;color:#afc1d2;font-size:10px;line-height:1.55}
+.replay-viz-focus-foot{display:flex;align-items:center;justify-content:space-between;gap:7px;margin-top:auto;padding-top:13px}
+.replay-viz-focus-foot small{color:#829db5;font-size:8px;line-height:1.4}
+.replay-viz-focus-foot button,.replay-viz-open{display:inline-flex;align-items:center;gap:5px;padding:7px 9px;border:1px solid #456987;border-radius:7px;background:#18344d;color:#d9efff;font-size:9px;font-weight:800;cursor:pointer}
+.replay-viz-focus-foot button:hover,.replay-viz-open:hover{border-color:#89c6e6;background:#204563}
+.replay-viz-no-event{display:flex;flex:1;align-items:center;justify-content:center;flex-direction:column;gap:8px;text-align:center;color:#85a9bf}
+.replay-viz-no-event b{font-size:11px;color:#dbe8f4}.replay-viz-no-event small{max-width:190px;font-size:9px;line-height:1.5;color:#8ca5b9}
+.replay-viz-timeline{margin-top:12px;padding:13px;border:1px solid #2a435c;border-radius:12px;background:#0b1928}
+.replay-viz-timeline-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px}
+.replay-viz-timeline-head>div{display:flex;flex-direction:column;gap:5px}.replay-viz-timeline-head>div>b{font-size:11px;color:#e3eef8}
+.replay-viz-timeline-head>span{color:#a4d3e5;font:11px 'Cascadia Code',monospace}
+.replay-viz-phase-track{position:relative;display:flex;width:100%;height:49px;overflow:hidden;border-radius:7px;background:#172b3e}
+.replay-viz-phase{display:flex;justify-content:center;flex-direction:column;gap:2px;padding:5px 8px;min-width:0;border-right:1px solid #091522}
+.replay-viz-phase b{font:800 9px 'Cascadia Code',monospace;letter-spacing:.09em}
+.replay-viz-phase small{font-size:8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.replay-viz-phase.early{background:linear-gradient(110deg,#183c4e,#214d5a);color:#afe0ed}
+.replay-viz-phase.mid{background:linear-gradient(110deg,#263a50,#344a5e);color:#c1d6ea}
+.replay-viz-phase.late{background:linear-gradient(110deg,#4a3826,#5a4128);color:#f2d1a0}
+.replay-viz-playhead{position:absolute;z-index:2;top:0;bottom:0;width:2px;background:#fff;box-shadow:0 0 7px #fff;transform:translateX(-50%);pointer-events:none}
+.replay-viz-event-track{position:relative;height:30px;margin:9px 0 0;border-top:1px solid #2d465d}
+.replay-viz-marker{position:absolute;top:-10px;display:grid;place-items:center;width:20px;height:20px;padding:0;border:2px solid #0b1928;border-radius:50%;background:#6aaac8;color:#071624;font:800 8px 'Cascadia Code',monospace;transform:translateX(-50%);cursor:pointer;transition:transform .15s,box-shadow .15s;touch-action:manipulation}
+.replay-viz-marker.coach{background:#e4b65f;color:#211807}
+.replay-viz-marker:hover,.replay-viz-marker.active{z-index:3;transform:translateX(-50%) scale(1.23);box-shadow:0 0 0 4px #85cde42c}
+.replay-viz-marker:focus-visible{outline:2px solid #e9f5ff;outline-offset:3px}
+.replay-viz-timeline-footer{display:flex;align-items:center;justify-content:space-between;gap:8px;color:#7f98af;font:8px 'Cascadia Code',monospace}
+.replay-viz-empty{margin:10px 0 0;color:#91a8bc;font-size:9px;line-height:1.5}
+@media(max-width:900px){.replay-viz-grid{grid-template-columns:1fr}.replay-viz-focus{min-height:220px}.replay-viz-map-canvas{min-height:160px}}
+@media(max-width:560px){.replay-viz{padding:12px}.replay-viz-top{flex-direction:column}.replay-viz-status{align-self:flex-start}.replay-viz-map-canvas{min-height:140px}.replay-viz-focus-foot{align-items:flex-start;flex-direction:column}.replay-viz-phase small{display:none}.replay-viz-phase{align-items:center;padding:5px 2px}.replay-viz-phase b{font-size:8px}.replay-viz-timeline{padding:10px}.replay-viz-open{padding:6px}.replay-viz-timeline-footer{font-size:7px}}
+@media(prefers-reduced-motion:reduce){.replay-viz-marker{transition:none}}
+
+.replay-viz-map-canvas{position:relative;overflow:hidden;background:#081522}
+.replay-viz-map-canvas>img{position:absolute;inset:0;width:100%;height:100%;object-fit:fill}
+.replay-viz-territory,.replay-viz-movements{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+.replay-viz-territory{image-rendering:pixelated;mix-blend-mode:screen}
+.replay-viz-territory-changes{image-rendering:pixelated;mix-blend-mode:screen}
+.replay-viz-movements{overflow:visible}
+.replay-viz-legend{display:flex;flex-wrap:wrap;gap:7px;padding:10px 11px;border-top:1px solid #21384d}
+.replay-viz-legend span{display:grid;grid-template-columns:8px auto;column-gap:5px;align-items:center;min-width:calc(50% - 4px)}
+.replay-viz-legend i{width:8px;height:8px;border-radius:2px;grid-row:span 2}
+.replay-viz-legend b{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#c7d8e7;font-size:9px}
+.replay-viz-legend small{color:#839bb0;font-size:8px}
+.replay-viz-engagements{display:flex;flex-direction:column;gap:8px;margin-top:15px;padding-top:12px;border-top:1px solid #253c52}
+.replay-viz-engagements>b{color:#a8c3d9;font:8px 'Cascadia Code',monospace;letter-spacing:.08em;text-transform:uppercase}
+.replay-viz-engagements>span{display:grid;grid-template-columns:14px 1fr;align-items:center;gap:4px;color:#d7e5f0;font-size:9px}
+.replay-viz-engagements>span svg{color:#e7bd6b}
+.replay-viz-engagements>span small{grid-column:2;color:#8da5ba;font-size:8px}
+.replay-viz-engagements>small{color:#839bb0;font-size:9px}
+.replay-viz-movement-count{margin-top:8px;color:#9fc6d8;font-size:8px}
+.replay-viz-seek-note{max-width:440px;text-align:center;line-height:1.4;color:#a0b3c4}
+@media(max-width:560px){.replay-viz-legend span{min-width:100%}.replay-viz-engagements>span{font-size:10px}.replay-viz-seek-note{max-width:150px}}
+
+.replay-viz-front-change{display:block;margin-top:4px;color:#e8c77f;font-size:8px;font-weight:700}
+
+.replay-viz-phase-note{margin:7px 0 0;color:#7f98af;font-size:8px;line-height:1.45}
+
+
+/* Compact strategic finding switcher: three cards, no extra statistics panel. */
+.replay-viz-territory-changes,.replay-viz-territory-affected{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;image-rendering:pixelated;mix-blend-mode:screen}
+.replay-viz-priority-findings{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:0 0 12px}
+.replay-viz-priority-card{display:flex;min-width:0;flex-direction:column;align-items:flex-start;gap:6px;padding:10px 12px;border:1px solid #31485d;border-radius:10px;background:#102235;color:#dceaf5;text-align:left;cursor:pointer;touch-action:manipulation}
+.replay-viz-priority-card>span{color:#e7bd6b;font:800 8px 'Cascadia Code',monospace;letter-spacing:.07em}
+.replay-viz-priority-card>b{font-size:11px;line-height:1.35}
+.replay-viz-priority-card>small{color:#91a9bd;font-size:9px}
+.replay-viz-priority-card.priority-high{border-left:3px solid #e7a36b}
+.replay-viz-priority-card.priority-medium{border-left:3px solid #80b9d1}
+.replay-viz-priority-card.selected{border-color:#f0c66f;background:#1b3044;box-shadow:0 0 0 1px #f0c66f55}
+.replay-viz-priority-card:disabled{opacity:.65;cursor:not-allowed}
+.replay-viz-priority-card:focus-visible{outline:2px solid #e9f5ff;outline-offset:3px}
+.replay-viz-coach-detail{display:flex;flex-direction:column;gap:8px;margin-top:12px;padding:10px;border:1px solid #334a60;border-radius:9px;background:#0a1928}
+.replay-viz-coach-detail>div>b{display:block;color:#e8c77f;font-size:9px}
+.replay-viz-coach-detail p{margin:3px 0 0;color:#c3d4e2;font-size:9px;line-height:1.5}
+.replay-viz-coach-evidence{padding-top:7px;border-top:1px solid #2a4055}
+.replay-viz-coach-evidence small{display:block;margin-top:4px;color:#a9c2d6;font-size:8px;line-height:1.5}
+.replay-viz-coach-uncertainty{color:#d6b77b!important;line-height:1.5}
+@media(max-width:720px){.replay-viz-priority-findings{grid-template-columns:1fr}.replay-viz-priority-card{padding:9px 10px}.replay-viz-priority-card>b{font-size:10px}}
+@media(prefers-reduced-motion:reduce){.replay-viz-priority-card{transition:none}}
+
+
+/* Coaching-first hierarchy and evidence clarity. */
+.replay-viz-priority-card{min-height:112px;transition:border-color .15s,background .15s}
+.replay-viz-priority-card>em{display:block;color:#c5d5e2;font-size:9px;font-style:normal;line-height:1.45}
+.replay-viz-priority-card.selected>em{color:#f1e2c3}
+.replay-viz-no-findings{display:flex;flex-direction:column;gap:5px;margin:0 0 12px;padding:13px 15px;border:1px dashed #42566b;border-radius:10px;background:#0d1d2c}
+.replay-viz-no-findings b{color:#dce9f4;font-size:11px}
+.replay-viz-no-findings span{color:#94aabd;font-size:9px;line-height:1.5}
+.replay-viz-transfer-summary{display:flex;flex-direction:column;gap:7px;padding:9px 11px;border-top:1px solid #21384d;background:#0a1724}
+.replay-viz-transfer-summary>b{color:#a9c5d9;font:800 8px 'Cascadia Code',monospace;letter-spacing:.06em;text-transform:uppercase}
+.replay-viz-transfer-summary>span{display:flex;align-items:center;gap:6px;min-width:0;color:#cbd9e5;font-size:9px}
+.replay-viz-transfer-summary>span>i{width:8px;height:8px;flex:none;border-radius:2px}
+.replay-viz-transfer-summary>span>b{color:#e8c77f}
+.replay-viz-transfer-summary>span>small{margin-left:auto;color:#a9c2d6;font:9px 'Cascadia Code',monospace;white-space:nowrap}
+.replay-viz-transfer-summary>small{color:#8da5ba;font-size:9px;line-height:1.4}
+.replay-viz-coach-assessment{padding:8px;border-left:2px solid #c49a55;background:#211d17}
+.replay-viz-coach-assessment>b{display:block;color:#e8c77f;font-size:9px}
+.replay-viz-coach-assessment>small{display:block;margin-top:3px;color:#c6b99f;font-size:8px;line-height:1.45}
+.replay-viz-engagement-note{color:#8fa8bd;font-size:8px;line-height:1.45}
+@media(max-width:720px){
+  .replay-viz-priority-findings{grid-template-columns:1fr;gap:6px}
+  .replay-viz-priority-card{min-height:0;padding:9px 10px;gap:5px}
+  .replay-viz-priority-card>span{font-size:7px;letter-spacing:0}
+  .replay-viz-priority-card>b{font-size:9px}
+  .replay-viz-priority-card>small,.replay-viz-priority-card>em{font-size:8px}
+}
+@media(max-width:440px){
+  .replay-viz-priority-findings{grid-template-columns:1fr}
+  .replay-viz-priority-card{min-height:0;padding:10px}
+  .replay-viz-priority-card>b{font-size:11px}
+  .replay-viz-priority-card>small,.replay-viz-priority-card>em{font-size:9px}
+  .replay-viz-transfer-summary>span{flex-wrap:wrap}
+  .replay-viz-transfer-summary>span>small{margin-left:0}
+  .replay-viz-map-head{padding:0 8px}
+  .replay-viz-map-head span:last-child{font-size:7px}
+}
+
+.replay-viz-card-alternative{display:block;color:#b7d8e9;font-size:9px;line-height:1.4}
+.replay-viz-card-players{display:block;color:#8faec2;font-size:8px;line-height:1.35}
+@media(max-width:720px){.replay-viz-card-alternative{font-size:8px}.replay-viz-card-players{font-size:7px}}
+@media(max-width:440px){.replay-viz-card-alternative{font-size:9px}.replay-viz-card-players{font-size:8px}}

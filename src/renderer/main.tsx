@@ -523,7 +523,7 @@ function App() {
     durationSeconds:item.game.durationSeconds??item.result?.durationSeconds??null,
     analysisStatus:item.analysisStatus??(item.status==='engine-mismatch'?'unsupported':'pending'),
     simulation:item.simulation??null,
-  }))),selectedLongitudinalCohortKey),[batchMatches,selectedLongitudinalCohortKey]);
+  })),selectedLongitudinalCohortKey),[batchMatches,selectedLongitudinalCohortKey]);
   const selectedImportedMatches=batchMatches.filter(item=>selectedGameIds.includes(item.game.gameId)&&Boolean(item.result));
   const selectedPendingAnalysisCount=selectedImportedMatches.filter(item=>item.analysisStatus!=='verified'||item.simulation?.status!=='verified').length;
   const recentGames = [...loadedGames].filter(g=>g.start).sort((a,b)=>new Date(b.start!).getTime()-new Date(a.start!).getTime()).slice(0,10);

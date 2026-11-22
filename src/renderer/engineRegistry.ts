@@ -15,6 +15,7 @@ const loaders: Record<string, () => Promise<ReplayEngineModule>> = {
   "c144d134d1503191b4c3fd9a866fc583b9ecea4a": () => import("./engine/replay-engine-c144d134d150.js"),
   "80bff198b68f02e18e986b5535835c0e3ff6cbba": () => import("./engine/replay-engine-80bff198b68f.js"),
   "7f34e15908286d490715c6e4af8c47df5b1b3fcc": () => import("./engine/replay-engine-7f34e1590828.js"),
+  "445721718207b6e0f068258cd8ff2eccd13d198e": () => import("./engine/replay-engine-445721718207.js"),
 };
 
 export async function loadReplayEngineModule(commit: string): Promise<ReplayEngineModule> {

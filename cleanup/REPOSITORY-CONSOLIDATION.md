@@ -1,6 +1,6 @@
 # Repository Consolidation
 
-**Status:** Inventory started; source branches are preserved.
+**Status:** Active consolidation; coaching engine selectively imported; source branches are preserved.
 **Consolidation branch:** `integration/repository-consolidation`
 **Base branch:** `main`
 **Base SHA at creation:** `5e6e8ef4f041febd18b9d9750d61ba52814330c2`
@@ -145,11 +145,64 @@ ux-simplification-visual-analytics
 work/alternative-development
 ```
 
+## Review findings — live recheck 2026-11-22
+
+### PR #147 — coaching engine
+
+**Decision: selectively imported to the consolidation branch.**
+
+- Source: `feature/coaching-engine`, exact source HEAD `7b7df44128c2b9fcb099c9714a65b9ec8015379f`.
+- Imported six files only: `CoachInsightSelection.ts`, `EngineCoachInsights.ts`, `LongitudinalCoach.ts`, `ProCoachAlgorithm.ts`, `longitudinal-coach.test.mjs`, and `pro-coach-algorithm.test.mjs`.
+- The current `main` changes since the PR base (`237780c017adeb4151f838a4dcaeefe586bdb169`) were compared. None of those six paths changed on main in that interval, so copying these exact branch blobs does not overwrite later main edits in those paths.
+- Source-head Actions: Windows Build, Replay Compatibility, Update System Validation, and Android APK all completed successfully on this source SHA. This is source evidence only; it does **not** validate the consolidated commit.
+- Import commit: `df6baf5c6f7de24368b0298cf389688d633308a1`.
+- Not imported: the PR's workflow-only KVM chmod change or replay browser harness files, because the latter overlap with newer main changes and need a separate patch-level integration.
+- Remaining: run targeted coaching tests and the full integration gates on the consolidated SHA.
+
+### PR #156 — build-fix
+
+**Decision: do not import as-is; retain as a review candidate.**
+
+- Exact head: `b65e2a83b167b1482115736c2800958c976deffa`, 166 commits ahead of main.
+- It deletes `.github/workflows/build-windows.yml`, `.github/workflows/update-capacitor-lock.yml`, and `.github/workflows/validate-android.yml`.
+- Its successful PR checks do not compensate for removing existing build/release validation entry points. The remaining workflow and TypeScript changes also need separate review; no files imported.
+
+### PR #151 — broad integration candidate
+
+**Decision: do not import wholesale.**
+
+- Exact head: `d54b84d617c733c5f463029ac33e7c3d3ec3e27a`; 528 commits ahead and 15 behind the current main base used in its PR.
+- It bundles #145, #147 and #146 and changes 85 files, including generated engine bundles and workflow/release behavior.
+- Actions on this exact head: Android APK, Integration E2E, Replay Compatibility, and Pinned Engine succeeded; Update System Validation and Windows Build failed. This contradicts any interpretation that the full required CI set passed.
+- The PR body also documents that signed Android upgrade, Windows install/update/rollback and real replay fixture validation were not all complete at that checkpoint.
+- Its product work is being reviewed by source area rather than importing the entire branch.
+
+### PR #145 — replay visualization
+
+**Decision: not imported yet; requires conflict-aware integration.**
+
+- Exact head: `1fa70d3d88dc2f80746641054fa78ba957e656b3`.
+- It modifies replay harness files that have since changed on main, so whole-file copying would risk overwriting newer main fixes.
+- Source-head Actions included failures in Replay Compatibility, Android APK, Update System Validation and Windows Build; Pinned Engine succeeded.
+- The documented 30/40/30 Early/Mid/Late split remains a coarse relative-time heuristic, not actual strategic phase detection.
+
+### PR #146 — release/update system
+
+**Decision: hold; no import yet.**
+
+- Exact head: `ac36c1844d85b33715534033ee11ce0104ca8671`.
+- No PR-triggered workflow runs were returned for this exact head.
+- The scope is broad and includes release workflow, updater runtime, Android signing and Windows/Android upgrade contracts. Runtime rollback and same-head validation must be established before adoption.
+
 ## Consolidation ledger
 
 | Source | Source SHA | Decision | Imported paths/commits | Result SHA | Tests/evidence | Notes |
 |---|---|---|---|---|---|---|
-| — | — | Pending review | — | — | — | No source changes imported yet. |
+| PR #147 / `feature/coaching-engine` | `7b7df44128c2b9fcb099c9714a65b9ec8015379f` | Selectively imported | 4 coaching implementation files + 2 coaching test files; commit `df6baf5c6f7de24368b0298cf389688d633308a1` | `df6baf5c6f7de24368b0298cf389688d633308a1` | Source SHA: Windows, Replay Compatibility, Update Validation, Android all success; consolidated SHA tests pending | No overlapping main edits in the six imported paths since PR base |
+| PR #156 / `feature/build-fix` | `b65e2a83b167b1482115736c2800958c976deffa` | Hold / reject wholesale | None | — | Four reported PR workflows successful; workflow deletions are a blocker | Review selected non-workflow changes separately |
+| PR #151 / `integration/replay-coach-mainline` | `d54b84d617c733c5f463029ac33e7c3d3ec3e27a` | Hold / selective review | None from this PR as a whole | — | Android, Integration E2E, Replay Compatibility, Pinned Engine success; Windows Build and Update Validation failed | Large, stale, overlapping integration |
+| PR #145 / `feature/ux-replay-visualization` | `1fa70d3d88dc2f80746641054fa78ba957e656b3` | Hold / conflict-aware review | None yet | — | Replay, Android, Update Validation, Windows failed; Pinned Engine success | Replay harness overlaps newer main changes |
+| PR #146 / `feature/release-update-system` | `ac36c1844d85b33715534033ee11ce0104ca8671` | Hold pending exact-head validation | None | — | No PR-triggered workflow runs returned for this SHA | Runtime rollback and signed upgrade evidence still required |
 
 ## Completion criteria
 

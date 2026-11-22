@@ -1,11 +1,7 @@
 /**
  * UX Visualization Agent – drives the UI layer for replay maps and coaching cards.
  */
-export interface Agent {
-  name: string;
-  description: string;
-  run(): Promise<void>;
-}
+import type { Agent } from './01-replay-engine';
 
 export const uxVisualizationAgent: Agent = {
   name: 'UX Visualization',

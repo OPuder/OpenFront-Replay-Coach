@@ -336,3 +336,58 @@ The connected GitHub tools expose branch listing, comparison and creation but no
 ### Consolidation state
 
 The repository has fewer active PR review targets (8 instead of 21 in the previous inventory). The remaining 11 PRs are retained because each represents a distinct workstream or is a necessary source PR for the current integration. The repository is **not yet fully clean**: branch retirement remains pending, and the current CI heads must finish successfully before any merge or final branch deletion.
+
+
+---
+
+## Live recheck — 2026-11-22, weiterer Aufräumschritt
+
+### Live PR-Stand
+Die erneute GitHub-Suche liefert aktuell fünf offene PRs:
+- #157 — `integration/repository-consolidation` (zentraler Draft-Integrations-PR)
+- #156 — `feature/build-fix` (Draft; Workflow-Konsolidierung, nicht pauschal übernehmen)
+- #146 — `feature/release-update-system` (Release-/Updater-QA offen)
+- #134 — `coach/exact-spawn-metrics-mainline-v3` (Spawn-Coach-Verbindung und Kartenarbeit noch separat)
+- #122 — `chore/free-agent-workflow-foundation` (Dokumentations-/Agentenarbeit)
+
+Die früheren Tabellen mit acht offenen PRs sind historische Snapshots und nicht mehr der Live-Stand. #79, #132 und #138 sind geschlossen; ihre übernommenen Inhalte werden in #157 nachverfolgt. Das sind keine Merges nach `main`.
+
+### Konsolidierungsbranch
+- `integration/repository-consolidation` liegt im Vergleich zu `main` 44 Commits voraus, ohne Rückstand; der Vergleich zeigt 32 geänderte Dateien.
+- Die Branch-Familien `integration/replay-coach-mainline` und `work/alternative-development` sind exakt identisch (0 ahead / 0 behind). Die zweite Referenz ist redundant; die PR-/Historienreferenz #151 bleibt jedoch als Nachweis erhalten.
+- Die Vergleiche zu `feature/build-fix`, `feature/release-update-system`, `feature/ux-replay-visualization`, `feature/coaching-engine` und `feature/qa-replay-compatibility` zeigen eigenständige bzw. divergierende Änderungen. Keine davon wird als Ganzes übernommen oder gelöscht.
+- `coach/exact-spawn-metrics-mainline-v3` und `perf/replay-safety-mainline-v4` bleiben gesonderte Quellen für gezielte Diff-Prüfung; ihre vollständige Deltas überschneiden sich mit der Konsolidierung und sind nicht als reine Löschkandidaten einzustufen.
+
+### Exakte QA-Diagnose für PR #157
+Auf dem in PR #157 dokumentierten Commit `2715fabe4d34bba87d3708e374903adb56b683b3` wurden sechs PR-Workflows gefunden:
+- Pinned OpenFront Engine: success
+- Windows Build: success
+- Android APK: success (Build-/Signaturvorbereitung; der Update-Validierungsjob ist davon getrennt)
+- Integration E2E contracts: in progress beim Abruf
+- Replay Compatibility: cancelled
+- Update System Validation: failure
+
+Die Update-System-Validierung scheiterte im Android-Emulatorjob während des UI-Seeding der veröffentlichten v2.2.51-Baseline. Die echte Baseline startete mit `Status: ok`, das Profil lud 143 Replays, und die permanente Android-Signaturprüfung bestand. Der Abbruch erfolgte erst beim zweiten Bibliothekssuchlauf: `adb shell input text` ließ die Match-ID `cRVdxGEG5j` nicht im Suchfeld erscheinen. Das Diagnose-Screenshot zeigt das fokussierte, aber leere Suchfeld und die geöffnete Tastatur. Der eigentliche In-Place-Upgrade-/Datenpersistenztest wurde deshalb nicht erreicht. Das ist ein reproduzierbarer UI-Eingabe-/Harness-Blocker, kein Nachweis eines APK-Signaturfehlers oder Datenverlusts.
+- Der Windows-Teil desselben Update-Workflows war erfolgreich: Updater-Verträge, Coaching-/Replay-Regressionen, Build, Installer-/Portable-Paketprüfung und Renderer-Start bestanden.
+- Keine Merge-Freigabe: Android-Suchfeld-Eingabe beheben und alle erforderlichen Gates auf einem identischen finalen HEAD erneut bestehen lassen.
+
+### Branch-Retirement-Kandidaten (noch nicht gelöscht)
+Die folgenden Branches sind gegenüber `main` ohne einzigartige Commits bzw. vollständig von `main` überholt:
+- `feature/queue-safe` — 7 Commits hinter `main`
+- `feature/queue-safe-clean` — 6 Commits hinter `main`
+- `fix/kvm-contract-step-boundaries` — 10 Commits hinter `main`
+- `release/branch-cleanup` — 15 Commits hinter `main`, kein offener PR-Head gefunden
+- `work/alternative-development` — exakt identischer Tip wie `integration/replay-coach-mainline`; redundante Referenz, aber vor Retirement PR-/Historienbezug nochmals kontrollieren
+
+Diese Liste ist eine geprüfte Kandidatenliste, keine ausgeführte Löschung. Die verfügbaren GitHub-Aktionen bieten in dieser Verbindung keine Branch-Delete-Operation. Es wird ausdrücklich kein Force-Update oder Datei-Delete als Ersatz missbraucht. Die Löschung muss später über eine Branch-delete-fähige GitHub-Oberfläche bzw. GitHub CLI erfolgen, nachdem PR-Referenzen und Retention final geprüft wurden.
+
+### Nächste Arbeitsreihenfolge
+1. Den Android-UI-Seed-Eingabefehler auf #157 isoliert beheben und durch einen echten Emulatorlauf verifizieren; keine Erfolgserwartung ohne sichtbaren Feldinhalt.
+2. Integration E2E und Replay Compatibility auf demselben neuen HEAD abschließen.
+3. #134 gegen die bereits integrierten Spawn-Metriken abgleichen und nur den einzigartigen End-to-End-/Map-Anteil übernehmen.
+4. #122 als Dokumentationsänderung gegen aktuelle Projektregeln prüfen.
+5. #156 Workflow-Änderungen selektiv mit #157 integrieren; bestehende Windows-/Android-/Replay-/Engine-Gates erhalten.
+6. #146 erst nach echtem Windows- und Android-Upgrade-/Rollbacknachweis übernehmen.
+7. Erst nach erfolgreicher Integration PRs schließen und anschließend Branch-Retirement ausführen.
+
+**Status:** Inventur und erste Diffs sind erweitert; die eigentliche Restbereinigung läuft weiter. Keine Branches gelöscht, kein PR gemergt, `main` nicht verändert.

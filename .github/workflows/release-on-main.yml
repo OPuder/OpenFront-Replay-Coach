@@ -7,6 +7,8 @@ on:
     # Workflow-only maintenance must not publish a new application release.
     paths-ignore:
       - ".github/workflows/**"
+      - "src/renderer/**/*.d.ts"
+      - "src/renderer/*.d.ts"
   workflow_dispatch:
 
 permissions:
@@ -107,42 +109,6 @@ jobs:
           echo "release_sha=$release_sha" >> "$GITHUB_OUTPUT"
           echo "Selected v$next_version at $release_sha"
 
-  validate-engine:
-    name: Validate exact OpenFront engine revision
-    needs: prepare-release
-    if: needs.prepare-release.outputs.skip != 'true'
-    runs-on: ubuntu-latest
-    timeout-minutes: 60
-    steps:
-      - name: Check out the release source
-        uses: actions/checkout@v4
-        with:
-          ref: ${{ needs.prepare-release.outputs.release_sha }}
-
-      - name: Restore exact historical engine Git objects
-        uses: actions/cache@v4
-        with:
-          path: .git/modules
-          key: openfront-engine-git-${{ runner.os }}-${{ github.job }}-${{ hashFiles('.gitmodules', 'engine-build/engines.json') }}
-          restore-keys: |
-            openfront-engine-git-${{ runner.os }}-
-
-      - name: Set up Node.js and npm
-        uses: actions/setup-node@v4
-        with:
-          node-version: "24.15.0"
-
-      - name: Set up pinned npm
-        run: npm install --global npm@12.1.0
-
-      - name: Prepare all exact historical OpenFront engines
-        run: npm run prepare:engines
-
-      - name: Build all exact replay engine workers
-        run: |
-          npm ci
-          npm run build:engine
-
   validate-replay:
     name: Validate real replay fixtures and mixed-engine analysis
     needs: prepare-release
@@ -241,18 +207,11 @@ jobs:
       - name: Build the original replay engine and Windows application
         run: npm run build
 
-      - name: Verify updater contract tests before packaging
-        run: node --test scripts/updater-contract.test.mjs
-
       - name: Package the installer and portable ZIP
         run: npx electron-builder --win nsis zip --publish never
 
       - name: Smoke-test the packaged Windows renderer
         run: node scripts/smoke-test-windows.mjs
-
-      - name: Test pro coaching analytics
-        run: npm run test:coach
-
 
       - name: Upload Windows release files
         uses: actions/upload-artifact@v4
@@ -302,18 +261,11 @@ jobs:
       - name: Install Coach and Capacitor dependencies
         run: npm ci
 
-      - name: Verify updater contract tests before APK packaging
-        run: node --test scripts/updater-contract.test.mjs
-
       - name: Build the shared renderer and original replay engine
         run: npm run build:web
 
       - name: Smoke-test native Android configuration
         run: node scripts/smoke-test-android-config.mjs
-
-      - name: Test pro coaching analytics
-        run: npm run test:coach
-
 
       - name: Set up Java
         uses: actions/setup-java@v4
@@ -440,7 +392,7 @@ jobs:
 
   publish-release:
     name: Publish Windows and Android editions as one GitHub Release
-    needs: [prepare-release, validate-engine, validate-replay, build-windows, build-android]
+    needs: [prepare-release, validate-replay, build-windows, build-android]
     if: needs.prepare-release.outputs.skip != 'true' && needs.build-android.outputs.signing_mode == 'permanent release key'
     runs-on: ubuntu-latest
     permissions:

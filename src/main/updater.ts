@@ -1,5 +1,6 @@
 import { app, BrowserWindow, ipcMain } from 'electron';
 import { createHash } from 'node:crypto';
+import { appendFileSync } from 'node:fs';
 import { spawn } from 'node:child_process';
 import fs from 'node:fs/promises';
 import os from 'node:os';
@@ -29,19 +30,58 @@ function compareVersions(left: string, right: string): number {
   for (let i = 0; i < 3; i++) if (a[i] !== b[i]) return a[i] > b[i] ? 1 : -1;
   return 0;
 }
+function logWindowsUpdateLifecycle(phase: string, details: Record<string, unknown> = {}): void {
+  const entry = { at: new Date().toISOString(), phase, pid: process.pid, ...details };
+  console.info('[ReplayCoach] Windows update lifecycle', entry);
+  try {
+    if (app.isReady()) {
+      appendFileSync(path.join(app.getPath('userData'), 'update-install.log'), JSON.stringify(entry) + String.fromCharCode(10), 'utf8');
+    }
+  } catch (error) {
+    console.error('[ReplayCoach] Could not persist update lifecycle diagnostic', { phase, error: String(error) });
+  }
+}
 function reportProgress(phase: string, percent: number) {
   for (const window of BrowserWindow.getAllWindows()) {
     if (!window.isDestroyed()) window.webContents.send('updates:progress', { phase, percent });
   }
 }
+function resolveReleaseApiUrl(): string {
+  if (process.env.OFRC_UPDATE_TEST_MODE !== '1') return RELEASE_API;
+  const testUrl = process.env.OFRC_UPDATE_TEST_RELEASE_URL;
+  if (!testUrl) throw new Error('OFRC_UPDATE_TEST_MODE ist aktiv, aber OFRC_UPDATE_TEST_RELEASE_URL fehlt.');
+  let parsed: URL;
+  try { parsed = new URL(testUrl); } catch { throw new Error('Ungültige lokale Update-Test-URL.'); }
+  if (parsed.protocol !== 'http:' || parsed.hostname !== '127.0.0.1') {
+    throw new Error('Der Update-Testmodus akzeptiert ausschließlich einen lokalen HTTP-Server auf 127.0.0.1.');
+  }
+  return parsed.toString();
+}
 async function getLatestRelease(): Promise<Release> {
-  const response = await fetch(RELEASE_API, {
-    headers: { Accept: 'application/vnd.github+json', 'User-Agent': 'OpenFront-Replay-Coach/' + app.getVersion() },
-    cache: 'no-store', signal: AbortSignal.timeout(15000),
+  const endpoint = resolveReleaseApiUrl();
+  const testMode = process.env.OFRC_UPDATE_TEST_MODE === '1';
+  logWindowsUpdateLifecycle('release-fetch-started', {
+    endpoint,
+    testMode,
+    nodeVersion: process.versions.node,
+    proxyConfigured: Boolean(process.env.HTTPS_PROXY || process.env.https_proxy || process.env.HTTP_PROXY || process.env.http_proxy),
+    noProxyIncludesLoopback: (process.env.NO_PROXY || process.env.no_proxy || '').toLowerCase().split(',').map(value => value.trim()).some(value => value === '127.0.0.1' || value === 'localhost' || value === '*'),
   });
+  let response: Response;
+  try {
+    response = await fetch(endpoint, {
+      headers: { Accept: 'application/vnd.github+json', 'User-Agent': 'OpenFront-Replay-Coach/' + app.getVersion() },
+      cache: 'no-store', signal: AbortSignal.timeout(15000),
+    });
+  } catch (error) {
+    logWindowsUpdateLifecycle('release-fetch-failed', { endpoint, errorName: error instanceof Error ? error.name : typeof error, error: String(error) });
+    throw error;
+  }
+  logWindowsUpdateLifecycle('release-fetch-response', { endpoint, status: response.status, ok: response.ok });
   if (!response.ok) throw new Error('GitHub Update-Server antwortet mit HTTP ' + response.status + '.');
   const release = await response.json() as Release;
   if (!release.tag_name || !Array.isArray(release.assets)) throw new Error('Die GitHub-Release-Antwort ist unvollständig.');
+  if (testMode) console.info('[ReplayCoach] Update regression: release lookup succeeded', { tag: release.tag_name, assets: release.assets.map(asset => asset.name) });
   return release;
 }
 function chooseWindowsAsset(release: Release, portable: boolean): ReleaseAsset {
@@ -97,7 +137,11 @@ async function scheduleWindowsInstall(downloadPath: string, portable: boolean): 
     '$Executable = ' + quotePowerShell(executable),
     '$Download = ' + quotePowerShell(downloadPath),
     '$Log = ' + quotePowerShell(logPath),
+    'function Write-UpdateLog([string]$Phase) { Add-Content -LiteralPath $Log -Value ("[" + (Get-Date -Format o) + "] phase=" + $Phase + " helperPid=" + $PID + " parentPid=" + $ProcessIdToWait) }',
+    'Write-UpdateLog "helper-started"',
+    'Write-UpdateLog "waiting-for-parent-exit"',
     'try { Wait-Process -Id $ProcessIdToWait -ErrorAction SilentlyContinue } catch {}',
+    'Write-UpdateLog "parent-process-exited"',
     'Start-Sleep -Milliseconds 900'
   ].join('\n');
   const portableScript = [
@@ -113,7 +157,9 @@ async function scheduleWindowsInstall(downloadPath: string, portable: boolean): 
     'New-Item -ItemType Directory -Path $Stage -Force | Out-Null',
     'New-Item -ItemType Directory -Path $Backup -Force | Out-Null',
     'try {',
+    '  Write-UpdateLog "portable-expand-started"',
     "  Expand-Archive -LiteralPath $Download -DestinationPath $Stage -Force",
+    '  Write-UpdateLog "portable-expand-completed"',
     "  $NewExe = Get-ChildItem -LiteralPath $Stage -Filter 'OpenFront Replay Coach.exe' -File -Recurse | Select-Object -First 1",
     "  if (-not $NewExe) { throw 'Die Portable-ZIP enthält keine Programmdatei.' }",
     '  $Source = $NewExe.Directory.FullName',
@@ -121,28 +167,36 @@ async function scheduleWindowsInstall(downloadPath: string, portable: boolean): 
     "  $BackupArchive = Join-Path (Join-Path $Backup 'resources') 'app.asar'",
     "  if (-not $BeforeArchiveHash -or -not (Test-Path -LiteralPath $BackupArchive) -or (Get-FileHash -LiteralPath $BackupArchive -Algorithm SHA256).Hash -ne $BeforeArchiveHash) { throw 'Die Sicherung der Portable-Version konnte nicht verifiziert werden. Das Update wurde nicht gestartet.' }",
     '  $UpdateStarted = $true',
+    '  Write-UpdateLog "portable-install-started"',
     "  Copy-Item -Path (Join-Path $Source '*') -Destination $Target -Recurse -Force",
     "  if (-not (Test-Path -LiteralPath $Executable)) { throw 'Die aktualisierte Programmdatei fehlt.' }",
     "  if (-not $BeforeArchiveHash -or -not (Test-Path -LiteralPath $ArchivePath)) { throw 'Die Portable-App enthält keine prüfbare resources/app.asar-Datei.' }",
     "  $AfterArchiveHash = (Get-FileHash -LiteralPath $ArchivePath -Algorithm SHA256).Hash",
     "  if ($AfterArchiveHash -eq $BeforeArchiveHash) { throw 'Die Portable-Dateien wurden nicht aktualisiert; die alte Programmversion bleibt erhalten.' }",
+    '  Write-UpdateLog "portable-install-verified"',
+    "  Add-Content -LiteralPath $Log -Value ('[' + (Get-Date -Format o) + '] Portable-Programmdateien geändert und verifiziert; starte Anwendung.')",
+    '  Write-UpdateLog "portable-restart-requested"',
     '  Start-Process -FilePath $Executable',
     '  $Installed = $true',
     '} catch {',
     '  $_ | Out-String | Add-Content -LiteralPath $Log',
+    '  Write-UpdateLog "portable-update-failed"',
     '  if (-not $UpdateStarted) { $Restored = $true }',
     '  if ($UpdateStarted) {',
     '    try {',
+    '      Write-UpdateLog "portable-rollback-started"',
     "      Copy-Item -Path (Join-Path $Backup '*') -Destination $Target -Recurse -Force",
     "      $RestoredHash = (Get-FileHash -LiteralPath $ArchivePath -Algorithm SHA256).Hash",
     '      if ($RestoredHash -ne $BeforeArchiveHash) { throw "Die wiederhergestellte Portable-Version stimmt nicht mit der Sicherung überein." }',
     '      $Restored = $true',
+    "      Add-Content -LiteralPath $Log -Value 'Rollback erfolgreich; vorherige Version wurde wiederhergestellt.'",
+    '      Write-UpdateLog "portable-rollback-verified"',
     '    } catch {',
     '      $_ | Out-String | Add-Content -LiteralPath $Log',
     "      Add-Content -LiteralPath $Log -Value ('WICHTIG: Die vorherige Portable-Version liegt als Sicherung unter ' + $Backup)",
     '    }',
     '  }',
-    '  if ($Restored -and (Test-Path -LiteralPath $Executable)) { Start-Process -FilePath $Executable }',
+    '  if ($Restored -and (Test-Path -LiteralPath $Executable)) { Write-UpdateLog "portable-rollback-restart-requested"; Start-Process -FilePath $Executable }',
     '  exit 1',
     '} finally {',
     '  Remove-Item -LiteralPath $Stage -Recurse -Force -ErrorAction SilentlyContinue',
@@ -168,7 +222,9 @@ async function scheduleWindowsInstall(downloadPath: string, portable: boolean): 
     "  $BackupArchive = Join-Path (Join-Path $Backup 'resources') 'app.asar'",
     "  if (-not (Test-Path -LiteralPath $BackupArchive) -or (Get-FileHash -LiteralPath $BackupArchive -Algorithm SHA256).Hash -ne $BeforeArchiveHash) { throw 'Die Sicherung der installierten Version konnte nicht verifiziert werden. Das Update wurde nicht gestartet.' }",
     '  $BackupVerified = $true',
+    '  Write-UpdateLog "installer-backup-verified"',
     "  Add-Content -LiteralPath $Log -Value ('[' + (Get-Date -Format o) + '] Verifizierte Sicherung erstellt: ' + $Backup)",
+    '  Write-UpdateLog "installer-started"',
     "  Add-Content -LiteralPath $Log -Value ('[' + (Get-Date -Format o) + '] Starte Installer: ' + $Installer)",
     "  $Exit = Start-Process -FilePath $Installer -ArgumentList '/S' -Wait -PassThru",
     "  if ($Exit.ExitCode -ne 0) {",
@@ -190,25 +246,30 @@ async function scheduleWindowsInstall(downloadPath: string, portable: boolean): 
     "    $AfterArchiveHash = (Get-FileHash -LiteralPath $AppArchive -Algorithm SHA256).Hash",
     "  }",
     "  if ($AfterArchiveHash -eq $BeforeArchiveHash) { throw 'Der Installer meldete Erfolg, aber die Programmdateien wurden auch nach dem erhöhten Wiederholungsversuch nicht ersetzt.' }",
+    '  Write-UpdateLog "installer-install-verified"',
     "  Add-Content -LiteralPath $Log -Value ('[' + (Get-Date -Format o) + '] Programmdateien geändert und verifiziert; starte Anwendung.')",
+    '  Write-UpdateLog "installer-restart-requested"',
     '  Start-Process -FilePath $Executable',
     '  $Installed = $true',
     '} catch {',
     '  $_ | Out-String | Add-Content -LiteralPath $Log',
+    '  Write-UpdateLog "installer-update-failed"',
     '  if (-not $BackupVerified) { $Restored = $true }',
     '  if ($BackupVerified) {',
     '    try {',
+    '      Write-UpdateLog "installer-rollback-started"',
     "      Copy-Item -Path (Join-Path $Backup '*') -Destination $InstallDirectory -Recurse -Force",
     "      $RestoredHash = (Get-FileHash -LiteralPath $AppArchive -Algorithm SHA256).Hash",
     '      if ($RestoredHash -ne $BeforeArchiveHash) { throw "Die wiederhergestellte Version stimmt nicht mit der Sicherung überein." }',
     '      $Restored = $true',
+    '      Write-UpdateLog "installer-rollback-verified"',
     '    } catch {',
     '      $_ | Out-String | Add-Content -LiteralPath $Log',
     "      Add-Content -LiteralPath $Log -Value ('WICHTIG: Die vorherige Version liegt als Sicherung unter ' + $Backup)",
     '    }',
     '  }',
     "  Add-Content -LiteralPath $Log -Value ('[' + (Get-Date -Format o) + '] Update fehlgeschlagen; installierte Anwendung wird wieder gestartet.')",
-    '  if ($Restored -and (Test-Path -LiteralPath $Executable)) { Start-Process -FilePath $Executable }',
+    '  if ($Restored -and (Test-Path -LiteralPath $Executable)) { Write-UpdateLog "installer-rollback-restart-requested"; Start-Process -FilePath $Executable }',
     '  exit 1',
     '} finally {',
     '  if (($Installed -or $Restored -or -not $BackupVerified) -and (Test-Path -LiteralPath $Backup)) { Remove-Item -LiteralPath $Backup -Recurse -Force -ErrorAction SilentlyContinue }',
@@ -225,26 +286,35 @@ async function scheduleWindowsInstall(downloadPath: string, portable: boolean): 
     child.once('error', reject);
   });
   child.unref();
-  await new Promise(resolve => setTimeout(resolve, 800));
-  app.quit();
+  logWindowsUpdateLifecycle('helper-spawned', { helperPid: child.pid, scriptPath, logPath });
+  // The IPC handler must return its result before the main process exits. The
+  // detached helper waits for this process, so shutdown is scheduled by the
+  // IPC boundary only after installLatestWindowsUpdate has resolved.
 }
 let activeWindowsUpdate: Promise<{ scheduled: boolean; version: string }> | null = null;
 async function installLatestWindowsUpdate(): Promise<{ scheduled: boolean; version: string }> {
   if (activeWindowsUpdate) return activeWindowsUpdate;
   if (process.platform !== 'win32' || !app.isPackaged) throw new Error('Automatische Installation ist nur in der installierten oder portablen Windows-App verfügbar.');
   activeWindowsUpdate = (async () => {
+    logWindowsUpdateLifecycle('release-lookup-started');
     const release = await getLatestRelease();
+    logWindowsUpdateLifecycle('release-lookup-completed', { tag: release.tag_name, assetCount: release.assets.length });
     const version = release.tag_name.replace(/^v/i, '');
     if (compareVersions(version, app.getVersion()) <= 0) throw new Error('Du verwendest bereits die aktuelle Version.');
     const portable = await isPortableInstall(app.getPath('exe'));
     const asset = chooseWindowsAsset(release, portable);
+    console.info('[ReplayCoach] Windows update: release asset selected', { name: asset.name, size: asset.size, portable });
+    logWindowsUpdateLifecycle('asset-download-started', { asset: asset.name, size: asset.size });
     const downloadPath = await downloadVerifiedAsset(asset);
+    logWindowsUpdateLifecycle('asset-download-and-validation-completed', { asset: asset.name, downloadPath });
+    console.info('[ReplayCoach] Windows update: asset download and SHA-256 validation succeeded', { name: asset.name });
     // A user-triggered retry is explicit; clear the old guard, then persist this attempt
     // so a failed detached installer cannot trigger an automatic restart loop.
     await clearAutoUpdateAttempt();
     await writeAutoUpdateAttempt(version);
     try {
       await scheduleWindowsInstall(downloadPath, portable);
+      logWindowsUpdateLifecycle('update-handoff-ready', { version, portable });
     } catch (error) {
       await clearAutoUpdateAttempt();
       throw error;
@@ -268,11 +338,34 @@ export async function getWindowsUpdateStatus(): Promise<{ failed: boolean; messa
   };
 }
 export function registerUpdaterIpc(): void {
-  ipcMain.handle('updates:install', async () => installLatestWindowsUpdate());
+  ipcMain.handle('updates:install', async () => {
+    logWindowsUpdateLifecycle('ipc-install-received');
+    try {
+      const result = await installLatestWindowsUpdate();
+      logWindowsUpdateLifecycle('ipc-install-response-ready', result);
+      if (result.scheduled) {
+        setTimeout(() => {
+          logWindowsUpdateLifecycle('main-process-shutdown-after-ipc-response');
+          app.quit();
+        }, 1500);
+      }
+      return result;
+    } catch (error) {
+      console.error('[ReplayCoach] IPC updates:install failed', error);
+      throw error;
+    }
+  });
   ipcMain.handle('updates:status', async () => getWindowsUpdateStatus());
 }
 export async function autoUpdateOnStartup(): Promise<boolean> {
   if (process.platform !== 'win32' || !app.isPackaged) return false;
+  // The integration test invokes the explicit Update Center IPC against its
+  // loopback release server. Suppress the unrelated startup check so it cannot
+  // race or consume the same test endpoint before the user-triggered install.
+  if (process.env.OFRC_UPDATE_TEST_MODE === '1') {
+    console.info('[ReplayCoach] Update test mode: automatic startup check suppressed.');
+    return false;
+  }
   try {
     const release = await getLatestRelease();
     const version = release.tag_name.replace(/^v/i, '');

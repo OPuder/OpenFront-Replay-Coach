@@ -204,6 +204,27 @@ work/alternative-development
 | PR #145 / `feature/ux-replay-visualization` | `1fa70d3d88dc2f80746641054fa78ba957e656b3` | Hold / conflict-aware review | None yet | — | Replay, Android, Update Validation, Windows failed; Pinned Engine success | Replay harness overlaps newer main changes |
 | PR #146 / `feature/release-update-system` | `ac36c1844d85b33715534033ee11ce0104ca8671` | Hold pending exact-head validation | None | — | No PR-triggered workflow runs returned for this SHA | Runtime rollback and signed upgrade evidence still required |
 
+
+## Branch-family triage — current main comparison
+
+The live comparison pass covered the inventoried source branches. These are review dispositions, not deletion approvals:
+
+- **Coaching evidence:** #147 is the selected current implementation imported above. Older/parallel branches `coach/exact-spawn-metrics-*`, `coach/median-match-score-mainline`, `coach/true-median-match-score-main-current`, `fix/true-median-match-score`, `fix/coach-phase-timeline-*`, `fix/spawn-coaching-uses-exact-replay-metrics`, and `feat/evidence-backed-strengths` overlap in `ProCoachAlgorithm.ts`, `LongitudinalCoach.ts`, and coaching tests. Do not import them wholesale; compare any unique spawn/phase behavior against the selected #147 baseline and current main.
+- **Replay safety/performance:** `perf/large-replay-safety-*`, `perf/replay-safety-mainline-v*`, `perf/replay-safety-main-current`, and `perf/avoid-large-replay-frame-spread` overlap in `DetailedAnalysis.ts`, `ReplaySimulation.ts`, and terrain/coaching tests. Keep one canonical implementation only after exact behavior and large-input regression comparison.
+- **Android updater diagnostics:** #126/#135/#136 and branches `fix/android-apk-parser-diagnostics*` / `fix/android-apk-diagnostics-main-current` share the same Java APK-container and `prepare-engines.mjs` diagnostics. Treat as one lineage, not separate imports. Their test/workflow state must be revalidated on a single selected head.
+- **Android upgrade reliability:** #141/#143, `fix/android-update-smoke-main`, `fix/stabilize-android-emulator-ci`, `fix/signed-android-release-upgrade-mainline`, and `test/android-release-apk-upgrade` overlap in emulator setup, in-place upgrade scripts, and updater contracts. Preserve the most complete exact-head upgrade test, not several competing script variants.
+- **Library resume/performance:** `feat/resumable-library-analysis-main`, `perf/import-resume-eta-mainline*`, `perf/concurrency-aware-analysis-eta`, `fix/resume-partial-replay-imports`, and `feat/multi-match-session-persistence` overlap in `AutoLibrarySync`, `BatchAnalysisRunner`, `main.tsx`, and `matchStore`. These require one integrated design review; no files imported.
+- **Old UI redesigns:** `longitudinal-player-history-2.2.9`, `phase-skill-profile-2.2.8`, `coach-phase-survival-fix-2.2.9`, `coach-training-loop-redesign`, and `ux-simplification-visual-analytics` are substantially behind main (roughly 142–161 commits) and touch the current large renderer files. Treat as historical reference only unless a unique UX behavior is identified.
+- **Release policy:** `chore/focus-releases-windows-android` removes web/PWA assets and changes release behavior; review against the current explicit Windows installer, Windows portable ZIP and signed Android APK release contract before adopting.
+- **Engine catalog:** `automation/openfront-engine-latest` and `feat/spawn-map-coaching` add/change engine pins, vendored engines and generated bundles. Never copy generated bundles or pins without exact upstream commit/hash verification.
+- **Agent workflow/docs:** `chore/free-agent-workflow-foundation` adds `AGENTS.md`, PR template and agent coordination docs. Candidate for a documentation-only import after checking it against the current project instructions.
+- **CI diagnostics:** `ci/retain-replay-validation-reports` is a focused workflow-only change; review its artifact retention and exact current workflow context before import.
+- **No net file delta vs main in compare:** `feature/queue-safe`, `feature/queue-safe-clean`, `fix/kvm-contract-step-boundaries`, and `release/branch-cleanup` currently compare as behind-only with no changed paths. This makes them low-priority cleanup candidates, not yet safe-to-delete proof; inspect their commit ancestry/content and PR references before recommending removal.
+
+## Validation status of this consolidation
+
+The coaching engine import is committed, but **no tests have yet been executed on the consolidated SHA**. The four successful Actions workflows recorded above belong to source SHA #147, not to this branch. No full build, lint/typecheck, replay fixture, Windows package, or Android signed-upgrade check is claimed as passed for the consolidation. A temporary or draft PR/CI run, or a local checkout with the repository and dependencies, is still required to validate the integrated branch.
+
 ## Completion criteria
 
 The consolidation is ready for a proposal to `main` only when:

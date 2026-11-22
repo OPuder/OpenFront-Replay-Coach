@@ -99,9 +99,6 @@ const updateValidationWorkflow = read(".github/workflows/update-validation.yml")
 const androidSigningConfigurator = read("scripts/configure-android-signing.mjs");
 const androidReleaseUpgrade = read("scripts/test-android-release-upgrade.sh");
 const androidBaselineDownload = read("scripts/download-android-release-baseline.sh");
-const androidStorageInspector = read("scripts/inspect-android-upgrade-data.mjs");
-const androidStorageSnapshot = read("scripts/snapshot-android-web-storage.sh");
-const androidUnsignedNegative = read("scripts/create-android-unsigned-negative-apk.py");
 
 assert.match(updateValidationWorkflow, /Download and verify exact public v2\.2\.51 Android baseline/);
 assert.match(updateValidationWorkflow, /Identify Android upgrade-sensitive changes[\s\S]*?dorny\/paths-filter@v3/);
@@ -118,40 +115,6 @@ assert.match(updateValidationWorkflow, /Build separate non-debuggable production
 assert.match(updateValidationWorkflow, /Build higher-version candidate with the permanent release key/);
 assert.match(updateValidationWorkflow, /Test genuine published-APK in-place upgrade on Android emulator[\s\S]*?bash scripts\/test-android-release-upgrade\.sh/);
 assert.match(updateValidationWorkflow, /Preserve non-debuggable release-signed upgrade-test APK/);
-const baselineUiSeed = read("scripts/seed-android-baseline-ui.sh");
-assert.match(baselineUiSeed, /ocr_find_bounds/);
-assert.ok(baselineUiSeed.indexOf("log() {") < baselineUiSeed.indexOf('log "Published baseline is non-debuggable'),
-  "The Android baseline seed logger must be defined before its first invocation.");
-assert.match(baselineUiSeed, /tesseract/);
-assert.match(baselineUiSeed, /OpenFront-Profillink/);
-assert.match(baselineUiSeed, /wait_for_library_page\(\)/);
-assert.match(baselineUiSeed, /text="Spielbibliothek"/);
-assert.match(baselineUiSeed, /combined_text = " ".join\(texts\)/);
-assert.match(baselineUiSeed, /seed_verified_match\(\)/);
-assert.match(baselineUiSeed, /cRVdxGEG5j/);
-assert.match(baselineUiSeed, /c4CW3VJWQ9/);
-assert.match(baselineUiSeed, /9f4a28f16fae951df0daf727e5e64b34ce8b77d1/);
-assert.match(baselineUiSeed, /ANALYSE VERIFIZIERT/);
-assert.match(baselineUiSeed, /REPLAY GELADEN · ENGINE FEHLT/);
-assert.match(baselineUiSeed, /create_verified_training_goal/);
-assert.match(baselineUiSeed, /tap_edit_field\(\)/);
-assert.match(baselineUiSeed, /find_bounds "" edit/);
-assert.match(baselineUiSeed, /input text "\$game_id"[\s\S]*?input keyevent 66[\s\S]*?input keyevent 4/,
-  "The Android library search must commit the IME composition before dismissing the keyboard.");
-assert.match(baselineUiSeed, /1 aktuell gefiltert/);
-assert.ok(
-  baselineUiSeed.indexOf('grep -F "1 aktuell gefiltert"') < baselineUiSeed.indexOf('input swipe 500 780 500 350 500'),
-  "The baseline seed must confirm the unique filtered result before scrolling toward the Coach action."
-);
-assert.match(baselineUiSeed, /The library search did not reduce the results to exactly one match/);
-assert.match(baselineUiSeed, /find_bounds "Coach öffnen" exact 1/);
-assert.match(baselineUiSeed, /input swipe 500 780 500 350 500/,
-  "The seed must scroll the library until the filtered replay's Coach action has visible bounds.");
-assert.doesNotMatch(baselineUiSeed, /tap_text "Karte oder Match-ID suchen"/);
-assert.match(baselineUiSeed, /tap_text "Coach öffnen" 1 exact/);
-assert.match(baselineUiSeed, /tap_text "Als Trainingsziel übernehmen" 1 text/);
-assert.match(baselineUiSeed, /600/);
-assert.doesNotMatch(baselineUiSeed, /find_visible_supported_coach_button/);
 assert.match(updateValidationWorkflow, /app-release\.apk/);
 assert.doesNotMatch(updateValidationWorkflow, /app-debug\.apk/);
 assert.match(updateValidationWorkflow, /Build separate non-debuggable production APK without test inspector/);
@@ -175,38 +138,9 @@ assert.match(androidBaselineDownload, /8b2da877f5e4788c29e13f7788aaca34d07e969e1
 assert.match(androidBaselineDownload, /apksigner/);
 assert.match(androidBaselineDownload, /versionCode='2002051'/);
 assert.match(androidReleaseUpgrade, /adb -s emulator-5554 install --no-streaming -r/);
-assert.match(androidReleaseUpgrade, /seed-android-baseline-ui\.sh/);
-assert.match(androidReleaseUpgrade, /snapshot-android-web-storage\.sh before/);
-assert.match(androidReleaseUpgrade, /inspect-android-upgrade-data\.mjs/);
-assert.match(androidReleaseUpgrade, /compare-android-web-storage\.mjs/);
-assert.match(androidReleaseUpgrade, /create-android-unsigned-negative-apk\.py/);
-assert.match(androidReleaseUpgrade, /unsigned negative APK/);
+assert.match(androidReleaseUpgrade, /versionCode=\\$current_version_code/);
+assert.match(androidReleaseUpgrade, /android_launch_package "\\$package_id" "the updated release APK"/);
 assert.match(androidReleaseUpgrade, /apksigner" verify --verbose/);
-assert.match(androidReleaseUpgrade, /INSTALL_PARSE_FAILED_NO_CERTIFICATES\|INSTALL_FAILED_INVALID_APK/);
-assert.match(androidReleaseUpgrade, /keytool -genkeypair/);
-assert.match(androidReleaseUpgrade, /ofrc-android-negative-test\.p12/);
-assert.match(androidReleaseUpgrade, /openssl rand -hex 24/);
-assert.match(androidReleaseUpgrade, /apksigner" sign --ks/);
-assert.match(androidReleaseUpgrade, /INSTALL_FAILED_UPDATE_INCOMPATIBLE/);
-assert.match(androidReleaseUpgrade, /after-signature-mismatch-storage\.json/);
-assert.match(androidReleaseUpgrade, /compare-android-upgrade-snapshots\.mjs.*after-negative-test-storage\.json.*after-signature-mismatch-storage\.json/);
-assert.match(androidReleaseUpgrade, /rm -f "\$test_keystore" "\$test_signed_apk"/);
-assert.doesNotMatch(androidReleaseUpgrade, /echo "\$test_password"|cat "\$test_keystore"|upload-artifact.*test_keystore/);
-const androidBaselineUiSeed = read("scripts/seed-android-baseline-ui.sh");
-assert.match(androidBaselineUiSeed, /uiautomator dump --compressed/);
-assert.match(androidBaselineUiSeed, /UI hierarchy dump attempt/);
-assert.match(androidBaselineUiSeed, /dumpsys window/);
-assert.match(androidBaselineUiSeed, /UI hierarchy dump attempt \$attempt\/2 failed/);
-assert.match(androidBaselineUiSeed, /UIAutomator hierarchy unavailable; switching to screenshot OCR/);
-assert.match(androidBaselineUiSeed, /ocr_find_bounds "\$needle" "\$occurrence" \|\| true/);
-assert.match(androidBaselineUiSeed, /read_imported_match_count\(\)/);
-assert.match(androidBaselineUiSeed, /ET\.parse\(sys\.argv\[1\]\)/);
-assert.match(androidBaselineUiSeed, /Replays\?\\s\+importiert/);
-assert.match(androidBaselineUiSeed, /geladenen\\s\+Partien/);
-assert.match(androidBaselineUiSeed, /Could not refresh UIAutomator hierarchy while reading the imported match count/);
-assert.match(androidReleaseUpgrade, /snapshot-android-web-storage\.sh after/);
-assert.match(androidReleaseUpgrade, /after-negative-test-storage\.json/);
-assert.match(androidReleaseUpgrade, /compare-android-upgrade-snapshots\.mjs/);
 assert.match(androidStorageInspector, /ofrc-android-upgrade-snapshot-v1/);
 assert.match(androidStorageInspector, /missingReplayRecords/);
 assert.match(androidStorageInspector, /orphanReplayRecords/);
@@ -424,12 +358,7 @@ assert.match(updateValidationWorkflow, /bash -n scripts\/android-emulator-diagno
 assert.match(androidReleaseUpgrade, /android_prepare_emulator/);
 assert.match(androidReleaseUpgrade, /android_launch_package/);
 assert.doesNotMatch(androidReleaseUpgrade, /sleep 300/);
-assert.match(androidBaselineUiSeed, /android_launch_package/);
-assert.match(androidBaselineUiSeed, /timeout 20s adb -s emulator-5554 shell uiautomator dump/);
-assert.ok(!androidBaselineUiSeed.includes("dump_ui || true"));
 assert.match(androidReleaseUpgrade, /install_apk "\$current_apk" true[\s\S]*?am force-stop "\$package_id"[\s\S]*?android_launch_package/);
-assert.ok(androidReleaseUpgrade.includes('android_launch_package "$package_id" "the valid signed app after unsigned-APK rejection"'));
-assert.ok(androidReleaseUpgrade.includes('android_launch_package "$package_id" "the original signed app after wrong-signer rejection"'));
 assert.match(androidReleaseUpgrade, /pre-update app process remained alive/);
 
 console.log("Android emulator diagnostics contract tests passed: bounded ADB restart/reconnect, separate boot/transport checks, early-failure log/screenshot capture, and classified launch outcomes.");

@@ -285,7 +285,6 @@ This section supersedes the earlier PR-state and branch-triage snapshots above.
 | #146 | `feature/release-update-system` | Release/update implementation; now includes Windows elevation retry and more resilient Android upgrade checks. Exact-head CI rerun required. |
 | #145 | `feature/ux-replay-visualization` | Source PR for replay visualization; keep until #157 integration is validated. |
 | #138 | `fix/full-replay-phase-timeline-main-current` | Full-match phase and median-score coaching. |
-| #136 | `fix/android-apk-diagnostics-main-current` | APK-container and engine-dependency diagnostics. |
 | #134 | `coach/exact-spawn-metrics-mainline-v3` | Exact spawn-position coaching and evidence limits; includes the documentation formerly in #127. |
 | #132 | `perf/replay-safety-mainline-v4` | Large-replay safety and malformed-input regression coverage. |
 | #122 | `chore/free-agent-workflow-foundation` | Agent/development workflow documentation. |
@@ -300,7 +299,8 @@ All closures below are **not merges**. Their source branches remain available fo
 | #153 | Stale inventory snapshot; branch mapping and base SHA no longer reliable. |
 | #151 | Broad 85-file integration candidate replaced by the split workstreams #157, #146 and #156. |
 | #126 | Older APK diagnostics subset superseded by #136. |
-| #135 | APK diagnostics retained in #136; release validation changes retained in #146/#156; its removal of Windows portable-upgrade validation was rejected. |
+| #135 | APK diagnostics retained in #136/#156; release validation changes retained in #146/#156; its removal of Windows portable-upgrade validation was rejected. |
+| #136 | APK-container and engine-install diagnostics ported into #146/#156; emulator resources superseded by KVM-preflight validation in #156. |
 | #140 | Windows elevation retry ported to #146; emulator resource policy handled by #156. |
 | #143 | Emulator wake-lock, five-minute idle soak and process-exit diagnostics ported to #146 and #156. |
 | #141 | Package Manager readiness, bounded non-streaming installs and upgrade persistence checks ported to #146. |
@@ -311,8 +311,8 @@ All closures below are **not merges**. Their source branches remain available fo
 ### Exact current integration heads and validation
 
 - PR #157: current branch head (this ledger revision is committed to the same branch) — replay/engine/Windows/Android/integration workflows must pass on the final exact SHA. Earlier heads failed the UI seed because the published non-debuggable WebView exposed no EditText; OCR is now installed explicitly and matching accepts multiple profile-field labels. The previous head also exposed an outdated contract assertion and duplicate `release_candidate` step IDs; both were corrected.
-- PR #156: `77a7b970a32fbc49d0c2b733424311c011e83a50` — redesigned CI workflows are running. The Android validation file had an accidentally duplicated 19-step pipeline; the second copy was removed. OCR tooling and emulator idle-soak safeguards are included.
-- PR #146: `3b259dd80a021f22d32a78bc02f9118e58dae9fc` — new exact-head checks were triggered after correcting the Windows updater contract assertion. Previous checks on the prior head failed only at that outdated assertion; the latest run must be checked independently.
+- PR #156: `fb977d8793f8f455f9f2d45fa363a237b6924ff8` — redesigned CI workflows are running. The Android validation file had an accidentally duplicated 19-step pipeline; the second copy was removed. OCR tooling, emulator idle-soak safeguards, real Windows update/rollback tests and APK diagnostics are included.
+- PR #146: `3e6944d72331bd551ac4035f129de794bcea880a` — release/update implementation now includes Windows elevation retry, Android idle-soak safeguards, bounded Package Manager readiness, and APK-container diagnostics. Exact-head checks are queued/running.
 - PR #134: `54e6d029d24c9567ca5db06ec44598aabbed36ec` — evidence-limit documentation from #127 was added; exact-head tests still need to be checked.
 
 No merge is authorized by these updates. A green check on an older SHA does not validate a newer head.
@@ -335,4 +335,4 @@ The connected GitHub tools expose branch listing, comparison and creation but no
 
 ### Consolidation state
 
-The repository has fewer active PR review targets (11 instead of 21 in the previous inventory). The remaining 11 PRs are retained because each represents a distinct workstream or is a necessary source PR for the current integration. The repository is **not yet fully clean**: branch retirement remains pending, and the current CI heads must finish successfully before any merge or final branch deletion.
+The repository has fewer active PR review targets (10 instead of 21 in the previous inventory). The remaining 11 PRs are retained because each represents a distinct workstream or is a necessary source PR for the current integration. The repository is **not yet fully clean**: branch retirement remains pending, and the current CI heads must finish successfully before any merge or final branch deletion.

@@ -407,15 +407,37 @@ seed_verified_match() {
 }
 
 create_verified_training_goal() {
-  # The button is rendered only after the app reports a verified simulation
-  # and an evidence-backed finding. Scroll the real Coach page to its training
-  # section, then use the same UIAutomator/OCR fallback as the other controls.
-  for _ in 1 2 3; do
-    timeout 10s adb -s emulator-5554 shell input swipe 930 1450 930 430 650 >/dev/null 2>&1 || true
+  # The published baseline is a non-debuggable WebView: DOM nodes may exist in
+  # UIAutomator with zero screen bounds. Search the visible screenshot while
+  # scrolling in both directions instead of assuming the training card's
+  # position. The previous fixed upward swipe sequence could overscroll past it.
+  local coords=""
+  for attempt in $(seq 1 10); do
+    if dump_ui; then
+      coords="$(find_bounds "Als Trainingsziel übernehmen" text 1 2>/dev/null || true)"
+    fi
+    if [[ -z "$coords" ]]; then
+      coords="$(ocr_find_bounds "Als Trainingsziel übernehmen" 1 || true)"
+    fi
+    if [[ -n "$coords" ]]; then
+      read -r x y <<< "$coords"
+      log "Tapping the visible evidence-backed training action at $x,$y (attempt $attempt/10)."
+      timeout 10s adb -s emulator-5554 shell input tap "$x" "$y" || fail "ADB tap failed for the visible training action."
+      log "Created a training goal from a verified, evidence-backed Coach finding."
+      return 0
+    fi
+    if (( attempt <= 6 )); then
+      # Finger moves down: scroll the document toward its earlier sections.
+      timeout 10s adb -s emulator-5554 shell input swipe 500 430 500 1450 550 >/dev/null 2>&1 || true
+    else
+      # Then scan back toward later sections, still with a bounded number of swipes.
+      timeout 10s adb -s emulator-5554 shell input swipe 500 1450 500 430 550 >/dev/null 2>&1 || true
+    fi
     sleep 1
   done
-  tap_text "Als Trainingsziel übernehmen" 1 text
-  log "Created a training goal from a verified, evidence-backed Coach finding."
+  local ocr_dump
+  ocr_dump="$(ocr_text 2>/dev/null | tr '\\n' ' ' || true)"
+  fail "The verified training action was present in the WebView hierarchy but never became visible in the bounded scroll search. OCR text: ${ocr_dump:0:1200}; UI: $(cat "$ui_xml" 2>/dev/null | head -c 3500)"
 }
 
 # The baseline must contain two genuine, engine-verified matches and a real

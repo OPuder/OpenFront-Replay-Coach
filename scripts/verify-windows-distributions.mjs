@@ -154,7 +154,7 @@ const archiveList = spawnSync("tar.exe", ["-tf", portable], {
   encoding: "utf8", windowsHide: true, timeout: 60_000,
 });
 const archiveEntries = archiveList.status === 0
-  ? String(archiveList.stdout ?? "").split(/\\r?\\n/).filter(Boolean)
+  ? String(archiveList.stdout ?? "").split(/\r?\n/).filter(Boolean)
   : [];
 console.log("PORTABLE_ZIP_ARCHIVE_LIST", JSON.stringify({
   status: archiveList.status,

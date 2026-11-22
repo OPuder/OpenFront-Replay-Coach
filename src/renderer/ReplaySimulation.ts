@@ -1,6 +1,7 @@
 import { unwrapGameRecord } from "../main/decoder/GameRecordShape";
 import { resolveSupportedEngineCommit } from "../main/decoder/ReplayEngineCatalog";
 import { loadReplayEngineModule } from "./engineRegistry";
+import { encodeTileOwners, type EncodedTerritory } from "./ReplayTerritory";
 import {
   analyzeAlternativeSpawnPositions,
   analyzeSpawnPositions,
@@ -24,12 +25,23 @@ export interface ReplayActiveAttackSummary {
   retreatingCount: number;
 }
 
+export interface ReplayUnitMovement {
+  ownerID: number;
+  fromTile: number;
+  targetTile: number;
+  troops: number;
+  unitType: string;
+}
+
 export interface ReplayStateSample {
   tick: number;
   frame: number;
+  territory: EncodedTerritory | null;
+  unitMovements: ReplayUnitMovement[];
   players: Array<{
     id: number;
     name: string;
+    color: string | null;
     clientID: string | null;
     /** Exact OpenFront PlayerState.spawnTile selected during the spawn phase. */
     spawnTile: number | null;
@@ -251,27 +263,29 @@ export async function simulateReplay(
     : replayPlayers.find((player: any) => /oligenole/i.test(String(player?.displayName ?? player?.name ?? player?.username ?? "")));
   const selectedClientId = selectedPlayerMeta?.clientID == null ? null : String(selectedPlayerMeta.clientID);
   const cadence = Math.max(1, Math.floor(sampleEvery));
-  // OpenFront decompresses sparse records by inserting empty turns for every
-  // omitted game tick. ReplayProcessor then emits one frame per decompressed
-  // turn, so frame index equals the original turnNumber (not array position).
+  // OpenFront turnNumber is the one-based simulation tick. ReplayReader frame
+  // indices are zero-based: its first decoded frame is index 0 / tick 1.
+  // Convert the recorded tick to a reader frame exactly once at this boundary.
   // Do not spread a potentially huge turn array into Math.max: long replays
   // can exceed the engine's argument limit and allocate another large array.
   const totalRecordedFrames = turns.reduce(
-    (maximum: number, turn: any) => Math.max(maximum, Number(turn?.turnNumber ?? -1) + 1),
+    (maximum: number, turn: any) => Math.max(maximum, Number(turn?.turnNumber ?? 0)),
     Math.max(0, Number(record?.info?.num_turns ?? 0)),
   );
   for (let frame = 0; frame < totalRecordedFrames; frame += cadence) sampleFrames.add(frame);
   if (selectedClientId) {
     turns.forEach((turn: any) => {
-      const frame = Number(turn?.turnNumber);
-      if (Number.isInteger(frame) && frame >= 0 &&
+      const recordedTick = Number(turn?.turnNumber);
+      const actionFrame = recordedTick - 1;
+      if (Number.isInteger(recordedTick) && recordedTick >= 1 && actionFrame < totalRecordedFrames &&
           (turn?.intents ?? []).some((intent: any) => String(intent?.clientID ?? "") === selectedClientId)) {
-        sampleFrames.add(Math.max(0, frame - 1));
-        sampleFrames.add(Math.min(totalRecordedFrames - 1, frame + 1));
+        sampleFrames.add(actionFrame);
+        sampleFrames.add(Math.max(0, actionFrame - 1));
+        sampleFrames.add(Math.min(totalRecordedFrames - 1, actionFrame + 1));
         // Capture delayed outcome windows as well as the immediate state.
         // 10 game ticks per second: +50/+100/+300 frames = +5/+10/+30 sec.
         for (const offset of [50, 100, 300]) {
-          if (frame + offset < totalRecordedFrames) sampleFrames.add(frame + offset);
+          if (actionFrame + offset < totalRecordedFrames) sampleFrames.add(actionFrame + offset);
         }
       }
     });
@@ -303,6 +317,18 @@ export async function simulateReplay(
       }
     }
     const playerMeta = new Map(reader.header.players.map((p: any) => [p.smallID, p]));
+    const mapWidth = Number(reader.header.mapWidth ?? 0);
+    const mapHeight = Number(reader.header.mapHeight ?? 0);
+    const tileState = state.tileState as Uint16Array | undefined;
+    const territory = tileState ? encodeTileOwners(tileState, mapWidth, mapHeight) : null;
+    const unitMovements = [...state.units.values()].flatMap((unit: any) => {
+      const fromTile = Number(unit.pos);
+      if (unit.targetTile === null || unit.targetTile === undefined) return [];
+      const targetTile = Number(unit.targetTile);
+      if (!unit.isActive || !Number.isInteger(fromTile) || !Number.isInteger(targetTile) ||
+          fromTile < 0 || targetTile < 0 || fromTile === targetTile || targetTile >= mapWidth * mapHeight) return [];
+      return [{ ownerID: Number(unit.ownerID), fromTile, targetTile, troops: Number(unit.troops ?? 0), unitType: String(unit.unitType ?? "unknown") }];
+    });
     const players = [...state.players.entries()].map(([id, p]: [number, any]) => {
       const meta: any = playerMeta.get(id) ?? {};
       const outgoingAttacks = Array.isArray(p.outgoingAttacks) ? p.outgoingAttacks : [];
@@ -310,6 +336,7 @@ export async function simulateReplay(
       return {
         id,
         name: String(meta.displayName ?? meta.name ?? meta.username ?? `Spieler ${id}`),
+        color: typeof meta.color === "string" && /^#[0-9a-f]{6}$/i.test(meta.color) ? meta.color : null,
         clientID: meta.clientID == null ? null : String(meta.clientID),
         spawnTile: Number.isInteger(p.spawnTile) ? Number(p.spawnTile) : null,
         alive: Boolean(p.isAlive),
@@ -351,6 +378,8 @@ export async function simulateReplay(
     return {
       tick: state.tick,
       frame,
+      territory,
+      unitMovements,
       players,
       totalUnits: state.units.size,
       falloutTiles: state.falloutTiles,
@@ -588,8 +617,9 @@ export async function simulateReplay(
             };
           };
           const actionReviews: ReplayActionReview[] = target ? turns.flatMap((turn: any) => {
-            const frame = Number(turn?.turnNumber);
-            if (!Number.isInteger(frame) || frame < 0 || frame >= totalTicks) return [];
+            const recordedTick = Number(turn?.turnNumber);
+            const frame = recordedTick - 1;
+            if (!Number.isInteger(recordedTick) || recordedTick < 1 || frame < 0 || frame >= totalTicks) return [];
             return (turn?.intents ?? [])
               .filter((intent: any) => String(intent?.clientID ?? "") === String(target.clientID ?? preferredClientId ?? ""))
               .map((intent: any) => {
@@ -639,8 +669,8 @@ export async function simulateReplay(
                 };
                 return {
                   frame,
-                  turn: Number(turn?.turnNumber ?? frame),
-                  seconds: Number(turn?.turnNumber ?? frame) / 10,
+                  turn: recordedTick,
+                  seconds: recordedTick / 10,
                   type,
                   commandTroops: intent?.troops != null && Number.isFinite(Number(intent.troops)) ? Number(intent.troops) : null,
                   label: labels[type] ?? type,

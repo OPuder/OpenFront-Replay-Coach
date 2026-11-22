@@ -130,6 +130,8 @@ async function launch(executable, dataDir, port, mode, extraEnv = {}, requireEle
   // predates the main-process diagnostics added to the candidate build.
   const profilePath = path.join(dataDir, "electron-user-data");
   mkdirSync(profilePath, { recursive: true });
+  const contextFile = path.join(dataDir, "electron-upgrade-context.json");
+  rmSync(contextFile, { force: true });
   const localProxyBypass = extraEnv.OFRC_UPDATE_TEST_MODE === "1" && extraEnv.OFRC_UPDATE_TEST_RELEASE_URL
     ? {
         NO_PROXY: [process.env.NO_PROXY, "127.0.0.1,localhost"].filter(Boolean).join(","),
@@ -140,7 +142,7 @@ async function launch(executable, dataDir, port, mode, extraEnv = {}, requireEle
     ...process.env, ...extraEnv, ...localProxyBypass,
     APPDATA: appData, LOCALAPPDATA: localData,
     OFRC_UPGRADE_DIAGNOSTICS: "1",
-    OFRC_UPGRADE_CONTEXT_FILE: path.join(dataDir, "electron-upgrade-context.json"),
+    OFRC_UPGRADE_CONTEXT_FILE: contextFile,
   };
   const child = spawn(executable, [
     "--user-data-dir=" + profilePath,

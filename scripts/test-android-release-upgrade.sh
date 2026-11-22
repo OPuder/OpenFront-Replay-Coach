@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 package_id="de.openfront.replaycoach"
-version="\${RELEASE_VERSION:-$(node -p "require('./package.json').version")}"
-current_apk="\${OPENFRONT_CURRENT_APK:-release/OpenFront-Replay-Coach-\${version}-Android.apk}"
-previous_apk="\${PREVIOUS_APK:?PREVIOUS_APK is required}"
+version="${RELEASE_VERSION:-$(node -p "require('./package.json').version")}"
+current_apk="${OPENFRONT_CURRENT_APK:-release/OpenFront-Replay-Coach-${version}-Android.apk}"
+previous_apk="${PREVIOUS_APK:?PREVIOUS_APK is required}"
 log() { echo "::notice::[Android release upgrade] $*"; }
 fail() { echo "::error::[Android release upgrade] $*"; exit 1; }
 adb_cmd() { timeout 60s adb -s emulator-5554 "$@"; }
@@ -43,8 +43,8 @@ install_apk() {
   else
     output="$(timeout --signal=INT --kill-after=15s 240s adb -s emulator-5554 install --no-streaming "$apk" 2>&1)" || status=$?
   fi
-  log "adb install (replace=$replace, exit=$status): \${output:-<empty>}"
-  [[ "$status" -eq 0 && "$output" == *"Success"* ]] || fail "Android Package Manager did not successfully install $apk: \${output:-exit $status}"
+  log "adb install (replace=$replace, exit=$status): ${output:-<empty>}"
+  [[ "$status" -eq 0 && "$output" == *"Success"* ]] || fail "Android Package Manager did not successfully install $apk: ${output:-exit $status}"
 }
 log "Installing the genuine published baseline APK (versionCode $previous_version_code)."
 install_apk "$previous_apk" false
@@ -60,7 +60,7 @@ for attempt in 1 2 3 4 5; do
   [[ -z "$pid" ]] && break
   sleep 2
 done
-[[ -z "\${pid:-}" ]] || fail "The previous app process remained alive after force-stop."
+[[ -z "${pid:-}" ]] || fail "The previous app process remained alive after force-stop."
 log "Cold-starting the newly installed release."
 android_launch_package "$package_id" "the updated release APK" || fail "The updated release APK could not be launched."
 pid="$(adb_cmd shell pidof "$package_id" 2>/dev/null | tr -d '\r' || true)"

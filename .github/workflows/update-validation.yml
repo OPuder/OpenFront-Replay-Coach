@@ -236,7 +236,6 @@ jobs:
           bash -n scripts/android-emulator-diagnostics.sh
           bash -n scripts/download-android-release-baseline.sh
           bash -n scripts/verify-android-release-signing.sh
-          bash -n scripts/seed-android-baseline-ui.sh
           bash -n scripts/snapshot-android-web-storage.sh
           node --check scripts/inspect-android-upgrade-data.mjs
           node --check scripts/compare-android-web-storage.mjs
@@ -267,18 +266,6 @@ jobs:
           sha256sum --version | head -n 1
           timeout 2s bash -c 'sleep 0.1'
           printf 'gnu-tools-verified=true\\n' | tee "$RUNNER_TEMP/ofrc-gnu-tools.log"
-
-      - name: Ensure German and English OCR for published WebView UI
-        if: success() && (github.event_name != 'pull_request' || needs.change-scope.outputs.android_upgrade == 'true')
-        shell: bash
-        run: |
-          set -Eeuo pipefail
-          languages="$(tesseract --list-langs 2>/dev/null || true)"
-          if ! command -v tesseract >/dev/null 2>&1 || ! grep -qx 'deu' <<<"$languages" || ! grep -qx 'eng' <<<"$languages"; then
-            sudo apt-get update
-            sudo apt-get install --no-install-recommends -y tesseract-ocr tesseract-ocr-deu tesseract-ocr-eng
-          fi
-          tesseract --list-langs | grep -E '^(deu|eng)'
 
       - name: Build Android renderer and generate native project
         env:

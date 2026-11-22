@@ -1,11 +1,7 @@
 /**
  * QA Release Agent – verifies tests, linting, builds, and release artefacts.
  */
-export interface Agent {
-  name: string;
-  description: string;
-  run(): Promise<void>;
-}
+import type { Agent } from './01-replay-engine';
 
 export const qaReleaseAgent: Agent = {
   name: 'QA Release',

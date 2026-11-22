@@ -62,7 +62,7 @@ assert.match(updater, /Die Sicherung der installierten Version konnte nicht veri
 assert.match(updater, /Die wiederhergestellte Version stimmt nicht mit der Sicherung überein/);
 assert.match(updater, /update-install\.log/);
 assert.ok(updater.includes("Get-FileHash -LiteralPath $AppArchive"));
-assert.match(updater, /Programmdateien wurden nicht ersetzt/);
+assert.match(updater, /Programmdateien wurden auch nach dem erhöhten Wiederholungsversuch nicht ersetzt/);
 assert.match(updater, /Portable-Dateien wurden nicht aktualisiert/);
 const main = read("src/main/main.ts");
 assert.match(main, /createWindow\(\);\s*void autoUpdateOnStartup\(\);/);

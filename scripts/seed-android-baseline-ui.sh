@@ -313,6 +313,11 @@ log "The published profile reports $replay_count imported match(es). Verifying t
 seed_verified_match() {
   local game_id="$1" expected_commit="$2" clear_search="$3"
   log "Filtering the actual published library to archived match $game_id (expected engine $expected_commit)."
+  # The previous Coach page may have been scrolled to its training section.
+  # Return the library viewport to its search toolbar before interacting.
+  for _ in 1 2 3; do
+    timeout 10s adb -s emulator-5554 shell input swipe 500 420 500 1500 500 >/dev/null 2>&1 || true
+  done
   tap_text "Karte oder Match-ID suchen" 1 text
   if [[ "$clear_search" == "true" ]]; then
     timeout 10s adb -s emulator-5554 shell input keycombination 113 29 >/dev/null 2>&1 || fail "Could not select the previous library search query."

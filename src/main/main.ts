@@ -1,5 +1,6 @@
 import { app, BrowserWindow, dialog, ipcMain, shell, net } from 'electron';
 import fs from 'node:fs/promises';
+import { writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { decodeApiGameRecord } from './decoder/ApiTurnDecoder';
 import { analyzeActions } from './decoder/ActionAnalysis';
@@ -477,13 +478,20 @@ registerUpdaterIpc();
 ipcMain.handle('diagnostics:is-upgrade-test', () => process.env.OFRC_UPGRADE_DIAGNOSTICS === '1');
 app.whenReady().then(() => {
   if (process.env.OFRC_UPGRADE_DIAGNOSTICS === '1') {
-    console.info('OFRC_UPGRADE_CONTEXT=' + JSON.stringify({
+    const upgradeContext = {
       userDataPath: app.getPath('userData'),
       appDataPath: app.getPath('appData'),
       executablePath: app.getPath('exe'),
       appPath: app.getAppPath(),
       version: app.getVersion(),
-    }));
+    };
+    const serializedContext = JSON.stringify(upgradeContext);
+    console.info('OFRC_UPGRADE_CONTEXT=' + serializedContext);
+    const contextFile = process.env.OFRC_UPGRADE_CONTEXT_FILE;
+    if (contextFile) {
+      try { writeFileSync(contextFile, serializedContext, 'utf8'); }
+      catch (error) { console.error('[ReplayCoach] Could not write Windows upgrade context file:', error); }
+    }
   }
   // Show the app immediately. The release check and verified download run in
   // the background so a slow GitHub connection never looks like a failed launch.

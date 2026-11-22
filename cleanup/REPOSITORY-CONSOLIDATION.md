@@ -574,3 +574,12 @@ Die Branchsuche und Vergleiche sind erfolgt; es wurde kein Branch gelöscht, kei
 - Neue Commits auf dem Integrationsbranch: `b131e65`, `e1d57d1`, `24e924c`, `37206c3`, `bbfd2d3`, `0d1b4d0`, `c3ac60b`, `ed33152`.
 - Aktueller PR #157-HEAD: `ed33152e173b2fd6ae13106c5134accc2b1837e0`, 65 Commits ahead of `main`, 0 behind, 39 geänderte Dateien.
 - Die sechs Workflows, die auf dem vorherigen HEAD `413fb7d` liefen, sind **kein** Nachweis für `ed33152`. Für den neuen HEAD wurden über die verfügbare GitHub-Verbindung keine PR-Workflow-Runs zurückgegeben. Daher keine QA-Freigabe und kein Merge.
+
+## CI-Nachprüfung — 2026-11-22, Lauf auf Integrationsstand 21bf6d2
+
+- Der pinned-engine-Check war erfolgreich.
+- Windows-Build, Replay-Kompatibilität, Integration-E2E und der Coaching-/Updater-Testteil der Update-Validierung scheiterten an derselben Regression: Der Spawn-Bericht verwendete „Gebiets-Schwerpunkte“, während der Testvertrag „Gebiets-Schwerpunkten“ erwartet.
+- Die Android-Upgrade-Validierung scheiterte zusätzlich beim UI-Automation-Schritt: Die nicht-debuggbare veröffentlichte WebView stellte im UIAutomator-Dump kein aktiviertes `EditText`-Element bereit. Das Skript brach korrekt ab, statt einen ungeprüften Treffer zu akzeptieren.
+- Korrektur des Spawn-Wortlauts wurde auf diesem Integrationsbranch committed: `71977aeec923ee567639c3fe52d1ad68c0d447e6`.
+- Für diesen neuen Commit wurden noch keine Actions-Läufe registriert. Die früheren CI-Ergebnisse sind deshalb kein QA-Nachweis für den korrigierten Stand.
+- Die Android-UI-Automation bleibt offen. Kein Merge, keine Branch-Löschung und keine QA-Freigabe.

@@ -560,3 +560,17 @@ Nicht freigegeben: alle anderen Branches, bis die oben genannten Integrations- o
 
 ### Grenzen / Sicherheitsstatus
 Die Branchsuche und Vergleiche sind erfolgt; es wurde kein Branch gelöscht, kein PR gemergt und `main` nicht verändert. Die GitHub-Verbindung stellt keine Branch-Delete-Aktion bereit. Diese Inventur ist die Grundlage für eine geordnete Löschliste nach Integration, keine pauschale Löschfreigabe für alle nicht aktiven Branches.
+
+
+---
+
+## Integrationsfortschritt — 2026-11-22, Spawn-Coach selektiv übernommen
+
+- Die noch fehlende Spawn-Coach-Verbindung aus PR #134 wurde selektiv auf `integration/repository-consolidation` übernommen.
+- Enthalten sind exakte Spawn-Koordinaten/Terrain-Evidenz im Match-Coach, Übergabe der separat gespeicherten Spawn-Metriken an den Longitudinal-Coach, Kartendimensionen/Thumbnail-Metadaten aus der Replay-Simulation sowie die Originalkarten-Overlay-Komponente mit tatsächlichen Spielerstarts und getrennten theoretischen Alternativen.
+- Die Projektion der Spawn-Feldmittelpunkte und Bounds-Regression war bereits vorher vorhanden; die vorhandenen Tests wurden ergänzt bzw. um die neuen Match-/Longitudinal-Fälle erweitert.
+- Bewusst **nicht** übernommen wurden die alten Workflow-Dateien aus #134. Deren Android-Upgrade-Skript-/Contract-Änderungen sind auch in #146 und #156 vorhanden und werden dort im Rahmen der neuen Release-/Workflow-Architektur geprüft.
+- PR #134 bleibt offen als Quellenreferenz, bis der neue gemeinsame Integrationsstand QA bestanden hat und der Rest-Diff final abgeglichen wurde.
+- Neue Commits auf dem Integrationsbranch: `b131e65`, `e1d57d1`, `24e924c`, `37206c3`, `bbfd2d3`, `0d1b4d0`, `c3ac60b`, `ed33152`.
+- Aktueller PR #157-HEAD: `ed33152e173b2fd6ae13106c5134accc2b1837e0`, 65 Commits ahead of `main`, 0 behind, 39 geänderte Dateien.
+- Die sechs Workflows, die auf dem vorherigen HEAD `413fb7d` liefen, sind **kein** Nachweis für `ed33152`. Für den neuen HEAD wurden über die verfügbare GitHub-Verbindung keine PR-Workflow-Runs zurückgegeben. Daher keine QA-Freigabe und kein Merge.

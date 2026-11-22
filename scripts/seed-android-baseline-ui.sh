@@ -307,111 +307,75 @@ fi
 (( replay_count >= 1 )) || fail "The published app UI reported zero imported matches after 2 minutes; expected at least one."
 log "The published profile reports $replay_count imported match(es). Verifying the library page before opening a compatible replay."
 
-find_visible_supported_coach_button() {
-  python3 - "$ui_xml" <<'PY'
-import re
-import sys
-import xml.etree.ElementTree as ET
+# These two public matches were exported from the archived profile used above.
+# Both carry the exact 9f4a28f16fae engine commit bundled in the published baseline.
+# Fixed IDs avoid selecting a newer profile match whose engine is not in v2.2.51.
+seed_verified_match() {
+  local game_id="$1" expected_commit="$2" clear_search="$3"
+  log "Filtering the actual published library to archived match $game_id (expected engine $expected_commit)."
+  tap_text "Karte oder Match-ID suchen" 1 text
+  if [[ "$clear_search" == "true" ]]; then
+    timeout 10s adb -s emulator-5554 shell input keycombination 113 29 >/dev/null 2>&1 || fail "Could not select the previous library search query."
+  fi
+  timeout 10s adb -s emulator-5554 shell input text "$game_id" || fail "Could not enter archived match ID $game_id in the library search."
+  sleep 3
 
-try:
-    root = ET.parse(sys.argv[1]).getroot()
-except (OSError, ET.ParseError):
-    raise SystemExit(1)
-
-eligible_states = ("Bereit zur Analyse", "Hash-verifiziert")
-candidates = []
-for container in root.iter("node"):
-    descendants = list(container.iter("node"))
-    state = next((label for label in eligible_states
-                  if any(label.casefold() in (node.attrib.get("text", "") + " " + node.attrib.get("content-desc", "")).casefold()
-                         for node in descendants)), None)
-    if not state:
-        continue
-    for node in descendants:
-        if node.attrib.get("text", "").strip().casefold() != "coach öffnen":
-            continue
-        if node.attrib.get("enabled") != "true":
-            continue
-        match = re.fullmatch(r"\[(\d+),(\d+)\]\[(\d+),(\d+)\]", node.attrib.get("bounds", ""))
-        if not match:
-            continue
-        x1, y1, x2, y2 = map(int, match.groups())
-        if x2 <= x1 or y2 <= y1 or y1 < 70 or y2 > 1620:
-            continue
-        candidates.append((len(descendants), y1, x1, (x1 + x2) // 2, (y1 + y2) // 2, state))
-
-if candidates:
-    _, _, _, x, y, state = min(candidates, key=lambda item: (item[0], item[1]))
-    print(f"{x} {y} {state}")
-    raise SystemExit(0)
-
-states = sorted({node.attrib.get("text", "").strip()
-                 for node in root.iter("node")
-                 if node.attrib.get("text", "").strip() in (
-                     "Engine-Version fehlt", "Bereit zur Analyse", "Hash-verifiziert",
-                     "Nicht verifiziert", "Wartet auf Analyse", "Import fehlgeschlagen"
-                 )})
-print("NO_VISIBLE_SUPPORTED_CARD " + ", ".join(states), file=sys.stderr)
-raise SystemExit(1)
-PY
-}
-
-tap_supported_coach_card() {
-  local started=$SECONDS attempt=0 coords="" x="" y="" state=""
-  while (( SECONDS - started < 180 && attempt < 12 )); do
-    attempt=$((attempt + 1))
-    if dump_ui; then
-      if coords="$(find_visible_supported_coach_button 2>"$RUNNER_TEMP/ofrc-coach-card-search.log")"; then
-        read -r x y state <<< "$coords"
-        log "Opening a real imported match with a usable original engine: '$state' at $x,$y."
-        timeout 10s adb -s emulator-5554 shell input tap "$x" "$y" || fail "ADB tap failed for the compatible replay Coach action."
-        return 0
-      fi
-      if (( attempt == 1 || attempt % 3 == 0 )); then
-        log "No visible coach action for an engine-supported replay yet (scroll $attempt/12): $(cat "$RUNNER_TEMP/ofrc-coach-card-search.log" 2>/dev/null || true)"
-      fi
-    else
-      log "UI hierarchy unavailable while locating a compatible replay (scroll $attempt/12)."
+  local filtered=false
+  for attempt in $(seq 1 12); do
+    if dump_ui && grep -F "$game_id" "$ui_xml" >/dev/null && grep -F "Coach öffnen" "$ui_xml" >/dev/null; then
+      filtered=true
+      break
     fi
-    # The Engine-Abdeckung details panel is expanded when unsupported builds
-    # exist. Scroll the actual library content until a supported replay card
-    # and its Coach action have non-zero on-screen coordinates.
-    timeout 10s adb -s emulator-5554 shell input swipe 930 1450 930 430 650 >/dev/null 2>&1 || true
     sleep 2
   done
-  fail "No visible Coach action for a replay with an available exact original engine was found after bounded library scrolling. Last UI: $(cat "$ui_xml" 2>/dev/null | head -c 5000)"
-}
+  [[ "$filtered" == true ]] || fail "The archived match $game_id was not found in the published profile library after exact-ID filtering."
 
-tap_visible_training_goal() {
-  local started=$SECONDS attempt=0 coords="" x="" y=""
-  while (( SECONDS - started < 180 && attempt < 12 )); do
-    attempt=$((attempt + 1))
+  tap_text "Coach öffnen" 1 exact
+  log "Opened archived match $game_id. Waiting for its actual Original-Engine result."
+
+  local started=$SECONDS state=""
+  while (( SECONDS - started < 600 )); do
     if dump_ui; then
-      coords="$(find_bounds "Als Trainingsziel übernehmen" exact 1 2>/dev/null || true)"
-      if [[ -n "$coords" ]]; then
-        read -r x y <<< "$coords"
-        timeout 10s adb -s emulator-5554 shell input tap "$x" "$y" || fail "ADB tap failed for the Coach training goal action."
-        log "Created a training goal through the real Coach UI."
+      if grep -F "REPLAY GELADEN · ENGINE FEHLT" "$ui_xml" >/dev/null; then
+        fail "Archived match $game_id does not have its expected bundled Original-Engine $expected_commit in the published baseline. Refusing to treat an unsupported replay as verified."
+      fi
+      if grep -F "ANALYSE VERIFIZIERT" "$ui_xml" >/dev/null && grep -F "Replay erfolgreich reproduziert" "$ui_xml" >/dev/null; then
+        log "Archived match $game_id completed a verified Original-Engine simulation."
         return 0
       fi
-      if (( attempt == 1 || attempt % 3 == 0 )); then
-        log "Waiting for a verified Coach training action to become visible (attempt $attempt/12)."
+      if grep -F "ANALYSE IN VORBEREITUNG" "$ui_xml" >/dev/null; then
+        state="simulation still running"
       fi
     fi
-    timeout 10s adb -s emulator-5554 shell input swipe 930 1450 930 430 650 >/dev/null 2>&1 || true
-    sleep 2
+    if (( (SECONDS - started) % 60 < 10 )); then
+      log "Waiting for verified replay $game_id (elapsed=$((SECONDS - started))s; $state)."
+    fi
+    sleep 8
   done
-  fail "The selected engine-supported replay did not expose the evidence-backed 'Als Trainingsziel übernehmen' action within 3 minutes. Last UI: $(cat "$ui_xml" 2>/dev/null | head -c 5000)"
+  fail "Archived match $game_id did not complete a hash-verified Original-Engine simulation within 10 minutes. Last UI: $(cat "$ui_xml" 2>/dev/null | head -c 5000)"
 }
 
-# Automatic background analysis handles one replay at a time. Open a card only
-# when its UI state confirms an exact engine is available; unsupported replays
-# remain imported but must not be used to seed a verified Coach training goal.
-tap_supported_coach_card
-# The action is rendered only after the selected replay completes a verified
-# simulation and has an evidence-backed finding.
-tap_visible_training_goal
+create_verified_training_goal() {
+  # The button is rendered only after the app reports a verified simulation
+  # and an evidence-backed finding. Scroll the real Coach page to its training
+  # section, then use the same UIAutomator/OCR fallback as the other controls.
+  for _ in 1 2 3; do
+    timeout 10s adb -s emulator-5554 shell input swipe 930 1450 930 430 650 >/dev/null 2>&1 || true
+    sleep 1
+  done
+  tap_text "Als Trainingsziel übernehmen" 1 text
+  log "Created a training goal from a verified, evidence-backed Coach finding."
+}
 
+# The baseline must contain two genuine, engine-verified matches and a real
+# UI-created training goal. A card's generic 'ready' label is not enough:
+# validate the exact replay after opening it before accepting it as a fixture.
+seed_verified_match "cRVdxGEG5j" "9f4a28f16fae951df0daf727e5e64b34ce8b77d1" false
+create_verified_training_goal
+
+tap_text "Partien" last exact
+wait_for_library_page
+seed_verified_match "c4CW3VJWQ9" "9f4a28f16fae951df0daf727e5e64b34ce8b77d1" true
 log "Stopping the published app before the baseline storage snapshot."
 adb -s emulator-5554 shell am force-stop "$package_id"
 sleep 2

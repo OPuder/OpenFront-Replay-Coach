@@ -36,6 +36,12 @@ trap on_android_upgrade_exit EXIT
 log "Preparing Android emulator for a real package update."
 android_prepare_emulator || fail "Android emulator preparation failed; inspect stage-specific ADB/boot diagnostics."
 
+log "Keeping the Android emulator awake throughout the foreground idle-soak check."
+adb_cmd shell svc power stayon true || fail "Could not keep the Android emulator awake."
+adb_cmd shell settings put system screen_off_timeout 2147483647 || fail "Could not extend the Android screen timeout."
+adb_cmd shell input keyevent 224 >/dev/null 2>&1 || true
+adb_cmd shell wm dismiss-keyguard >/dev/null 2>&1 || true
+
 install_apk() {
   local apk="$1" replace="$2" output="" status=0
   if [[ "$replace" == "true" ]]; then
@@ -65,4 +71,12 @@ log "Cold-starting the newly installed release."
 android_launch_package "$package_id" "the updated release APK" || fail "The updated release APK could not be launched."
 pid="$(adb_cmd shell pidof "$package_id" 2>/dev/null | tr -d '\r' || true)"
 [[ -n "$pid" ]] || fail "The updated app did not remain running after cold start."
-log "PASS: Android installed published versionCode $previous_version_code, updated the same package in place to $current_version_code, reports release version $version, and successfully cold-started the updated app."
+log "Running a five-minute foreground idle soak on the upgraded signed release."
+sleep 300
+if ! adb_cmd shell pidof "$package_id" >/dev/null 2>&1; then
+  log "Release app exited during the five-minute idle soak; collecting diagnostics."
+  adb_cmd shell dumpsys activity activities 2>&1 | tail -n 80 || true
+  adb_cmd logcat -d -t 500 2>&1 | grep -E "FATAL EXCEPTION|AndroidRuntime|de.openfront.replaycoach|ActivityTaskManager" | tail -n 120 || true
+  fail "Upgraded signed release app exited during the five-minute idle soak."
+fi
+log "PASS: Android installed published versionCode $previous_version_code, updated the same package in place to $current_version_code, reports release version $version, cold-started and survived five minutes idle."

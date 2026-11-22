@@ -150,6 +150,10 @@ export interface ReplaySimulationResult {
   actionReviews: ReplayActionReview[];
   /** Spawn analysis captured at/after the recorded end of the spawn phase. */
   spawnPositions?: SpawnPositionMetric[] | null;
+  /** Exact dimensions and pinned-engine thumbnail for plotting spawn tiles on the real map. */
+  spawnMapWidth?: number | null;
+  spawnMapHeight?: number | null;
+  spawnMapThumbnailUrl?: string | null;
   spawnPhaseEndTick?: number | null;
   spawnSnapshotTick?: number | null;
   /** Alternative unowned manual-spawn centers, computed for the selected player. */
@@ -462,6 +466,9 @@ export async function simulateReplay(
           }
           const reader = readerRef.current;
           let spawnPositions: SpawnPositionMetric[] | null = null;
+          let spawnMapWidth: number | null = null;
+          let spawnMapHeight: number | null = null;
+          const spawnMapThumbnailUrl = Object.entries(assets.manifest).find(([key]) => key.endsWith("/thumbnail.webp"))?.[1] ?? null;
           let spawnPhaseEndTick: number | null = null;
           let spawnSnapshotTick: number | null = null;
           let spawnAlternatives: SpawnAlternativeMetric[] = [];
@@ -478,6 +485,8 @@ export async function simulateReplay(
               players: any[];
               spawnPhaseEnd?: { tick: number; startTick: number } | null;
             };
+            spawnMapWidth = Number.isInteger(spawnHeader.mapWidth) ? spawnHeader.mapWidth : null;
+            spawnMapHeight = Number.isInteger(spawnHeader.mapHeight) ? spawnHeader.mapHeight : null;
             const recordedSpawnEnd = spawnHeader.spawnPhaseEnd?.tick ?? null;
             const hasRecordedEndFrame = recordedSpawnEnd !== null && recordedSpawnEnd <= finalFrame;
             const spawnFrame = hasRecordedEndFrame
@@ -731,6 +740,9 @@ export async function simulateReplay(
             playerReview,
             actionReviews,
             spawnPositions,
+            spawnMapWidth,
+            spawnMapHeight,
+            spawnMapThumbnailUrl,
             spawnPhaseEndTick,
             spawnSnapshotTick,
             spawnAlternatives,

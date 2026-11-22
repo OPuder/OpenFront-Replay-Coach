@@ -140,6 +140,7 @@ async function launch(executable, dataDir, port, mode, extraEnv = {}, requireEle
     ...process.env, ...extraEnv, ...localProxyBypass,
     APPDATA: appData, LOCALAPPDATA: localData,
     OFRC_UPGRADE_DIAGNOSTICS: "1",
+    OFRC_UPGRADE_CONTEXT_FILE: path.join(dataDir, "electron-upgrade-context.json"),
   };
   const child = spawn(executable, [
     "--user-data-dir=" + profilePath,
@@ -152,9 +153,17 @@ async function launch(executable, dataDir, port, mode, extraEnv = {}, requireEle
   child.stderr.on("data", chunk => { childOutput += String(chunk); });
   try {
     const helperResult = await invokeHelper(mode, port, path.dirname(executable));
+    const readPackagedContext = () => {
+      const contextFile = env.OFRC_UPGRADE_CONTEXT_FILE;
+      if (existsSync(contextFile)) {
+        try { return JSON.parse(readFileSync(contextFile, "utf8")); }
+        catch (error) { throw new UpgradeContextError("Packaged Electron wrote malformed upgrade context: " + String(error)); }
+      }
+      return readElectronContext(childOutput);
+    };
     const electronContext = requireElectronDiagnostics
-      ? await waitFor(() => readElectronContext(childOutput), 10000, "Electron userData diagnostics from the packaged main process")
-      : readElectronContext(childOutput);
+      ? await waitFor(readPackagedContext, 10000, "Electron userData diagnostics file from the packaged main process")
+      : readPackagedContext();
     return { child, helperResult, get childOutput() { return childOutput; }, electronContext, appData, localData, executable };
   } catch (error) {
     const diagnostic = {

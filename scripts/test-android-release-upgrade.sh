@@ -77,6 +77,7 @@ if ! adb_cmd shell pidof "$package_id" >/dev/null 2>&1; then
   log "Release app exited during the five-minute idle soak; collecting diagnostics."
   adb_cmd shell dumpsys activity activities 2>&1 | tail -n 80 || true
   adb_cmd logcat -d -t 500 2>&1 | grep -E "FATAL EXCEPTION|AndroidRuntime|de.openfront.replaycoach|ActivityTaskManager" | tail -n 120 || true
+  adb_cmd shell dumpsys activity exit-info "$package_id" 2>&1 | tail -n 80 || true
   fail "Upgraded signed release app exited during the five-minute idle soak."
 fi
 log "PASS: Android installed published versionCode $previous_version_code, updated the same package in place to $current_version_code, reports release version $version, cold-started and survived five minutes idle."

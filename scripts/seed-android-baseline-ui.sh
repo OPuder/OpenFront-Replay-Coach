@@ -228,6 +228,8 @@ fi
 coords="$(find_bounds "" edit 2>/dev/null || true)"
 if [[ -z "$coords" ]]; then
   coords="$(ocr_find_bounds "OpenFront-Profillink" 1 || true)"
+  if [[ -z "$coords" ]]; then coords="$(ocr_find_bounds "Profillink" 1 || true)"; fi
+  if [[ -z "$coords" ]]; then coords="$(ocr_find_bounds "Spieler-ID" 1 || true)"; fi
 fi
 if [[ -z "$coords" ]]; then
   ocr_dump="$(ocr_text 2>/dev/null | tr '\n' ' ' || true)"

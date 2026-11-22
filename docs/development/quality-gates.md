@@ -16,16 +16,16 @@ The full coach suite includes replay compatibility, engine coverage/corpus, long
 
 ## GitHub Actions gates
 
-The repository currently defines these workflows:
+The current `main` branch still contains the legacy workflow set. PR #156 is the candidate replacement architecture and is not yet merged. Its intended workflow set is:
 
-- `build-windows.yml`
-- `discover-openfront-engine.yml`
-- `release-on-main.yml`
-- `replay-compatibility.yml`
-- `update-capacitor-lock.yml`
-- `update-validation.yml`
-- `validate-android.yml`
-- `validate-engine.yml`
+- `discover-openfront-engine.yml` — pinned engine discovery/preparation.
+- `validate-engine.yml` — engine pin and bundle integrity.
+- `replay-compatibility.yml` — replay compatibility and regression gates.
+- `integration-e2e.yml` — replay → simulation → coaching → timeline → persistence integration.
+- `update-validation.yml` — change-scoped Windows and Android updater/package validation.
+- `release-on-main.yml` — signed Windows/Android release packaging and install/upgrade verification.
+
+The standalone Windows-build, Android-validation and Capacitor-lock workflows are consolidated or retired in that candidate. Treat the new set as the target only after PR #156 is reviewed, merged and verified on `main`; until then, use the actual workflow files present on the checked-out branch.
 
 For changes affecting a platform or shared application behavior, inspect the corresponding workflow results on the exact PR head SHA. Replay/coaching changes require replay compatibility and coach regression coverage; updater changes require updater validation and platform update checks; release changes require actual artifact and install/upgrade verification.
 

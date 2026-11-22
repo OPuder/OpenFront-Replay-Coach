@@ -234,14 +234,14 @@ The live comparison pass covered the inventoried source branches. These are revi
 
 ## Branch deletion candidates — approval required
 
-A live compare against current main returned `ahead_by=0` and `behind_by>0` for the following branches, and GitHub PR search returned no PRs (open or closed) with these heads:
+A live compare against current `main` returned `ahead_by=0` and `behind_by>0` for all four branches, with no changed paths. The PR relationship check corrected the earlier incomplete inventory:
 
-- `feature/queue-safe` — behind 7, no changed paths.
-- `feature/queue-safe-clean` — behind 6, no changed paths.
-- `fix/kvm-contract-step-boundaries` — behind 10, no changed paths; historical commit message intentionally introduced a test bug, but branch tip is contained in main.
-- `release/branch-cleanup` — behind 15, no changed paths.
+- `feature/queue-safe` — behind 7; PR #154 is closed and merged.
+- `feature/queue-safe-clean` — behind 6; PR #155 is closed and merged.
+- `fix/kvm-contract-step-boundaries` — behind 10; PR #150 is closed and merged.
+- `release/branch-cleanup` — behind 15; no PR head reference found.
 
-They are strong deletion candidates because their tips are ancestors of main and no PR references were found. **No branch was deleted.** Deletion still requires explicit user approval.
+The first three are merged-branch cleanup candidates, not branches with unreviewed PRs. `release/branch-cleanup` has no PR head reference in the search performed. All four tips are contained in `main`. **No branch was deleted.** Branch deletion is deferred because this connector session exposes no branch-delete action; do not substitute a force-update or other destructive operation.
 
 ## Validation status of this consolidation
 
@@ -257,3 +257,13 @@ The consolidation is ready for a proposal to `main` only when:
 - unresolved limitations and unverified runtime behavior are explicit.
 
 This document must be updated as reviews and imports happen. Do not infer that a source branch is safe to delete merely because its changes were inspected or its commits are ancestors of `main`.
+
+
+## Latest CI repair update — 2026-11-22
+
+- Current consolidation HEAD after the TypeScript repair: `0c7a75790d6f6e03916a7a98fc8d355407954766`.
+- The failed Android build on the previous HEAD showed Vite succeeded, then TypeScript failed on duplicate `Agent` exports, an `unknown` exception property, and a misplaced renderer test importing unavailable modules and using unconfigured Node test globals.
+- On the consolidation branch only, the `Agent` interface is now sourced once from `01-replay-engine.ts`; other agent modules import that type and the barrel explicitly exports each agent. Exception logging now narrows unknown errors safely. The misplaced `src/renderer/ReplayEngineCoverageRegression.test.ts` was removed because the maintained Node regression exists at `scripts/replay-engine-coverage.test.mjs`.
+- The agent's npm invocation was corrected from `npm test:coach` to `npm run test:coach`.
+- Six fresh workflows were observed starting on the repaired HEAD: Pinned Engine, Android APK, Integration E2E, Windows Build, Replay Compatibility, and Update System Validation. At the last check they were still running; no pass is claimed.
+- PR #157 description updated with this repair and current validation requirements. PR remains Draft.

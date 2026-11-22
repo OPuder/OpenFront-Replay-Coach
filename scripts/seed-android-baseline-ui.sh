@@ -168,6 +168,18 @@ elif mode == "edit":
 PY
 }
 
+tap_edit_field() {
+  local occurrence="${1:-1}"
+  local coords=""
+  if dump_ui; then
+    coords="$(find_bounds "" edit "$occurrence" 2>/dev/null || true)"
+  fi
+  [[ -n "$coords" ]] || fail "Could not locate an enabled Android WebView EditText field in the current UI hierarchy."
+  read -r x y <<< "$coords"
+  log "Tapping the visible WebView EditText at $x,$y (UIAutomator class/bounds, no placeholder-text dependency)."
+  timeout 10s adb -s emulator-5554 shell input tap "$x" "$y" || fail "ADB tap failed for the visible EditText field."
+}
+
 tap_text() {
   local needle="$1"
   local occurrence="${2:-1}"
@@ -318,7 +330,10 @@ seed_verified_match() {
   for _ in 1 2 3; do
     timeout 10s adb -s emulator-5554 shell input swipe 500 420 500 1500 500 >/dev/null 2>&1 || true
   done
-  tap_text "Karte oder Match-ID suchen" 1 text
+  # The published WebView exposes this input as an unnamed EditText node
+  # (NAF=true); its placeholder is visible in pixels but absent from the
+  # accessibility text, so OCR is both slower and less reliable than bounds.
+  tap_edit_field 1
   if [[ "$clear_search" == "true" ]]; then
     timeout 10s adb -s emulator-5554 shell input keycombination 113 29 >/dev/null 2>&1 || fail "Could not select the previous library search query."
   fi

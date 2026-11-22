@@ -101,8 +101,18 @@ for attempt in $(seq 1 60); do
   sleep 3
 done
 [[ "$booted" == true ]] || fail "Android emulator did not finish booting within 3 minutes."
+
+log "Waiting up to 90 seconds for Android Package Manager."
+package_manager_ready=false
+for attempt in $(seq 1 45); do
+  package_list="$(timeout 8s adb -s emulator-5554 shell cmd package list packages 2>&1 || true)"
+  if grep -q '^package:' <<< "$package_list"; then package_manager_ready=true; break; fi
+  log "Package Manager not ready (attempt $attempt/45): ${package_list:-no response}"
+  sleep 2
+done
+[[ "$package_manager_ready" == true ]] || fail "Android Package Manager did not become ready within 90 seconds."
 log "Emulator booted; installing baseline APK."
-timeout 120s adb -s emulator-5554 install "$before_apk" || fail "Could not install baseline APK."
+timeout --signal=INT --kill-after=15s 240s adb -s emulator-5554 install --no-streaming "$before_apk" || fail "Could not install baseline APK."
 timeout 30s adb -s emulator-5554 shell "run-as $package_id sh -c 'mkdir -p files/update-regression && printf keep-this-data > files/update-regression/sentinel.txt'" || fail "Could not create app-data sentinel."
 launch_app "$package_id"
 debug_pid="$(adb -s emulator-5554 shell pidof "$package_id" | tr -d '\r')"
@@ -115,7 +125,7 @@ IFS='.' read -r major minor patch <<< "$current_version"
 next_version="$major.$minor.$((patch + 1))"
 test -s "$update_apk" || fail "Prebuilt higher-version APK is missing."
 log "Installing the prebuilt update APK for version $next_version."
-timeout 120s adb -s emulator-5554 install -r "$update_apk" || fail "Android rejected the in-place APK update."
+timeout --signal=INT --kill-after=15s 240s adb -s emulator-5554 install --no-streaming -r "$update_apk" || fail "Android rejected the in-place APK update."
 saved="$(timeout 30s adb -s emulator-5554 shell "run-as $package_id cat files/update-regression/sentinel.txt" | tr -d '\r')" || fail "Could not read the preserved app-data sentinel."
 [[ "$saved" == "keep-this-data" ]] || fail "App data was not preserved after adb -s emulator-5554 install -r."
 launch_app "$package_id"

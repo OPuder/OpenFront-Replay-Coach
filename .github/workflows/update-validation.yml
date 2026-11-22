@@ -1,4 +1,4 @@
-name: Extended platform and updater validation
+name: Update system validation
 
 on:
   workflow_dispatch:
@@ -10,6 +10,454 @@ permissions:
   contents: read
 
 concurrency:
-  group: extended-platform-validation
+  group: update-validation-${{ github.ref }}
   cancel-in-progress: true
 
+jobs:
+  updater-contract-and-build:
+    name: Updater contracts, typecheck and Windows packaging
+    runs-on: windows-latest
+    timeout-minutes: 60
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Restore exact historical engine Git objects
+        uses: actions/cache@v4
+        with:
+          path: .git/modules
+          key: openfront-engine-git-${{ runner.os }}-${{ github.job }}-${{ hashFiles('.gitmodules', 'engine-build/engines.json') }}
+          restore-keys: |
+            openfront-engine-git-${{ runner.os }}-
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24.15.0"
+          cache: npm
+
+      - name: Set up the repository-pinned npm version
+        run: npm install --global npm@12.1.0
+
+      # Install the root lockfile before engine preparation. The preparation
+      # script installs isolated dependency groups; running npm ci afterwards on
+      # Windows can fail while replacing the prepared root dependency tree.
+      - name: Diagnose Windows Git Bash and install Coach dependencies
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          echo "=== Windows npm-ci diagnostic (no environment dump) ==="
+          printf 'working_directory='; pwd
+          printf 'PATH=%s\n' "$PATH"
+          for executable in node npm; do
+            if command -v "$executable" >/dev/null 2>&1; then
+              printf '%s_path=' "$executable"
+              command -v "$executable"
+            else
+              echo "${executable}_resolution=MISSING"
+            fi
+          done
+          if command -v node >/dev/null 2>&1; then node --version; else echo "DIAGNOSIS=NODE_NOT_RESOLVABLE"; exit 127; fi
+          if command -v npm >/dev/null 2>&1; then npm --version; else echo "DIAGNOSIS=NPM_NOT_RESOLVABLE_IN_GIT_BASH"; exit 127; fi
+          if command -v where.exe >/dev/null 2>&1; then
+            where.exe node || true
+            where.exe npm || true
+          fi
+          echo "=== npm ci full output begins ==="
+          set +e
+          npm ci 2>&1 | tee "$RUNNER_TEMP/ofrc-windows-npm-ci.log"
+          npm_status=${PIPESTATUS[0]}
+          set -e
+          echo "npm_ci_exit_code=$npm_status"
+          if [[ $npm_status -eq 127 ]]; then
+            if grep -Eqi 'command not found|not recognized as an internal or external command' "$RUNNER_TEMP/ofrc-windows-npm-ci.log"; then
+              echo "DIAGNOSIS=EXTERNAL_COMMAND_OR_NPM_EXECUTABLE_NOT_FOUND"
+            elif grep -Eqi 'lifecycle|\bpreinstall\b|\binstall\b|\bpostinstall\b|command failed' "$RUNNER_TEMP/ofrc-windows-npm-ci.log"; then
+              echo "DIAGNOSIS=LIFECYCLE_SCRIPT_OR_EXTERNAL_PROGRAM_EXIT_127"
+            else
+              echo "DIAGNOSIS=EXIT_127_SOURCE_REQUIRES_FULL_LOG_REVIEW"
+            fi
+          fi
+          exit "$npm_status"
+
+      - name: Prepare all exact historical OpenFront engines
+        run: npm run prepare:engines
+
+      - name: Verify updater contract tests
+        run: node --test scripts/updater-contract.test.mjs
+
+      - name: Run full coaching and replay regression suite
+        run: npm run test:coach
+
+      - name: Build Windows application
+        run: npm run build
+
+      - name: Package Windows installer and portable edition
+        run: npx electron-builder --win nsis zip --publish never
+
+      - name: Verify Windows release packages
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $installer = Get-ChildItem release -Filter '*.exe' -File | Select-Object -First 1
+          $portable = Get-ChildItem release -Filter '*.zip' -File | Select-Object -First 1
+          if (-not $installer -or $installer.Length -lt 1MB) { throw 'Windows installer missing or implausibly small.' }
+          if (-not $portable -or $portable.Length -lt 1MB) { throw 'Windows portable ZIP missing or implausibly small.' }
+          $archive = Join-Path $env:TEMP 'ofrc-portable-validation'
+          Expand-Archive -LiteralPath $portable.FullName -DestinationPath $archive -Force
+          $appAsar = Get-ChildItem $archive -Filter 'app.asar' -File -Recurse | Select-Object -First 1
+          if (-not $appAsar -or $appAsar.Length -lt 1KB) { throw 'Portable ZIP does not contain a valid packaged app.asar.' }
+          Write-Host "Installer: $($installer.Name) ($($installer.Length) bytes)"
+          Write-Host "Portable: $($portable.Name) ($($portable.Length) bytes)"
+          Write-Host "Packaged app.asar: $($appAsar.Length) bytes"
+
+      - name: Launch packaged Windows app and verify renderer
+        run: node scripts/smoke-test-windows.mjs
+
+      - name: Upload verified Windows packages
+        uses: actions/upload-artifact@v4
+        with:
+          name: updater-validation-windows
+          path: |
+            release/*.exe
+            release/*.zip
+          if-no-files-found: error
+          retention-days: 7
+
+  android-apk-validation:
+    name: Android APK parse, identity, version and signature validation
+    # Hosted macOS runners are themselves VMs and do not expose nested HVF to
+    # Android's QEMU (qemu-system-aarch64 exits with HV_UNSUPPORTED). Use the
+    # GitHub-hosted Linux KVM path documented by android-emulator-runner instead.
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Restore exact historical engine Git objects
+        uses: actions/cache@v4
+        with:
+          path: .git/modules
+          key: openfront-engine-git-${{ runner.os }}-${{ github.job }}-${{ hashFiles('.gitmodules', 'engine-build/engines.json') }}
+          restore-keys: |
+            openfront-engine-git-${{ runner.os }}-
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24.15.0"
+          cache: npm
+
+      - name: Set up the repository-pinned npm version
+        run: npm install --global npm@12.1.0
+
+      - name: Prepare all exact historical OpenFront engines
+        run: npm run prepare:engines
+
+      - name: Install Coach dependencies once
+        run: npm ci
+
+      - name: Verify updater contract tests
+        run: node --test scripts/updater-contract.test.mjs
+
+      - name: Validate Android upgrade test scripts and bridge
+        run: |
+          bash -n scripts/test-android-in-place-update.sh
+          bash -n scripts/test-android-release-upgrade.sh
+          bash -n scripts/android-emulator-diagnostics.sh
+          bash -n scripts/download-android-release-baseline.sh
+          bash -n scripts/verify-android-release-signing.sh
+          bash -n scripts/seed-android-baseline-ui.sh
+          bash -n scripts/snapshot-android-web-storage.sh
+          node --check scripts/inspect-android-upgrade-data.mjs
+          node --check scripts/compare-android-web-storage.mjs
+          node --check scripts/compare-android-upgrade-snapshots.mjs
+          node --check scripts/configure-android-signing.mjs
+          python3 -m py_compile scripts/create-android-unsigned-negative-apk.py
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v4
+        with:
+          packages: "platforms;android-36 build-tools;36.0.0"
+
+      - name: Install and verify GNU timeout and checksum utilities
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          sudo apt-get update
+          sudo apt-get install --no-install-recommends -y coreutils
+          command -v timeout
+          command -v sha256sum
+          timeout --version | head -n 1
+          sha256sum --version | head -n 1
+          timeout 2s bash -c 'sleep 0.1'
+          printf 'gnu-tools-verified=true\\n' | tee "$RUNNER_TEMP/ofrc-gnu-tools.log"
+
+      - name: Build renderer with test-only Android storage inspector
+        run: |
+          set -Eeuo pipefail
+          VITE_ANDROID_UPGRADE_TEST=1 npm run build:web
+          grep -R "__OFRC_ANDROID_UPGRADE_TEST__" dist >/dev/null || { echo "Test-only storage inspector was not bundled."; exit 1; }
+
+      - name: Generate Android project and updater plugin
+        run: |
+          npx cap add android
+          npx cap sync android
+          node scripts/install-android-updater-plugin.mjs
+
+      - name: Set Android version from package.json
+        run: node scripts/set-android-version.mjs "$(node -p 'require("./package.json").version')"
+
+      - name: Download and verify exact public v2.2.51 Android baseline
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: bash scripts/download-android-release-baseline.sh
+
+      - name: Build higher-version candidate with the permanent release key
+        id: release_candidate
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          ANDROID_UPGRADE_TEST_BUILD: "1"
+          ANDROID_BASELINE_TAG: v2.2.51
+          PREVIOUS_APK: ${{ runner.temp }}/ofrc-android-baseline/OpenFront-Replay-Coach-2.2.51-Android.apk
+          GH_TOKEN: ${{ github.token }}
+        run: bash scripts/verify-android-release-signing.sh
+
+      - name: Preserve isolated test APK for emulator upgrade
+        run: |
+          set -Eeuo pipefail
+          test -s android/app/build/outputs/apk/debug/app-debug.apk
+          cp android/app/build/outputs/apk/debug/app-debug.apk "$RUNNER_TEMP/openfront-coach-android-upgrade-test.apk"
+
+      - name: Verify baseline and candidate package metadata, version and hashes
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          baseline="$PREVIOUS_APK"
+          candidate="android/app/build/outputs/apk/debug/app-debug.apk"
+          test -s "$baseline"
+          test -s "$candidate"
+          build_tools="$(find "$ANDROID_HOME/build-tools" -mindepth 1 -maxdepth 1 -type d | sort -V | tail -n 1)"
+          "$build_tools/apksigner" verify --verbose "$baseline" >/dev/null
+          "$build_tools/apksigner" verify --verbose "$candidate" >/dev/null
+          current_version="$(node -p "require('./package.json').version")"
+          IFS='.' read -r major minor patch <<< "$current_version"
+          expected_version_code="$((major * 1000000 + minor * 1000 + patch))"
+          baseline_badging="$("$build_tools/aapt" dump badging "$baseline" | sed -n '1p')"
+          candidate_badging="$("$build_tools/aapt" dump badging "$candidate" | sed -n '1p')"
+          grep -F "package: name='de.openfront.replaycoach'" <<< "$baseline_badging" >/dev/null
+          grep -F "versionName='2.2.51'" <<< "$baseline_badging" >/dev/null
+          grep -F "versionCode='2002051'" <<< "$baseline_badging" >/dev/null
+          grep -F "package: name='de.openfront.replaycoach'" <<< "$candidate_badging" >/dev/null
+          grep -F "versionName='$current_version'" <<< "$candidate_badging" >/dev/null
+          grep -F "versionCode='$expected_version_code'" <<< "$candidate_badging" >/dev/null
+          grep -F "application-debuggable" <<< "$("$build_tools/aapt" dump badging "$candidate")" >/dev/null || { echo "Test candidate is not debuggable; WebView storage inspection would be unavailable." >&2; exit 1; }
+          baseline_code="$(sed -E "s/.*versionCode='([0-9]+)'.*/\1/" <<< "$baseline_badging")"
+          candidate_code="$(sed -E "s/.*versionCode='([0-9]+)'.*/\1/" <<< "$candidate_badging")"
+          (( candidate_code > baseline_code )) || { echo "Candidate versionCode is not newer than baseline." >&2; exit 1; }
+          baseline_sha="$(sha256sum "$baseline" | awk '{print $1}')"
+          candidate_sha="$(sha256sum "$candidate" | awk '{print $1}')"
+          echo "Verified baseline SHA-256: $baseline_sha"
+          echo "Verified signed candidate SHA-256: $candidate_sha"
+          echo "RELEASE_VERSION=$current_version" >> "$GITHUB_ENV"
+          echo "OPENFRONT_CURRENT_APK=$candidate" >> "$GITHUB_ENV"
+
+      - name: Enable, diagnose and verify Linux KVM before emulator startup
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          diag="$RUNNER_TEMP/ofrc-android-diagnostics"
+          mkdir -p "$diag"
+          {
+            echo "timestamp_utc=$(date -u +%FT%TZ)"
+            echo "runner_arch=$(uname -m)"
+            echo "runner_kernel=$(uname -sr)"
+            echo "cpu_vendor:"
+            grep -m1 -E 'vendor_id|CPU implementer' /proc/cpuinfo || true
+            echo "kvm_modules_before:"
+            lsmod | grep -E '^kvm' || true
+            echo "kvm_device_before:"
+            ls -l /dev/kvm 2>&1 || true
+            echo "emulator_acceleration_configuration:"
+            echo "requested_arch=x86_64"
+            echo "disable_linux_hw_accel=false"
+            echo "emulator_options=-no-window -no-audio -no-boot-anim -no-snapshot -no-metrics -gpu swiftshader_indirect -memory 4096 -partition-size 4096"
+          } | tee "$diag/kvm-preflight.log"
+          vendor="$(awk -F: '/vendor_id[[:space:]]*:/ {gsub(/[[:space:]]/,"",$2); print $2; exit}' /proc/cpuinfo)"
+          sudo modprobe kvm
+          case "$vendor" in
+            GenuineIntel) sudo modprobe kvm_intel ;;
+            AuthenticAMD) sudo modprobe kvm_amd ;;
+            *) echo "Unsupported or unknown CPU vendor for KVM: ${vendor:-unknown}" | tee -a "$diag/kvm-preflight.log"; exit 1 ;;
+          esac
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+          if [[ ! -e /dev/kvm ]]; then
+            echo "KVM_PREFLIGHT_FAILURE: GitHub-hosted runner does not expose /dev/kvm." | tee -a "$diag/kvm-preflight.log"
+            exit 1
+          fi
+          sudo chmod 666 /dev/kvm
+          if [[ ! -r /dev/kvm || ! -w /dev/kvm ]]; then
+            echo "KVM_PREFLIGHT_FAILURE: /dev/kvm is not readable and writable by the runner." | tee -a "$diag/kvm-preflight.log"
+            exit 1
+          fi
+          {
+            echo "kvm_modules_after:"
+            lsmod | grep -E '^kvm' || true
+            echo "kvm_device_after:"
+            ls -l /dev/kvm
+            echo "runner_user=$(id)"
+            echo "kvm_access=read-write"
+            echo "KVM_PREFLIGHT=PASS"
+          } | tee -a "$diag/kvm-preflight.log"
+
+      - name: Test genuine published-APK in-place upgrade on Android emulator
+        if: success()
+        timeout-minutes: 60
+        uses: reactivecircus/android-emulator-runner@v2
+        env:
+          PREVIOUS_APK: ${{ runner.temp }}/ofrc-android-baseline/OpenFront-Replay-Coach-2.2.51-Android.apk
+          OPENFRONT_CURRENT_APK: ${{ runner.temp }}/openfront-coach-android-upgrade-test.apk
+        with:
+          api-level: 34
+          # Use x86_64 with verified KVM on the GitHub Linux host; do not
+          # silently fall back to CPU-only QEMU when hardware acceleration is absent.
+          target: default
+          arch: x86_64
+          profile: pixel_2
+          cores: 4
+          emulator-boot-timeout: 600
+          emulator-options: -no-window -no-audio -no-boot-anim -no-snapshot -no-metrics -gpu swiftshader_indirect -memory 4096 -partition-size 4096
+          disable-linux-hw-accel: false
+          disable-animations: true
+          script: bash scripts/test-android-release-upgrade.sh
+
+      - name: Capture host and ADB diagnostics after emulator action
+        if: always()
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          source scripts/android-emulator-diagnostics.sh
+          android_capture_diagnostics "post-emulator-action"
+          {
+            echo "runner_arch=$(uname -m)"
+            echo "kvm_device:"
+            ls -l /dev/kvm 2>&1 || true
+            echo "emulator_processes:"
+            ps -Ao pid,ppid,stat,%cpu,%mem,rss,etime,command | grep -E '[e]mulator|[q]emu-system' || true
+            echo "adb_server_port:"
+            (echo >/dev/tcp/127.0.0.1/5037) >/dev/null 2>&1 && echo listening || echo closed
+          } >> "$RUNNER_TEMP/ofrc-android-diagnostics/post-emulator-action.log"
+
+      - name: Upload complete Android emulator diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-baseline-ui-diagnostics
+          path: |
+            ${{ runner.temp }}/ofrc-android-diagnostics/**
+            ${{ runner.temp }}/ofrc-gnu-tools.log
+            ${{ runner.temp }}/ofrc-baseline-screen.png
+            ${{ runner.temp }}/ofrc-uiautomator-dump.log
+            ${{ runner.temp }}/ofrc-screencap.log
+            ${{ runner.temp }}/ofrc-android-ui.xml
+            ${{ runner.temp }}/ofrc-android-storage-before/**
+            ${{ runner.temp }}/ofrc-android-storage-after/**
+            ${{ runner.temp }}/*storage.json
+          if-no-files-found: ignore
+          retention-days: 3
+
+      - name: Build separate non-debuggable production APK without test inspector
+        if: success()
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          ANDROID_BASELINE_TAG: v2.2.51
+          PREVIOUS_APK: ${{ runner.temp }}/ofrc-android-baseline/OpenFront-Replay-Coach-2.2.51-Android.apk
+          ANDROID_UPGRADE_TEST_BUILD: "0"
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -Eeuo pipefail
+          VITE_ANDROID_UPGRADE_TEST=0 npm run build:web
+          npx cap sync android
+          node scripts/set-android-version.mjs "$(node -p "require('./package.json').version")"
+          bash scripts/verify-android-release-signing.sh
+          production_apk="android/app/build/outputs/apk/release/app-release.apk"
+          build_tools="$(find "$ANDROID_HOME/build-tools" -mindepth 1 -maxdepth 1 -type d | sort -V | tail -n 1)"
+          "$build_tools/apksigner" verify --verbose "$production_apk"
+          badging="$("$build_tools/aapt" dump badging "$production_apk")"
+          grep -F "package: name='de.openfront.replaycoach'" <<< "$badging" >/dev/null
+          production_version="$(node -p "require('./package.json').version")"
+          IFS='.' read -r production_major production_minor production_patch <<< "$production_version"
+          production_version_code="$((production_major * 1000000 + production_minor * 1000 + production_patch))"
+          grep -F "versionName='$production_version'" <<< "$badging" >/dev/null
+          grep -F "versionCode='$production_version_code'" <<< "$badging" >/dev/null
+          if grep -F "application-debuggable" <<< "$badging" >/dev/null; then
+            echo "Production APK unexpectedly contains the debuggable flag." >&2
+            exit 1
+          fi
+          if grep -R "__OFRC_ANDROID_UPGRADE_TEST__" dist >/dev/null; then
+            echo "Production renderer unexpectedly contains the test-only storage inspector." >&2
+            exit 1
+          fi
+          production_sha256="$(sha256sum "$production_apk" | awk '{print $1}')"
+          test_sha256="$(sha256sum "$RUNNER_TEMP/openfront-coach-android-upgrade-test.apk" | awk '{print $1}')"
+          [[ "$production_sha256" != "$test_sha256" ]] || { echo "Production APK unexpectedly matches the test APK byte-for-byte." >&2; exit 1; }
+          echo "Production APK SHA-256: $production_sha256"
+          echo "OPENFRONT_PRODUCTION_SHA256=$production_sha256" >> "$GITHUB_ENV"
+
+      - name: Verify permanent Android release signing key and continuity
+        if: always() && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          ANDROID_BASELINE_TAG: v2.2.51
+          PREVIOUS_APK: ${{ runner.temp }}/ofrc-android-baseline/OpenFront-Replay-Coach-2.2.51-Android.apk
+          OPENFRONT_CURRENT_APK: ${{ runner.temp }}/openfront-coach-android-upgrade-test.apk
+          ANDROID_SIGNING_VERIFY_ONLY: "1"
+          GH_TOKEN: ${{ github.token }}
+        run: bash scripts/verify-android-release-signing.sh
+
+      - name: Upload validated production APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: updater-validation-android
+          path: android/app/build/outputs/apk/release/app-release.apk
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Download uploaded APK for byte-for-byte verification
+        uses: actions/download-artifact@v4
+        with:
+          name: updater-validation-android
+          path: ${{ runner.temp }}/verified-android-artifact
+
+      - name: Verify uploaded production APK hash and signature
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          uploaded_apk="$RUNNER_TEMP/verified-android-artifact/app-release.apk"
+          test -s "$uploaded_apk"
+          uploaded_sha256="$(sha256sum "$uploaded_apk" | awk '{print $1}')"
+          [[ "$uploaded_sha256" == "$OPENFRONT_PRODUCTION_SHA256" ]] || {
+            echo "Uploaded APK hash does not match the locally validated production APK." >&2
+            exit 1
+          }
+          build_tools="$(find "$ANDROID_HOME/build-tools" -mindepth 1 -maxdepth 1 -type d | sort -V | tail -n 1)"
+          "$build_tools/apksigner" verify --verbose "$uploaded_apk"
+          echo "Uploaded production APK byte-for-byte verified: $uploaded_sha256"

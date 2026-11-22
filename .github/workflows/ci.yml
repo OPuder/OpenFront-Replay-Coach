@@ -49,14 +49,14 @@ jobs:
       - name: Validate exact engine pins and runtime mappings
         run: npm run validate:engine-pin
 
+      - name: Typecheck and build production application
+        run: npm run build
+
       - name: Run coaching, replay, storage and updater regressions
         run: npm run test:coach
 
       - name: Run integration contracts
         run: npm run test:integration-e2e
-
-      - name: Typecheck and build production application
-        run: npm run build
 
       - name: Run real replay batch through simulation, coaching, timeline and IndexedDB
         run: xvfb-run -a ./node_modules/.bin/electron --no-sandbox scripts/replay-engine-batch-browser-test.mjs

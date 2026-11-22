@@ -162,8 +162,10 @@ jobs:
         run: npm run verify:engine-bundles
 
       - name: Verify updater contract tests
+        shell: pwsh
         run: |
           node --check scripts/verify-windows-in-place-updates.mjs
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           node --test scripts/updater-contract.test.mjs scripts/windows-upgrade-storage-contract.test.mjs
 
       - name: Run full coaching and replay regression suite

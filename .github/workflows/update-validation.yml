@@ -237,9 +237,9 @@ jobs:
         if: github.event_name != 'pull_request' || needs.change-scope.outputs.windows_upgrade == 'true'
         timeout-minutes: 35
         env:
-          PREVIOUS_RELEASE_DIR: ${{ runner.temp }}\\previous-windows-release
+          PREVIOUS_RELEASE_DIR: ${{ runner.temp }}\previous-windows-release
           CURRENT_RELEASE_DIR: release
-          PORTABLE_UPDATE_BASELINE: ${{ runner.temp }}\\portable-updater-baseline.zip
+          PORTABLE_UPDATE_BASELINE: ${{ runner.temp }}\portable-updater-baseline.zip
           OFRC_UPGRADE_DIAGNOSTICS: '1'
         run: node scripts/verify-windows-in-place-updates.mjs
 

@@ -234,18 +234,43 @@ tap_text "Konto laden"
 sleep 20
 tap_text "Partien" last exact
 read_imported_match_count() {
-  local screen_text=""
-  screen_text="$(ocr_text 2>/dev/null || true)"
-  python3 - "$screen_text" <<'PY'
+  # Read the rendered app text from Android's actual WebView accessibility
+  # hierarchy. The published app exposes the import total as e.g.
+  # "143 von 143 geladenen Partien · 143 Replays importiert".
+  if ! dump_ui; then
+    log "Could not refresh UIAutomator hierarchy while reading the imported match count."
+    printf 'missing\n'
+    return 0
+  fi
+  python3 - "$ui_xml" <<'PY'
 import re
 import sys
+import xml.etree.ElementTree as ET
 
-screen_text = sys.argv[1]
-# The published app shows the actual profile import total as "0 von N Partien"
-# while long-term analysis is being built; it does not expose a
-# "REPLAYS GESPEICHERT" label on this dashboard.
-matches = re.findall(r"\b\d+\s+von\s+(\d+)\s+Partien\b", screen_text, re.IGNORECASE)
-print(matches[-1] if matches else "missing")
+try:
+    root = ET.parse(sys.argv[1]).getroot()
+except (OSError, ET.ParseError):
+    print("missing")
+    raise SystemExit(0)
+
+texts = []
+for node in root.iter("node"):
+    for key in ("text", "content-desc"):
+        value = node.attrib.get(key, "").strip()
+        if value:
+            texts.append(value)
+
+for value in texts:
+    imported = re.search(r"\\b(\\d+)\\s+Replays?\\s+importiert\\b", value, re.IGNORECASE)
+    if imported:
+        print(imported.group(1))
+        raise SystemExit(0)
+    loaded = re.search(r"\\b(\\d+)\\s+von\\s+(\\d+)\\s+geladenen\\s+Partien\\b", value, re.IGNORECASE)
+    if loaded:
+        print(loaded.group(2))
+        raise SystemExit(0)
+
+print("missing")
 PY
 }
 

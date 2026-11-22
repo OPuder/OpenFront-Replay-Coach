@@ -1,4 +1,4 @@
-import { buildProCoachReport, type ProCoachAction, type ProCoachConfidence, type ProCoachFinding, type ProCoachPhase, type ProCoachReport, type ProCoachPlayerSample } from "./ProCoachAlgorithm";
+import { buildProCoachReport, type ProCoachAction, type ProCoachConfidence, type ProCoachFinding, type ProCoachPhase, type ProCoachReport, type ProCoachPlayerSample, type ProCoachSpawnPosition } from "./ProCoachAlgorithm";
 import { buildEngineCoachInsights, type EngineCoachInsight } from "./EngineCoachInsights";
 
 export interface LongitudinalMatchInput {
@@ -16,6 +16,7 @@ export interface LongitudinalMatchInput {
     samples: unknown[];
     playerReview: { clientID: string | null; playerName?: string; startTiles?: number; endTiles?: number; tilesGained?: number; startGold?: number; endGold?: number; startTroops?: number; endTroops?: number; outgoingAttackSamples?: number; longestNoExpansionSeconds?: number } | null;
     actionReviews: unknown[];
+    spawnPositions?: ProCoachSpawnPosition[] | null;
   } | null;
 }
 
@@ -165,7 +166,7 @@ function buildMatchReport(input: LongitudinalMatchInput): NormalizedMatch | null
     : Number.isFinite(totalTicks) && totalTicks > 0
       ? totalTicks / 10
       : Number.isFinite(observedTicks) && observedTicks > 0 ? observedTicks / 10 : 1;
-  const report = buildProCoachReport(samples, actions, clientId, safeDuration);
+  const report = buildProCoachReport(samples, actions, clientId, safeDuration, simulation.spawnPositions ?? []);
   const playerReview = simulation.playerReview as Parameters<typeof buildEngineCoachInsights>[0];
   const hasCompleteReview = [
     playerReview.startTiles, playerReview.endTiles, playerReview.tilesGained,

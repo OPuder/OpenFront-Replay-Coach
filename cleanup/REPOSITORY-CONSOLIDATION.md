@@ -1,6 +1,6 @@
 # Repository Consolidation
 
-**Status:** Active consolidation; coaching engine and replay visualization selectively imported; source branches are preserved.
+**Status:** Active consolidation; coaching engine and replay visualization selectively imported; 10 duplicate/stale PRs closed after preserving or redirecting their useful work; source branches are preserved.
 **Consolidation branch:** `integration/repository-consolidation`
 **Base branch:** `main`
 **Base SHA at creation:** `5e6e8ef4f041febd18b9d9750d61ba52814330c2`
@@ -13,7 +13,7 @@ This branch is a controlled staging area for reviewing and consolidating useful 
 ## Non-negotiable safety rules
 
 1. Do not commit directly to `main`.
-2. Do not delete source branches or close PRs as part of this inventory pass.
+2. Do not delete source branches. Close a PR only after reviewing its unique changes and documenting the superseding destination; retain its source branch until replacement work is validated.
 3. Review each source branch/PR at file and behavior level before importing anything.
 4. Do not import a whole PR merely because it is mergeable or has green checks.
 5. Preserve useful changes selectively; document rejected, duplicate, superseded, or blocked changes and why.
@@ -32,9 +32,9 @@ For each source:
 - Record the decision and exact source SHA in the ledger.
 - Run targeted tests after import; run full integration gates before proposing any `main` merge.
 
-## Open pull requests — snapshot 2026-11-22
+## Historical open pull requests — snapshot before cleanup (2026-11-22)
 
-All entries below remain **unreviewed for consolidation** unless an explicit note says otherwise. PR state and mergeability can change; recheck before action.
+This table records the pre-cleanup state only. It is superseded by the live cleanup update at the end of this document; do not use it as the current PR list.
 
 | PR | Title | Source branch | Snapshot state | Initial note |
 |---:|---|---|---|---|
@@ -267,3 +267,72 @@ This document must be updated as reviews and imports happen. Do not infer that a
 - The agent's npm invocation was corrected from `npm test:coach` to `npm run test:coach`.
 - Six fresh workflows were observed starting on the repaired HEAD: Pinned Engine, Android APK, Integration E2E, Windows Build, Replay Compatibility, and Update System Validation. At the last check they were still running; no pass is claimed.
 - PR #157 description updated with this repair and current validation requirements. PR remains Draft.
+
+
+---
+
+## Live cleanup update — 2026-11-22
+
+This section supersedes the earlier PR-state and branch-triage snapshots above.
+
+### Current open PRs
+
+| PR | Branch | Current role |
+|---:|---|---|
+| #157 | `integration/repository-consolidation` | Draft integration of coaching engine and replay visualization; includes Android OCR seed fix and duplicate Android workflow removal. Exact-head CI is running. |
+| #156 | `feature/build-fix` | Draft candidate for the redesigned CI/release architecture; retains replay diagnostics, OCR setup, emulator wake-lock and idle-soak safeguards. Exact-head CI is running. |
+| #147 | `feature/coaching-engine` | Source PR for coaching engine; keep until #157 integration is validated. |
+| #146 | `feature/release-update-system` | Release/update implementation; now includes Windows elevation retry and more resilient Android upgrade checks. Exact-head CI rerun required. |
+| #145 | `feature/ux-replay-visualization` | Source PR for replay visualization; keep until #157 integration is validated. |
+| #138 | `fix/full-replay-phase-timeline-main-current` | Full-match phase and median-score coaching. |
+| #136 | `fix/android-apk-diagnostics-main-current` | APK-container and engine-dependency diagnostics. |
+| #134 | `coach/exact-spawn-metrics-mainline-v3` | Exact spawn-position coaching and evidence limits; includes the documentation formerly in #127. |
+| #132 | `perf/replay-safety-mainline-v4` | Large-replay safety and malformed-input regression coverage. |
+| #122 | `chore/free-agent-workflow-foundation` | Agent/development workflow documentation. |
+| #79 | `feat/longitudinal-cohort-selector` | Longitudinal player cohort selection. |
+
+### Closed duplicate or superseded PRs
+
+All closures below are **not merges**. Their source branches remain available for historical comparison.
+
+| Closed PR | Superseding destination / reason |
+|---:|---|
+| #153 | Stale inventory snapshot; branch mapping and base SHA no longer reliable. |
+| #151 | Broad 85-file integration candidate replaced by the split workstreams #157, #146 and #156. |
+| #126 | Older APK diagnostics subset superseded by #136. |
+| #135 | APK diagnostics retained in #136; release validation changes retained in #146/#156; its removal of Windows portable-upgrade validation was rejected. |
+| #140 | Windows elevation retry ported to #146; emulator resource policy handled by #156. |
+| #143 | Emulator wake-lock, five-minute idle soak and process-exit diagnostics ported to #146 and #156. |
+| #141 | Package Manager readiness, bounded non-streaming installs and upgrade persistence checks ported to #146. |
+| #139 | Large-replay safety covered by #132; emulator resources superseded by #156. |
+| #97 | Replay diagnostic artifact retention ported into the redesigned replay workflow in #156. |
+| #127 | Spawn evidence logic and documentation consolidated into #134; non-spawn release checks remain in #146/#156. |
+
+### Exact current integration heads and validation
+
+- PR #157: `d32c9e6d2ec449088cc8abd9e0c3caaa9d116e34` — replay/engine/Windows/Android/integration workflows are running. Earlier heads failed the UI seed because the published non-debuggable WebView exposed no EditText; OCR is now installed explicitly and matching accepts multiple profile-field labels. The previous head also exposed an outdated contract assertion and duplicate `release_candidate` step IDs; both were corrected.
+- PR #156: `77a7b970a32fbc49d0c2b733424311c011e83a50` — redesigned CI workflows are running. The Android validation file had an accidentally duplicated 19-step pipeline; the second copy was removed. OCR tooling and emulator idle-soak safeguards are included.
+- PR #146: `3b259dd80a021f22d32a78bc02f9118e58dae9fc` — new exact-head checks were triggered after correcting the Windows updater contract assertion. Previous checks on the prior head failed only at that outdated assertion; the latest run must be checked independently.
+- PR #134: `54e6d029d24c9567ca5db06ec44598aabbed36ec` — evidence-limit documentation from #127 was added; exact-head tests still need to be checked.
+
+No merge is authorized by these updates. A green check on an older SHA does not validate a newer head.
+
+### Branch inventory and deletion candidates
+
+- Current branch listing: **74 branches**, including `main`.
+- Two branch names have the exact same tip SHA: `integration/replay-coach-mainline` and `work/alternative-development`. They are duplicate references to the same 85-file integration snapshot. Keep the former as the historical PR #151 reference; `work/alternative-development` is a duplicate-branch cleanup candidate.
+- Branches with no file delta against current `main`, and with all commits already behind/contained in main:
+  - `feature/queue-safe` — PR #154 merged; 7 commits behind.
+  - `feature/queue-safe-clean` — PR #155 merged; 6 commits behind.
+  - `fix/kvm-contract-step-boundaries` — PR #150 merged; 10 commits behind.
+  - `release/branch-cleanup` — 15 commits behind; no PR head reference found.
+- Closed-PR source branches are **not** considered safe to delete until their replacement PRs are merged and the final integrated content is verified. This includes the branches for #97, #126, #127, #135, #139, #140, #141, #143, #151 and #153.
+- Additional older branches were compared with main. Many still contain unique commits or divergent files (library resume, batch-analysis performance, engine catalog, spawn-map, UI and Android diagnostics); they are not blanket deletion candidates and remain for individual review.
+
+### Tooling limitation
+
+The connected GitHub tools expose branch listing, comparison and creation but no branch-delete operation. Therefore no branch has been deleted. Do not attempt to simulate deletion with a force update or unrelated destructive API call. The exact candidates above are recorded for a later authorized cleanup using a branch-delete-capable GitHub interface.
+
+### Consolidation state
+
+The repository has fewer active PR review targets (11 instead of 21 in the previous inventory). The remaining 11 PRs are retained because each represents a distinct workstream or is a necessary source PR for the current integration. The repository is **not yet fully clean**: branch retirement remains pending, and the current CI heads must finish successfully before any merge or final branch deletion.

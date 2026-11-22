@@ -505,3 +505,58 @@ Die geschlossenen Quell-PRs werden nicht pauschal gelöscht. Ihr Branch-Retireme
 | Eigenständige Funktionsprüfung abgeschlossen | `branch-inventory-report`, `feat/longitudinal-cohort-selector`, `feat/resumable-library-analysis-main`, `fix/resume-partial-replay-imports`, `perf/import-resume-eta-mainline`, `perf/import-resume-eta-mainline-v2`, `perf/concurrency-aware-analysis-eta`, `perf/index-match-store-by-player`, `perf/large-replay-safety-main`, `perf/large-replay-safety-main-current`, `perf/replay-safety-main-current`, `perf/replay-safety-mainline-v2`, `perf/replay-safety-mainline-v3`, `perf/replay-safety-mainline-v4`, `perf/avoid-large-replay-frame-spread`, `test/android-release-apk-upgrade`, `feat/spawn-map-coaching`, `chore/focus-releases-windows-android`, `automation/openfront-engine-latest` | Diese Branches haben weiterhin einzigartige oder divergierende Commits. Sie brauchen eine gezielte Funktions-/Dateiprüfung, bevor sie integriert, verworfen oder gelöscht werden. |
 
 Diese Tabellen sind ein Arbeitsplan, keine vorweggenommene Löschfreigabe. Ein Branch wird erst dann in eine konkrete Löschliste aufgenommen, wenn seine aktuelle Spitze gegen den zugehörigen PR-Head und den endgültigen Zielstand geprüft wurde.
+
+
+---
+
+## Vollständige Branch-Inventur — 2026-11-22
+
+### Umfang und Methode
+- Live-Branchsuche: **74 Remote-Branches einschließlich `main`**.
+- Alle übrigen Branches wurden gegen `main` verglichen (Ahead/Behind und Dateidifferenzen).
+- Offene PRs live verifiziert: #157, #156, #146 und #134. Alle vier sind offen; #157 und #156 sind Draft. #157 hat HEAD `4b53d0cfb0782112b2f1a7fc680251c4da731b0a`, 56 Commits ahead und 39 geänderte Dateien. #156 hat HEAD `ce538384cb65086c5f13f5f6d0b3f310f51d67e6`, 202 Commits ahead und 33 geänderte Dateien. #146 hat 236 Commits / 45 Dateien; #134 hat 22 Commits / 14 Dateien.
+- Die Branchliste ist vollständig erfasst; ein Ahead/Behind-Vergleich allein ist ausdrücklich kein Beweis für inhaltliche Gleichheit. Geschlossene, nicht gemergte PRs sind ebenfalls kein Löschgrund.
+
+### Gruppe A — aktuell belastbar löschbar
+Diese Branches haben keine eigenen Commits gegenüber `main` und keine Dateidifferenz:
+- `feature/queue-safe` — PR #154 gemergt; 0 ahead / 7 behind.
+- `feature/queue-safe-clean` — PR #155 gemergt; 0 ahead / 6 behind.
+- `fix/kvm-contract-step-boundaries` — PR #150 gemergt; 0 ahead / 10 behind.
+- `release/branch-cleanup` — 0 ahead / 15 behind; kein offener PR-Head.
+Zusätzlich ist `work/alternative-development` exakt identisch mit `integration/replay-coach-mainline` (0/0). Nur die redundante Referenz kann entfallen; die historische Referenz bleibt erhalten.
+**Wichtig:** `feature/qa-replay-compatibility` wird trotz gemergtem PR #144 NICHT in Gruppe A aufgenommen: Die Branchspitze zeigt 12 Commits ahead / 18 behind gegenüber `main`, während der Merge-Commit selbst 0 ahead / 17 behind ist. Das weist auf eine andere Merge-/Commit-Historie hin; vor Löschung ist ein inhaltlicher Tree-/Patch-Abgleich nötig.
+
+### Gruppe B — erst nach Integration in main erneut freigeben
+- Nach #157: `feature/coaching-engine`, `feature/ux-replay-visualization`, `chore/free-agent-workflow-foundation`, außerdem die überlappenden Quellen `feat/longitudinal-cohort-selector`, `perf/replay-safety-mainline-v4`, `fix/full-replay-phase-timeline-main-current` nur nach Abgleich der selektiv übernommenen Inhalte.
+- Nach #134: `coach/exact-spawn-metrics-current-main`, `coach/exact-spawn-metrics-mainline`, `coach/exact-spawn-metrics-mainline-v2`, `coach/exact-spawn-metrics-mainline-v3`, `coach/median-match-score-mainline`, `coach/true-median-match-score-main-current`, `fix/coach-phase-timeline-alignment`, `fix/coach-phase-timeline-main`, `fix/full-replay-phase-timeline-main-current`, `fix/true-median-match-score`, `fix/spawn-coaching-uses-exact-replay-metrics`, `coach-phase-survival-fix-2.2.9`, `phase-skill-profile-2.2.8`, `longitudinal-player-history-2.2.9`, `ux-simplification-visual-analytics`, `coach-training-loop-redesign`. Nur löschen, wenn ihre einzigartigen Änderungen integriert oder ausdrücklich verworfen wurden.
+- Nach #146/#156 und deren gemeinsamer Integration: `auto-release-on-main-2.2.5`, `ci/retain-replay-validation-reports`, `chore/verify-permanent-android-signing`, `fix/android-apk-diagnostics-main-current`, `fix/android-apk-parser-diagnostics`, `fix/android-apk-parser-diagnostics-mainline-v2`, `fix/android-apk-parser-diagnostics-mainline-v3`, `fix/android-release-idle-soak-diagnostics`, `fix/android-release-test-contract-path`, `fix/android-update-smoke-main`, `fix/release-upgrade-gate-hardening`, `fix/signed-android-release-upgrade-mainline`, `fix/stabilize-android-emulator-ci`, `fix/windows-updater-elevation-fallback`, `test/android-emulator-upgrade-resilience`, `test/android-release-apk-upgrade`, `fix/release-cache-version-idempotent`, `release/cleanup-v2`, `ci/cache-npm-engine-dependencies`, `fix/windows-smoke-test-cdp-startup`. Die alten Workflow-Dateien werden nicht einzeln repariert; geprüft wird nur, ob die neue Architektur die benötigten Funktionen tatsächlich ersetzt.
+- Die Zweige `fix/signed-android-release-upgrade-mainline` und verwandte Android-Quellen bleiben ausdrücklich erhalten, bis die zusätzlichen Commits nach dem gemergten PR #128 gegen #146/#156 abgeglichen wurden.
+
+### Gruppe C — eigenständige Funktion / gezielte Einzelprüfung, nicht pauschal löschen
+- Engine-Katalog und Bundles: `automation/openfront-engine-latest`, `feat/spawn-map-coaching`.
+- Library-/Import-/Performance-Arbeit: `feat/automatic-library-coaching-strategy`, `feat/resumable-library-analysis-main`, `feat/multi-match-session-persistence`, `fix/resume-partial-replay-imports`, `perf/import-resume-eta-mainline`, `perf/import-resume-eta-mainline-v2`, `perf/concurrency-aware-analysis-eta`, `perf/index-match-store-by-player`, `perf/large-replay-safety-main`, `perf/large-replay-safety-main-current`, `perf/replay-safety-main-current`, `perf/replay-safety-mainline-v2`, `perf/replay-safety-mainline-v3`, `perf/avoid-large-replay-frame-spread`, `fix/startup-responsiveness-and-replay-export`.
+- Coaching-/Insight-Arbeit: `feat/evidence-backed-strengths`.
+- Andere eigenständige oder noch nicht eingeordnete Quellen: `branch-inventory-report`, `feature/cline-fixes`, `feature/qa-replay-compatibility`, `fix/true-median-match-score` (auch in Gruppe B nur nach #134-Abgleich), `integration/replay-coach-mainline`, `branch-inventory-report`.
+Diese Branches haben gegenüber `main` eigene Commits und/oder divergierende Dateien. Vor einer Entscheidung müssen Commit-Patches und tatsächliche Zielinhalte verglichen werden.
+
+### Aktive Hauptarbeitszweige — behalten
+- `integration/repository-consolidation` — PR #157.
+- `feature/build-fix` — PR #156; neue CI-/Release-Architektur, kein isoliertes YAML-Kopieren.
+- `feature/release-update-system` — PR #146; echter Windows-/Android-Update- und Rollbacknachweis offen.
+- `coach/exact-spawn-metrics-mainline-v3` — PR #134; Spawn-Coach-Verbindung und Karte noch offen.
+- `main` bleibt geschützt und unangetastet.
+
+### Noch ungeklärte Altquellen / separate Entscheidung
+- `branch-inventory-report`: vier eigene Commits mit Inventur-/Cleanup-Dokumenten; Berichtsinhalte sind inzwischen überholt, aber vor Löschung ist zu prüfen, ob dort noch nicht übernommene Erkenntnisse enthalten sind.
+- `feature/cline-fixes`: vier eigene Commits in Agent-/Engine-Coverage-Dateien; nicht als reine Dublette einstufen.
+- `fix/startup-responsiveness-and-replay-export`: 19 eigene Commits, Replay-Kompatibilität/JSON-Export/Preload/Renderer; eigene Funktionsprüfung erforderlich.
+- `feat/spawn-map-coaching`: großer divergierender Branch mit Engine-Katalog, Spawn-Map-Modell und Workflows; Überschneidungen mit #134/#156, aber nicht als Löschkandidat ohne Patchabgleich.
+- `release/cleanup-v2`: zwei eigene Commits auf Release-Workflow und `.gitignore`; gegen #156 abgleichen.
+- `integration/replay-coach-mainline`: als historische Referenz behalten; nur die exakte Doppelreferenz `work/alternative-development` ist entbehrlich.
+
+### Konkrete Löschfreigabe — Stand jetzt
+Freigegeben nach abschließender Sichtkontrolle der Remote-Refs: `feature/queue-safe`, `feature/queue-safe-clean`, `fix/kvm-contract-step-boundaries`, `release/branch-cleanup`, `work/alternative-development`.
+Nicht freigegeben: alle anderen Branches, bis die oben genannten Integrations- oder Einzelprüfungen abgeschlossen sind. Insbesondere `feature/qa-replay-compatibility` bleibt vorerst erhalten, obwohl PR #144 gemergt ist, weil der Branchvergleich noch einen abweichenden Stand zeigt.
+
+### Grenzen / Sicherheitsstatus
+Die Branchsuche und Vergleiche sind erfolgt; es wurde kein Branch gelöscht, kein PR gemergt und `main` nicht verändert. Die GitHub-Verbindung stellt keine Branch-Delete-Aktion bereit. Diese Inventur ist die Grundlage für eine geordnete Löschliste nach Integration, keine pauschale Löschfreigabe für alle nicht aktiven Branches.

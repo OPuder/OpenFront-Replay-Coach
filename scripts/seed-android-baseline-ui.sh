@@ -261,11 +261,11 @@ for node in root.iter("node"):
             texts.append(value)
 
 for value in texts:
-    imported = re.search(r"\\b(\\d+)\\s+Replays?\\s+importiert\\b", value, re.IGNORECASE)
+    imported = re.search(r"\b(\d+)\s+Replays?\s+importiert\b", value, re.IGNORECASE)
     if imported:
         print(imported.group(1))
         raise SystemExit(0)
-    loaded = re.search(r"\\b(\\d+)\\s+von\\s+(\\d+)\\s+geladenen\\s+Partien\\b", value, re.IGNORECASE)
+    loaded = re.search(r"\b(\d+)\s+von\s+(\d+)\s+geladenen\s+Partien\b", value, re.IGNORECASE)
     if loaded:
         print(loaded.group(2))
         raise SystemExit(0)

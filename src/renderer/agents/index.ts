@@ -1,3 +1,5 @@
+// The replay-engine module owns the shared Agent contract; export implementations explicitly
+// so each feature module cannot introduce a conflicting barrel-level Agent symbol.
 export type { Agent } from './01-replay-engine';
 export { replayEngineAgent } from './01-replay-engine';
 export { coachingIntelligenceAgent } from './02-coaching-intelligence';

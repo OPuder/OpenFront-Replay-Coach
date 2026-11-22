@@ -50,10 +50,33 @@ build_task="assembleRelease"
 current_apk="${OPENFRONT_CURRENT_APK:-$default_candidate_apk}"
 if [[ "${ANDROID_SIGNING_VERIFY_ONLY:-0}" != "1" ]]; then
   node scripts/configure-android-signing.mjs
-  (
-    cd android
-    timeout 600s ./gradlew --no-daemon "$build_task"
-  ) || { echo "::error::Android candidate APK could not be built with the permanent signing key."; exit 1; }
+  gradle_log="${RUNNER_TEMP:-/tmp}/ofrc-android-release-gradle.log"
+  gradle_attempt=1
+  gradle_max_attempts=3
+  while (( gradle_attempt <= gradle_max_attempts )); do
+    echo "::notice::Android signed release build attempt ${gradle_attempt}/${gradle_max_attempts}."
+    set +e
+    (cd android && timeout 600s ./gradlew --no-daemon --stacktrace "$build_task") 2>&1 | tee "$gradle_log"
+    gradle_status=${PIPESTATUS[0]}
+    set -e
+    if [[ "$gradle_status" -eq 0 ]]; then
+      break
+    fi
+    if grep -Eqi 'HTTP 429|status code 429|Too Many Requests' "$gradle_log" && (( gradle_attempt < gradle_max_attempts )); then
+      backoff=$((gradle_attempt * 30))
+      echo "::warning::Maven Central rate-limited Gradle dependency downloads (HTTP 429). Retrying the signed release build after ${backoff}s; Gradle cache will be reused."
+      sleep "$backoff"
+      gradle_attempt=$((gradle_attempt + 1))
+      continue
+    fi
+    if grep -Eqi 'HTTP 429|status code 429|Too Many Requests' "$gradle_log"; then
+      echo "::error::Android release build exhausted ${gradle_max_attempts} attempts because Maven Central continued returning HTTP 429."
+    else
+      echo "::error::Android release build failed for a non-rate-limit reason (exit ${gradle_status}); inspect the Gradle output above. Signing inputs were configured separately."
+    fi
+    exit "$gradle_status"
+  done
+  test "$gradle_status" -eq 0 || { echo "::error::Android release build did not complete successfully."; exit 1; }
 fi
 test -s "$current_apk" || { echo "::error::Signed Android candidate APK is missing: $current_apk"; exit 1; }
 build_tools="$(find "$ANDROID_HOME/build-tools" -mindepth 1 -maxdepth 1 -type d | sort -V | tail -n 1)"

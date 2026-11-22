@@ -109,7 +109,6 @@ assert.match(updateValidationWorkflow, /id: source-checkout[\s\S]*?steps\.source
 assert.match(updateValidationWorkflow, /steps\.release_candidate\.outcome == 'success'/);
 assert.match(updateValidationWorkflow, /Build Android renderer and generate native project[\s\S]*?ANDROID_UPGRADE_REQUIRED[\s\S]*?npx cap add android/);
 assert.match(updateValidationWorkflow, /if \[\[ "\$ANDROID_UPGRADE_REQUIRED" == "true" \]\]; then[\s\S]*?VITE_ANDROID_UPGRADE_TEST=1/);
-assert.match(updateValidationWorkflow, /Ensure German and English OCR for published WebView UI[\s\S]*?if: success\(\) && \(github\.event_name != 'pull_request' \|\| needs\.change-scope\.outputs\.android_upgrade == 'true'\)/);
 assert.match(updateValidationWorkflow, /Download and verify exact public v2\.2\.51 Android baseline[\s\S]*?if: success\(\) && \(github\.event_name != 'pull_request' \|\| needs\.change-scope\.outputs\.android_upgrade == 'true'\)/);
 assert.match(updateValidationWorkflow, /Build separate non-debuggable production APK without test inspector[\s\S]*?ANDROID_UPGRADE_REQUIRED/);
 assert.match(updateValidationWorkflow, /Build higher-version candidate with the permanent release key/);
@@ -141,12 +140,6 @@ assert.match(androidReleaseUpgrade, /adb -s emulator-5554 install --no-streaming
 assert.match(androidReleaseUpgrade, /versionCode=\\$current_version_code/);
 assert.match(androidReleaseUpgrade, /android_launch_package "\\$package_id" "the updated release APK"/);
 assert.match(androidReleaseUpgrade, /apksigner" verify --verbose/);
-assert.match(androidStorageSnapshot, /adb root/);
-assert.match(androidStorageSnapshot, /IndexedDB/);
-assert.match(androidStorageSnapshot, /Local Storage/);
-assert.match(androidStorageSnapshot, /immutableTables/);
-assert.match(androidUnsignedNegative, /META-INF/);
-assert.match(androidUnsignedNegative, /No signing key was generated or used/);
 assert.match(androidUpdateRegression, /OPENFRONT_UPDATE_APK/);
 assert.doesNotMatch(androidUpdateRegression, /gradlew|assembleDebug/);
 

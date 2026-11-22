@@ -338,17 +338,31 @@ seed_verified_match() {
     timeout 10s adb -s emulator-5554 shell input keycombination 113 29 >/dev/null 2>&1 || fail "Could not select the previous library search query."
   fi
   timeout 10s adb -s emulator-5554 shell input text "$game_id" || fail "Could not enter archived match ID $game_id in the library search."
-  sleep 3
+  # Android keeps the soft keyboard open after input text. While it is open,
+  # the replay card and its Coach button are pushed below the visible WebView
+  # viewport (UIAutomator reports [0,0][0,0], OCR sees only the keyboard).
+  # Dismiss the IME before checking for or tapping the filtered replay action.
+  timeout 10s adb -s emulator-5554 shell input keyevent 4 || fail "Could not dismiss the Android keyboard after entering archived match ID $game_id."
+  sleep 2
 
-  local filtered=false
+  local filtered=false visible_coach_button=""
   for attempt in $(seq 1 12); do
-    if dump_ui && grep -F "$game_id" "$ui_xml" >/dev/null && grep -F "Coach öffnen" "$ui_xml" >/dev/null; then
-      filtered=true
-      break
+    if dump_ui && grep -F "$game_id" "$ui_xml" >/dev/null &&
+       grep -F "1 aktuell gefiltert" "$ui_xml" >/dev/null &&
+       grep -F "Coach öffnen" "$ui_xml" >/dev/null; then
+      visible_coach_button="$(find_bounds "Coach öffnen" exact 1 2>/dev/null || true)"
+      if [[ -n "$visible_coach_button" ]]; then
+        filtered=true
+        break
+      fi
     fi
-    sleep 2
+    # The library summary and engine coverage precede the replay cards. Scroll
+    # the WebView content until the matching card's action has real screen
+    # bounds; text existing in the accessibility tree is not enough.
+    timeout 10s adb -s emulator-5554 shell input swipe 500 780 500 350 500 >/dev/null 2>&1 || true
+    sleep 1
   done
-  [[ "$filtered" == true ]] || fail "The archived match $game_id was not found in the published profile library after exact-ID filtering."
+  [[ "$filtered" == true ]] || fail "The archived match $game_id was filtered but its Coach action never became visible after dismissing the keyboard and scrolling the library."
 
   tap_text "Coach öffnen" 1 exact
   log "Opened archived match $game_id. Waiting for its actual Original-Engine result."

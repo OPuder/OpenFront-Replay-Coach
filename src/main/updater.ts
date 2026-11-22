@@ -215,8 +215,8 @@ async function scheduleWindowsInstall(downloadPath: string, portable: boolean): 
     child.once('error', reject);
   });
   child.unref();
-  await new Promise(resolve => setTimeout(resolve, 800));
-  app.quit();
+  // Return the IPC handoff before shutting down. The detached helper waits
+  // for this process and performs the update after it exits.
 }
 let activeWindowsUpdate: Promise<{ scheduled: boolean; version: string }> | null = null;
 async function installLatestWindowsUpdate(): Promise<{ scheduled: boolean; version: string }> {
@@ -258,7 +258,11 @@ export async function getWindowsUpdateStatus(): Promise<{ failed: boolean; messa
   };
 }
 export function registerUpdaterIpc(): void {
-  ipcMain.handle('updates:install', async () => installLatestWindowsUpdate());
+  ipcMain.handle('updates:install', async () => {
+    const result = await installLatestWindowsUpdate();
+    if (result.scheduled) setTimeout(() => app.quit(), 1500);
+    return result;
+  });
   ipcMain.handle('updates:status', async () => getWindowsUpdateStatus());
 }
 export async function autoUpdateOnStartup(): Promise<boolean> {

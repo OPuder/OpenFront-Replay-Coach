@@ -57,6 +57,12 @@ for attempt in $(seq 1 9); do
 done
 [[ "$package_manager_ready" == true ]] || fail "Android Package Manager did not become ready within 90 seconds."
 
+log "Keeping the Android emulator awake throughout the foreground idle-soak check."
+adb_cmd shell svc power stayon true || fail "Could not keep the Android emulator awake."
+adb_cmd shell settings put system screen_off_timeout 2147483647 || fail "Could not extend the Android screen timeout."
+adb_cmd shell input keyevent 224 >/dev/null 2>&1 || true
+adb_cmd shell wm dismiss-keyguard >/dev/null 2>&1 || true
+
 install_apk() {
   local apk="$1"
   local replace="$2"
@@ -118,7 +124,8 @@ sleep 300
 if ! adb_cmd shell pidof "$package_id" >/dev/null 2>&1; then
   log "Release app exited during the five-minute idle soak; collecting diagnostics."
   adb_cmd shell dumpsys activity activities 2>&1 | tail -n 80 || true
-  adb_cmd logcat -d -t 500 2>&1 | grep -E "FATAL EXCEPTION|AndroidRuntime|de.openfront.replaycoach|ActivityTaskManager" | tail -n 120 || true
+  adb_cmd logcat -d -t 500 2>&1 | grep -E "FATAL EXCEPTION|AndroidRuntime|de.openfront.replaycoach|ActivityTaskManager|dumpsys activity exit-info" | tail -n 120 || true
+  adb_cmd shell dumpsys activity exit-info "$package_id" 2>&1 | tail -n 80 || true
   fail "Upgraded signed release app exited during the five-minute idle soak."
 fi
 log "PASS: previous published APK versionCode $previous_version_code upgraded to release $version (versionCode $current_version_code), launched and survived five minutes idle."

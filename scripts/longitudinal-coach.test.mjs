@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { buildLongitudinalCoachReport } from '../src/main/decoder/LongitudinalCoach.ts';
+import { buildProCoachReport } from '../src/main/decoder/ProCoachAlgorithm.ts';
 
 const makeSimulation = (overrides = {}) => ({
   status: 'verified',
@@ -67,6 +68,56 @@ test('recurring findings use only fully verified matches in the same mode and ty
   assert.equal(report.recurringFindings.find(finding => finding.id === 'attack-follow-through')?.occurrences, 2);
 });
 
+test('longitudinal recurrence preserves repeated strategic decisions above context-only findings',()=>{
+  const ticks=[0,500,1000,1500,2000,5000,5500,6000,6500,7000];
+  const samples=ticks.map((tick,index)=>({
+    tick,frame:tick,
+    spawnPositions:tick===0?[{
+      clientID:'p1',name:'Player',startTiles:100,centerX:1,centerY:1,
+      adjacentRivals:[2],rivalBorderContacts:2,nearestRivalDistance:2,classification:'contested',
+    }]:[],
+    players:[{
+      clientID:'p1',alive:true,tiles:tick<=1500?100:tick<=2000?100:100+(index-4)*10,
+      gold:500,goldEarned:100+index*10,troops:10000,
+      outgoingAttackDetails:[],incomingAttackDetails:[],allies:0,betrayals:0,unitCounts:{City:2},
+    }],
+  }));
+  const actions=[
+    ...[30,70].map(seconds=>({
+      seconds,type:'attack',label:'Attack',targetName:'Target',
+      delta10s:{tiles:0,gold:-10,troops:-5},delta30s:{tiles:0,gold:-20,troops:-20},
+      targetDelta30s:{tiles:-1,gold:0,troops:-10},
+      ownFrontContextBefore:{activeTargetCount:2,outgoingAttackCount:2,outgoingAttackTroops:100,incomingAttackCount:0,incomingAttackTroops:0},
+      targetPressureBefore:null,
+    })),
+    ...[250,350,450].map(seconds=>({
+      seconds,type:'attack',label:'Attack',targetName:'Target',
+      delta10s:{tiles:0,gold:-10,troops:-5},delta30s:{tiles:0,gold:-20,troops:-20},
+      targetDelta30s:{tiles:-1,gold:0,troops:-10},ownFrontContextBefore:null,targetPressureBefore:null,
+    })),
+    {
+      seconds:600,type:'attack',label:'Attack',targetName:'Target',
+      delta10s:{tiles:0,gold:-10,troops:-5},delta30s:{tiles:0,gold:-20,troops:-80},
+      targetDelta30s:{tiles:0,gold:0,troops:0},ownFrontContextBefore:null,targetPressureBefore:null,
+    },
+  ];
+  const simulation=makeSimulation({samples,actionReviews:actions});
+  const single=buildProCoachReport(samples,actions,'p1',700);
+  assert.equal(single.findings.length,3);
+  assert.ok(single.findings.some(item=>item.id==='attack-follow-through'));
+  assert.ok(single.allFindings?.some(item=>!single.findings.some(top=>top.id===item.id)));
+
+  const report=buildLongitudinalCoachReport([
+    match('cohort-a',{playedAt:'2026-01-01T00:00:00Z',simulation}),
+    match('cohort-b',{playedAt:'2026-01-02T00:00:00Z',simulation}),
+    match('cohort-c',{playedAt:'2026-01-03T00:00:00Z',simulation}),
+  ]);
+  const recurring=report.recurringFindings.find(item=>item.id==='attack-follow-through');
+  assert.ok(recurring,'A repeated pattern below the individual Top 3 must remain visible longitudinally');
+  assert.equal(recurring.occurrences,3);
+  assert.ok(!report.recurringFindings.some(item=>item.id==='phase-focus'),'Low-priority phase summaries must not become recurring strategic errors');
+});
+
 test('one verified match never becomes a recurring coaching claim', () => {
   const report = buildLongitudinalCoachReport([
     match('a'),
@@ -102,12 +153,16 @@ test('mixed modes are not combined into a misleading longitudinal cohort', () =>
 
 test('progression is chronological and only includes verified matches', () => {
   const report=buildLongitudinalCoachReport([
-    match('later',{playedAt:'2026-02-02T00:00:00Z'}),
-    match('earlier',{playedAt:'2026-02-01T00:00:00Z',simulation:makeSimulation({samples:makeSimulation().samples.map(sample=>({...sample,players:sample.players.map(player=>({...player,tiles:player.tiles*2,goldEarned:player.goldEarned*2}))}))})}),
-    match('ignored',{playedAt:'2026-02-03T00:00:00Z',analysisStatus:'unverified',simulation:makeSimulation({status:'unverified'})}),
+    match('latest',{playedAt:'2026-02-06T00:00:00Z'}),
+    match('later',{playedAt:'2026-02-05T00:00:00Z'}),
+    match('middle',{playedAt:'2026-02-04T00:00:00Z'}),
+    match('earlier-2',{playedAt:'2026-02-02T00:00:00Z',simulation:makeSimulation({samples:makeSimulation().samples.map(sample=>({...sample,players:sample.players.map(player=>({...player,tiles:player.tiles*2,goldEarned:player.goldEarned*2}))}))})}),
+    match('earlier-1',{playedAt:'2026-02-01T00:00:00Z',simulation:makeSimulation({samples:makeSimulation().samples.map(sample=>({...sample,players:sample.players.map(player=>({...player,tiles:player.tiles*2,goldEarned:player.goldEarned*2}))}))})}),
+    match('earlier-0',{playedAt:'2026-01-31T00:00:00Z',simulation:makeSimulation({samples:makeSimulation().samples.map(sample=>({...sample,players:sample.players.map(player=>({...player,tiles:player.tiles*2,goldEarned:player.goldEarned*2}))}))})}),
+    match('ignored',{playedAt:'2026-02-07T00:00:00Z',analysisStatus:'unverified',simulation:makeSimulation({status:'unverified'})}),
   ]);
-  assert.deepEqual(report.matchProgress.map(item=>item.gameId),['earlier','later']);
-  assert.equal(report.matchProgress.length,2);
+  assert.deepEqual(report.matchProgress.map(item=>item.gameId),['earlier-0','earlier-1','earlier-2','middle','later','latest']);
+  assert.equal(report.matchProgress.length,6);
   assert.equal(report.metricTrends.length,3);
   assert.equal(report.metricTrends.find(item=>item.id==='territory')?.direction,'declined');
 });
@@ -124,10 +179,10 @@ test('attack follow-through compares only attacks with observed target outcomes'
     {type:'attack',seconds:80,delta30s:{tiles:0,gold:0,troops:-30},targetDelta30s:null},
     {type:'build',seconds:90,delta30s:{tiles:0,gold:0,troops:0},targetDelta30s:{tiles:0,gold:0,troops:0}},
   ]});
-  const report=buildLongitudinalCoachReport([match('a',{simulation}),match('b',{simulation})]);
+  const report=buildLongitudinalCoachReport([match('a',{playedAt:'2026-01-01',simulation}),match('b',{playedAt:'2026-01-02',simulation}),match('c',{playedAt:'2026-01-03',simulation}),match('d',{playedAt:'2026-01-04',simulation}),match('e',{playedAt:'2026-01-05',simulation}),match('f',{playedAt:'2026-01-06',simulation})]);
   assert.ok(Math.abs(report.matchProgress[0].attackFollowThroughPercent - 200/3) < 1e-9);
   assert.equal(report.matchProgress[0].attackFollowThroughSamples, 3);
-  assert.equal(report.metricTrends.find(item=>item.id==='attack-follow-through')?.observations, 2);
+  assert.equal(report.metricTrends.find(item=>item.id==='attack-follow-through')?.observations, 6);
   assert.equal(report.metricTrends.find(item=>item.id==='attack-follow-through')?.direction,'stable');
 });
 
@@ -201,6 +256,27 @@ test('malformed action records cannot crash recurring strength analysis',()=>{
 });
 
 
+test('longitudinal opening reports reuse separately persisted exact-engine spawn metrics',()=>{
+ const spawnPositions=[{
+  id:1,clientID:'p1',name:'Player',startTiles:12,centerX:24,centerY:31,
+  spawnTile:1824,spawnX:24,spawnY:30,nearestSpawnDistance:18,
+  spawnZoneLandTiles:42,spawnZoneTotalTiles:49,nearbyNeutralLandTiles:380,
+  nearbyCoastalLandTiles:90,nearbyPlainsTiles:120,nearbyImpassableTiles:14,
+  nearbyHighlandTiles:70,nearbyMountainTiles:180,mapEdgeDistance:24,
+  adjacentRivals:[2],rivalBorderContacts:4,nearestRivalDistance:5.2,classification:'contested'
+ }];
+ const simulation=makeSimulation({spawnPositions});
+ const report=buildLongitudinalCoachReport([
+  match('spawn-a',{simulation}),
+  match('spawn-b',{simulation}),
+ ]);
+ const finding=report.recurringFindings.find(item=>item.id==='spawn-position-review');
+ assert.ok(finding,'spawn evidence should contribute to verified longitudinal coaching');
+ assert.equal(finding.occurrences,2);
+ assert.match(finding.examples[0].evidence,/Startfelder/);
+});
+
+
 
 test('training goals remain provisional until the comparable sample is large enough',()=>{
   const report=buildLongitudinalCoachReport([match('a'),match('b')]);
@@ -222,10 +298,10 @@ test('repeated evidence activates a training goal in a sufficiently large compar
 });
 
 test('training goals mark a repeated pattern as improving only after two clean recent matches',()=>{
+  const clean=makeSimulation({actionReviews:[]});
   const report=buildLongitudinalCoachReport([
-    match('a'),match('b'),
-    match('c',{simulation:makeSimulation({actionReviews:[]})}),
-    match('d',{simulation:makeSimulation({actionReviews:[]})}),
+    match('a',{playedAt:'2026-01-01'}),match('b',{playedAt:'2026-01-02'}),match('c',{playedAt:'2026-01-03'}),
+    match('d',{playedAt:'2026-01-04',simulation:clean}),match('e',{playedAt:'2026-01-05',simulation:clean}),match('f',{playedAt:'2026-01-06',simulation:clean}),
   ]);
   const goal=report.trainingGoals.find(item=>item.id==='attack-follow-through');
   assert.equal(goal?.status,'improving');
@@ -234,9 +310,306 @@ test('training goals mark a repeated pattern as improving only after two clean r
 test('training goals mark a repeated pattern as regressing only after two recent recurrences',()=>{
   const clean=makeSimulation({actionReviews:[]});
   const report=buildLongitudinalCoachReport([
-    match('a',{simulation:clean}),match('b',{simulation:clean}),
-    match('c'),match('d'),
+    match('a',{playedAt:'2026-01-01',simulation:clean}),match('b',{playedAt:'2026-01-02',simulation:clean}),match('c',{playedAt:'2026-01-03',simulation:clean}),
+    match('d',{playedAt:'2026-01-04'}),match('e',{playedAt:'2026-01-05'}),match('f',{playedAt:'2026-01-06'}),
   ]);
   const goal=report.trainingGoals.find(item=>item.id==='attack-follow-through');
   assert.equal(goal?.status,'regressing');
+});
+
+test('duplicate game IDs cannot inflate cohort confidence or recurring pattern counts',()=>{
+  const report=buildLongitudinalCoachReport([match('same'),match('same'),match('same'),match('other')]);
+  assert.equal(report.importedMatches,2);
+  assert.equal(report.verifiedMatches,2);
+  assert.equal(report.comparableMatches,2);
+  const finding=report.recurringFindings.find(item=>item.id==='attack-follow-through');
+  assert.equal(finding?.occurrences,2);
+});
+
+test('training status does not oscillate from a single recurrence in a three-match window',()=>{
+  const clean=makeSimulation({actionReviews:[]});
+  const report=buildLongitudinalCoachReport([
+    match('a'),match('b'),match('c'),match('d',{simulation:clean}),match('e'),match('f',{simulation:clean}),
+  ]);
+  const goal=report.trainingGoals.find(item=>item.id==='attack-follow-through');
+  assert.notEqual(goal?.status,'regressing');
+});
+
+test('trend compares medians of chronological three-match blocks and resists one outlier',()=>{
+  const makeTiles=(multiplier)=>makeSimulation({
+    samples:makeSimulation().samples.map(sample=>({...sample,players:sample.players.map(player=>({...player,tiles:player.tiles*multiplier}))})),
+    actionReviews:[],
+  });
+  const report=buildLongitudinalCoachReport([
+    match('a',{playedAt:'2026-01-01T00:00:00Z',simulation:makeTiles(1)}),
+    match('b',{playedAt:'2026-01-02T00:00:00Z',simulation:makeTiles(1)}),
+    match('c',{playedAt:'2026-01-03T00:00:00Z',simulation:makeTiles(1)}),
+    match('d',{playedAt:'2026-01-04T00:00:00Z',simulation:makeTiles(1)}),
+    match('e',{playedAt:'2026-01-05T00:00:00Z',simulation:makeTiles(1)}),
+    match('f',{playedAt:'2026-01-06T00:00:00Z',simulation:makeTiles(20)}),
+  ]);
+  const trend=report.metricTrends.find(item=>item.id==='territory');
+  assert.ok(trend);
+  assert.equal(trend.observations,6);
+  assert.equal(trend.direction,'stable');
+});
+
+
+test('missing timestamps remain visible but cannot manufacture a chronological trend',()=>{
+  const matches=[
+    ...Array.from({length:4},(_,i)=>match('dated-'+i,{playedAt:`2026-03-0${i+1}T00:00:00Z`})),
+    match('undated-a',{playedAt:null}),
+    match('undated-b',{playedAt:'not-a-date'}),
+  ];
+  const report=buildLongitudinalCoachReport(matches);
+  const trend=report.metricTrends.find(item=>item.id==='territory');
+  assert.equal(report.matchProgress.length,6);
+  assert.equal(trend?.observations,4);
+  assert.equal(trend?.direction,'insufficient-data');
+  assert.equal(trend?.previous,null);
+  assert.equal(trend?.latest,1.2);
+});
+
+test('identical timestamps are not treated as an ordered pair for trend claims',()=>{
+  const report=buildLongitudinalCoachReport([
+    match('a',{playedAt:'2026-04-01T00:00:00Z'}),
+    match('b',{playedAt:'2026-04-02T00:00:00Z'}),
+    match('c',{playedAt:'2026-04-03T00:00:00Z'}),
+    match('d',{playedAt:'2026-04-04T00:00:00Z'}),
+    match('e',{playedAt:'2026-04-04T00:00:00Z'}),
+    match('f',{playedAt:'2026-04-06T00:00:00Z'}),
+  ]);
+  const trend=report.metricTrends.find(item=>item.id==='territory');
+  assert.equal(report.matchProgress.length,6);
+  assert.equal(trend?.observations,4);
+  assert.equal(trend?.direction,'insufficient-data');
+});
+
+test('trend examples identify the exact matches behind improvements and regressions',()=>{
+  const makeTiles=(multiplier)=>makeSimulation({
+    samples:makeSimulation().samples.map(sample=>({...sample,players:sample.players.map(player=>({...player,tiles:player.tiles*multiplier}))})),
+    actionReviews:[],
+  });
+  const report=buildLongitudinalCoachReport([
+    ...['a','b','c'].map((id,i)=>match(id,{playedAt:`2026-05-0${i+1}T00:00:00Z`,simulation:makeTiles(1)})),
+    ...['d','e','f'].map((id,i)=>match(id,{playedAt:`2026-05-0${i+4}T00:00:00Z`,simulation:makeTiles(2)})),
+  ]);
+  const trend=report.metricTrends.find(item=>item.id==='territory');
+  assert.equal(trend?.direction,'improved');
+  assert.deepEqual(trend?.previousExamples.map(item=>item.gameId),['a','b','c']);
+  assert.deepEqual(trend?.latestExamples.map(item=>item.gameId),['d','e','f']);
+  assert.ok(trend?.latestExamples.every(item=>item.value>0));
+});
+
+test('duplicate IDs prefer a usable verified replay and never inflate recurring evidence',()=>{
+  const incomplete=match('same',{simulation:makeSimulation({playerReview:null})});
+  const complete=match('same');
+  const report=buildLongitudinalCoachReport([
+    incomplete,
+    complete,
+    match('other'),
+  ]);
+  assert.equal(report.importedMatches,2);
+  assert.equal(report.verifiedMatches,2);
+  assert.equal(report.comparableMatches,2);
+  assert.equal(report.recurringFindings.find(item=>item.id==='attack-follow-through')?.occurrences,2);
+});
+
+test('missing or incomplete match records are excluded without fabricating progress',()=>{
+  const report=buildLongitudinalCoachReport([
+    match('valid-a'),
+    match('missing-review',{simulation:makeSimulation({playerReview:null})}),
+    {...match('missing-simulation'),simulation:null},
+    {...match('missing-id'),gameId:'  '},
+  ]);
+  assert.equal(report.importedMatches,3);
+  assert.equal(report.verifiedMatches,1);
+  assert.equal(report.comparableMatches,1);
+  assert.equal(report.status,'insufficient-data');
+  assert.equal(report.matchProgress.length,1);
+  assert.equal(report.recurringFindings.length,0);
+});
+
+test('different match durations compare per-minute rates without mixing raw match totals',()=>{
+  const makeTimed=(durationSeconds,rate)=>makeSimulation({
+    totalTicks:durationSeconds*10,
+    samples:Array.from({length:15},(_,i)=>({
+      tick:i*(durationSeconds*10/14),
+      frame:i,
+      players:[{...makeSimulation().samples[0].players[0],tiles:100+i*rate,goldEarned:100+i*rate*2}],
+    })),
+    actionReviews:[],
+  });
+  const report=buildLongitudinalCoachReport([
+    match('short',{playedAt:'2026-06-01T00:00:00Z',durationSeconds:300,simulation:makeTimed(300,1)}),
+    match('long',{playedAt:'2026-06-02T00:00:00Z',durationSeconds:900,simulation:makeTimed(900,3)}),
+  ]);
+  assert.ok(Math.abs(report.matchProgress[0].territoryPerMinute-report.matchProgress[1].territoryPerMinute)<1e-6);
+  assert.ok(Math.abs(report.matchProgress[0].incomePerMinute-report.matchProgress[1].incomePerMinute)<1e-6);
+});
+
+test('early mid and late phase reviews require real samples in each observed phase',()=>{
+  const simulation=makeSimulation({
+    totalTicks:7200,
+    samples:Array.from({length:15},(_,i)=>({
+      tick:i*500,
+      frame:i*500,
+      players:[{...makeSimulation().samples[0].players[0],tiles:100+i*10,goldEarned:100+i*20}],
+    })),
+    actionReviews:[],
+  });
+  const report=buildLongitudinalCoachReport([match('phases',{durationSeconds:720,simulation})]);
+  const phases=report.matchProgress[0].phaseMomentum;
+  assert.ok(phases.early!==null);
+  assert.ok(phases.mid!==null);
+  assert.ok(phases.late!==null);
+});
+
+
+test('duplicate IDs cannot manufacture extra trend observations or alter their examples',()=>{
+  const makeTiles=(multiplier)=>makeSimulation({
+    samples:makeSimulation().samples.map(sample=>({...sample,players:sample.players.map(player=>({...player,tiles:player.tiles*multiplier}))})),
+    actionReviews:[],
+  });
+  const unique=[
+    ...['a','b','c'].map((id,i)=>match(id,{playedAt:`2026-07-0${i+1}T00:00:00Z`,simulation:makeTiles(1)})),
+    ...['d','e','f'].map((id,i)=>match(id,{playedAt:`2026-07-0${i+4}T00:00:00Z`,simulation:makeTiles(2)})),
+  ];
+  const duplicated=[...unique,...Array.from({length:8},()=>match('f',{playedAt:'2026-07-06T00:00:00Z',simulation:makeTiles(2)}))];
+  const baseline=buildLongitudinalCoachReport(unique);
+  const report=buildLongitudinalCoachReport(duplicated);
+  const baseTrend=baseline.metricTrends.find(item=>item.id==='territory');
+  const trend=report.metricTrends.find(item=>item.id==='territory');
+  assert.equal(report.importedMatches,6);
+  assert.equal(trend?.observations,baseTrend?.observations);
+  assert.equal(trend?.direction,baseTrend?.direction);
+  assert.deepEqual(trend?.previousExamples,baseTrend?.previousExamples);
+  assert.deepEqual(trend?.latestExamples,baseTrend?.latestExamples);
+});
+
+test('corrupt and partial sample rows are ignored without crashing verified match history',()=>{
+  const broken=makeSimulation({
+    samples:[null,{tick:NaN,players:[]},{tick:10,players:[null]},{tick:20,players:[{clientID:'p1',alive:true,tiles:1}]}],
+    playerReview:{clientID:'p1'},
+  });
+  const report=buildLongitudinalCoachReport([
+    match('broken',{simulation:broken}),
+    match('valid'),
+  ]);
+  assert.equal(report.importedMatches,2);
+  assert.equal(report.verifiedMatches,1);
+  assert.equal(report.comparableMatches,1);
+  assert.equal(report.matchProgress.length,1);
+});
+
+
+test('missing metric values do not shift later matches into earlier trend windows',()=>{
+  const sparse=makeSimulation({
+    samples:makeSimulation().samples.slice(0,2),
+    actionReviews:[],
+  });
+  const report=buildLongitudinalCoachReport([
+    ...['a','b','c'].map((id,i)=>match(id,{playedAt:`2026-08-0${i+1}T00:00:00Z`})),
+    ...['d','e','f'].map((id,i)=>match(id,{playedAt:`2026-08-0${i+4}T00:00:00Z`,simulation:sparse})),
+  ]);
+  const trend=report.metricTrends.find(item=>item.id==='territory');
+  assert.equal(trend?.observations,3);
+  assert.equal(trend?.previous, 1.2);
+  assert.equal(trend?.latest, null);
+  assert.equal(trend?.direction,'insufficient-data');
+  assert.equal(trend?.previousExamples.length,3);
+  assert.equal(trend?.latestExamples.length,0);
+});
+
+test('undated or tied recent matches cannot mark a training goal improving or regressing',()=>{
+  const clean=makeSimulation({actionReviews:[]});
+  const improvingWithAmbiguousRecent=[
+    match('a',{playedAt:'2026-09-01'}),match('b',{playedAt:'2026-09-02'}),match('c',{playedAt:'2026-09-03'}),
+    match('d',{playedAt:null,simulation:clean}),match('e',{playedAt:null,simulation:clean}),match('f',{playedAt:null,simulation:clean}),
+  ];
+  const regressingWithAmbiguousRecent=[
+    match('a',{playedAt:'2026-09-01',simulation:clean}),match('b',{playedAt:'2026-09-02',simulation:clean}),match('c',{playedAt:'2026-09-03',simulation:clean}),
+    match('d',{playedAt:'2026-09-04'}),match('e',{playedAt:'2026-09-04'}),match('f',{playedAt:'2026-09-04'}),
+  ];
+  for (const matches of [improvingWithAmbiguousRecent,regressingWithAmbiguousRecent]) {
+    const report=buildLongitudinalCoachReport(matches);
+    const goal=report.trainingGoals.find(item=>item.id==='attack-follow-through');
+    assert.ok(goal);
+    assert.notEqual(goal.status,'improving');
+    assert.notEqual(goal.status,'regressing');
+  }
+});
+
+test('longitudinal attack follow-through does not count favorable troop loss when own territory was lost',()=>{
+  const actionReviews=[
+    {seconds:30,type:'attack',delta30s:{tiles:-2,gold:-10,troops:-80},targetDelta30s:{tiles:0,gold:0,troops:-120}},
+    {seconds:70,type:'attack',delta30s:{tiles:0,gold:-10,troops:-80},targetDelta30s:{tiles:0,gold:0,troops:0}},
+    {seconds:110,type:'attack',delta30s:{tiles:0,gold:-10,troops:-80},targetDelta30s:{tiles:0,gold:0,troops:0}},
+  ];
+  const report=buildLongitudinalCoachReport([
+    match('mixed-trade',{simulation:makeSimulation({actionReviews})}),
+  ]);
+  assert.equal(report.matchProgress[0].attackFollowThroughSamples,3);
+  assert.equal(report.matchProgress[0].attackFollowThroughPercent,0);
+});
+
+test('longitudinal attack follow-through counts favorable relative troop trades',()=>{
+ const simulation=makeSimulation({actionReviews:Array.from({length:6},(_,i)=>({
+   seconds:30+i*40,type:'attack',label:'Attack',targetName:'Target',
+   delta10s:{tiles:0,gold:-10,troops:-80},
+   delta30s:{tiles:0,gold:-30,troops:-80},
+   targetDelta30s:{tiles:0,gold:0,troops:-120},
+   ownFrontContextBefore:null,targetPressureBefore:null,
+ }))});
+ const report=buildLongitudinalCoachReport([match('favorable-trades',{simulation})]);
+ assert.equal(report.matchProgress[0].attackFollowThroughSamples,6);
+ assert.equal(report.matchProgress[0].attackFollowThroughPercent,100);
+});
+
+
+test('cohort options expose every verified mode and type group without mixing them', () => {
+  const report = buildLongitudinalCoachReport([
+    match('ffa-a', { mode: 'Free For All', type: 'Public' }),
+    match('ffa-b', { mode: 'Free For All', type: 'Public' }),
+    match('ffa-c', { mode: 'Free For All', type: 'Public' }),
+    match('single-a', { mode: 'Free For All', type: 'Singleplayer' }),
+    match('single-b', { mode: 'Free For All', type: 'Singleplayer' }),
+    match('team-a', { mode: 'Team', type: 'Public' }),
+    match('unverified', { mode: 'Team', type: 'Public', analysisStatus: 'unverified', simulation: makeSimulation({ status: 'unverified' }) }),
+  ]);
+  assert.deepEqual(report.cohortOptions, [
+    { key: 'free for all|public', label: 'Free For All · Public', matches: 3 },
+    { key: 'free for all|singleplayer', label: 'Free For All · Singleplayer', matches: 2 },
+    { key: 'team|public', label: 'Team · Public', matches: 1 },
+  ]);
+  assert.equal(report.selectedCohortKey, 'free for all|public');
+  assert.equal(report.comparableMatches, 3);
+  assert.equal(report.excludedMatches, 4);
+});
+
+test('selected cohort changes all longitudinal metrics and keeps other groups excluded', () => {
+  const report = buildLongitudinalCoachReport([
+    match('public-a', { mode: 'Free For All', type: 'Public' }),
+    match('public-b', { mode: 'Free For All', type: 'Public' }),
+    match('single-a', { mode: 'Free For All', type: 'Singleplayer' }),
+    match('single-b', { mode: 'Free For All', type: 'Singleplayer' }),
+    match('single-c', { mode: 'Free For All', type: 'Singleplayer' }),
+  ], 'free for all|singleplayer');
+  assert.equal(report.selectedCohortKey, 'free for all|singleplayer');
+  assert.equal(report.comparableGroup, 'Free For All · Singleplayer');
+  assert.equal(report.comparableMatches, 3);
+  assert.deepEqual(report.matchProgress.map(item => item.gameId), ['single-a', 'single-b', 'single-c']);
+  assert.equal(report.recurringFindings.find(item => item.id === 'attack-follow-through')?.comparableMatches, 3);
+  assert.equal(report.excludedMatches, 2);
+});
+
+test('unknown selected cohort falls back to the largest valid cohort', () => {
+  const report = buildLongitudinalCoachReport([
+    match('team-a', { mode: 'Team', type: 'Public' }),
+    match('team-b', { mode: 'Team', type: 'Public' }),
+    match('ffa-a', { mode: 'Free For All', type: 'Public' }),
+  ], 'missing|cohort');
+  assert.equal(report.selectedCohortKey, 'team|public');
+  assert.equal(report.comparableGroup, 'Team · Public');
+  assert.equal(report.comparableMatches, 2);
 });

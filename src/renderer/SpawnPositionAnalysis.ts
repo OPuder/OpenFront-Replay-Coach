@@ -480,3 +480,30 @@ export function analyzeAlternativeSpawnPositions(
   }
   return selected;
 }
+
+
+/** Project a tile center into percentage coordinates for a spawn-map overlay. */
+export function projectSpawnMapPoint(
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+): { left: number; top: number } | null {
+  if (
+    !Number.isFinite(x) ||
+    !Number.isFinite(y) ||
+    !Number.isInteger(width) ||
+    !Number.isInteger(height) ||
+    width <= 0 ||
+    height <= 0 ||
+    x < 0 ||
+    y < 0 ||
+    x >= width ||
+    y >= height
+  ) return null;
+
+  return {
+    left: ((x + 0.5) / width) * 100,
+    top: ((y + 0.5) / height) * 100,
+  };
+}

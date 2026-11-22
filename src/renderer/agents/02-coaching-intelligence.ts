@@ -1,11 +1,7 @@
 /**
  * Coaching Intelligence Agent – analyses replay decisions and produces evidence‑based insights.
  */
-export interface Agent {
-  name: string;
-  description: string;
-  run(): Promise<void>;
-}
+import type { Agent } from './01-replay-engine';
 
 export const coachingIntelligenceAgent: Agent = {
   name: 'Coaching Intelligence',

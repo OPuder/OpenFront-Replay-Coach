@@ -49,10 +49,10 @@ test('Coverage reports supported commit correctly', () => {
      console.log('Created regression test.');
      // 5. Run unit tests
      try {
-       execSync('npm test:coach', { stdio: 'inherit' });
+       execSync('npm run test:coach', { stdio: 'inherit' });
        console.log('Regression test passed.');
      } catch (e) {
-       console.error('Regression test failed:', e.message);
+       console.error('Regression test failed:', e instanceof Error ? e.message : String(e));
        throw e;
      }
    },

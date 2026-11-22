@@ -1,4 +1,4 @@
-import { buildProCoachReport, type ProCoachAction, type ProCoachConfidence, type ProCoachFinding, type ProCoachPhase, type ProCoachReport, type ProCoachPlayerSample } from "./ProCoachAlgorithm";
+import { buildProCoachReport, type ProCoachAction, type ProCoachConfidence, type ProCoachFinding, type ProCoachPhase, type ProCoachReport, type ProCoachPlayerSample, type ProCoachSpawnPosition } from "./ProCoachAlgorithm";
 import { buildEngineCoachInsights, type EngineCoachInsight } from "./EngineCoachInsights";
 
 export interface LongitudinalMatchInput {
@@ -16,6 +16,7 @@ export interface LongitudinalMatchInput {
     samples: unknown[];
     playerReview: { clientID: string | null; playerName?: string; startTiles?: number; endTiles?: number; tilesGained?: number; startGold?: number; endGold?: number; startTroops?: number; endTroops?: number; outgoingAttackSamples?: number; longestNoExpansionSeconds?: number } | null;
     actionReviews: unknown[];
+    spawnPositions?: ProCoachSpawnPosition[] | null;
   } | null;
 }
 
@@ -41,7 +42,8 @@ export interface LongitudinalFinding {
 }
 
 export interface LongitudinalMatchProgress { gameId:string; mapName:string; playedAt:string|null; territoryPerMinute:number|null; incomePerMinute:number|null; attackFollowThroughPercent:number|null; attackFollowThroughSamples:number; phaseMomentum:{early:number|null;mid:number|null;late:number|null}; reviewedFindings:number; }
-export interface LongitudinalMetricTrend { id:"territory"|"income"|"attack-follow-through"; label:string; previous:number|null; latest:number|null; delta:number|null; observations:number; direction:"improved"|"declined"|"stable"|"insufficient-data"; unit:string; }
+export interface LongitudinalTrendExample { gameId:string; mapName:string; playedAt:string|null; value:number; }
+export interface LongitudinalMetricTrend { id:"territory"|"income"|"attack-follow-through"; label:string; previous:number|null; latest:number|null; delta:number|null; observations:number; direction:"improved"|"declined"|"stable"|"insufficient-data"; unit:string; previousExamples:LongitudinalTrendExample[]; latestExamples:LongitudinalTrendExample[]; }
 export interface LongitudinalTrainingGoal {
   id: string;
   title: string;
@@ -54,7 +56,11 @@ export interface LongitudinalTrainingGoal {
   target: string;
   examples: Array<{ gameId: string; mapName: string; evidence: string }>;
 }
+export interface LongitudinalCohortOption { key: string; label: string; matches: number; }
+
 export interface LongitudinalCoachReport {
+  cohortOptions: LongitudinalCohortOption[];
+  selectedCohortKey: string | null;
   status: "ready" | "insufficient-data";
   importedMatches: number;
   verifiedMatches: number;
@@ -83,6 +89,11 @@ type NormalizedMatch = {
 
 const priorityRank = (value: ProCoachFinding["priority"]) =>
   value === "high" ? 0 : value === "medium" ? 1 : 2;
+
+const strategicClassRank = (finding: ProCoachFinding) =>
+  finding.strategicClass === "decision" ? 0
+    : finding.strategicClass === "pattern" ? 1
+      : finding.strategicClass === "context" ? 2 : 3;
 
 const median = (values: number[]): number | null => {
   if (!values.length) return null;
@@ -115,6 +126,21 @@ function buildMatchReport(input: LongitudinalMatchInput): NormalizedMatch | null
     !Array.isArray(simulation.actionReviews)
   ) return null;
 
+  // Keep only structurally usable samples for this selected player. Real engine
+  // output is complete, but persisted/corrupt partial records must not crash review
+  // generation or be mistaken for evidence.
+  const samples = simulation.samples.flatMap((raw: any) => {
+    if (!raw || typeof raw !== "object" || !Number.isFinite(raw.tick) || !Array.isArray(raw.players)) return [];
+    const players = raw.players.filter((player: any) => player && typeof player === "object");
+    const player = players.find((candidate: any) => String(candidate.clientID ?? "") === clientId);
+    if (!player || typeof player.alive !== "boolean"
+      || ![player.tiles, player.gold, player.goldEarned, player.troops, player.allies, player.betrayals].every(Number.isFinite)
+      || !Array.isArray(player.outgoingAttackDetails) || !Array.isArray(player.incomingAttackDetails)
+      || !player.unitCounts || typeof player.unitCounts !== "object") return [];
+    return [{ ...raw, players }];
+  }) as ProCoachPlayerSample[];
+  if (samples.length < 2) return null;
+
   // Malformed or incomplete action records must not be silently assigned time 0.
   // That would fabricate an opening action and could distort longitudinal attack rates.
   const actions = simulation.actionReviews
@@ -133,12 +159,14 @@ function buildMatchReport(input: LongitudinalMatchInput): NormalizedMatch | null
       targetPressureBefore: raw.targetPressureBefore ?? null,
     }));
   const duration = Number(input.durationSeconds);
-  const report = buildProCoachReport(
-    simulation.samples as ProCoachPlayerSample[],
-    actions,
-    clientId,
-    Number.isFinite(duration) && duration > 0 ? duration : simulation.totalTicks / 10,
-  );
+  const totalTicks = Number(simulation.totalTicks);
+  const observedTicks = samples[samples.length - 1].tick - samples[0].tick;
+  const safeDuration = Number.isFinite(duration) && duration > 0
+    ? duration
+    : Number.isFinite(totalTicks) && totalTicks > 0
+      ? totalTicks / 10
+      : Number.isFinite(observedTicks) && observedTicks > 0 ? observedTicks / 10 : 1;
+  const report = buildProCoachReport(samples, actions, clientId, safeDuration, simulation.spawnPositions ?? []);
   const playerReview = simulation.playerReview as Parameters<typeof buildEngineCoachInsights>[0];
   const hasCompleteReview = [
     playerReview.startTiles, playerReview.endTiles, playerReview.tilesGained,
@@ -155,7 +183,7 @@ function buildMatchReport(input: LongitudinalMatchInput): NormalizedMatch | null
     ? buildEngineCoachInsights(
         playerReview,
         validEngineActions as Parameters<typeof buildEngineCoachInsights>[1],
-        simulation.samples as Parameters<typeof buildEngineCoachInsights>[2],
+        samples as Parameters<typeof buildEngineCoachInsights>[2],
       ).filter(insight => insight.kind === "strength")
     : [];
   return { input, report, strengths, actions };
@@ -167,19 +195,50 @@ function buildMatchReport(input: LongitudinalMatchInput): NormalizedMatch | null
  */
 export function buildLongitudinalCoachReport(
   matches: readonly LongitudinalMatchInput[],
+  selectedCohortKey?: string | null,
 ): LongitudinalCoachReport {
-  const imported = matches.filter(match => Boolean(match.gameId));
-  const verified = imported
-    .map(input => buildMatchReport(input))
+  // De-duplicate stable game IDs before calculating confidence and patterns.
+  // Duplicate imports must never manufacture recurring evidence.
+  const importedByGame = new Map<string, NormalizedMatch | null>();
+  for (const match of matches) {
+    const gameId = String(match.gameId ?? "").trim();
+    if (!gameId) continue;
+    const candidate = buildMatchReport(match);
+    if (!importedByGame.has(gameId)) {
+      importedByGame.set(gameId, candidate);
+      continue;
+    }
+    const existing = importedByGame.get(gameId) ?? null;
+    // Prefer a genuinely usable verified report, not just status flags. A partial
+    // duplicate may carry "verified" metadata while lacking the selected player.
+    if (candidate && (!existing ||
+      candidate.report.dataCoverage.samples + candidate.report.dataCoverage.actions >
+      existing.report.dataCoverage.samples + existing.report.dataCoverage.actions)) {
+      importedByGame.set(gameId, candidate);
+    }
+  }
+  const imported = [...importedByGame.keys()];
+  const verified = [...importedByGame.values()]
     .filter((entry): entry is NormalizedMatch => entry !== null);
 
   const groups = new Map<string, NormalizedMatch[]>();
   for (const entry of verified) {
     const key = comparableKey(entry.input);
-    groups.set(key, [...(groups.get(key) ?? []), entry]);
+    const group = groups.get(key);
+    if (group) group.push(entry);
+    else groups.set(key, [entry]);
   }
-  const selectedGroup = [...groups.entries()]
-    .sort((a, b) => b[1].length - a[1].length || a[0].localeCompare(b[0]))[0];
+  const orderedGroups = [...groups.entries()]
+    .sort((a, b) => b[1].length - a[1].length || a[0].localeCompare(b[0]));
+  const cohortOptions = orderedGroups.map(([key, entries]) => ({
+    key,
+    label: comparableLabel(entries[0].input),
+    matches: entries.length,
+  }));
+  // Preserve a chosen comparison group as new matches arrive; fall back to the
+  // largest verified cohort if the selected group is no longer available.
+  const selectedGroup = orderedGroups.find(([key]) => key === selectedCohortKey) ?? orderedGroups[0];
+  const effectiveCohortKey = selectedGroup?.[0] ?? null;
   const comparable = selectedGroup?.[1] ?? [];
   const groupLabel = comparable[0] ? comparableLabel(comparable[0].input) : "Noch keine vergleichbare Gruppe";
   const phaseIds = [
@@ -188,11 +247,27 @@ export function buildLongitudinalCoachReport(
     { id: "late" as const, label: "Late Game" },
   ];
 
-  const chronological = [...comparable].sort((a,b) => {
-    const left=a.input.playedAt?Date.parse(a.input.playedAt):Number.NaN, right=b.input.playedAt?Date.parse(b.input.playedAt):Number.NaN;
-    if(Number.isFinite(left)&&Number.isFinite(right)&&left!==right)return left-right;
-    if(Number.isFinite(left)!==Number.isFinite(right))return Number.isFinite(left)?-1:1;
-    return a.input.gameId.localeCompare(b.input.gameId);
+  // Preserve caller order for missing/equal timestamps. A game ID is not a
+  // substitute for chronology: it is deterministic, but says nothing about time.
+  const chronological = comparable.map((entry, index) => ({ entry, index, timestamp:
+    typeof entry.input.playedAt === "string" && entry.input.playedAt.trim()
+      ? Date.parse(entry.input.playedAt) : Number.NaN,
+  })).sort((a, b) => {
+    const aValid = Number.isFinite(a.timestamp), bValid = Number.isFinite(b.timestamp);
+    if (aValid && bValid && a.timestamp !== b.timestamp) return a.timestamp - b.timestamp;
+    if (aValid !== bValid) return aValid ? -1 : 1;
+    return a.index - b.index;
+  }).map(item => item.entry);
+  const timestampCounts = new Map<number, number>();
+  for (const entry of comparable) {
+    const value = typeof entry.input.playedAt === "string" ? Date.parse(entry.input.playedAt) : Number.NaN;
+    if (Number.isFinite(value)) timestampCounts.set(value, (timestampCounts.get(value) ?? 0) + 1);
+  }
+  // Only unique, parseable timestamps can support a directional trend. Missing or
+  // tied timestamps remain visible in match history and recurrence evidence.
+  const trendChronological = chronological.filter(entry => {
+    const value = typeof entry.input.playedAt === "string" ? Date.parse(entry.input.playedAt) : Number.NaN;
+    return Number.isFinite(value) && timestampCounts.get(value) === 1;
   });
   const matchProgress:LongitudinalMatchProgress[]=chronological.map(entry=>{
     const phase=(id:"early"|"mid"|"late")=>entry.report.phases.find(item=>item.id===id);
@@ -203,16 +278,42 @@ export function buildLongitudinalCoachReport(
       territoryPerMinute:avg(territory.map(item=>item.territoryPerMinute!).filter(Number.isFinite)),
       incomePerMinute:avg(income.map(item=>item.incomePerMinute!).filter(Number.isFinite)),
       phaseMomentum:{early:phase("early")?.momentumIndex??null,mid:phase("mid")?.momentumIndex??null,late:phase("late")?.momentumIndex??null},
-      attackFollowThroughPercent:(()=>{const evaluated=entry.actions.filter(raw=>raw.type==="attack"&&Number.isFinite(raw.delta30s?.tiles)&&((raw.delta30s?.tiles??0)>0||Number.isFinite(raw.targetDelta30s?.tiles)));if(!evaluated.length)return null;const productive=evaluated.filter(raw=>(raw.delta30s?.tiles??0)>0||(Number.isFinite(raw.targetDelta30s?.tiles)&&Number(raw.targetDelta30s!.tiles)<0)).length;return productive/evaluated.length*100;})(),
+      attackFollowThroughPercent:(()=>{const evaluated=entry.actions.filter(raw=>raw.type==="attack"&&Number.isFinite(raw.delta30s?.tiles)&&((raw.delta30s?.tiles??0)>0||Number.isFinite(raw.targetDelta30s?.tiles)));if(!evaluated.length)return null;const productive=evaluated.filter(raw=>{const ownLoss=Math.max(0,-(raw.delta30s?.troops??0));const targetLoss=Math.max(0,-(raw.targetDelta30s?.troops??0));return (raw.delta30s?.tiles??0)>0||(Number.isFinite(raw.targetDelta30s?.tiles)&&Number(raw.targetDelta30s!.tiles)<0)||(ownLoss>0&&targetLoss>ownLoss&&(raw.delta30s?.tiles??0)>=0&&(raw.targetDelta30s?.tiles??0)>=0);}).length;return productive/evaluated.length*100;})(),
       attackFollowThroughSamples:entry.actions.filter(raw=>raw.type==="attack"&&Number.isFinite(raw.delta30s?.tiles)&&(Number(raw.delta30s!.tiles)>0||Number.isFinite(raw.targetDelta30s?.tiles))).length,
       reviewedFindings:entry.report.findings.length};
   });
   const trend=(id:"territory"|"income"|"attack-follow-through",label:string,unit:string):LongitudinalMetricTrend=>{
-    const values=matchProgress.map(item=>id==="territory"?item.territoryPerMinute:id==="income"?item.incomePerMinute:item.attackFollowThroughPercent).filter((value):value is number=>value!==null&&Number.isFinite(value));
-    const previous=values.length>=2?values[values.length-2]:null,latest=values.length>=2?values[values.length-1]:null;
-    const delta=previous!==null&&latest!==null?latest-previous:null,threshold=previous===null?0:Math.max(0.05,Math.abs(previous)*0.03);
+    const valueFor=(item:LongitudinalMatchProgress)=>id==="territory"?item.territoryPerMinute:id==="income"?item.incomePerMinute:item.attackFollowThroughPercent;
+    const progressByGame=new Map(matchProgress.map(item=>[item.gameId,item]));
+    const toExamples=(entries:NormalizedMatch[])=>entries.flatMap(entry=>{
+      const progress=progressByGame.get(entry.input.gameId);
+      const value=progress?valueFor(progress):null;
+      return progress&&value!==null&&Number.isFinite(value)
+        ?[{gameId:progress.gameId,mapName:progress.mapName,playedAt:progress.playedAt,value}]
+        :[];
+    });
+    // Keep the two windows anchored to six consecutive, uniquely dated matches.
+    // A match with no usable metric remains a gap; it must not shift later matches
+    // into an earlier window and manufacture an improvement/regression.
+    const blockSize=3;
+    const previousMatches=trendChronological.slice(-blockSize*2,-blockSize);
+    const latestMatches=trendChronological.slice(-blockSize);
+    const previousBlock=toExamples(previousMatches);
+    const latestBlock=toExamples(latestMatches);
+    const previous=previousBlock.length===blockSize?median(previousBlock.map(item=>item.value)):null;
+    const latest=latestBlock.length===blockSize?median(latestBlock.map(item=>item.value)):null;
+    const delta=previous!==null&&latest!==null?latest-previous:null;
+    const threshold=previous===null?0:Math.max(0.05,Math.abs(previous)*0.03);
     const direction=delta===null?"insufficient-data":delta>threshold?"improved":delta< -threshold?"declined":"stable";
-    return {id,label,previous,latest,delta,observations:values.length,direction,unit};
+    const observations=trendChronological.filter(entry=>{
+      const progress=progressByGame.get(entry.input.gameId);
+      const value=progress?valueFor(progress):null;
+      return value!==null&&Number.isFinite(value);
+    }).length;
+    return {id,label,previous,latest,delta,observations,direction,unit,
+      previousExamples:previousBlock.map(({gameId,mapName,playedAt,value})=>({gameId,mapName,playedAt,value})),
+      latestExamples:latestBlock.map(({gameId,mapName,playedAt,value})=>({gameId,mapName,playedAt,value})),
+    };
   };
   const metricTrends=[trend("territory","Gebietszuwachs","Gebiete/min"),trend("income","Einkommenszuwachs","Gold/min"),trend("attack-follow-through","Angriffs-Folge","%")];
 
@@ -239,7 +340,8 @@ export function buildLongitudinalCoachReport(
 
   const findingGroups = new Map<string, Array<{ input: LongitudinalMatchInput; finding: ProCoachFinding }>>();
   for (const entry of comparable) {
-    for (const finding of entry.report.findings) {
+    for (const finding of (entry.report.allFindings ?? entry.report.findings)) {
+      if (finding.priority === "low") continue;
       const values = findingGroups.get(finding.id) ?? [];
       if (!values.some(value => value.input.gameId === entry.input.gameId)) {
         values.push({ input: entry.input, finding });
@@ -250,15 +352,17 @@ export function buildLongitudinalCoachReport(
   const trainingGoals: LongitudinalTrainingGoal[] = [...findingGroups.entries()]
     .filter(([, values]) => values.length >= 2)
     .map(([id, values]) => {
-      const best = [...values].sort((a, b) => priorityRank(a.finding.priority) - priorityRank(b.finding.priority))[0].finding;
+      const best = [...values].sort((a, b) => priorityRank(a.finding.priority) - priorityRank(b.finding.priority) || strategicClassRank(a.finding) - strategicClassRank(b.finding))[0].finding;
       const frequency = values.length / Math.max(1, comparable.length);
-      const hasFinding = (entry: NormalizedMatch) => entry.report.findings.some(finding => finding.id === id);
-      const recent = chronological.slice(-2);
-      const previous = chronological.slice(-4, -2);
+      const hasFinding = (entry: NormalizedMatch) => (entry.report.allFindings ?? entry.report.findings).some(finding => finding.id === id && finding.priority !== "low");
+      // Directional training status requires trustworthy chronology. Missing or
+      // tied timestamps remain in recurrence counts, but cannot define "recent".
+      const recent = trendChronological.slice(-3);
+      const previous = trendChronological.slice(-6, -3);
       const recentOccurrences = recent.filter(hasFinding).length;
       const previousOccurrences = previous.filter(hasFinding).length;
-      const improving = previous.length === 2 && previousOccurrences === 2 && recent.length === 2 && recentOccurrences === 0;
-      const regressing = previous.length === 2 && previousOccurrences === 0 && recent.length === 2 && recentOccurrences === 2;
+      const improving = previous.length === 3 && previousOccurrences >= 2 && recent.length === 3 && recentOccurrences === 0;
+      const regressing = previous.length === 3 && previousOccurrences === 0 && recent.length === 3 && recentOccurrences >= 2;
       const status: LongitudinalTrainingGoal["status"] = improving
         ? "improving"
         : regressing
@@ -284,10 +388,14 @@ export function buildLongitudinalCoachReport(
     })
     .slice(0, 3);
 
+  const recurringClassRank = (id: string) => {
+    const finding = findingGroups.get(id)?.[0]?.finding;
+    return finding ? strategicClassRank(finding) : 3;
+  };
   const recurringFindings: LongitudinalFinding[] = [...findingGroups.entries()]
     .filter(([, values]) => values.length >= 2)
     .map(([id, values]) => {
-      const best = [...values].sort((a, b) => priorityRank(a.finding.priority) - priorityRank(b.finding.priority))[0].finding;
+      const best = [...values].sort((a, b) => priorityRank(a.finding.priority) - priorityRank(b.finding.priority) || strategicClassRank(a.finding) - strategicClassRank(b.finding))[0].finding;
       return {
         id,
         title: best.title,
@@ -303,7 +411,9 @@ export function buildLongitudinalCoachReport(
         })),
       };
     })
-    .sort((a, b) => b.occurrences - a.occurrences || priorityRank(a.priority) - priorityRank(b.priority))
+    .sort((a, b) => priorityRank(a.priority) - priorityRank(b.priority)
+      || recurringClassRank(a.id) - recurringClassRank(b.id)
+      || b.occurrences - a.occurrences)
     .slice(0, 3);
 
   const strengthGroups = new Map<string, Array<{ input: LongitudinalMatchInput; finding: EngineCoachInsight }>>();
@@ -351,6 +461,8 @@ export function buildLongitudinalCoachReport(
     : `Für belastbare Langzeitmuster werden mindestens zwei vollständig hash-verifizierte Partien desselben Modus und Spieltyps benötigt. Aktuell vergleichbar: ${comparable.length}.`;
 
   return {
+    cohortOptions,
+    selectedCohortKey: effectiveCohortKey,
     status,
     importedMatches: imported.length,
     verifiedMatches: verified.length,

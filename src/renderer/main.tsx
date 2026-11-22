@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { FileUp, Gamepad2, Clock3, Users, Map, ShieldCheck, AlertTriangle, CheckCircle2, HardDrive, ArrowRight, Link2, DownloadCloud, LayoutDashboard, Brain, ListChecks, ChevronDown, Building2, Activity, Search, Trophy, Swords, Ship, TrendingUp, CalendarDays, SlidersHorizontal, Home, ChevronRight, Sparkles, Compass } from 'lucide-react';
 import './style.css';
+import { projectSpawnMapPoint } from './SpawnPositionAnalysis';
 import { analyzeActions } from '../main/decoder/ActionAnalysis';
 import { analyzeDetailedActions } from '../main/decoder/DetailedAnalysis';
 import { buildCoachInsights } from '../main/decoder/CoachInsights';
@@ -21,6 +22,8 @@ import { StrategyPlaybook } from './StrategyPlaybook';
 import { compactBatchMatchForUi, mergeReplayPlayerCounts, preferReplayPlayerCount, selectGamesToAnalyze, selectGamesToImport } from './AutoLibrarySync';
 import { getReplayDisplayState } from './replayPresentation';
 import { buildReplayEngineCoverageReport } from './ReplayEngineCoverage';
+import { ReplayVisualization } from './ReplayVisualization';
+import { toReplayCoachFindings } from './ReplayCoachIntegration';
 
 if (__ANDROID_UPGRADE_TEST__) {
   // This module is tree-shaken from production builds; only the dedicated
@@ -40,6 +43,7 @@ type BatchMatchItem = Omit<StoredMatchEntry, 'status' | 'analysisStatus'> & {
 
 function App() {
   const [replay, setReplay] = useState<ReplaySummary | null>(null);
+  const [selectedLongitudinalCohortKey, setSelectedLongitudinalCohortKey] = useState<string | null>(null);
   const [activePage, setActivePage] = useState<'dashboard'|'games'|'analysis'>('dashboard');
   const [mapRefreshKey, setMapRefreshKey] = useState(0);
   function navigateTo(page: 'dashboard'|'games'|'analysis') {
@@ -520,7 +524,7 @@ function App() {
     durationSeconds:item.game.durationSeconds??item.result?.durationSeconds??null,
     analysisStatus:item.analysisStatus??(item.status==='engine-mismatch'?'unsupported':'pending'),
     simulation:item.simulation??null,
-  }))),[batchMatches]);
+  })),selectedLongitudinalCohortKey),[batchMatches,selectedLongitudinalCohortKey]);
   const selectedImportedMatches=batchMatches.filter(item=>selectedGameIds.includes(item.game.gameId)&&Boolean(item.result));
   const selectedPendingAnalysisCount=selectedImportedMatches.filter(item=>item.analysisStatus!=='verified'||item.simulation?.status!=='verified').length;
   const recentGames = [...loadedGames].filter(g=>g.start).sort((a,b)=>new Date(b.start!).getTime()-new Date(a.start!).getTime()).slice(0,10);
@@ -583,6 +587,22 @@ function App() {
               <div><b>{longitudinalReport.verifiedMatches}</b><span>Verifiziert</span></div>
               <div><b>{longitudinalReport.comparableMatches}</b><span>Vergleichbar</span></div>
               <div><b>{longitudinalReport.excludedMatches}</b><span>Ausgeschlossen</span></div>
+            </div>
+            <div className="longitudinal-cohort-control">
+              <label htmlFor="longitudinal-cohort">Vergleichsgruppe</label>
+              <select
+                id="longitudinal-cohort"
+                value={longitudinalReport.selectedCohortKey ?? ''}
+                onChange={event => setSelectedLongitudinalCohortKey(event.target.value || null)}
+                disabled={longitudinalReport.cohortOptions.length === 0}
+                aria-describedby="longitudinal-cohort-help"
+              >
+                {longitudinalReport.cohortOptions.map(cohort => (
+                  <option key={cohort.key} value={cohort.key}>{cohort.label} · {cohort.matches} Partien</option>
+                ))}
+                {!longitudinalReport.cohortOptions.length && <option value="">Noch keine verifizierte Gruppe</option>}
+              </select>
+              <small id="longitudinal-cohort-help">Nur vollständig verifizierte Partien desselben Modus und Spieltyps werden miteinander verglichen. Andere Gruppen bleiben getrennt.</small>
             </div>
             <p className="longitudinal-coverage">{longitudinalReport.message}</p>
             {longitudinalReport.status==='ready' ? <>
@@ -794,6 +814,28 @@ function ReplayTrendChart({title,description,unit,points}:{title:string;descript
 }
 function fmtChartValue(value:number){return Math.round(value).toLocaleString('de-DE');}
 function selectedPlayerName(players:Array<{name:string;clientID:string|null}>,id:string){return players.find(p=>p.clientID===id)?.name ?? '';}
+function SpawnPositionMap({positions,selectedClientId,alternatives,width,height,thumbnailUrl,onPlayerSelect}:{positions:ReplaySimulationResult['spawnPositions'];selectedClientId:string;alternatives:NonNullable<ReplaySimulationResult['spawnAlternatives']>;width:number;height:number;thumbnailUrl:string|null;onPlayerSelect:(clientId:string)=>void}) {
+  const [selectedAlternative,setSelectedAlternative]=useState<number|null>(null);
+  const selected=positions?.find(position=>position.clientID===selectedClientId);
+  if(!selected || selected.spawnX===null || selected.spawnY===null || width<=0 || height<=0) return null;
+  const point=(x:number|null|undefined,y:number|null|undefined)=>x==null||y==null?null:projectSpawnMapPoint(x,y,width,height);
+  const ownPoint=point(selected.spawnX,selected.spawnY);
+  if(!ownPoint) return null;
+  return <div className="spawn-map-panel" aria-label="Karte mit den exakten Spawn-Positionen aller Spieler">
+    <div className="spawn-map-heading"><div><span>SPAWN-LAGE · ECHTE KARTENKOORDINATEN</span><b>Wo du und deine Gegner gestartet seid</b></div><small>{width.toLocaleString('de-DE')} × {height.toLocaleString('de-DE')} Felder</small></div>
+    <div className="spawn-map-viewport" style={{aspectRatio:`${width} / ${height}`}}>
+      {thumbnailUrl ? <img className="spawn-map-image" src={thumbnailUrl} alt="Originalkarte aus der zum Replay passenden OpenFront-Engine" loading="lazy"/> : <div className="spawn-map-fallback" aria-hidden="true"/>}
+      <div className="spawn-map-markers">
+        {(positions??[]).map(position=>{const p=point(position.spawnX,position.spawnY);if(!p)return null;const own=position.clientID===selectedClientId;return <button type="button" key={position.id} className={`spawn-map-marker ${own?'is-own':position.classification==='contested'?'is-contested':'is-rival'}`} style={{left:`${p.left}%`,top:`${p.top}%`}} title={`${position.name}: X ${position.spawnX}, Y ${position.spawnY}`} aria-label={`Spieler ${position.name}, Spawn X ${position.spawnX}, Y ${position.spawnY}. Perspektive auswählen.`} onClick={()=>position.clientID&&onPlayerSelect(position.clientID)}><span>{own?'DU':position.name.slice(0,12)}</span></button>;})}
+        {alternatives.map((candidate,index)=>{const p=point(candidate.x,candidate.y);if(!p)return null;return <button type="button" key={`alt-${candidate.x}-${candidate.y}`} className={`spawn-map-marker is-alternative ${selectedAlternative===index?'is-selected':''}`} style={{left:`${p.left}%`,top:`${p.top}%`}} title={`Vergleichsposition ${index+1}: X ${candidate.x}, Y ${candidate.y}`} aria-label={`Alternative Startposition ${index+1}, X ${candidate.x}, Y ${candidate.y}`} aria-pressed={selectedAlternative===index} onClick={()=>setSelectedAlternative(selectedAlternative===index?null:index)}><span>A{index+1}</span></button>;})}
+      </div>
+    </div>
+    {selectedAlternative!==null&&alternatives[selectedAlternative]&&<div className="spawn-map-selected-alternative"><b>Vergleichsposition {selectedAlternative+1}</b><span>X {alternatives[selectedAlternative].x} · Y {alternatives[selectedAlternative].y}</span><span>Freies Land: {alternatives[selectedAlternative].nearbyNeutralLandTiles.toLocaleString('de-DE')} · Abstand zum nächsten Start: {alternatives[selectedAlternative].nearestSpawnDistance??'–'} Felder · direkte Nachbarn: {alternatives[selectedAlternative].adjacentPlayerCount}</span></div>}
+    <div className="spawn-map-legend"><span><i className="own"/> Dein tatsächlicher Spawn</span><span><i className="rival"/> Andere Spieler</span>{alternatives.length>0&&<span><i className="alternative"/> Theoretische Alternativen</span>}</div>
+    <p>Die Marker liegen auf den tatsächlichen Spawn-Feldern des Replays. Alternativen sind nur Lagevergleiche und keine tatsächlich gewählten Starts.</p>
+  </div>;
+}
+
 function CoachPanel({apiResult,preferredPlayerPublicId,decodedActions,simulationResult,simulationProgress,onPlayerSelect,onExport,onSaveReplayJson,onOpenReplay,fmt}:{preferredPlayerPublicId:string|null;apiResult:ApiImportSummary;decodedActions:DecodedAction[];simulationResult:ReplaySimulationResult|null;simulationProgress:{percent:number;phase:string}|null;onPlayerSelect:(clientId:string)=>void;onExport:()=>void;onSaveReplayJson:()=>void;onOpenReplay:()=>void;fmt:(n:number)=>string}) {
   const [workspaceTab,setWorkspaceTab]=useState<'coach'|'replay'|'analysis'|'strategies'>('coach');
   const [selectedTimelineId,setSelectedTimelineId]=useState<string|null>(null);
@@ -904,11 +946,16 @@ function CoachPanel({apiResult,preferredPlayerPublicId,decodedActions,simulation
     ? buildEngineCoachInsights(selectedPlayerReview, selectedActionReviews, simulationResult.samples)
     : [];
   const proCoachReport = simulationResult?.status === 'verified' && selectedClientId
-    ? buildProCoachReport(simulationResult.samples, selectedActionReviews, selectedClientId, apiResult.durationSeconds ?? 0)
+    ? buildProCoachReport(simulationResult.samples, selectedActionReviews, selectedClientId, apiResult.durationSeconds ?? 0, simulationResult.spawnPositions ?? [])
     : null;
 
   const { ordered: orderedEngineInsights, primary: primaryEngineInsights, supporting: supportingEngineInsights } = selectPrimaryCoachInsights(engineInsights);
-  const replayTimeline = buildReplayTimeline(timeline, primaryEngineInsights);
+  const proCoachFindings = simulationResult?.status === 'verified' && selectedClientId && proCoachReport
+    ? toReplayCoachFindings(proCoachReport.findings, apiResult.gameId, selectedClientId, selectedActionReviews, simulationResult.samples)
+    : [];
+  const replayTimeline = [...buildReplayTimeline(timeline, primaryEngineInsights), ...proCoachFindings.flatMap(finding =>
+    finding.timestampSeconds === null ? [] : [{ id: 'pro-' + finding.id, time: finding.timestampSeconds, title: finding.title, detail: finding.consequence, kind: 'Strategisches Coaching', turn: null, insight: undefined }],
+  )].sort((a,b)=>a.time-b.time);
   const selectedTimelineEntry = replayTimeline.find(event => event.id === selectedTimelineId) ?? replayTimeline[0] ?? null;
   React.useEffect(()=>{setSelectedTimelineId(null);},[apiResult.gameId]);
   const leadEngineInsight = primaryEngineInsights[0] ?? null;
@@ -1107,6 +1154,7 @@ function CoachPanel({apiResult,preferredPlayerPublicId,decodedActions,simulation
               : 'Unvollständiges Replay: Startlage aus dem letzten verfügbaren Zustand rekonstruiert.'}</p>
           </div>
         </div>
+        {simulationResult?.spawnMapWidth && simulationResult.spawnMapHeight && <SpawnPositionMap positions={spawnPositionReport} selectedClientId={selectedClientId} alternatives={spawnAlternatives} width={simulationResult.spawnMapWidth} height={simulationResult.spawnMapHeight} thumbnailUrl={simulationResult.spawnMapThumbnailUrl ?? null} onPlayerSelect={onPlayerSelect}/>}
         <div className="spawn-coach-metrics">
           <article><small>EXAKTE SPAWN-KOORDINATE</small><b>X {selectedSpawnPosition.spawnX} · Y {selectedSpawnPosition.spawnY}</b><span>Aus PlayerState.spawnTile, kein geschätzter Schwerpunkt</span></article>
           <article><small>NÄCHSTER SPIELERSTART</small><b>{selectedSpawnPosition.nearestSpawnDistance === null ? '–' : `${selectedSpawnPosition.nearestSpawnDistance} Felder`}</b><span>Manhattan-Abstand wie in der Spawnlogik</span></article>
@@ -1244,6 +1292,20 @@ function CoachPanel({apiResult,preferredPlayerPublicId,decodedActions,simulation
         <div className="replay-stage-map"><MapPreview map={apiResult.mapName} src={apiResult.previewUrl}/><div className="replay-stage-overlay"><span className="eyebrow">DEINE PARTIE</span><h3>{apiResult.mapName}</h3><p>{apiResult.gameMode} · {apiResult.gameType} · {clock(apiResult.durationSeconds??0)}</p><button className="studio-button primary" onClick={onOpenReplay}><Gamepad2 size={16}/>Original-Replay öffnen</button></div></div>
         <div className="replay-stage-side"><span className="eyebrow">MATCH-ÜBERSICHT</span><div><b>{fmt(apiResult.playerCount??0)}</b><small>Spieler</small></div><div><b>{fmt(playerActions.length)}</b><small>Deine Aktionen</small></div><div><b>{fmt(replayTimeline.length)}</b><small>Markierte Zeitpunkte</small></div><p>Wähle einen Moment. Die Coach-Marker zeigen deine wichtigsten Lernpunkte.</p></div>
       </div>
+      <ReplayVisualization
+        mapName={apiResult.mapName}
+        mapPreview={apiResult.previewUrl}
+        durationSeconds={apiResult.durationSeconds ?? 0}
+        samples={simulationResult?.status === 'verified' ? simulationResult.samples : []}
+        findings={proCoachFindings}
+        events={replayTimeline.map(event => ({
+          id: event.id, title: event.title, kind: event.kind, detail: event.detail,
+          time: event.time, isCoach: Boolean(event.insight) || event.id.startsWith('pro-'),
+        }))}
+        selectedEventId={selectedTimelineEntry?.id ?? null}
+        onSelectEvent={setSelectedTimelineId}
+        onOpenReplay={onOpenReplay}
+      />
       <div className="replay-timeline-panel"><div className="overview-heading"><div><span className="eyebrow">MATCH-TIMELINE</span><h3>Wichtige Momente deiner Partie</h3></div><span className="source-label">{primaryEngineInsights.length} priorisierte Coach-Marker</span></div>
         {replayTimeline.length ? <div className="event-timeline">{replayTimeline.map((event,i)=><button type="button" aria-pressed={selectedTimelineEntry?.id===event.id} className={`event-item replay-event-button ${selectedTimelineEntry?.id===event.id?'is-selected':''} ${event.insight?'is-coach-event':''}`} key={event.id} onClick={()=>setSelectedTimelineId(event.id)}><span className="event-marker"><span>{String(i+1).padStart(2,'0')}</span></span><span className="event-copy"><span><b>{event.title}</b><span className="event-type">{event.kind}</span></span><span>{event.detail}</span></span><time>{clock(event.time)}</time></button>)}</div> : <p className="empty-note">Für diese Partie wurden keine markierbaren Ereignisse gefunden.</p>}
         {selectedTimelineEntry && <article className="replay-event-detail">

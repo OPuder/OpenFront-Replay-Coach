@@ -334,6 +334,17 @@ body{background:radial-gradient(ellipse at 76% -10%,#17314b 0,transparent 42%),#
   *,*::before,*::after{scroll-behavior:auto!important;transition:none!important;animation:none!important}
 }
 
+
+/* Exact spawn coordinates plotted on the replay's original map thumbnail. */
+.spawn-map-panel{display:flex;flex-direction:column;gap:10px;padding:14px;border:1px solid #345b4b;border-radius:13px;background:rgba(4,17,14,.58)}
+.spawn-map-heading{display:flex;justify-content:space-between;align-items:flex-end;gap:12px}.spawn-map-heading>div{display:flex;flex-direction:column;gap:5px}.spawn-map-heading span{color:#9bd8b3;font:800 8px 'Cascadia Code',monospace;letter-spacing:1px}.spawn-map-heading b{color:#eff9ef;font-size:13px}.spawn-map-heading small{color:#91ad9d;font-size:9px;white-space:nowrap}
+.spawn-map-viewport{position:relative;width:100%;max-height:390px;overflow:hidden;border:1px solid #426b58;border-radius:10px;background:#0a1714}
+.spawn-map-image,.spawn-map-fallback{position:absolute;inset:0;width:100%;height:100%;object-fit:fill}.spawn-map-fallback{background-color:#102a24;background-image:linear-gradient(rgba(148,202,166,.09) 1px,transparent 1px),linear-gradient(90deg,rgba(148,202,166,.09) 1px,transparent 1px);background-size:3.125% 3.125%}
+.spawn-map-markers{position:absolute;inset:0}.spawn-map-marker{position:absolute;transform:translate(-50%,-50%);width:13px;height:13px;border:2px solid #f1fff3;border-radius:50%;background:#df8b53;box-shadow:0 1px 8px #000;z-index:2}.spawn-map-marker span{position:absolute;left:50%;top:calc(100% + 4px);transform:translateX(-50%);padding:2px 5px;border-radius:4px;background:rgba(5,15,12,.9);color:#fff;font:800 8px 'Cascadia Code',monospace;white-space:nowrap;text-shadow:0 1px 2px #000}.spawn-map-marker.is-own{width:19px;height:19px;background:#b9f36e;border:3px solid #fff;z-index:4}.spawn-map-marker.is-rival{background:#f18a55}.spawn-map-marker.is-contested{background:#ff5c64}.spawn-map-marker.is-alternative{width:12px;height:12px;border-radius:3px;background:#63c9ed;border:2px dashed #e4faff;z-index:3}.spawn-map-marker.is-alternative span{color:#aeeeff}.spawn-map-legend{display:flex;flex-wrap:wrap;gap:8px 16px}.spawn-map-legend span{display:flex;align-items:center;gap:6px;color:#b0c9b8;font-size:9px}.spawn-map-legend i{display:inline-block;width:9px;height:9px;border:1px solid #fff;border-radius:50%;background:#b9f36e}.spawn-map-legend i.rival{background:#f18a55}.spawn-map-legend i.alternative{border-radius:2px;background:#63c9ed}.spawn-map-panel>p{margin:0;color:#8fa99a;font-size:9px;line-height:1.5}
+@media(max-width:520px){.spawn-map-panel{padding:10px}.spawn-map-heading{align-items:flex-start;flex-direction:column;gap:4px}.spawn-map-viewport{max-height:260px}}
+
+.spawn-map-marker{padding:0;cursor:pointer;appearance:none}.spawn-map-marker:focus-visible{outline:3px solid #fff;outline-offset:4px;z-index:8}.spawn-map-marker.is-selected{outline:3px solid #63c9ed;outline-offset:3px}.spawn-map-selected-alternative{display:flex;flex-wrap:wrap;gap:5px 12px;padding:9px 11px;border:1px solid #34708a;border-radius:8px;background:rgba(16,57,73,.36);color:#c4eefa;font-size:10px}.spawn-map-selected-alternative b{color:#e6f8ff}
+
 /* 2.2.4 – simulation progress and accessible status */
 .coach-progress-track{height:7px;overflow:hidden;margin-top:13px;border-radius:99px;background:#263c52}
 .coach-progress-track>span{display:block;height:100%;border-radius:inherit;background:linear-gradient(90deg,#58a7d7,#7bd0bf);transition:width .22s ease}
@@ -1123,6 +1134,11 @@ body{
 .longitudinal-stats>div{background:rgba(25,48,73,.62);border:1px solid var(--border);border-radius:12px;padding:13px 15px;display:flex;flex-direction:column;gap:4px}
 .longitudinal-stats b{font-size:25px;line-height:1.1;color:var(--text)}
 .longitudinal-stats span,.longitudinal-phase small{font-size:11px;color:var(--muted)}
+.longitudinal-cohort-control{display:grid;grid-template-columns:minmax(120px,.35fr) minmax(0,1fr);gap:7px 14px;align-items:center;padding:13px 15px;border:1px solid var(--border);border-radius:12px;background:rgba(10,24,40,.5)}
+.longitudinal-cohort-control label{font-size:12px;font-weight:750;color:var(--text)}
+.longitudinal-cohort-control select{width:100%;min-width:0;min-height:38px;padding:8px 11px;border:1px solid var(--border);border-radius:8px;background:#10243a;color:var(--text);font:inherit;font-size:12px}
+.longitudinal-cohort-control small{grid-column:1/-1;font-size:10px;line-height:1.45;color:var(--muted)}
+@media(max-width:620px){.longitudinal-cohort-control{grid-template-columns:1fr}.longitudinal-cohort-control small{grid-column:1}}
 .longitudinal-coverage{font-size:12px;line-height:1.55;color:var(--muted);margin:0}
 .longitudinal-phase-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
 .longitudinal-phase{min-width:0;background:rgba(10,24,40,.72);border:1px solid var(--border);border-radius:12px;padding:14px;display:flex;flex-direction:column;gap:8px}

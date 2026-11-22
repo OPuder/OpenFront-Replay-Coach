@@ -1,11 +1,7 @@
 /**
  * Platform Updates Agent – manages update checks, integrity and rollback logic.
  */
-export interface Agent {
-  name: string;
-  description: string;
-  run(): Promise<void>;
-}
+import type { Agent } from './01-replay-engine';
 
 export const platformUpdatesAgent: Agent = {
   name: 'Platform Updates',

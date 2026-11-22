@@ -354,7 +354,6 @@ assert.match(windowsContract, /assertCoachRendererTarget/);
 assert.match(windowsContract, /UpgradeDataLossError/);
 assert.match(windowsContract, /assertStoragePreserved/);
 assert.match(windowsContract, /missingOrChangedLocalStorage/);
-const windowsDistributionVerifier = read("scripts/verify-windows-distributions.mjs");
 assert.match(windowsDistributionVerifier, /tar\.exe/);
 assert.match(windowsDistributionVerifier, /Expand-Archive fallback/);
 assert.match(windowsDistributionVerifier, /findPortableApplicationRoots\(portableDir\)/);

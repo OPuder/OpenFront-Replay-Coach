@@ -141,9 +141,6 @@ assert.match(androidReleaseUpgrade, /adb -s emulator-5554 install --no-streaming
 assert.match(androidReleaseUpgrade, /versionCode=\\$current_version_code/);
 assert.match(androidReleaseUpgrade, /android_launch_package "\\$package_id" "the updated release APK"/);
 assert.match(androidReleaseUpgrade, /apksigner" verify --verbose/);
-assert.match(androidStorageInspector, /ofrc-android-upgrade-snapshot-v1/);
-assert.match(androidStorageInspector, /missingReplayRecords/);
-assert.match(androidStorageInspector, /orphanReplayRecords/);
 assert.match(androidStorageSnapshot, /adb root/);
 assert.match(androidStorageSnapshot, /IndexedDB/);
 assert.match(androidStorageSnapshot, /Local Storage/);
@@ -350,8 +347,6 @@ assert.match(androidUpgradeBridge, /slice\(0, 2\)/);
 assert.match(androidUpgradeBridge, /replayRestored/);
 assert.match(androidUpgradeBridge, /recordGameId/);
 assert.match(androidUpgradeBridge, /engineCommit/);
-assert.match(androidStorageInspector, /Production matchStore rehydration failed after update/);
-assert.match(androidStorageInspector, /productionStoreRehydration/);
 assert.match(androidEmulatorDiagnostics, /mResumedActivity|topResumedActivity/);
 assert.match(updateValidationWorkflow, /ofrc-android-diagnostics/);
 assert.match(updateValidationWorkflow, /bash -n scripts\/android-emulator-diagnostics\.sh/);

@@ -424,3 +424,60 @@ Diese Liste ist eine geprüfte Kandidatenliste, keine ausgeführte Löschung. Di
 6. Recheck all branch families and retire confirmed redundant branches when a branch-delete-capable interface is available.
 
 **Current disposition:** ongoing. Branches preserved; no direct changes to `main`; no merge or release.
+
+
+---
+
+## Live recheck — 2026-11-22, Workflow-Abgrenzung und Branch-Retirement
+
+### Maßgebliche Workflow-Neuordnung: PR #156
+
+Der Hinweis aus dem heutigen Arbeitsstand wurde zugeordnet: **PR #156 — `CI/Release: consolidate workflows and update validation`**, Branch `feature/build-fix`.
+
+- PR #156 ist aktuell offen und Draft, mit 202 Commits und 33 geänderten Dateien; aktueller PR-Head laut GitHub: `ce538384cb65086c5f13f5f6d0b3f310f51d67e6`.
+- Die PR-Beschreibung legt fest, dass alte Einzel-Workflows nicht separat weitergepflegt werden sollen. Windows-Build und Android-Validierung werden in gezielte Update-/Release-Prüfungen überführt; Engine-Bundles werden zentral vorbereitet und wiederverwendet; Replay-Kompatibilität, Engine-Pins und Integration-E2E bleiben zentrale Gates; die Replay-Diagnoseartefakte werden 14 Tage aufbewahrt; der Capacitor-Lockfile-Automationsworkflow entfällt.
+- Die PR enthält gekoppelte Änderungen an npm-Skripten, Engine-Verifikation, Android-Signing, Upgrade-Harness und Agent-/TypeScript-Exports. Deshalb darf sie nicht durch isoliertes Kopieren einzelner YAML-Dateien integriert werden.
+- PR #156 ist gegenüber `main` 202 Commits voraus und gegenüber `integration/repository-consolidation` 53 Commits zurück. Sie ist ein eigener, umfangreicher Integrationsstrang und bleibt erhalten. Keine Workflow-Reparatur an den alten Dateien wird im Rahmen dieser Branch-Aufräumrunde begonnen.
+- Die PR bleibt Draft. Die vorhandene Beschreibung nennt noch ausstehende gemeinsame Integration und den vollständigen Windows-Upgrade-/Rollback-Nachweis. Der aktuelle Stand wird daher nicht als Merge-Freigabe interpretiert.
+
+### Aktueller Branchvergleich
+
+Die aktuelle GitHub-Abfrage liefert 74 Remote-Branches einschließlich `main`. Der Konsolidierungsbranch `integration/repository-consolidation` liegt 53 Commits vor `main`, ohne Rückstand. Vier Branches haben gegenüber `main` null eigene Commits und sind vollständig überholt:
+
+| Branch | Vergleich zu `main` | Disposition |
+|---|---:|---|
+| `feature/queue-safe` | 0 ahead / 7 behind | **Löschkandidat** — keine eigenen Commits oder Dateidifferenzen mehr |
+| `feature/queue-safe-clean` | 0 ahead / 6 behind | **Löschkandidat** — keine eigenen Commits oder Dateidifferenzen mehr |
+| `fix/kvm-contract-step-boundaries` | 0 ahead / 10 behind | **Löschkandidat** — keine eigenen Commits oder Dateidifferenzen mehr |
+| `release/branch-cleanup` | 0 ahead / 15 behind | **Löschkandidat** — keine eigenen Commits oder Dateidifferenzen mehr; kein offener PR-Head gefunden |
+
+Ein weiterer redundanter Branch ist:
+
+| Branch | Vergleich | Disposition |
+|---|---|---|
+| `work/alternative-development` | exakt gleicher Tip wie `integration/replay-coach-mainline` (0/0) | **Löschkandidat als doppelte Referenz** — `integration/replay-coach-mainline` bleibt als historischer PR-#151-Branch erhalten; der gemeinsame Commit bleibt dadurch weiterhin referenziert |
+
+Die fünf genannten Branches sind die aktuell belastbarsten Löschkandidaten. Sie wurden nicht gelöscht. Vor dem lokalen Löschen soll die Liste mit `git branch -r --merged origin/main` bzw. den exakten Remote-Refs abgeglichen werden; für die vier behind-only Branches ist der GitHub-Vergleich bereits eindeutig.
+
+### Zweite Welle — erst nach Integration von PR #156
+
+Diese Branches haben noch eigene Commits, deren Änderungen aber auf alte Workflow-Dateien beschränkt sind oder deren Nutzen in PR #156 neu umgesetzt wird. Sie sind **noch keine sofortigen Löschkandidaten**, weil PR #156 noch nicht integriert ist:
+
+- `auto-release-on-main-2.2.5` — nur ein eigener Commit auf `.github/workflows/build-windows.yml`; alter Workflow-Stand.
+- `ci/retain-replay-validation-reports` — nur ein eigener Commit auf `.github/workflows/replay-compatibility.yml`; Log-Aufbewahrung ist laut PR #156 in die neue Replay-Workflow-Struktur übernommen.
+- `chore/verify-permanent-android-signing` — vier eigene Commits, ausschließlich `.github/workflows/validate-android.yml`; alter separater Android-Workflow.
+
+Nach erfolgreicher Integration der neuen CI-/Release-Architektur muss für jeden dieser drei Branches nochmals geprüft werden, ob die Änderung vollständig in PR #156 enthalten ist. Erst dann in die endgültige Löschliste übernehmen.
+
+### Weiterhin behalten — nicht pauschal löschen
+
+- Offene PR-Branches: #157 `integration/repository-consolidation`, #156 `feature/build-fix`, #146 `feature/release-update-system`, #134 `coach/exact-spawn-metrics-mainline-v3`.
+- `integration/replay-coach-mainline` bleibt als Referenz für den historischen PR #151 erhalten. Nur seine exakte Doppelreferenz `work/alternative-development` ist als Löschkandidat markiert.
+- `branch-inventory-report` enthält eine eigenständige, inzwischen veraltete Inventur und bleibt zunächst erhalten; seine Dokumente wurden nicht in diesen Bericht kopiert.
+- Die übrigen Coaching-, Replay-, Performance-, Android- und Library-Branches haben weiterhin eigene Commits oder divergierende Dateistände. Sie sind nicht durch einen bloßen Ahead/Behind-Vergleich als sicher löschbar belegt.
+
+### Live PR-Stand und Sicherheitsstatus
+
+Offene PRs: #157, #156, #146 und #134. PR #122 ist geschlossen, nicht gemergt. Kein PR wurde in diesem Schritt gemergt, kein Branch gelöscht und `main` wurde nicht verändert. Die Branch-Löschliste ist eine Empfehlung zur lokalen Ausführung durch den Nutzer.
+
+**Nächster Schritt:** zuerst die fünf sofortigen Löschkandidaten lokal anhand der Remote-Refs prüfen und löschen; die drei Workflow-Branches erst nach Integration der neuen PR-#156-Architektur erneut bewerten.

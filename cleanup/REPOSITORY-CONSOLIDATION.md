@@ -391,3 +391,36 @@ Diese Liste ist eine geprüfte Kandidatenliste, keine ausgeführte Löschung. Di
 7. Erst nach erfolgreicher Integration PRs schließen und anschließend Branch-Retirement ausführen.
 
 **Status:** Inventur und erste Diffs sind erweitert; die eigentliche Restbereinigung läuft weiter. Keine Branches gelöscht, kein PR gemergt, `main` nicht verändert.
+
+
+---
+
+## Follow-up execution — 2026-11-22
+
+### PR #122 documentation work selectively integrated
+- Imported `.github/pull_request_template.md`, `docs/development/agent-coordination.md` and `docs/development/quality-gates.md` into `integration/repository-consolidation`.
+- Updated the existing `AGENTS.md` rather than overwriting it: obsolete claims about a mandatory nightly `qa/` branch, release-only branch triggers, and WIP-only commits were replaced with current project, exact-head QA, protected-main and role guidance. The Chat 00–05 coordination roles and local Ollama preference remain represented.
+- Verified the documented npm scripts against the integration branch `package.json` and all six referenced consolidated workflow files exist on that branch.
+- PR #122 was closed as **not merged** after the files were committed to the integration branch. Its source branch is retained.
+
+### PR #134 spawn work
+- Imported the evidence-boundary document `docs/development/early-game-spawn-evidence.md`.
+- Added `projectSpawnMapPoint()`, which projects tile centers and rejects invalid/out-of-bounds map coordinates.
+- Added focused regression coverage for first/last tile centers and invalid map dimensions.
+- The complete SpawnPositionMap UI, actual player spawn markers, theoretical alternatives and current-view integration are still outstanding. PR #134 remains open and its source branch is retained.
+
+### Updated repository state
+- Open PR search now returns four: #157, #156, #146 and #134. PR #122 is closed, not merged.
+- `integration/repository-consolidation` now compares to `main` as 52 commits ahead, 0 behind, with 39 changed files.
+- Latest documentation/spawn helper commits are recorded on the integration branch; no workflow runs were returned for the final docs commit at the time of this check. Do not treat the earlier SHA's workflow results as validation of this new head.
+- No PR was merged and `main` remains unchanged.
+
+### Remaining work
+1. Diagnose why Android `adb shell input text` does not populate the second WebView search field despite a visible caret; use the captured screenshot/XML and add a robust, verified input method rather than relaxing the assertion.
+2. Finish the full SpawnPositionMap UI integration from #134 using the current #157 renderer as the base; do not copy its stale full `main.tsx`.
+3. Complete #157's replay/integration/Android update gates on the same final SHA.
+4. Review #156 workflow changes file-by-file and integrate only after proving no required validation is lost.
+5. Complete #146 real Windows and Android upgrade/rollback acceptance.
+6. Recheck all branch families and retire confirmed redundant branches when a branch-delete-capable interface is available.
+
+**Current disposition:** ongoing. Branches preserved; no direct changes to `main`; no merge or release.

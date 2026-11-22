@@ -124,6 +124,14 @@ assert.ok(baselineUiSeed.indexOf("log() {") < baselineUiSeed.indexOf('log "Publi
   "The Android baseline seed logger must be defined before its first invocation.");
 assert.match(baselineUiSeed, /tesseract/);
 assert.match(baselineUiSeed, /OpenFront-Profillink/);
+assert.match(baselineUiSeed, /wait_for_library_page\(\)/);
+assert.match(baselineUiSeed, /text="Spielbibliothek"/);
+assert.match(baselineUiSeed, /combined_text = " ".join\(texts\)/);
+assert.match(baselineUiSeed, /eligible_states = \("Bereit zur Analyse", "Hash-verifiziert"\)/);
+assert.match(baselineUiSeed, /tap_supported_coach_card/);
+assert.match(baselineUiSeed, /tap_visible_training_goal/);
+assert.match(baselineUiSeed, /input swipe 930 1450 930 430 650/);
+assert.doesNotMatch(baselineUiSeed, /tap_text "Coach öffnen"/);
 assert.match(updateValidationWorkflow, /app-release\.apk/);
 assert.doesNotMatch(updateValidationWorkflow, /app-debug\.apk/);
 assert.match(updateValidationWorkflow, /Build separate non-debuggable production APK without test inspector/);

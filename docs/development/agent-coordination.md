@@ -34,7 +34,7 @@ Acceptance criteria:
 
 ### UX and platform experience
 
-Own dashboard, Match Coach, replay map/timeline, coaching cards, responsive layouts, accessibility and desktop/Android/PWA integration.
+Own dashboard, Match Coach, replay map/timeline, coaching cards, responsive layouts, accessibility and desktop/Android/browser integration. The web build remains browser-accessible; do not reintroduce a PWA service worker into native release packages.
 
 Acceptance criteria:
 - Coaching priorities are understandable within seconds.

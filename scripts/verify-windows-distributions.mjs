@@ -4,6 +4,7 @@ import { spawnSync } from "node:child_process";
 import { existsSync, lstatSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { findPortableApplicationRoots } from "./windows-portable-layout.mjs";
 
 const root = process.cwd();
 const releaseDir = path.resolve(process.env.RELEASE_DIR ?? "release");
@@ -154,17 +155,26 @@ const expand = spawnSync("powershell.exe", ["-NoProfile", "-NonInteractive", "-C
 if (expand.error || expand.status !== 0) {
   failures.push({ kind: "portable ZIP extraction", status: expand.status, error: expand.error?.message, stdout: expand.stdout, stderr: expand.stderr });
 } else {
-  const portableExe = path.join(portableDir, "OpenFront Replay Coach.exe");
-  const portableAsar = path.join(portableDir, "resources", "app.asar");
-  if (!existsSync(portableExe) || !existsSync(portableAsar) || statSync(portableExe).size <= 1_000_000 || statSync(portableAsar).size <= 1_000) {
-    failures.push({ kind: "portable ZIP contents", executableExists: existsSync(portableExe), appAsarExists: existsSync(portableAsar) });
+  const portableCandidates = findPortableApplicationRoots(portableDir);
+  if (portableCandidates.length !== 1) {
+    failures.push({
+      kind: "portable ZIP contents",
+      expectedCompleteApplications: 1,
+      foundCompleteApplications: portableCandidates.length,
+      extractedTopLevelEntries: readdirSync(portableDir),
+    });
   } else {
-    const portablePe = inspectPe(portableExe);
+    const { executable: portableExe, appAsar: portableAsar } = portableCandidates[0];
+    if (statSync(portableExe).size <= 1_000_000 || statSync(portableAsar).size <= 1_000) {
+      failures.push({ kind: "portable ZIP contents", executableBytes: statSync(portableExe).size, appAsarBytes: statSync(portableAsar).size });
+    } else {
+      const portablePe = inspectPe(portableExe);
     if (portablePe.architecture !== "x64") {
       failures.push({ kind: "portable application architecture", expected: "x64", actual: portablePe.architecture, portablePe });
     } else {
       console.log("PORTABLE_APPLICATION_ARCHITECTURE_OK", JSON.stringify(portablePe));
       runRendererSmoke("portable ZIP", portableExe);
+    }
     }
   }
 }

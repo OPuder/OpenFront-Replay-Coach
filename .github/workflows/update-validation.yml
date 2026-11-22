@@ -180,7 +180,7 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install --no-install-recommends -y tesseract-ocr tesseract-ocr-deu
-          tesseract --list-langs | grep -E '^(deu|eng)
+          tesseract --list-langs
         with:
           distribution: temurin
           java-version: "21"

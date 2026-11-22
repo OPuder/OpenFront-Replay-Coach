@@ -70,6 +70,14 @@ assert.match(updater, /Programmdateien wurden auch nach dem erhöhten Wiederholu
 assert.match(updater, /\$AfterArchiveHash -eq \$BeforeArchiveHash -and -not \$ElevationAttempted/);
 assert.match(updater, /\$ElevationAttempted = \$true/);
 assert.match(updater, /Start-Process -FilePath \$Installer -ArgumentList '\/S' -Verb RunAs -Wait -PassThru/);
+assert.match(updater, /OFRC_UPDATE_TEST_MODE/);
+assert.match(updater, /OFRC_UPDATE_TEST_RELEASE_URL/);
+assert.match(updater, /parsed\.protocol !== 'http:'[\s\S]*?parsed\.hostname !== '127\.0\.0\.1'/);
+assert.match(updater, /Update test mode: automatic startup check suppressed/);
+assert.match(updater, /main-process-shutdown-after-ipc-response/);
+assert.match(updater, /release-fetch-started/);
+assert.match(read("src/main/main.ts"), /OFRC_UPGRADE_CONTEXT=/);
+assert.match(read("src/main/main.ts"), /OFRC_UPGRADE_DIAGNOSTICS/);
 const windowsUpgrade = read("scripts/verify-windows-in-place-updates.mjs");
 assert.match(windowsUpgrade, /WINDOWS_IN_PLACE_UPGRADE_OK/);
 assert.match(windowsUpgrade, /WINDOWS_NSIS_ROLLBACK_OK/);

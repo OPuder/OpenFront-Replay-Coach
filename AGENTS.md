@@ -42,7 +42,7 @@ Prioritize the 1–3 highest-impact insights. Cover Early, Mid and Late game, pl
 - Coaching is primary; raw statistics are supporting evidence.
 - Prefer a visual replay map, timeline, phase markers, fronts, engagements and prioritized coaching cards.
 - Make uncertainty and missing evidence visible.
-- Keep desktop and mobile behavior responsive and accessible.
+- Keep desktop, Android and browser behavior responsive and accessible.
 - Avoid text walls, decorative metrics and CSV-first workflows.
 
 ## Required validation

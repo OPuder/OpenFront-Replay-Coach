@@ -354,6 +354,6 @@ assert.match(androidReleaseUpgrade, /android_prepare_emulator/);
 assert.match(androidReleaseUpgrade, /android_launch_package/);
 assert.doesNotMatch(androidReleaseUpgrade, /sleep 300/);
 assert.match(androidReleaseUpgrade, /install_apk "\$current_apk" true[\s\S]*?am force-stop "\$package_id"[\s\S]*?android_launch_package/);
-assert.match(androidReleaseUpgrade, /pre-update app process remained alive/);
+assert.match(androidReleaseUpgrade, /previous app process remained alive/);
 
 console.log("Android emulator diagnostics contract tests passed: bounded ADB restart/reconnect, separate boot/transport checks, early-failure log/screenshot capture, and classified launch outcomes.");

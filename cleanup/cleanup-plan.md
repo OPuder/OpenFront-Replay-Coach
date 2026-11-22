@@ -43,4 +43,14 @@
 
 The connected GitHub actions currently expose branch search and ref updates but no supported branch-delete operation. Therefore, this pass has not deleted any Git branch. Branch deletion must be performed later through an authorized GitHub UI/CLI workflow after the safety checks above. Closing a duplicate PR does not delete its source branch.
 
+
+## Additional integration review finding (2026-11-22)
+
+The current PR #151 patch changes `.github/workflows/release-on-main.yml` so automatic releases are triggered by `release/**` rather than `main`, and adds a guard requiring the release branch to include current main. This is a material release-process change, not merely a mechanical conflict resolution. It must be explicitly reviewed against the intended release policy and the current release workflow before integration. Do not merge #151 until this is resolved and the full workflow behavior is tested.
+
+The same PR also changes Windows build and replay-compatibility workflow triggers/concurrency. Review these together with the release workflow so no required mainline CI or release trigger is accidentally lost.
+
+A direct commit comparison confirms #151 contains the complete #147 head history (the #151 head is ahead of #147 with no commits behind). This establishes commit ancestry, but it does not by itself justify closing #147: keep the focused PR open until #151 is either safely integrated or its coaching changes are independently accounted for in main.
+
+
 ---

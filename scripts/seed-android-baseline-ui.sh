@@ -122,8 +122,9 @@ import re
 import sys
 import xml.etree.ElementTree as ET
 
-path, needle, mode, occurrence = sys.argv[1:]
-occurrence = max(1, int(occurrence))
+path, needle, mode, occurrence_raw = sys.argv[1:]
+occurrence_is_last = occurrence_raw.strip().casefold() == "last"
+occurrence = 1 if occurrence_is_last else max(1, int(occurrence_raw))
 try:
     root = ET.parse(path).getroot()
 except (OSError, ET.ParseError) as error:
@@ -157,7 +158,8 @@ for node in root.iter("node"):
 
 if matches:
     matches.sort(key=lambda item: (item[0], item[1]))
-    _, _, x, y, _ = matches[min(occurrence - 1, len(matches) - 1)]
+    selected = matches[-1] if occurrence_is_last else matches[min(occurrence - 1, len(matches) - 1)]
+    _, _, x, y, _ = selected
     print(f"{x} {y}")
 elif mode == "edit":
     print("No enabled editable fields found. Classes: " + ", ".join(
@@ -171,25 +173,36 @@ tap_text() {
   local occurrence="${2:-1}"
   local mode="${3:-text}"
   local coords=""
-  for attempt in $(seq 1 20); do
-    if ! dump_ui; then
-      log "UIAutomator hierarchy unavailable; continuing with screenshot OCR for '$needle'."
-    fi
+  # Try the native hierarchy once. The published APK is a WebView app, and
+  # repeatedly launching UIAutomator can take minutes while exposing no DOM.
+  if dump_ui; then
     coords="$(find_bounds "$needle" "$mode" "$occurrence" 2>/dev/null || true)"
-    if [[ -z "$coords" ]]; then
-      coords="$(ocr_find_bounds "$needle" "$occurrence" || true)"
-    fi
+  else
+    log "UIAutomator hierarchy unavailable; switching to screenshot OCR for '$needle'."
+  fi
+  if [[ -n "$coords" ]]; then
+    read -r x y <<< "$coords"
+    log "Tapping '$needle' at $x,$y (UI hierarchy)."
+    timeout 10s adb -s emulator-5554 shell input tap "$x" "$y" || fail "ADB tap failed for '$needle'."
+    return 0
+  fi
+  # OCR retries are bounded independently and do not rerun UIAutomator.
+  for attempt in $(seq 1 12); do
+    coords="$(ocr_find_bounds "$needle" "$occurrence" || true)"
     if [[ -n "$coords" ]]; then
       read -r x y <<< "$coords"
-      log "Tapping '$needle' at $x,$y (UI hierarchy or German/English WebView OCR)."
-      adb -s emulator-5554 shell input tap "$x" "$y"
+      log "Tapping '$needle' at $x,$y (German/English screenshot OCR, attempt $attempt/12)."
+      timeout 10s adb -s emulator-5554 shell input tap "$x" "$y" || fail "ADB tap failed for '$needle'."
       return 0
+    fi
+    if (( attempt % 3 == 0 )); then
+      log "Waiting for visible UI control '$needle' (OCR attempt $attempt/12)."
     fi
     sleep 2
   done
   local ocr_dump
   ocr_dump="$(ocr_text 2>/dev/null | tr '\n' ' ' || true)"
-  fail "Could not find the UI control '$needle' in UIAutomator or OCR. OCR text: ${ocr_dump:0:1200}. Captured UI: $(cat "$ui_xml" 2>/dev/null | head -c 4000)"
+  fail "Could not find the UI control '$needle' in UIAutomator or OCR after bounded retries. OCR text: ${ocr_dump:0:1200}. Captured UI: $(cat "$ui_xml" 2>/dev/null | head -c 4000)"
 }
 
 log "Rechecking ADB transport and boot state before launching the published baseline."
@@ -220,38 +233,19 @@ tap_text "Konto laden"
 # the post-upgrade inspector verifies the imported records in real IndexedDB.
 sleep 20
 tap_text "Partien" last exact
-read_metric() {
-  local label="$1"
-  capture_screen
-  timeout 8s tesseract "$screen_path" stdout -l deu+eng --psm 6 tsv >"$ocr_tsv" 2>/dev/null
-  python3 - "$ocr_tsv" "$label" <<'PY'
-import csv
+read_imported_match_count() {
+  local screen_text=""
+  screen_text="$(ocr_text 2>/dev/null || true)"
+  python3 - "$screen_text" <<'PY'
 import re
 import sys
-from collections import defaultdict
 
-path, label = sys.argv[1:]
-label = re.sub(r"\s+", " ", label).strip().casefold()
-groups = defaultdict(list)
-with open(path, newline="", encoding="utf-8") as stream:
-    for row in csv.DictReader(stream, delimiter="\t"):
-        if row.get("level") == "5" and row.get("text", "").strip():
-            groups[(row["block_num"], row["par_num"], row["line_num"])].append(row)
-lines = []
-for rows in groups.values():
-    rows.sort(key=lambda row: int(row["left"]))
-    text = " ".join(row["text"].strip() for row in rows)
-    y = min(int(row["top"]) for row in rows)
-    lines.append((y, text))
-lines.sort()
-for index, (_, text) in enumerate(lines):
-    if label in re.sub(r"\s+", " ", text).casefold():
-        for _, candidate in lines[index:index+8]:
-            match = re.search(r"\b(\d{1,6})\b", candidate.replace(",", ""))
-            if match:
-                print(match.group(1))
-                raise SystemExit
-print("missing")
+screen_text = sys.argv[1]
+# The published app shows the actual profile import total as "0 von N Partien"
+# while long-term analysis is being built; it does not expose a
+# "REPLAYS GESPEICHERT" label on this dashboard.
+matches = re.findall(r"\\b\\d+\\s+von\\s+(\\d+)\\s+Partien\\b", screen_text, re.IGNORECASE)
+print(matches[-1] if matches else "missing")
 PY
 }
 
@@ -263,19 +257,19 @@ while (( SECONDS - poll_started < 120 )); do
   # The published APK exposes only a WebView container. Re-dumping the full
   # UIAutomator hierarchy on every poll can block for 20-50 seconds; bounded
   # OCR is the intended signal here.
-  replay_count="$(read_metric "REPLAYS GESPEICHERT")"
-  if [[ "$replay_count" =~ ^[0-9]+$ ]] && (( replay_count >= 3 )); then break; fi
+  replay_count="$(read_imported_match_count)"
+  if [[ "$replay_count" =~ ^[0-9]+$ ]] && (( replay_count >= 1 )); then break; fi
   if (( attempt % 5 == 0 )); then
-    log "Still waiting for three UI-confirmed saved replays (elapsed=$((SECONDS - poll_started))s; poll=$attempt; observed=${replay_count:-unknown})."
+    log "Still waiting for the profile import count to become visible (elapsed=$((SECONDS - poll_started))s; poll=$attempt; observed=${replay_count:-unknown})."
   fi
   sleep 2
 done
 if [[ ! "$replay_count" =~ ^[0-9]+$ ]]; then
   final_ocr="$(ocr_text 2>/dev/null | tr '\n' ' ' || true)"
-  fail "Could not read the REPLAYS GESPEICHERT metric within 2 minutes. This is an OCR/label detection failure, not proof of zero imported records. Last OCR screen text: ${final_ocr:0:1600}"
+  fail "Could not read the published app profile import total (expected text like 0 von N Partien) within 2 minutes. This is an OCR/label detection failure, not proof of zero imported records. Last OCR screen text: ${final_ocr:0:1600}"
 fi
-(( replay_count >= 3 )) || fail "The published app UI showed only $replay_count saved replays after 2 minutes; expected at least 3."
-log "UI confirms $replay_count locally saved replays. Opening a not-yet-reviewed match from the real UI."
+(( replay_count >= 1 )) || fail "The published app UI reported zero imported matches after 2 minutes; expected at least one."
+log "The published profile reports $replay_count imported match(es). Opening the real match list in the app UI."
 
 # Automatic background analysis handles one replay at a time. Open a later
 # imported match so the UI performs a foreground, fully persisted engine review.

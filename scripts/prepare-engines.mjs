@@ -47,9 +47,10 @@ for (const [lockHash, group] of dependencyGroups) {
   const representative = group[0];
   const representativePath = path.resolve(representative.source);
   console.log(`Installing shared dependencies for ${group.length} exact engines (lock ${lockHash.slice(0, 12)})`);
-  const install = spawnSync(process.platform === "win32" ? "npm.cmd" : "npm", ["ci", "--ignore-scripts"], {
+  const install = spawnSync(process.platform === "win32" ? "npm.cmd" : "npm", ["ci", "--ignore-scripts", "--no-audit", "--no-fund"], {
     cwd: representativePath,
     encoding: "utf8",
+    maxBuffer: 32 * 1024 * 1024,
     shell: process.platform === "win32",
   });
   if (install.stdout) process.stdout.write(install.stdout);

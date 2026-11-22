@@ -294,39 +294,128 @@ if [[ ! "$replay_count" =~ ^[0-9]+$ ]]; then
   fail "Could not read the published app profile import total (expected text like 0 von N Partien) within 2 minutes. This is an OCR/label detection failure, not proof of zero imported records. Last OCR screen text: ${final_ocr:0:1600}"
 fi
 (( replay_count >= 1 )) || fail "The published app UI reported zero imported matches after 2 minutes; expected at least one."
-log "The published profile reports $replay_count imported match(es). Opening the real match list in the app UI."
+log "The published profile reports $replay_count imported match(es). Verifying the library page before opening a compatible replay."
 
-# Automatic background analysis handles one replay at a time. Open a later
-# imported match so the UI performs a foreground, fully persisted engine review.
-adb -s emulator-5554 shell input swipe 520 1550 520 600 450
-sleep 1
-adb -s emulator-5554 shell input swipe 520 1550 520 600 450
-sleep 2
-tap_text "Coach öffnen" 1 exact
-training_goal=false
-coach_poll_started=$SECONDS
-coach_attempt=0
-while (( SECONDS - coach_poll_started < 180 )); do
-  coach_attempt=$((coach_attempt + 1))
-  # OCR is sufficient to detect this visible WebView action. Bound each OCR
-  # call and the complete wait so a stalled OCR process cannot extend CI.
-  if ocr_contains "Als Trainingsziel übernehmen"; then
-    training_goal=true
-    break
-  fi
-  if (( coach_attempt % 5 == 0 )); then
-    log "Still waiting for the evidence-backed Coach training action (elapsed=$((SECONDS - coach_poll_started))s; poll=$coach_attempt)."
-  fi
-  if (( coach_attempt % 5 == 0 )); then adb -s emulator-5554 shell input swipe 520 1550 520 600 450 >/dev/null 2>&1 || true; fi
-  sleep 2
-done
-if [[ "$training_goal" == true ]]; then
-  tap_text "Als Trainingsziel übernehmen" 1 exact
-  sleep 3
-  log "A training goal was created through the actual Coach UI."
-else
-  fail "The real Coach UI did not expose an evidence-backed training goal after opening the verified replay."
-fi
+wait_for_library_page() {
+  local started=$SECONDS
+  while (( SECONDS - started < 45 )); do
+    if dump_ui && grep -q 'text="Spielbibliothek"' "$ui_xml"; then
+      log "Verified that the published app is on the Spielbibliothek page."
+      return 0
+    fi
+    sleep 2
+  done
+  fail "The Partien navigation did not reach the Spielbibliothek page within 45 seconds. Current UI: $(cat "$ui_xml" 2>/dev/null | head -c 3500)"
+}
+
+find_visible_supported_coach_button() {
+  python3 - "$ui_xml" <<'PY'
+import re
+import sys
+import xml.etree.ElementTree as ET
+
+try:
+    root = ET.parse(sys.argv[1]).getroot()
+except (OSError, ET.ParseError):
+    raise SystemExit(1)
+
+eligible_states = ("Bereit zur Analyse", "Hash-verifiziert")
+candidates = []
+for container in root.iter("node"):
+    descendants = list(container.iter("node"))
+    state = next((label for label in eligible_states
+                  if any(label.casefold() in (node.attrib.get("text", "") + " " + node.attrib.get("content-desc", "")).casefold()
+                         for node in descendants)), None)
+    if not state:
+        continue
+    for node in descendants:
+        if node.attrib.get("text", "").strip().casefold() != "coach öffnen":
+            continue
+        if node.attrib.get("enabled") != "true":
+            continue
+        match = re.fullmatch(r"\\[(\\d+),(\\d+)\\]\\[(\\d+),(\\d+)\\]", node.attrib.get("bounds", ""))
+        if not match:
+            continue
+        x1, y1, x2, y2 = map(int, match.groups())
+        if x2 <= x1 or y2 <= y1 or y1 < 70 or y2 > 1620:
+            continue
+        candidates.append((len(descendants), y1, x1, (x1 + x2) // 2, (y1 + y2) // 2, state))
+
+if candidates:
+    _, _, _, x, y, state = min(candidates, key=lambda item: (item[0], item[1]))
+    print(f"{x} {y} {state}")
+    raise SystemExit(0)
+
+states = sorted({node.attrib.get("text", "").strip()
+                 for node in root.iter("node")
+                 if node.attrib.get("text", "").strip() in (
+                     "Engine-Version fehlt", "Bereit zur Analyse", "Hash-verifiziert",
+                     "Nicht verifiziert", "Wartet auf Analyse", "Import fehlgeschlagen"
+                 )})
+print("NO_VISIBLE_SUPPORTED_CARD " + ", ".join(states), file=sys.stderr)
+raise SystemExit(1)
+PY
+}
+
+tap_supported_coach_card() {
+  local started=$SECONDS attempt=0 coords="" x="" y="" state=""
+  while (( SECONDS - started < 180 && attempt < 12 )); do
+    attempt=$((attempt + 1))
+    if dump_ui; then
+      if coords="$(find_visible_supported_coach_button 2>"$RUNNER_TEMP/ofrc-coach-card-search.log")"; then
+        read -r x y state <<< "$coords"
+        log "Opening a real imported match with a usable original engine: '$state' at $x,$y."
+        timeout 10s adb -s emulator-5554 shell input tap "$x" "$y" || fail "ADB tap failed for the compatible replay Coach action."
+        return 0
+      fi
+      if (( attempt == 1 || attempt % 3 == 0 )); then
+        log "No visible coach action for an engine-supported replay yet (scroll $attempt/12): $(cat "$RUNNER_TEMP/ofrc-coach-card-search.log" 2>/dev/null || true)"
+      fi
+    else
+      log "UI hierarchy unavailable while locating a compatible replay (scroll $attempt/12)."
+    fi
+    # The Engine-Abdeckung details panel is expanded when unsupported builds
+    # exist. Scroll the actual library content until a supported replay card
+    # and its Coach action have non-zero on-screen coordinates.
+    timeout 10s adb -s emulator-5554 shell input swipe 930 1450 930 430 650 >/dev/null 2>&1 || true
+    sleep 2
+  done
+  fail "No visible Coach action for a replay with an available exact original engine was found after bounded library scrolling. Last UI: $(cat "$ui_xml" 2>/dev/null | head -c 5000)"
+}
+
+tap_visible_training_goal() {
+  local started=$SECONDS attempt=0 coords="" x="" y=""
+  while (( SECONDS - started < 180 && attempt < 12 )); do
+    attempt=$((attempt + 1))
+    if dump_ui; then
+      coords="$(find_bounds "Als Trainingsziel übernehmen" exact 1 2>/dev/null || true)"
+      if [[ -n "$coords" ]]; then
+        read -r x y <<< "$coords"
+        timeout 10s adb -s emulator-5554 shell input tap "$x" "$y" || fail "ADB tap failed for the Coach training goal action."
+        log "Created a training goal through the real Coach UI."
+        return 0
+      fi
+      if (( attempt == 1 || attempt % 3 == 0 )); then
+        log "Waiting for a verified Coach training action to become visible (attempt $attempt/12)."
+      fi
+    fi
+    timeout 10s adb -s emulator-5554 shell input swipe 930 1450 930 430 650 >/dev/null 2>&1 || true
+    sleep 2
+  done
+  fail "The selected engine-supported replay did not expose the evidence-backed 'Als Trainingsziel übernehmen' action within 3 minutes. Last UI: $(cat "$ui_xml" 2>/dev/null | head -c 5000)"
+}
+
+# Require the navigation to land on the library before reading counts or
+# opening a match. The earlier script proceeded on the dashboard after a tap
+# and later searched for buttons which were not in the active page.
+wait_for_library_page
+# Automatic background analysis handles one replay at a time. Open a card only
+# when its UI state confirms an exact engine is available; unsupported replays
+# remain imported but must not be used to seed a verified Coach training goal.
+tap_supported_coach_card
+# The action is rendered only after the selected replay completes a verified
+# simulation and has an evidence-backed finding.
+tap_visible_training_goal
 
 log "Stopping the published app before the baseline storage snapshot."
 adb -s emulator-5554 shell am force-stop "$package_id"

@@ -147,13 +147,49 @@ for (let attempt = 1; attempt <= installerAttempts; attempt++) {
 }
 
 console.log("Extracting the independent portable ZIP.");
-const expand = spawnSync("powershell.exe", ["-NoProfile", "-NonInteractive", "-Command", "Expand-Archive -LiteralPath $env:OFRC_PORTABLE_ZIP -DestinationPath $env:OFRC_PORTABLE_DIR -Force"], {
-  encoding: "utf8", windowsHide: true,
-  env: { ...process.env, OFRC_PORTABLE_ZIP: portable, OFRC_PORTABLE_DIR: portableDir },
-  timeout: 180_000,
+// Inspect the archive before extraction and prefer the Windows runner's bsdtar
+// implementation. Expand-Archive has returned success with an empty destination
+// on this runner for a valid 117 MB electron-builder ZIP, so verify extracted files.
+const archiveList = spawnSync("tar.exe", ["-tf", portable], {
+  encoding: "utf8", windowsHide: true, timeout: 60_000,
 });
-if (expand.error || expand.status !== 0) {
-  failures.push({ kind: "portable ZIP extraction", status: expand.status, error: expand.error?.message, stdout: expand.stdout, stderr: expand.stderr });
+const archiveEntries = archiveList.status === 0
+  ? String(archiveList.stdout ?? "").split(/\\r?\\n/).filter(Boolean)
+  : [];
+console.log("PORTABLE_ZIP_ARCHIVE_LIST", JSON.stringify({
+  status: archiveList.status,
+  error: archiveList.error?.message,
+  entryCount: archiveEntries.length,
+  firstEntries: archiveEntries.slice(0, 20),
+  stderr: String(archiveList.stderr ?? "").slice(-2000),
+}));
+let extraction = { status: null, error: null, stdout: "", stderr: "", method: "tar.exe" };
+if (archiveEntries.length > 0) {
+  const tarExtract = spawnSync("tar.exe", ["-xf", portable, "-C", portableDir], {
+    encoding: "utf8", windowsHide: true, timeout: 180_000,
+  });
+  extraction = { status: tarExtract.status, error: tarExtract.error?.message ?? null, stdout: tarExtract.stdout ?? "", stderr: tarExtract.stderr ?? "", method: "tar.exe" };
+}
+if (extraction.status !== 0 || readdirSync(portableDir).length === 0) {
+  const powershellExtract = spawnSync("powershell.exe", ["-NoProfile", "-NonInteractive", "-Command", "Expand-Archive -LiteralPath $env:OFRC_PORTABLE_ZIP -DestinationPath $env:OFRC_PORTABLE_DIR -Force"], {
+    encoding: "utf8", windowsHide: true,
+    env: { ...process.env, OFRC_PORTABLE_ZIP: portable, OFRC_PORTABLE_DIR: portableDir },
+    timeout: 180_000,
+  });
+  extraction = {
+    status: powershellExtract.status,
+    error: powershellExtract.error?.message ?? null,
+    stdout: String(powershellExtract.stdout ?? ""),
+    stderr: String(powershellExtract.stderr ?? ""),
+    method: "Expand-Archive fallback",
+  };
+}
+console.log("PORTABLE_ZIP_EXTRACTION", JSON.stringify({
+  ...extraction,
+  extractedTopLevelEntries: readdirSync(portableDir),
+}));
+if (extraction.error || extraction.status !== 0 || readdirSync(portableDir).length === 0) {
+  failures.push({ kind: "portable ZIP extraction", ...extraction, extractedTopLevelEntries: readdirSync(portableDir) });
 } else {
   const portableCandidates = findPortableApplicationRoots(portableDir);
   if (portableCandidates.length !== 1) {

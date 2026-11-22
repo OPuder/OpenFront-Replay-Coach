@@ -4,6 +4,9 @@ on:
   # Main merges enter the fully gated release pipeline; manual dispatch remains available for retries.
   push:
     branches: [main]
+    # Workflow-only maintenance must not publish a new application release.
+    paths-ignore:
+      - ".github/workflows/**"
   workflow_dispatch:
 
 permissions:

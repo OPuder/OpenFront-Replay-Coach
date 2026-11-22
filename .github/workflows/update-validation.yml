@@ -1,10 +1,10 @@
 name: Update system validation
 
 on:
-  pull_request:
-  push:
-    branches: [main]
   workflow_dispatch:
+  schedule:
+    # The emulator-based upgrade test is intentionally expensive; run it monthly.
+    - cron: "17 4 1 * *"
 
 permissions:
   contents: read

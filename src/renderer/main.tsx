@@ -42,6 +42,7 @@ type BatchMatchItem = Omit<StoredMatchEntry, 'status' | 'analysisStatus'> & {
 
 function App() {
   const [replay, setReplay] = useState<ReplaySummary | null>(null);
+  const [selectedLongitudinalCohortKey, setSelectedLongitudinalCohortKey] = useState<string | null>(null);
   const [activePage, setActivePage] = useState<'dashboard'|'games'|'analysis'>('dashboard');
   const [mapRefreshKey, setMapRefreshKey] = useState(0);
   function navigateTo(page: 'dashboard'|'games'|'analysis') {
@@ -522,7 +523,7 @@ function App() {
     durationSeconds:item.game.durationSeconds??item.result?.durationSeconds??null,
     analysisStatus:item.analysisStatus??(item.status==='engine-mismatch'?'unsupported':'pending'),
     simulation:item.simulation??null,
-  }))),[batchMatches]);
+  }))),selectedLongitudinalCohortKey),[batchMatches,selectedLongitudinalCohortKey]);
   const selectedImportedMatches=batchMatches.filter(item=>selectedGameIds.includes(item.game.gameId)&&Boolean(item.result));
   const selectedPendingAnalysisCount=selectedImportedMatches.filter(item=>item.analysisStatus!=='verified'||item.simulation?.status!=='verified').length;
   const recentGames = [...loadedGames].filter(g=>g.start).sort((a,b)=>new Date(b.start!).getTime()-new Date(a.start!).getTime()).slice(0,10);
@@ -585,6 +586,22 @@ function App() {
               <div><b>{longitudinalReport.verifiedMatches}</b><span>Verifiziert</span></div>
               <div><b>{longitudinalReport.comparableMatches}</b><span>Vergleichbar</span></div>
               <div><b>{longitudinalReport.excludedMatches}</b><span>Ausgeschlossen</span></div>
+            </div>
+            <div className="longitudinal-cohort-control">
+              <label htmlFor="longitudinal-cohort">Vergleichsgruppe</label>
+              <select
+                id="longitudinal-cohort"
+                value={longitudinalReport.selectedCohortKey ?? ''}
+                onChange={event => setSelectedLongitudinalCohortKey(event.target.value || null)}
+                disabled={longitudinalReport.cohortOptions.length === 0}
+                aria-describedby="longitudinal-cohort-help"
+              >
+                {longitudinalReport.cohortOptions.map(cohort => (
+                  <option key={cohort.key} value={cohort.key}>{cohort.label} · {cohort.matches} Partien</option>
+                ))}
+                {!longitudinalReport.cohortOptions.length && <option value="">Noch keine verifizierte Gruppe</option>}
+              </select>
+              <small id="longitudinal-cohort-help">Nur vollständig verifizierte Partien desselben Modus und Spieltyps werden miteinander verglichen. Andere Gruppen bleiben getrennt.</small>
             </div>
             <p className="longitudinal-coverage">{longitudinalReport.message}</p>
             {longitudinalReport.status==='ready' ? <>

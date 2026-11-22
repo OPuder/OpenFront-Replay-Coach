@@ -233,6 +233,18 @@ tap_text "Konto laden"
 # the post-upgrade inspector verifies the imported records in real IndexedDB.
 sleep 20
 tap_text "Partien" last exact
+wait_for_library_page() {
+  local started=$SECONDS
+  while (( SECONDS - started < 45 )); do
+    if dump_ui && grep -q 'text="Spielbibliothek"' "$ui_xml"; then
+      log "Verified that the published app is on the Spielbibliothek page."
+      return 0
+    fi
+    sleep 2
+  done
+  fail "The Partien navigation did not reach the Spielbibliothek page within 45 seconds. Current UI: $(cat "$ui_xml" 2>/dev/null | head -c 3500)"
+}
+wait_for_library_page
 read_imported_match_count() {
   # Read the rendered app text from Android's actual WebView accessibility
   # hierarchy. The published app exposes the import total as e.g.
@@ -260,7 +272,8 @@ for node in root.iter("node"):
         if value:
             texts.append(value)
 
-for value in texts:
+combined_text = " ".join(texts)
+for value in (combined_text, *texts):
     imported = re.search(r"\b(\d+)\s+Replays?\s+importiert\b", value, re.IGNORECASE)
     if imported:
         print(imported.group(1))
@@ -279,9 +292,7 @@ poll_started=$SECONDS
 attempt=0
 while (( SECONDS - poll_started < 120 )); do
   attempt=$((attempt + 1))
-  # The published APK exposes only a WebView container. Re-dumping the full
-  # UIAutomator hierarchy on every poll can block for 20-50 seconds; bounded
-  # OCR is the intended signal here.
+  # Read the accessible WebView hierarchy, not a guessed dashboard statistic.
   replay_count="$(read_imported_match_count)"
   if [[ "$replay_count" =~ ^[0-9]+$ ]] && (( replay_count >= 1 )); then break; fi
   if (( attempt % 5 == 0 )); then
@@ -295,18 +306,6 @@ if [[ ! "$replay_count" =~ ^[0-9]+$ ]]; then
 fi
 (( replay_count >= 1 )) || fail "The published app UI reported zero imported matches after 2 minutes; expected at least one."
 log "The published profile reports $replay_count imported match(es). Verifying the library page before opening a compatible replay."
-
-wait_for_library_page() {
-  local started=$SECONDS
-  while (( SECONDS - started < 45 )); do
-    if dump_ui && grep -q 'text="Spielbibliothek"' "$ui_xml"; then
-      log "Verified that the published app is on the Spielbibliothek page."
-      return 0
-    fi
-    sleep 2
-  done
-  fail "The Partien navigation did not reach the Spielbibliothek page within 45 seconds. Current UI: $(cat "$ui_xml" 2>/dev/null | head -c 3500)"
-}
 
 find_visible_supported_coach_button() {
   python3 - "$ui_xml" <<'PY'
@@ -333,7 +332,7 @@ for container in root.iter("node"):
             continue
         if node.attrib.get("enabled") != "true":
             continue
-        match = re.fullmatch(r"\\[(\\d+),(\\d+)\\]\\[(\\d+),(\\d+)\\]", node.attrib.get("bounds", ""))
+        match = re.fullmatch(r"\[(\d+),(\d+)\]\[(\d+),(\d+)\]", node.attrib.get("bounds", ""))
         if not match:
             continue
         x1, y1, x2, y2 = map(int, match.groups())
@@ -405,10 +404,6 @@ tap_visible_training_goal() {
   fail "The selected engine-supported replay did not expose the evidence-backed 'Als Trainingsziel übernehmen' action within 3 minutes. Last UI: $(cat "$ui_xml" 2>/dev/null | head -c 5000)"
 }
 
-# Require the navigation to land on the library before reading counts or
-# opening a match. The earlier script proceeded on the dashboard after a tap
-# and later searched for buttons which were not in the active page.
-wait_for_library_page
 # Automatic background analysis handles one replay at a time. Open a card only
 # when its UI state confirms an exact engine is available; unsupported replays
 # remain imported but must not be used to seed a verified Coach training goal.

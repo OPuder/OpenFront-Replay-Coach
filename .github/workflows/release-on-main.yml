@@ -20,7 +20,7 @@ concurrency:
 
 jobs:
   prepare-release:
-    name: Select and pin the next release version
+    name: Validate the reviewed package version
     runs-on: ubuntu-latest
     outputs:
       skip: ${{ steps.version.outputs.skip }}

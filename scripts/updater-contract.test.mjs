@@ -28,9 +28,9 @@ assert.match(android, /MessageDigest\.getInstance\("SHA-256"\)/);
 assert.match(android, /releases\/download/);
 assert.match(installer, /registerPlugin\(ApkUpdaterPlugin\.class\)/);
 assert.match(installer, /updater-fileprovider/);
-assert.match(installer, /ApplicationInfo\\.FLAG_DEBUGGABLE/);
-assert.match(installer, /WebView\\.setWebContentsDebuggingEnabled\\(true\\)/);
-assert.match(installer, /if \\(\\(getApplicationInfo\\(\\)\\.flags & android\\.content\\.pm\\.ApplicationInfo\\.FLAG_DEBUGGABLE\\) !== 0\\)/,
+assert.match(installer, /ApplicationInfo\.FLAG_DEBUGGABLE/);
+assert.match(installer, /WebView\.setWebContentsDebuggingEnabled\(true\)/);
+assert.match(installer, /if \(\(getApplicationInfo\(\)\.flags & android\.content\.pm\.ApplicationInfo\.FLAG_DEBUGGABLE\) !== 0\)/,
   "WebView storage inspection must be enabled only for debuggable Android test builds.");
 assert.match(renderer, /installDesktopUpdate/);
 assert.match(renderer, /installAndroidUpdate/);
@@ -240,9 +240,9 @@ const engineCacheWorkflows = [
   read(".github/workflows/release-on-main.yml"),
 ];
 for (const workflow of engineCacheWorkflows) {
-  assert.match(workflow, /actions\\/cache@v4[\\s\\S]*?path: \.git\\/modules[\\s\\S]*?key: openfront-engine-git-\$\{\{ runner\\.os \}\}-\$\{\{ hashFiles\\('\.gitmodules', 'engine-build\\/engines\.json'\\) \}\}/,
+  assert.match(workflow, /actions\/cache@v4[\s\S]*?path: \.git\/modules[\s\S]*?key: openfront-engine-git-\$\{\{ runner\.os \}\}-\$\{\{ hashFiles\('\.gitmodules', 'engine-build\/engines\.json'\) \}\}/,
     "Engine cache must be keyed by runner OS, .gitmodules and the exact engine catalog.");
-  assert.doesNotMatch(workflow, /openfront-engine-git-\$\{\{ runner\\.os \}\}-\$\{\{ github\\.job \}\}/,
+  assert.doesNotMatch(workflow, /openfront-engine-git-\$\{\{ runner\.os \}\}-\$\{\{ github\.job \}\}/,
     "Engine Git objects must be shared across jobs.");
 }
 

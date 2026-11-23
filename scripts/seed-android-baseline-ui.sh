@@ -222,18 +222,33 @@ android_prepare_emulator || fail "Baseline emulator preparation failed; inspect 
 log "Launching the genuine published v2.2.51 APK and classifying ADB, ActivityManager and crash failures."
 android_launch_package "$package_id" "the published v2.2.51 baseline APK" || fail "Published baseline app launch failed; see classified emulator diagnostics."
 sleep 20
-if ! dump_ui; then
-  log "Published baseline exposes no readable UIAutomator hierarchy; locating the profile field through OCR."
-fi
-coords="$(find_bounds "" edit 2>/dev/null || true)"
+# A non-debuggable WebView can initially expose only its container to
+# UIAutomator. The same screen may expose its DOM-backed EditText nodes a few
+# seconds later, so do not treat the first valid-but-shallow hierarchy as a
+# missing field or fall back to OCR immediately.
+coords=""
+for attempt in $(seq 1 15); do
+  if dump_ui; then
+    coords="$(find_bounds "" edit 1 2>/dev/null || true)"
+    if [[ -n "$coords" ]]; then
+      log "Located the profile input through the expanded WebView accessibility hierarchy (attempt $attempt/15)."
+      break
+    fi
+  fi
+  if (( attempt % 3 == 0 )); then
+    log "Waiting for the WebView profile EditText to appear in UIAutomator (attempt $attempt/15)."
+  fi
+  sleep 2
+done
 if [[ -z "$coords" ]]; then
+  log "The WebView accessibility tree did not expose an editable field after bounded retries; trying screenshot OCR as a fallback."
   coords="$(ocr_find_bounds "OpenFront-Profillink" 1 || true)"
   if [[ -z "$coords" ]]; then coords="$(ocr_find_bounds "Profillink" 1 || true)"; fi
   if [[ -z "$coords" ]]; then coords="$(ocr_find_bounds "Spieler-ID" 1 || true)"; fi
 fi
 if [[ -z "$coords" ]]; then
   ocr_dump="$(ocr_text 2>/dev/null | tr '\n' ' ' || true)"
-  fail "Could not locate the profile input field in the WebView via UIAutomator or OCR. OCR text: ${ocr_dump:0:1200}"
+  fail "Could not locate the profile input field in the WebView after waiting for accessibility nodes and trying OCR. OCR text: ${ocr_dump:0:1200}"
 fi
 read -r input_x input_y <<< "$coords"
 log "Entering the archived player ID through the real published app UI at $input_x,$input_y."

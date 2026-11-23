@@ -30,7 +30,7 @@ assert.match(installer, /registerPlugin\(ApkUpdaterPlugin\.class\)/);
 assert.match(installer, /updater-fileprovider/);
 assert.match(installer, /ApplicationInfo\.FLAG_DEBUGGABLE/);
 assert.match(installer, /WebView\.setWebContentsDebuggingEnabled\(true\)/);
-assert.match(installer, /if \(\(getApplicationInfo\(\)\.flags & android\.content\.pm\.ApplicationInfo\.FLAG_DEBUGGABLE\) !== 0\)/,
+assert.match(installer, /if \(\(getApplicationInfo\(\)\.flags & android\.content\.pm\.ApplicationInfo\.FLAG_DEBUGGABLE\) != 0\)/,
   "WebView storage inspection must be enabled only for debuggable Android test builds.");
 assert.match(renderer, /installDesktopUpdate/);
 assert.match(renderer, /installAndroidUpdate/);

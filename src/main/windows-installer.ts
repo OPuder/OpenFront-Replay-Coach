@@ -2,7 +2,6 @@ import path from 'node:path';
 import { spawn } from 'node:child_process';
 import fs from 'node:fs/promises';
 import os from 'node:os';
-import { spawn as spawnCross } from 'node:child_process';
 import { app } from 'electron';
 
 /**

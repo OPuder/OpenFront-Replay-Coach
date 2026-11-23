@@ -233,9 +233,9 @@ const engineCacheWorkflows = [
   read(".github/workflows/release-on-main.yml"),
 ];
 for (const workflow of engineCacheWorkflows) {
-  assert.match(workflow, /actions\\/cache@v4/, "Engine preparation workflow must use actions/cache@v4.");
-  assert.match(workflow, /path: \.git\\/modules/, "Engine Git object cache must include .git/modules.");
-  assert.match(workflow, /hashFiles\\('\.gitmodules', 'engine-build\\/engines\.json'\\)/, "Engine cache key must track submodule and engine catalog changes.");
+  assert.match(workflow, /actions\/cache@v4/, "Engine preparation workflow must use actions/cache@v4.");
+  assert.match(workflow, /path: \.git\/modules/, "Engine Git object cache must include .git/modules.");
+  assert.match(workflow, /hashFiles\('\.gitmodules', 'engine-build\/engines\.json'\)/, "Engine cache key must track submodule and engine catalog changes.");
 }
 
 const androidEmulatorDiagnostics = read("scripts/android-emulator-diagnostics.sh");

@@ -56,10 +56,10 @@ jobs:
             exit 0
           fi
 
-          latest_tag="$(git tag --list 'v[0-9]*' | grep -E '^v[0-9]+\\.[0-9]+\\.[0-9]+$' | sort -V | tail -n 1 || true)"
+          latest_tag="$(git tag --list 'v[0-9]*' | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | sort -V | tail -n 1 || true)"
           base_version="$(node -p "require('./package.json').version")"
           lock_version="$(node -p "require('./package-lock.json').version")"
-          if [[ ! "$base_version" =~ ^[0-9]+\\.[0-9]+\\.[0-9]+$ ]]; then
+          if [[ ! "$base_version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
             echo "::error::package.json must contain a stable x.y.z version (found: $base_version)"
             exit 1
           fi
@@ -81,7 +81,7 @@ jobs:
               echo "::notice::Package version $base_version is already released. A version bump must be reviewed and merged through a pull request before another release."
               exit 0
             fi
-            if [[ "$(printf '%s\\n%s\\n' "$latest_version" "$base_version" | sort -V | head -n 1)" != "$latest_version" ]]; then
+            if [[ "$(printf '%s\n%s\n' "$latest_version" "$base_version" | sort -V | head -n 1)" != "$latest_version" ]]; then
               echo "::error::Package version $base_version is older than the latest release $latest_tag."
               exit 1
             fi

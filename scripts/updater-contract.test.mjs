@@ -28,6 +28,10 @@ assert.match(android, /MessageDigest\.getInstance\("SHA-256"\)/);
 assert.match(android, /releases\/download/);
 assert.match(installer, /registerPlugin\(ApkUpdaterPlugin\.class\)/);
 assert.match(installer, /updater-fileprovider/);
+assert.match(installer, /ApplicationInfo\\.FLAG_DEBUGGABLE/);
+assert.match(installer, /WebView\\.setWebContentsDebuggingEnabled\\(true\\)/);
+assert.match(installer, /if \\(\\(getApplicationInfo\\(\\)\\.flags & android\\.content\\.pm\\.ApplicationInfo\\.FLAG_DEBUGGABLE\\) !== 0\\)/,
+  "WebView storage inspection must be enabled only for debuggable Android test builds.");
 assert.match(renderer, /installDesktopUpdate/);
 assert.match(renderer, /installAndroidUpdate/);
 assert.doesNotMatch(renderer, /androidAutoUpdateAttempted/);
@@ -227,15 +231,19 @@ assert.ok(androidValidationWorkflow.includes("bash -n scripts/android-emulator-d
 // The CI workflow deliberately shares one cache between its core and live-replay jobs;
 // release and update validation may scope caches by job. Do not hard-code retired
 // workflow filenames or require one cache-key strategy for every workflow.
+// Every engine-preparation workflow shares the same exact-object cache key.
+// This avoids repeated historical submodule fetches across jobs and workflows.
 const engineCacheWorkflows = [
   read(".github/workflows/ci.yml"),
+  read(".github/workflows/discover-openfront-engine.yml"),
   read(".github/workflows/update-validation.yml"),
   read(".github/workflows/release-on-main.yml"),
 ];
 for (const workflow of engineCacheWorkflows) {
-  assert.match(workflow, /actions\/cache@v4/, "Engine preparation workflow must use actions/cache@v4.");
-  assert.match(workflow, /path: \.git\/modules/, "Engine Git object cache must include .git/modules.");
-  assert.match(workflow, /hashFiles\('\.gitmodules', 'engine-build\/engines\.json'\)/, "Engine cache key must track submodule and engine catalog changes.");
+  assert.match(workflow, /actions\\/cache@v4[\\s\\S]*?path: \.git\\/modules[\\s\\S]*?key: openfront-engine-git-\$\{\{ runner\\.os \}\}-\$\{\{ hashFiles\\('\.gitmodules', 'engine-build\\/engines\.json'\\) \}\}/,
+    "Engine cache must be keyed by runner OS, .gitmodules and the exact engine catalog.");
+  assert.doesNotMatch(workflow, /openfront-engine-git-\$\{\{ runner\\.os \}\}-\$\{\{ github\\.job \}\}/,
+    "Engine Git objects must be shared across jobs.");
 }
 
 const androidEmulatorDiagnostics = read("scripts/android-emulator-diagnostics.sh");

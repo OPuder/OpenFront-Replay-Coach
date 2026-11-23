@@ -7,6 +7,9 @@ on:
     # Workflow-only maintenance must not publish a new application release.
     paths-ignore:
       - ".github/workflows/**"
+      - "scripts/prepare-engines.mjs"
+      - "scripts/install-android-updater-plugin.mjs"
+      - "scripts/updater-contract.test.mjs"
       - "src/renderer/**/*.d.ts"
       - "src/renderer/*.d.ts"
   workflow_dispatch:

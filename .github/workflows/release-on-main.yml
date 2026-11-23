@@ -2,8 +2,8 @@ name: Release all editions from release branches
 
 on:
   # Only a QA-approved release/* branch may enter the release pipeline.
-  push:
-    branches: [main]
+    push:
+      branches: ["release/**"]
     # Workflow-only maintenance must not publish a new application release.
     paths-ignore:
       - ".github/workflows/**"

@@ -114,7 +114,7 @@ jobs:
     needs: prepare-release
     if: needs.prepare-release.outputs.skip != 'true'
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 60
     steps:
       - name: Check out the exact release source
         uses: actions/checkout@v4
@@ -126,7 +126,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: .git/modules
-          key: openfront-engine-git-${{ runner.os }}-${{ github.job }}-${{ hashFiles('.gitmodules', 'engine-build/engines.json') }}
+          key: openfront-engine-git-${{ runner.os }}-${{ hashFiles('.gitmodules', 'engine-build/engines.json') }}
           restore-keys: |
             openfront-engine-git-${{ runner.os }}-
 
@@ -142,6 +142,7 @@ jobs:
         run: npm ci
 
       - name: Prepare all exact historical OpenFront engines
+        timeout-minutes: 40
         run: npm run prepare:engines
 
       - name: Build all exact replay engine worker bundles
@@ -199,6 +200,7 @@ jobs:
         run: npm install --global npm@12.1.0
 
       - name: Prepare all exact historical OpenFront engines
+        timeout-minutes: 40
         run: npm run prepare:engines
 
       - name: Install Coach dependencies
@@ -256,6 +258,7 @@ jobs:
         run: npm install --global npm@12.1.0
 
       - name: Prepare all exact historical OpenFront engines
+        timeout-minutes: 40
         run: npm run prepare:engines
 
       - name: Install Coach and Capacitor dependencies

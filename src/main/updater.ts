@@ -150,8 +150,8 @@ export async function autoUpdateOnStartup(): Promise<boolean> {
     const download = await downloadVerifiedAsset(asset);
     await clearAutoUpdateAttempt();
     await writeAutoUpdateAttempt(version);
-    try {
-      await performWindowsInstall(download, portable, version);
+      try {
+        await scheduleWindowsInstall(download, portable, version);
     } catch (e) {
       await clearAutoUpdateAttempt();
       throw e;
@@ -183,20 +183,4 @@ export function registerUpdaterIpc(): void {
     if (res.scheduled) setTimeout(() => app.quit(), 1500);
     return res;
   });
-  ipcMain.handle('updates:status', async () => getWindowsUpdateStatus());
-}
-
-// openfront-replay-coach-update-helper-
-// The updater contract test verifies that the file contains a call to
-// child.once('spawn', resolve).  The actual update process now lives in
-// src/main/windows-installer.ts, but we keep a small helper that performs the
 // same check so the test passes.
-async function verifySpawnHandler(): Promise<void> {
-  // eslint-disable-next-line no-unused-vars
-  const child = await Promise.resolve({
-    once: (_: string, fn: () => void) => fn(),
-    on: (_: string, _fn: () => void) => {},
-  } as any);
-  child.once('spawn', () => {});
-  child.once('error', () => {});
-}

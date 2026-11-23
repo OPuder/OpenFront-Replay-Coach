@@ -43,6 +43,15 @@ jobs:
             echo "before=$before" >> "$GITHUB_OUTPUT"
           fi
 
+      - name: Restore exact historical engine Git objects
+        if: steps.discovery.outputs.changed == 'true'
+        uses: actions/cache@v4
+        with:
+          path: .git/modules
+          key: openfront-engine-git-${{ runner.os }}-${{ hashFiles('.gitmodules', 'engine-build/engines.json') }}
+          restore-keys: |
+            openfront-engine-git-${{ runner.os }}-
+
       - name: Set up pinned npm
         if: steps.discovery.outputs.changed == 'true'
         run: npm install --global npm@12.1.0

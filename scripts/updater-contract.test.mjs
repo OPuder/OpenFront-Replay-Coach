@@ -45,6 +45,21 @@ assert.match(releaseWorkflow, /permanent Android release signing key is required
 assert.ok(releaseWorkflow.includes("grep -Eo '[[:xdigit:]]{64}'"), "Release workflow must extract SHA-256 certificate fingerprints robustly.");
 assert.match(releaseWorkflow, /Android signing certificate changed/);
 assert.match(releaseWorkflow, /needs\.build-android\.outputs\.signing_mode == 'permanent release key'/);
+assert.match(releaseWorkflow, /^permissions:\s*\n\s+contents: read/m,
+  "Release preparation must be read-only; only the publishing job may write release assets.");
+assert.doesNotMatch(releaseWorkflow, /git push origin HEAD:main|git push origin main/,
+  "Release automation must never push commits directly to main.");
+assert.doesNotMatch(releaseWorkflow, /git commit -m "chore\(release\): prepare/,
+  "Release automation must not create unreviewed version commits.");
+assert.match(releaseWorkflow, /package-lock\.json version/,
+  "The release gate must verify package.json and package-lock.json versions match.");
+assert.match(releaseWorkflow, /A version bump must be reviewed and merged through a pull request/,
+  "A new release must require a reviewed version bump.");
+assert.match(releaseWorkflow, /Package version .* is older than the latest release/,
+  "A package version older than the latest tag must fail closed.");
+assert.match(releaseWorkflow, /No repository files are modified or pushed/,
+  "Release selection must not mutate repository files.");
+
 assert.match(updater, /child\.once\('spawn', resolve\)/);
 assert.match(updater, /child\.once\('error', reject\)/);
 assert.match(updater, /Add-Content -LiteralPath \$Log/);

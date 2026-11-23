@@ -41,6 +41,9 @@ assert.match(renderer, /keine Android-APK veröffentlicht/);
 assert.doesNotMatch(renderer, /Web\/PWA|serviceWorker|isBrowserPwa/);
 assert.doesNotMatch(releaseWorkflow, /assembleDebug/);
 assert.match(releaseWorkflow, /push:\s*branches: \[main\]/);
+assert.match(releaseWorkflow, /paths-ignore:[\s\S]*scripts\/prepare-engines\.mjs[\s\S]*scripts\/install-android-updater-plugin\.mjs[\s\S]*scripts\/updater-contract\.test\.mjs/,
+  "Tooling-only integration commits must not publish an application release.");
+
 assert.match(releaseWorkflow, /permanent Android release signing key is required/);
 assert.ok(releaseWorkflow.includes("grep -Eo '[[:xdigit:]]{64}'"), "Release workflow must extract SHA-256 certificate fingerprints robustly.");
 assert.match(releaseWorkflow, /Android signing certificate changed/);

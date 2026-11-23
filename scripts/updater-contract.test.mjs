@@ -223,15 +223,19 @@ assert.ok(androidValidationWorkflow.includes("bash -n scripts/test-android-relea
 assert.ok(androidValidationWorkflow.includes("bash -n scripts/android-emulator-diagnostics.sh"));
 
 
+// Validate the engine-object cache in the workflows that actually exist on main.
+// The CI workflow deliberately shares one cache between its core and live-replay jobs;
+// release and update validation may scope caches by job. Do not hard-code retired
+// workflow filenames or require one cache-key strategy for every workflow.
 const engineCacheWorkflows = [
-  read(".github/workflows/build-windows.yml"),
-  read(".github/workflows/replay-compatibility.yml"),
-  read(".github/workflows/validate-engine.yml"),
+  read(".github/workflows/ci.yml"),
   read(".github/workflows/update-validation.yml"),
   read(".github/workflows/release-on-main.yml"),
 ];
 for (const workflow of engineCacheWorkflows) {
-  assert.match(workflow, /Restore exact historical engine Git objects[\s\S]*?actions\/cache@v4[\s\S]*?path: \.git\/modules[\s\S]*?github\.job/);
+  assert.match(workflow, /actions\\/cache@v4/, "Engine preparation workflow must use actions/cache@v4.");
+  assert.match(workflow, /path: \.git\\/modules/, "Engine Git object cache must include .git/modules.");
+  assert.match(workflow, /hashFiles\\('\.gitmodules', 'engine-build\\/engines\.json'\\)/, "Engine cache key must track submodule and engine catalog changes.");
 }
 
 const androidEmulatorDiagnostics = read("scripts/android-emulator-diagnostics.sh");

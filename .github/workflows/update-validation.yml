@@ -1,6 +1,19 @@
 name: Update system validation
 
 on:
+  pull_request:
+    branches: [main]
+    paths:
+      - ".github/workflows/**"
+      - "scripts/prepare-engines.mjs"
+      - "scripts/updater-contract.test.mjs"
+      - "engine-build/engines.json"
+      - "package.json"
+      - "package-lock.json"
+      - "src/main/**"
+      - "android-updater-template/**"
+      - "scripts/test-android-*.sh"
+      - "scripts/android-emulator-diagnostics.sh"
   workflow_dispatch:
   schedule:
     # The emulator-based upgrade test is intentionally expensive; run it monthly.

@@ -1,0 +1,135 @@
+name: Validate Android APK
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [release-automation-2.2.4, chore/verify-permanent-android-signing, fix/android-keystore-validation, feature/release-update-system]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-android:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+        with:
+          submodules: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24.15.0"
+          cache: npm
+
+      - name: Set up pinned npm
+        run: npm install --global npm@12.1.0
+
+      - name: Prepare all exact historical OpenFront engines
+        run: npm run prepare:engines
+
+      - name: Install Coach and Capacitor dependencies
+        run: npm ci
+
+      - name: Build the shared renderer and original replay engine
+        run: npm run build:web
+
+      - name: Verify strict Android WebView PID targeting
+        run: node --test scripts/android-webview-target.test.mjs
+
+      - name: Test player-elimination phase regression
+        run: npm run test:phase-survival
+
+      - name: Test pro coaching algorithm and phase analytics
+        run: npm run test:coach
+
+      - name: Smoke-test native Android configuration
+        run: node scripts/smoke-test-android-config.mjs
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v4
+        with:
+          packages: "platforms;android-36 build-tools;36.0.0"
+
+      - name: Add Android build tools to PATH
+        run: echo "$ANDROID_HOME/build-tools/36.0.0" >> "$GITHUB_PATH"
+
+      - name: Generate and sync Android project
+        run: |
+          npx cap add android
+          npx cap sync android
+          node scripts/install-android-updater-plugin.mjs
+
+      - name: Generate branded Android launcher and splash assets
+        run: npx capacitor-assets generate --android --iconBackgroundColor "#0b1320" --splashBackgroundColor "#0b1320"
+
+      - name: Set Android application version
+        run: node scripts/set-android-version.mjs "$(node -p "require('./package.json').version")"
+
+      - name: Validate permanent keystore credentials
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: node scripts/verify-android-keystore.mjs
+
+      - name: Build APK with permanent signing when configured
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          set -Eeuo pipefail
+          if [[ -n "$ANDROID_KEYSTORE_BASE64" && -n "$ANDROID_KEYSTORE_PASSWORD" && -n "$ANDROID_KEY_ALIAS" && -n "$ANDROID_KEY_PASSWORD" ]]; then
+            keystore="$RUNNER_TEMP/openfront-replay-coach-release.jks"
+            printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$keystore"
+            test -s "$keystore"
+            export ANDROID_KEYSTORE_PATH="$keystore"
+            node scripts/configure-android-signing.mjs
+            (cd android && ./gradlew --no-daemon assembleRelease)
+            echo "APK_PATH=android/app/build/outputs/apk/release/app-release.apk" >> "$GITHUB_ENV"
+            echo "APK_SIGNING_MODE=permanent" >> "$GITHUB_ENV"
+          else
+            (cd android && ./gradlew --no-daemon assembleDebug)
+            echo "APK_PATH=android/app/build/outputs/apk/debug/app-debug.apk" >> "$GITHUB_ENV"
+            echo "APK_SIGNING_MODE=debug" >> "$GITHUB_ENV"
+          fi
+
+      - name: Verify APK signature, package ID and version
+        run: |
+          set -Eeuo pipefail
+          version="$(node -p "require('./package.json').version")"
+          test -s "$APK_PATH"
+          "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --verbose --print-certs "$APK_PATH"
+          "$ANDROID_HOME/build-tools/36.0.0/aapt" dump badging "$APK_PATH" | tee /tmp/apk-badging.txt
+          grep -F "package: name='de.openfront.replaycoach'" /tmp/apk-badging.txt
+          grep -F "versionName='$version'" /tmp/apk-badging.txt
+          echo "Verified APK signing mode: $APK_SIGNING_MODE"
+
+      - name: Upload validated Android APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: OpenFront-Replay-Coach-Android-Validated
+          path: ${{ env.APK_PATH }}
+          if-no-files-found: error
+          retention-days: 14
+          name: OpenFront-Replay-Coach-Android-Validated
+          path: ${{ env.APK_PATH }}
+          if-no-files-found: error
+          retention-days: 14

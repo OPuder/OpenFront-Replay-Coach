@@ -606,3 +606,330 @@ test('match development score uses arithmetic median for an even number of valid
   assert.equal(report.phases.filter(phase=>phase.momentumIndex!==null&&phase.activeSamples>=3).length,2);
   assert.equal(report.matchScore,71,'two valid phase indexes should use their arithmetic median, not the larger value');
 });
+
+
+test('strategic impact outranks confidence when the high-impact evidence is sparse',()=>{
+ const samples=[sample(0,{tiles:100,goldEarned:100}),sample(500,{tiles:110,goldEarned:120})];
+ const spawn={clientID:'p1',name:'Player',startTiles:100,centerX:1,centerY:1,adjacentRivals:[2],rivalBorderContacts:3,nearestRivalDistance:2,classification:'contested'};
+ const withSpawn=samples.map((item,index)=>({...item,spawnPositions:index===0?[spawn]:[]}));
+ const actions=Array.from({length:3},(_,i)=>action(5+i*10,{
+   delta30s:{tiles:0,gold:-10,troops:-80},
+   targetDelta30s:{tiles:0,gold:0,troops:0},
+ }));
+ const report=buildProCoachReport(withSpawn,actions,'p1',60);
+ const attack=report.findings.find(item=>item.id==='attack-follow-through');
+ const position=report.findings.find(item=>item.id==='spawn-position-review');
+ assert.equal(attack?.priority,'high');
+ assert.equal(attack?.confidence,'low');
+ assert.equal(position?.priority,'medium');
+ assert.equal(position?.confidence,'medium');
+ assert.ok(report.findings.indexOf(attack)<report.findings.indexOf(position));
+});
+
+test('short sparse replays do not receive fabricated phase rates',()=>{
+ const report=buildProCoachReport([
+  sample(0,{tiles:100,goldEarned:100}),
+  sample(20,{tiles:120,goldEarned:140}),
+ ],[],'p1',600);
+ assert.ok(report.phases.every(phase=>phase.territoryPerMinute===null));
+ assert.equal(report.opening.confidence,'low');
+});
+
+test('troop attrition against the target is not mislabeled as a failed territorial attack',()=>{
+ const samples=Array.from({length:15},(_,i)=>sample(i*500,{tiles:100+i,goldEarned:100+i*20}));
+ const actions=Array.from({length:3},(_,i)=>action(30+i*40,{
+   delta30s:{tiles:0,gold:-30,troops:-80},
+   targetDelta30s:{tiles:0,gold:0,troops:-120},
+ }));
+ const report=buildProCoachReport(samples,actions,'p1',700);
+ const finding=report.findings.find(item=>item.id==='attack-follow-through');
+ assert.ok(finding);
+ assert.match(finding.consequence,/3 weitere einen höheren beobachteten Truppenverlust beim Ziel ohne eigenen Gebietsverlust/);
+ assert.match(finding.evidence,/beobachtete Verluste: du 80, Ziel 120/);
+ assert.match(finding.title,/überwiegend günstig/);
+ assert.equal(report.metrics.find(item=>item.label==='Angriffs-Folgefenster')?.value,'100 %');
+ assert.match(report.metrics.find(item=>item.label==='Angriffs-Folgefenster')?.note??'',/günstigem Truppentausch/);
+});
+
+test('attack with worse own attrition is flagged only when target losses are lower and no territory is gained',()=>{
+ const samples=Array.from({length:15},(_,i)=>sample(i*500,{tiles:100+i,goldEarned:100+i*20}));
+ const actions=Array.from({length:3},(_,i)=>action(30+i*40,{
+   delta30s:{tiles:0,gold:-30,troops:-120},
+   targetDelta30s:{tiles:0,gold:0,troops:-60},
+ }));
+ const report=buildProCoachReport(samples,actions,'p1',700);
+ const finding=report.findings.find(item=>item.id==='attack-follow-through');
+ assert.ok(finding);
+ assert.equal(finding.priority,'high');
+ assert.match(finding.title,/ungünstigem Truppenverhältnis/);
+ assert.match(finding.consequence,/3 zeigten höhere eigene Truppenverluste ohne Gebietsreaktion/);
+ assert.match(finding.evidence,/beobachtete Verluste: du 120, Ziel 60/);
+});
+
+test('engine insights do not call a troop-favorable exchange good when own territory was lost',()=>{
+ const review={playerName:'Player',clientID:'p1',startTiles:100,endTiles:95,tilesGained:-5,startGold:500,endGold:480,startTroops:1000,endTroops:920,outgoingAttackSamples:1,longestNoExpansionSeconds:0};
+ const actionReview={frame:100,turn:10,seconds:10,type:'attack',commandTroops:100,label:'Attack',details:'',targetId:'target',targetName:'Target',targetSmallID:1,
+  before:null,after:null,delta:null,delta5s:null,
+  delta10s:{tiles:0,gold:-10,troops:-20,goldEarned:0,tradeGold:0,trainGold:0,piracyGold:0},
+  delta30s:{tiles:-5,gold:-20,troops:-80,goldEarned:0,tradeGold:0,trainGold:0,piracyGold:0},
+  targetDelta10s:null,targetDelta30s:{tiles:0,gold:0,troops:-120,goldEarned:0,tradeGold:0,trainGold:0,piracyGold:0},
+  targetAliveBefore:true,targetAliveAt10s:true,targetAliveAt30s:true,ownFrontContextBefore:null,targetPressureBefore:null,activeAttack10s:null,activeAttack30s:null};
+ const insight=buildEngineCoachInsights(review,[actionReview]).find(item=>item.id==='attack-response-windows');
+ assert.ok(insight);
+ assert.match(insight.summary,/1 gemischte Tauschfenster mit eigenem Gebietsverlust/);
+ assert.match(insight.summary,/0 günstige Truppentausche ohne eigenen Gebietsverlust/);
+});
+
+test('engine insights count a favorable troop exchange only when own territory is not lost',()=>{
+ const review={playerName:'Player',clientID:'p1',startTiles:100,endTiles:100,tilesGained:0,startGold:500,endGold:480,startTroops:1000,endTroops:920,outgoingAttackSamples:1,longestNoExpansionSeconds:0};
+ const actionReview={frame:100,turn:10,seconds:10,type:'attack',commandTroops:100,label:'Attack',details:'',targetId:'target',targetName:'Target',targetSmallID:1,
+  before:null,after:null,delta:null,delta5s:null,
+  delta10s:{tiles:0,gold:-10,troops:-20,goldEarned:0,tradeGold:0,trainGold:0,piracyGold:0},
+  delta30s:{tiles:0,gold:-20,troops:-80,goldEarned:0,tradeGold:0,trainGold:0,piracyGold:0},
+  targetDelta10s:null,targetDelta30s:{tiles:0,gold:0,troops:-120,goldEarned:0,tradeGold:0,trainGold:0,piracyGold:0},
+  targetAliveBefore:true,targetAliveAt10s:true,targetAliveAt30s:true,ownFrontContextBefore:null,targetPressureBefore:null,activeAttack10s:null,activeAttack30s:null};
+ const insight=buildEngineCoachInsights(review,[actionReview]).find(item=>item.id==='attack-response-windows');
+ assert.ok(insight);
+ assert.match(insight.summary,/1 günstige Truppentausche ohne eigenen Gebietsverlust/);
+ assert.match(insight.summary,/0 gemischte Tauschfenster mit eigenem Gebietsverlust/);
+});
+
+test('one catastrophic attack is high impact even when it is not a repeated pattern',()=>{
+ const samples=Array.from({length:15},(_,i)=>sample(i*500,{tiles:1000+i*5,goldEarned:100+i*20,troops:1000}));
+ const actions=[
+  action(30,{delta30s:{tiles:-120,gold:-30,troops:-350},targetDelta30s:{tiles:0,gold:0,troops:-20}}),
+  action(70,{delta30s:{tiles:0,gold:-30,troops:-20},targetDelta30s:{tiles:0,gold:0,troops:-100}}),
+  action(110,{delta30s:{tiles:0,gold:-30,troops:-20},targetDelta30s:{tiles:0,gold:0,troops:-100}}),
+ ];
+ const report=buildProCoachReport(samples,actions,'p1',700);
+ const finding=report.findings.find(item=>item.id==='attack-follow-through');
+ assert.ok(finding);
+ assert.equal(finding.priority,'high');
+ assert.match(finding.evidence,/35 % des vorher beobachteten eigenen Truppenbestands/);
+});
+
+test('equal troop attrition without territory change is reported as an even trade, not a failed attack',()=>{
+ const samples=Array.from({length:15},(_,i)=>sample(i*500,{tiles:100+i,goldEarned:100+i*20}));
+ const actions=Array.from({length:3},(_,i)=>action(30+i*40,{
+   delta30s:{tiles:0,gold:-30,troops:-80},
+   targetDelta30s:{tiles:0,gold:0,troops:-80},
+ }));
+ const report=buildProCoachReport(samples,actions,'p1',700);
+ const finding=report.findings.find(item=>item.id==='attack-follow-through');
+ assert.ok(finding);
+ assert.match(finding.consequence,/3 waren ausgeglichen/);
+ assert.match(finding.title,/sichtbarer Gebietsreaktion/);
+});
+
+test('engine attack-response insight compares own and target troop losses',()=>{
+ const player={id:1,name:'Player',clientID:'p1',alive:true,gold:100,goldEarned:100,tradeGold:0,trainGold:0,piracyGold:0,troops:1000,tiles:100,units:0,unitCounts:{},unitTroops:{},unitsUnderConstruction:0,outgoingAttacks:0,incomingAttacks:0,outgoingAttackDetails:[],incomingAttackDetails:[],attackTroops:0,allies:0,alliances:0,targets:0,betrayals:0,isTraitor:false,isDecaying:false,inDoomsdayClock:false};
+ const review={playerName:'Player',clientID:'p1',startTiles:100,endTiles:100,tilesGained:0,startGold:100,endGold:100,startTroops:1000,endTroops:900,outgoingAttackSamples:3,longestNoExpansionSeconds:0};
+ const actions=[{
+   frame:100,turn:100,seconds:10,type:'attack',commandTroops:100,label:'Attack',details:'',targetId:'2',targetName:'Rival',targetSmallID:2,
+   before:null,after:null,delta:null,delta5s:null,
+   delta10s:{tiles:0,gold:0,troops:-80,goldEarned:0,tradeGold:0,trainGold:0,piracyGold:0},
+   delta30s:{tiles:0,gold:0,troops:-80,goldEarned:0,tradeGold:0,trainGold:0,piracyGold:0},
+   targetDelta10s:null,targetDelta30s:{tiles:0,gold:0,troops:-120,goldEarned:0,tradeGold:0,trainGold:0,piracyGold:0},
+   targetAliveBefore:true,targetAliveAt10s:true,targetAliveAt30s:true,ownFrontContextBefore:null,targetPressureBefore:null,activeAttack10s:null,activeAttack30s:null,
+ }];
+ const insights=buildEngineCoachInsights(review,actions,[{tick:0,frame:0,players:[player]},{tick:1000,frame:1000,players:[player]}]);
+ const attack=insights.find(item=>item.id==='attack-response-windows');
+ assert.ok(attack);
+ assert.match(attack.title,/Günstige Truppentausche/);
+ assert.match(attack.summary,/1 günstige Truppentausche/);
+ assert.match(attack.evidence,/eigene Truppen -80.*Zielgebiet 0.*Zieltruppen -120/);
+});
+
+test('missing target troop delta stays unknown in engine attack-response insight',()=>{
+ const player={id:1,name:'Player',clientID:'p1',alive:true,gold:100,goldEarned:100,tradeGold:0,trainGold:0,piracyGold:0,troops:1000,tiles:100,units:0,unitCounts:{},unitTroops:{},unitsUnderConstruction:0,outgoingAttacks:0,incomingAttacks:0,outgoingAttackDetails:[],incomingAttackDetails:[],attackTroops:0,allies:0,alliances:0,targets:0,betrayals:0,isTraitor:false,isDecaying:false,inDoomsdayClock:false};
+ const review={playerName:'Player',clientID:'p1',startTiles:100,endTiles:100,tilesGained:0,startGold:100,endGold:100,startTroops:1000,endTroops:900,outgoingAttackSamples:1,longestNoExpansionSeconds:0};
+ const action={frame:100,turn:100,seconds:10,type:'attack',commandTroops:100,label:'Attack',details:'',targetId:'2',targetName:'Rival',targetSmallID:null,before:null,after:null,delta:null,delta5s:null,delta10s:{tiles:0,gold:0,troops:-80,goldEarned:0,tradeGold:0,trainGold:0,piracyGold:0},delta30s:{tiles:0,gold:0,troops:-80,goldEarned:0,tradeGold:0,trainGold:0,piracyGold:0},targetDelta10s:null,ownFrontContextBefore:null,targetPressureBefore:null,activeAttack10s:null,activeAttack30s:null};
+ const insights=buildEngineCoachInsights(review,[action],[{tick:0,frame:0,players:[player]},{tick:1000,frame:1000,players:[player]}]);
+ const attack=insights.find(item=>item.id==='attack-response-windows');
+ assert.ok(attack);
+ assert.match(attack.summary,/0 ungünstige beobachtete Truppenverhältnisse/);
+ assert.doesNotMatch(attack.title,/ungünstigem Truppenverhältnis/);
+});
+
+
+test('incoming pressure alone never becomes a parallel offensive-front finding',()=>{
+ const samples=Array.from({length:10},(_,i)=>sample(i*500));
+ const actions=Array.from({length:4},(_,i)=>action(60+i*50,{
+  ownFrontContextBefore:{activeTargetCount:0,outgoingAttackCount:0,outgoingAttackTroops:0,incomingAttackCount:1,incomingAttackTroops:400}
+ }));
+ const report=buildProCoachReport(samples,actions,'p1',500);
+ assert.ok(!report.allFindings?.some(item=>item.id==='front-load'));
+});
+
+test('an active own attack plus incoming pressure and high commitment is offensive overextension evidence',()=>{
+ const samples=Array.from({length:10},(_,i)=>sample(i*500));
+ const actions=Array.from({length:2},(_,i)=>action(60+i*50,{
+  ownFrontContextBefore:{activeTargetCount:1,outgoingAttackCount:1,outgoingAttackTroops:180,incomingAttackCount:1,incomingAttackTroops:100}
+ }));
+ const report=buildProCoachReport(samples,actions,'p1',500);
+ const finding=report.allFindings?.find(item=>item.id==='front-load');
+ assert.ok(finding);
+ assert.match(finding.decision,/hohe bestehende Truppenbindung/);
+});
+
+test('a high-commitment second target with positive territory progress and no incoming pressure is not overextension',()=>{
+ const samples=Array.from({length:10},(_,i)=>sample(i*500,{troops:300}));
+ const actions=[action(60,{
+  ownFrontContextBefore:{activeTargetCount:1,outgoingAttackCount:1,outgoingAttackTroops:800,incomingAttackCount:0,incomingAttackTroops:0},
+  delta30s:{tiles:13205,gold:0,troops:3730776},
+  targetDelta30s:{tiles:-18959,gold:0,troops:77730},
+ })];
+ const report=buildProCoachReport(samples,actions,'p1',500);
+ assert.ok(!report.allFindings?.some(item=>item.id==='front-load'));
+});
+
+test('multiple distinct incoming attackers without own active attacks produce a defensive overload finding',()=>{
+ const before=enginePlayer({troops:1000,tiles:100,incomingAttacks:2,incomingAttackDetails:[
+  {id:'in-a',attackerID:2,troops:200,retreating:false},
+  {id:'in-b',attackerID:3,troops:150,retreating:false},
+ ]});
+ const after=enginePlayer({troops:700,tiles:85});
+ const enemyA=enginePlayer({id:2,name:'Enemy A',clientID:'p2'});
+ const enemyB=enginePlayer({id:3,name:'Enemy B',clientID:'p3'});
+ const samples=[
+  {tick:0,frame:0,players:[before,enemyA,enemyB]},
+  {tick:150,frame:150,players:[after,enemyA,enemyB]},
+ ];
+ const insights=buildEngineCoachInsights(engineReview,[],samples);
+ const overload=insights.find(item=>item.id==='defensive-overload');
+ assert.ok(overload);
+ assert.equal(overload.seconds,0);
+ assert.equal(overload.priority,'high');
+ assert.match(overload.summary,/mindestens zwei verschiedene Gegner/);
+ assert.match(overload.summary,/keine eigenen aktiven Angriffe/);
+ assert.match(overload.evidence,/0:00/);
+ assert.match(overload.evidence,/Enemy A/);
+ assert.match(overload.evidence,/Enemy B/);
+ assert.ok(!insights.some(item=>item.id==='defensive-resilience'));
+});
+
+test('a severe troop loss in any defensive window raises overload priority even if another window has higher pressure',()=>{
+ const a=enginePlayer({troops:1000,tiles:100,incomingAttackDetails:[
+  {id:'a1',attackerID:2,troops:150,retreating:false},
+  {id:'a2',attackerID:3,troops:150,retreating:false},
+ ]});
+ const afterA=enginePlayer({troops:900,tiles:100});
+ const b=enginePlayer({troops:1000,tiles:100,incomingAttackDetails:[
+  {id:'b1',attackerID:2,troops:50,retreating:false},
+  {id:'b2',attackerID:3,troops:50,retreating:false},
+ ]});
+ const afterB=enginePlayer({troops:700,tiles:100});
+ const enemyA=enginePlayer({id:2,name:'Enemy A',clientID:'p2'});
+ const enemyB=enginePlayer({id:3,name:'Enemy B',clientID:'p3'});
+ const insights=buildEngineCoachInsights(engineReview,[],[
+  {tick:0,frame:0,players:[a,enemyA,enemyB]},
+  {tick:150,frame:150,players:[afterA,enemyA,enemyB]},
+  {tick:300,frame:300,players:[b,enemyA,enemyB]},
+  {tick:450,frame:450,players:[afterB,enemyA,enemyB]},
+ ]);
+ const overload=insights.find(item=>item.id==='defensive-overload');
+ assert.ok(overload);
+ assert.equal(overload.priority,'high');
+ assert.match(overload.title,/Mehrgegner-Belastung/);
+ assert.ok(selectPrimaryCoachInsights(insights).primary.some(item=>item.id==='defensive-overload'));
+});
+
+test('stable territory with severe defensive troop attrition is not promoted as resilience',()=>{
+ const before=enginePlayer({incomingAttackDetails:[{id:'in-a',attackerID:2,troops:200,retreating:false}]});
+ const after=enginePlayer({troops:600,tiles:102});
+ const enemy=enginePlayer({id:2,name:'Enemy A',clientID:'p2'});
+ const insights=buildEngineCoachInsights(engineReview,[],[
+  {tick:0,frame:0,players:[before,enemy]},
+  {tick:150,frame:150,players:[after,enemy]},
+ ]);
+ assert.ok(!insights.some(item=>item.id==='defensive-resilience'));
+});
+
+test('one incoming attacker with stable territory is resilience, not defensive overload',()=>{
+ const before=enginePlayer({incomingAttacks:1,incomingAttackDetails:[{id:'in-a',attackerID:2,troops:200,retreating:false}]});
+ const after=enginePlayer({troops:980,tiles:102});
+ const enemy=enginePlayer({id:2,name:'Enemy A',clientID:'p2'});
+ const insights=buildEngineCoachInsights(engineReview,[],[
+  {tick:0,frame:0,players:[before,enemy]},
+  {tick:150,frame:150,players:[after,enemy]},
+ ]);
+ assert.ok(insights.some(item=>item.id==='defensive-resilience'));
+ assert.ok(!insights.some(item=>item.id==='defensive-overload'));
+});
+
+test('multiple incoming attackers are not classified as defensive when own attacks remain active',()=>{
+ const before=enginePlayer({
+  outgoingAttacks:1,
+  outgoingAttackDetails:[{id:'own',targetID:4,troops:400,retreating:false}],
+  incomingAttacks:2,
+  incomingAttackDetails:[
+   {id:'in-a',attackerID:2,troops:400,retreating:false},
+   {id:'in-b',attackerID:3,troops:350,retreating:false},
+  ],
+ });
+ const after=enginePlayer({troops:700,tiles:80});
+ const insights=buildEngineCoachInsights(engineReview,[],[
+  {tick:0,frame:0,players:[before,enginePlayer({id:2,name:'Enemy A',clientID:'p2'}),enginePlayer({id:3,name:'Enemy B',clientID:'p3'})]},
+  {tick:150,frame:150,players:[after]},
+ ]);
+ assert.ok(!insights.some(item=>item.id==='defensive-overload'));
+ assert.ok(!insights.some(item=>item.id==='defensive-resilience'));
+});
+
+test('high commitment on a second own front with additional incoming pressure remains offensive overextension',()=>{
+ const actionReview={
+  frame:100,turn:100,seconds:10,type:'attack',commandTroops:80,label:'Attack',details:'',targetId:'2',targetName:'Rival',targetSmallID:2,
+  before:{tiles:100,gold:100,troops:100,goldEarned:100,tradeGold:0,trainGold:0,piracyGold:0},
+  after:null,delta:null,delta5s:null,delta10s:null,delta30s:null,targetDelta10s:null,targetDelta30s:null,
+  targetAliveBefore:true,targetAliveAt10s:null,targetAliveAt30s:null,
+  ownFrontContextBefore:{activeTargetCount:1,outgoingTargetIds:[1],outgoingAttackCount:1,outgoingAttackTroops:40,incomingAttackCount:2,incomingAttackTroops:70,incomingAttackerNames:['Enemy A','Enemy B']},
+  targetPressureBefore:null,activeAttack10s:null,activeAttack30s:null,
+ };
+ const insights=buildEngineCoachInsights(engineReview,[actionReview],[]);
+ const overload=insights.find(item=>item.id.startsWith('decision-front-load-'));
+ assert.ok(overload);
+ assert.equal(overload.priority,'high');
+ assert.match(overload.summary,/86 % der Truppen gebunden/);
+ assert.ok(!insights.some(item=>item.id==='defensive-overload'));
+});
+
+test('one incoming attack without any own active target is not an offensive multi-front warning',()=>{
+ const actionReview={
+  frame:100,turn:100,seconds:10,type:'attack',commandTroops:85,label:'Attack',details:'',targetId:'2',targetName:'Rival',targetSmallID:2,
+  before:{tiles:100,gold:100,troops:100,goldEarned:100,tradeGold:0,trainGold:0,piracyGold:0},
+  after:null,delta:null,delta5s:null,delta10s:null,delta30s:null,targetDelta10s:null,targetDelta30s:null,
+  targetAliveBefore:true,targetAliveAt10s:null,targetAliveAt30s:null,
+  ownFrontContextBefore:{activeTargetCount:0,outgoingTargetIds:[],outgoingAttackCount:0,outgoingAttackTroops:0,incomingAttackCount:1,incomingAttackTroops:20,incomingAttackerNames:['Enemy A']},
+  targetPressureBefore:null,activeAttack10s:null,activeAttack30s:null,
+ };
+ const insights=buildEngineCoachInsights(engineReview,[actionReview],[]);
+ assert.ok(!insights.some(item=>item.id.startsWith('decision-front-load-')));
+ assert.ok(!insights.some(item=>item.id==='defensive-overload'));
+});
+
+test('small own commitment on a second target is not mislabeled as offensive overextension',()=>{
+ const samples=Array.from({length:10},(_,i)=>sample(i*500,{troops:300}));
+ const actions=Array.from({length:4},(_,i)=>action(60+i*50,{
+  ownFrontContextBefore:{activeTargetCount:1,outgoingAttackCount:1,outgoingAttackTroops:6,incomingAttackCount:0,incomingAttackTroops:0},
+  delta30s:{tiles:1,gold:0,troops:0},
+  targetDelta30s:{tiles:-1,gold:0,troops:0},
+ }));
+ const report=buildProCoachReport(samples,actions,'p1',500);
+ assert.ok(!report.allFindings?.some(item=>item.id==='front-load'));
+});
+
+test('two weak incoming attackers without losses are pressure, not defensive overload',()=>{
+ const before=enginePlayer({incomingAttacks:2,incomingAttackDetails:[
+  {id:'in-a',attackerID:2,troops:80,retreating:false},
+  {id:'in-b',attackerID:3,troops:80,retreating:false},
+ ]});
+ const after=enginePlayer({troops:1010,tiles:101});
+ const enemyA=enginePlayer({id:2,name:'Enemy A',clientID:'p2'});
+ const enemyB=enginePlayer({id:3,name:'Enemy B',clientID:'p3'});
+ const insights=buildEngineCoachInsights(engineReview,[],[
+  {tick:0,frame:0,players:[before,enemyA,enemyB]},
+  {tick:150,frame:150,players:[after,enemyA,enemyB]},
+ ]);
+ assert.ok(!insights.some(item=>item.id==='defensive-overload'));
+ assert.ok(insights.some(item=>item.id==='defensive-resilience'));
+});

@@ -74,4 +74,3 @@ test('decoder orders out-of-order source turns by game time', () => {
   assert.deepEqual(decoded.actions.map(action => action.turn), [100, 200, 300]);
   assert.deepEqual(decoded.actions.map(action => action.type), ['build_unit', 'boat', 'attack']);
 });
-

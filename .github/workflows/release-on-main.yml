@@ -1,7 +1,7 @@
-name: Release all editions from main
+name: Release all editions from release branches
 
 on:
-  # Main merges enter the fully gated release pipeline; manual dispatch remains available for retries.
+  # Only a QA-approved release/* branch may enter the release pipeline.
   push:
     branches: [main]
     # Workflow-only maintenance must not publish a new application release.
@@ -21,6 +21,7 @@ concurrency:
 jobs:
   prepare-release:
     name: Select and pin the next release version
+    if: startsWith(github.ref, 'refs/heads/release/')
     runs-on: ubuntu-latest
     outputs:
       skip: ${{ steps.version.outputs.skip }}
@@ -28,32 +29,31 @@ jobs:
       tag: ${{ steps.version.outputs.tag }}
       release_sha: ${{ steps.version.outputs.release_sha }}
     steps:
-      - name: Check out main history and all release tags
+      - name: Check out release branch history and all release tags
         uses: actions/checkout@v4
         with:
-          ref: main
+          ref: ${{ github.ref }}
           fetch-depth: 0
-          persist-credentials: true
+          persist-credentials: false
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
           node-version: "24.15.0"
 
-      - name: Choose a unique version for this main commit
+      - name: Choose a unique version for this release commit
         id: version
         shell: bash
         env:
           EVENT_SHA: ${{ github.sha }}
         run: |
           set -Eeuo pipefail
-          git fetch origin main --tags --force
-          git checkout -B release-main origin/main
+          git fetch origin main "$GITHUB_REF_NAME" --tags --force
+          git checkout --detach "$EVENT_SHA"
 
-          if ! git merge-base --is-ancestor "$EVENT_SHA" HEAD; then
-            echo "skip=true" >> "$GITHUB_OUTPUT"
-            echo "::notice::The triggering commit is no longer on the current main history."
-            exit 0
+          if ! git merge-base --is-ancestor origin/main "$EVENT_SHA"; then
+            echo "::error::The release branch must include the current main commit after QA approval."
+            exit 1
           fi
 
           latest_tag="$(git tag --list 'v[0-9]*' | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | sort -V | tail -n 1 || true)"
@@ -94,12 +94,9 @@ jobs:
 
           node scripts/set-release-version.mjs "$next_version"
 
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           if ! git diff --quiet; then
-            git add package.json package-lock.json START_HERE.txt src/renderer/main.tsx
-            git commit -m "chore(release): prepare v$next_version [skip ci]"
-            git push origin HEAD:main
+            echo "::error::Release version drift detected. Update package.json and package-lock.json through a reviewed pull request before publishing."
+            exit 1
           fi
 
           release_sha="$(git rev-parse HEAD)"
@@ -210,16 +207,33 @@ jobs:
       - name: Package the installer and portable ZIP
         run: npx electron-builder --win nsis zip --publish never
 
-      - name: Smoke-test the packaged Windows renderer
-        run: node scripts/smoke-test-windows.mjs
+      - name: Stage only the installer and portable distributables
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $installers = @(Get-ChildItem release -File -Filter '*.exe')
+          $portable = @(Get-ChildItem release -File -Filter '*.zip')
+          if ($installers.Count -ne 1 -or $portable.Count -ne 1) { throw "Expected exactly one installer and one portable ZIP; found $($installers.Count) EXE and $($portable.Count) ZIP." }
+          $staging = Join-Path (Resolve-Path release).Path 'packages'
+          if (Test-Path $staging) { Remove-Item $staging -Recurse -Force }
+          New-Item -ItemType Directory -Path $staging | Out-Null
+          Copy-Item $installers[0].FullName $staging
+          Copy-Item $portable[0].FullName $staging
+
+      - name: Install and smoke-test Windows installer and portable edition
+        timeout-minutes: 20
+        env:
+          OFRC_IDLE_SOAK_MS: "300000"
+          RELEASE_DIR: release/packages
+        run: node scripts/verify-windows-distributions.mjs
 
       - name: Upload Windows release files
         uses: actions/upload-artifact@v4
         with:
           name: release-windows
           path: |
-            release/*.exe
-            release/*.zip
+            release/packages/*.exe
+            release/packages/*.zip
           if-no-files-found: error
           retention-days: 14
 
@@ -398,6 +412,17 @@ jobs:
     permissions:
       contents: write
     steps:
+      - name: Check out exact release source for integrity verification
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.prepare-release.outputs.release_sha }}
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24.15.0"
+
       - name: Download Windows installer and portable ZIP
         uses: actions/download-artifact@v4
         with:
@@ -410,7 +435,13 @@ jobs:
           name: release-android
           path: release
 
-      - name: Create one release with all three downloads
+      - name: Generate and verify artifact manifest and SHA-256 checksums
+        env:
+          RELEASE_VERSION: ${{ needs.prepare-release.outputs.version }}
+          RELEASE_DIR: release
+        run: node scripts/verify-release-artifacts.mjs generate
+
+      - name: Create one release with all three downloads and integrity manifest
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ needs.prepare-release.outputs.tag }}
@@ -433,32 +464,32 @@ jobs:
             release/*.exe
             release/*.zip
             release/*-Android.apk
+            release/SHA256SUMS.txt
+            release/release-manifest.json
 
       - name: Verify published release contains exactly three usable artifacts
         env:
           GH_TOKEN: ${{ github.token }}
           RELEASE_TAG: ${{ needs.prepare-release.outputs.tag }}
+          RELEASE_VERSION: ${{ needs.prepare-release.outputs.version }}
+          RELEASE_DIR: ${{ runner.temp }}/published-release
         run: |
           set -Eeuo pipefail
-          gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --json assets | node -e '
-            let input = "";
-            process.stdin.setEncoding("utf8");
-            process.stdin.on("data", chunk => input += chunk);
-            process.stdin.on("end", () => {
-              const assets = JSON.parse(input).assets;
-              const names = assets.map(asset => asset.name);
-              const checks = [
-                names.length === 3,
-                names.some(name => /(?:\.Setup\.| Setup )[0-9.]+\.exe$/i.test(name)),
-                names.some(name => /-win\.zip$/i.test(name)),
-                names.some(name => /-Android\.apk$/i.test(name)),
-                assets.every(asset => asset.size > 1000000),
-                !names.some(name => /pwa|service.?worker|web.?zip/i.test(name))
-              ];
-              if (checks.some(ok => !ok)) {
-                console.error("Published release asset verification failed:", JSON.stringify(assets));
-                process.exit(1);
-              }
-              console.log("Verified exactly three release artifacts:", names.join(", "));
-            });
-          '
+          mkdir -p "$RELEASE_DIR"
+          gh release download "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --dir "$RELEASE_DIR"
+          node --input-type=module <<'NODE'
+          import assert from 'node:assert/strict';
+          import { readdir, stat } from 'node:fs/promises';
+          import path from 'node:path';
+          const directory = process.env.RELEASE_DIR;
+          const names = (await readdir(directory)).filter(name => /\.(?:exe|zip|apk)$/i.test(name));
+          assert.equal(names.length === 3, true, `Expected exactly three usable distributables, received: ${names.join(', ')}`);
+          assert.ok(names.some(name => /-win\.zip$/i.test(name)), 'The published artifacts must include a Windows portable ZIP.');
+          assert.ok(names.some(name => /-Android\.apk$/i.test(name)), 'The published artifacts must include an Android APK.');
+          assert.ok(names.some(name => /(?:\.Setup\.| Setup )[0-9.]+\.exe$/i.test(name)), 'The published artifacts must include a Windows installer.');
+          for (const name of names) {
+            const info = await stat(path.join(directory, name));
+            assert.ok(info.isFile() && info.size > 1_000_000, `Published artifact is missing or unusable: ${name}`);
+          }
+          NODE
+          node scripts/verify-release-artifacts.mjs verify

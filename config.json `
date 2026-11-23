@@ -1,0 +1,31 @@
+ .github/workflows/validate-android.yml            |     4 [32m+[m
+ package.json                                      |     1 [32m+[m
+ scripts/updater-contract.test.mjs.backup.head     |   343 [32m+[m
+ scripts/updater-contract.test.mjs.tmp             |   345 [32m+[m
+ src/main/cline.test.mjs                           |    77 [32m+[m
+ src/renderer/engine/replay-engine-0211f17b71ef.js | 39608 [32m+++++++++++++++++++[m
+ src/renderer/engine/replay-engine-09aa423bceb9.js | 36521 [32m++++++++++++++++++[m
+ src/renderer/engine/replay-engine-1eec6bbceeec.js | 36521 [32m++++++++++++++++++[m
+ src/renderer/engine/replay-engine-7ee96860c717.js | 36398 [32m++++++++++++++++++[m
+ src/renderer/engine/replay-engine-7f34e1590828.js | 40565 [32m++++++++++++++++++++[m
+ src/renderer/engine/replay-engine-80bff198b68f.js | 36521 [32m++++++++++++++++++[m
+ src/renderer/engine/replay-engine-8b5d071eed95.js | 39701 [32m+++++++++++++++++++[m
+ src/renderer/engine/replay-engine-9f4a28f16fae.js | 33837 [32m++++++++++++++++[m
+ src/renderer/engine/replay-engine-bc3e3334c573.js | 39701 [32m+++++++++++++++++++[m
+ src/renderer/engine/replay-engine-c144d134d150.js | 36303 [32m++++++++++++++++++[m
+ temp-analysis.txt                                 |   463 [32m+[m
+ temp-checked.txt                                  |     0
+ temp-debug.txt                                    |   344 [32m+[m
+ temp-display.txt                                  |   343 [32m+[m
+ temp-fixed.txt                                    |     0
+ temp-lines.txt                                    |   343 [32m+[m
+ temp-lines1.txt                                   |   463 [32m+[m
+ temp-lines2.txt                                   |   463 [32m+[m
+ temp-test-full.txt                                |   344 [32m+[m
+ temp-test-runner.mjs                              |     9 [32m+[m
+ temp-workflow-full.txt                            |   463 [32m+[m
+ temp-workflow.txt                                 |   463 [32m+[m
+ temp-workflow2.txt                                |   463 [32m+[m
+ test.js                                           |     1 [32m+[m
+ workflow-full.txt                                 |   463 [32m+[m
+ 30 files changed, 381071 insertions(+)

@@ -1,0 +1,15 @@
+# validate-engine workflow
+name: validate-engine
+on: [push]
+jobs:
+  restore:
+    name: Restore exact historical engine Git objects
+    uses: actions/cache@v4
+    with:
+      path: .git/modules
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Echo
+        run: echo "validate-engine placeholder"
+# github.job placeholder

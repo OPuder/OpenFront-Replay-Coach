@@ -1,0 +1,15 @@
+# replay-compatibility workflow
+name: replay-compatibility
+on: [push]
+jobs:
+  restore:
+    name: Restore exact historical engine Git objects
+    uses: actions/cache@v4
+    with:
+      path: .git/modules
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Echo
+        run: echo "replay-compatibility placeholder"
+# github.job placeholder

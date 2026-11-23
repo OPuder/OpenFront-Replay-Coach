@@ -1,11 +1,23 @@
 import { spawnSync } from "node:child_process";
-import { existsSync, mkdirSync, readFileSync, rmSync } from "node:fs";
+import {
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+  createWriteStream,
+  createReadStream,
+} from "node:fs";
+import { createHash } from "node:crypto";
+// import { promisify } from "node:util"; // unused
+import archiver from "archiver";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const engines = JSON.parse(readFileSync(path.join(root, "engine-build/engines.json"), "utf8"));
 const outputDir = path.join(root, "src/renderer/engine");
+const enginesManifest = [];
 
 if (!Array.isArray(engines) || engines.length === 0) {
   throw new Error("engine-build/engines.json must contain at least one supported engine");
@@ -14,7 +26,7 @@ if (!Array.isArray(engines) || engines.length === 0) {
 rmSync(outputDir, { recursive: true, force: true });
 mkdirSync(outputDir, { recursive: true });
 
-for (const engine of engines) {
+async function buildAll() { for (const engine of engines) {
   if (!/^[0-9a-f]{40}$/.test(engine.commit) || !/^[0-9a-f]{12}$/.test(engine.bundleId)) {
     throw new Error(`Invalid engine catalog entry: ${JSON.stringify(engine)}`);
   }
@@ -40,4 +52,44 @@ for (const engine of engines) {
   if (result.status !== 0) {
     throw new Error(`Engine build failed for ${engine.commit} (exit ${result.status})`);
   }
+
+  // Expect output JS file
+  const jsFile = path.join(outputDir, `replay-engine-${engine.bundleId}.js`);
+  if (!existsSync(jsFile)) {
+    throw new Error(`Expected build artifact missing: ${jsFile}`);
+  }
+
+  const artifactsDir = path.join(root, "engine-build/artifacts");
+  mkdirSync(artifactsDir, { recursive: true });
+  const archivePath = path.join(artifactsDir, `${engine.bundleId}.zip`);
+  const output = createHash("sha256");
+  const outputStream = createWriteStream(archivePath);
+  const archive = archiver("zip", { zlib: { level: 9 } });
+  archive.file(jsFile, { name: path.basename(jsFile) });
+  archive.pipe(outputStream);
+  archive.finalize();
+  await new Promise((resolve, reject) => {
+    archive.on("close", resolve);
+    archive.on("error", reject);
+  });
+
+  // Compute SHA-256 of the archive
+  const hashStream = createReadStream(archivePath);
+  hashStream.on("data", chunk => output.update(chunk));
+  await new Promise((resolve, reject) => {
+    hashStream.on("end", () => resolve());
+    hashStream.on("error", err => reject(err));
+  });
+  const sha256 = output.digest("hex");
+
+  enginesManifest.push({
+    commit: engine.commit,
+    bundleId: engine.bundleId,
+    artifact: path.relative(root, archivePath),
+    sha256,
+  });
 }
+
+const manifestPath = path.join(root, "engine-build/engines.manifest.json");
+writeFileSync(manifestPath, JSON.stringify(enginesManifest, null, 2), "utf8");
+process.exit(0);

@@ -1,0 +1,16 @@
+# build-windows workflow
+name: build-windows
+on: [push]
+jobs:
+  restore:
+    name: Restore exact historical engine Git objects
+    uses: actions/cache@v4
+    with:
+      path: .git/modules
+  build:
+    runs-on: windows-latest
+    steps:
+      - name: Echo
+        run: echo "build-windows placeholder"
+# github.job placeholder
+

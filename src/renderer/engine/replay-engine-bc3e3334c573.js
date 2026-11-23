@@ -1,6 +1,6 @@
 var O = `(function() {
 	let mh = (function(t) {
-		return t.Achiran = "Achiran", t.Aegean = "Aegean", t.Africa = "Africa", t.Alps = "Alps", t.AmazonRiver = "Amazon River", t.Antarctica = "Antarctica", t.ArchipelagoSea = "ArchipelagoSea", t.Arctic = "Arctic", t.Asia = "Asia", t.Australia = "Australia", t.BabelMandebStrait = "Bab el-Mandeb Strait", t.Baikal = "Baikal", t.BaikalNukeWars = "Baikal Nuke Wars", t.BajaCalifornia = "Baja California", t.Balkans = "Balkans", t.Balkhash = "Balkhash", t.Baltics = "Baltics", t.Benelux = "Benelux", t.BeringSea = "Bering Sea", t.BeringStrait = "Bering Strait", t.BetweenTwoSeas = "Between Two Seas", t.BlackSea = "Black Sea", t.BosphorusStraits = "Bosphorus Straits", t.Brahmaputra = "Brahmaputra", t.BrainRot = "Brain Rot", t.BranchingPaths = "Branching Paths", t.Britannia = "Britannia", t.BritanniaClassic = "Britannia Classic", t.Canada = "Canada", t.CanaryIslands = "Canary Islands", t.CapeCod = "Cape Cod", t.CapeOfGoodHope = "Cape Of Good Hope", t.Caribbean = "Caribbean", t.CaspianSea = "Caspian Sea", t.Caucasus = "Caucasus", t.CentralAmerica = "Central America", t.ChannelIslands = "Channel Islands", t.China = "China", t.ChoppingBlock = "Chopping Block", t.ClearwaterLakes = "Clearwater Lakes", t.Conakry = "Conakry", t.Crimea = "Crimea", t.DanishStraits = "Danish Straits", t.DeglaciatedAntarctica = "Deglaciated Antarctica", t.Didier = "Didier", t.DidierFrance = "Didier France", t.Dyslexdria = "Dyslexdria", t.EastAsia = "East Asia", t.Europe = "Europe", t.EuropeClassic = "Europe Classic", t.FalklandIslands = "Falkland Islands", t.FaroeIslands = "Faroe Islands", t.FingerLakes = "Finger Lakes", t.FourIslands = "Four Islands", t.France = "France", t.GatewayToTheAtlantic = "Gateway to the Atlantic", t.Germany = "Germany", t.GiantWorldMap = "Giant World Map", t.GreatLakes = "Great Lakes", t.GulfOfGuinea = "Gulf Of Guinea", t.GulfOfMexico = "Gulf Of Mexico", t.GulfOfStLawrence = "Gulf of St. Lawrence", t.Halkidiki = "Halkidiki", t.Hawaii = "Hawaii", t.Hecatestrait = "Hecate Strait", t.HongKong = "Hong Kong", t.HornOfAfrica = "Horn Of Africa", t.Iceland = "Iceland", t.IndianSubcontinent = "Indian Subcontinent", t.IrishSea = "Irish Sea", t.Italia = "Italia", t.Japan = "Japan", t.JuanDeFucaStrait = "Juan De Fuca Strait", t.Korea = "Korea", t.Labyrinth = "Labyrinth", t.LasVegasStrip = "Las Vegas Strip", t.Lemnos = "Lemnos", t.Levant = "Levant", t.Lisbon = "Lisbon", t.London = "London", t.LosAngeles = "Los Angeles", t.Luna = "Luna", t.Madagascar = "Madagascar", t.Manicouagan = "Manicouagan", t.MareNostrum = "Mare Nostrum", t.Mars = "Mars", t.Mena = "Mena", t.Mexico = "Mexico", t.MiddleEast = "Middle East", t.MilkyWay = "MilkyWay", t.MississippiRiver = "Mississippi River", t.Montreal = "Montreal", t.MoreThanLuck = "More Than Luck", t.NewYorkCity = "New York City", t.NewZealand = "New Zealand", t.NileDelta = "Nile Delta", t.NorthAmerica = "North America", t.NorthwestPassage = "Northwest Passage", t.Oceania = "Oceania", t.Ommatrypta = "Ommatrypta", t.Onion = "Onion", t.OttomanEmpire = "Ottoman Empire", t.Pangaea = "Pangaea", t.Paris = "Paris", t.Passage = "Passage", t.Pluto = "Pluto", t.PulicatLake = "Pulicat Lake", t.QingChina = "Qing China", t.RioDeJaneiro = "Rio de Janeiro", t.Russia = "Russia", t.SanFrancisco = "San Francisco", t.Scandinavia = "Scandinavia", t.Sierpinski = "Sierpinski", t.Sol = "Sol", t.SouthAmerica = "South America", t.SoutheastAsia = "SoutheastAsia", t.StraitOfGibraltar = "Strait of Gibraltar", t.StraitOfHormuz = "Strait of Hormuz", t.StraitOfMalacca = "Strait Of Malacca", t.Surrounded = "Surrounded", t.Svalmel = "Svalmel", t.TaiwanStrait = "Taiwan Strait", t.TheBox = "The Box", t.TierraDelFuego = "Tierra Del Fuego", t.Titan = "Titan", t.Tourney1 = "Tourney 2 Teams", t.Tourney2 = "Tourney 3 Teams", t.Tourney3 = "Tourney 4 Teams", t.Tourney4 = "Tourney 8 Teams", t.TradersDream = "Traders Dream", t.Turkiye = "Turkiye", t.Tutorial = "Tutorial", t.TwoLakes = "Two Lakes", t.Ukraine = "Ukraine", t.UnitedStates = "United States", t.VancouverIsland = "Vancouver Island", t.Venice = "Venice", t.Vietnam = "Vietnam", t.WarshipWarship = "Warship Warship", t.World = "World", t.World10000 = "World 10000", t.World4000 = "World 4000", t.WorldInverted = "World Inverted", t.YangtzeRiver = "Yangtze River", t.YellowSea = "Yellow Sea", t.Yenisei = "Yenisei", t.Zealandia = "Zealandia", t;
+		return t.Achiran = "Achiran", t.Aegean = "Aegean", t.Africa = "Africa", t.Alps = "Alps", t.AmazonRiver = "Amazon River", t.Antarctica = "Antarctica", t.ArchipelagoSea = "ArchipelagoSea", t.Arctic = "Arctic", t.Asia = "Asia", t.Australia = "Australia", t.BabelMandebStrait = "Bab el-Mandeb Strait", t.Baikal = "Baikal", t.BaikalNukeWars = "Baikal Nuke Wars", t.BajaCalifornia = "Baja California", t.Balkans = "Balkans", t.Balkhash = "Balkhash", t.Baltics = "Baltics", t.Benelux = "Benelux", t.BeringSea = "Bering Sea", t.BeringStrait = "Bering Strait", t.BetweenTwoSeas = "Between Two Seas", t.BlackSea = "Black Sea", t.BosphorusStraits = "Bosphorus Straits", t.Brahmaputra = "Brahmaputra", t.BrainRot = "Brain Rot", t.BranchingPaths = "Branching Paths", t.Britannia = "Britannia", t.BritanniaClassic = "Britannia Classic", t.Canada = "Canada", t.CanaryIslands = "Canary Islands", t.CapeCod = "Cape Cod", t.CapeOfGoodHope = "Cape Of Good Hope", t.Caribbean = "Caribbean", t.CaspianSea = "Caspian Sea", t.Caucasus = "Caucasus", t.CentralAmerica = "Central America", t.ChannelIslands = "Channel Islands", t.China = "China", t.ChoppingBlock = "Chopping Block", t.ClearwaterLakes = "Clearwater Lakes", t.Conakry = "Conakry", t.Crimea = "Crimea", t.DanishStraits = "Danish Straits", t.DeglaciatedAntarctica = "Deglaciated Antarctica", t.Didier = "Didier", t.DidierFrance = "Didier France", t.Dyslexdria = "Dyslexdria", t.EastAsia = "East Asia", t.Europe = "Europe", t.EuropeClassic = "Europe Classic", t.FalklandIslands = "Falkland Islands", t.FaroeIslands = "Faroe Islands", t.FingerLakes = "Finger Lakes", t.FourIslands = "Four Islands", t.France = "France", t.GatewayToTheAtlantic = "Gateway to the Atlantic", t.Germany = "Germany", t.GiantWorldMap = "Giant World Map", t.GreatLakes = "Great Lakes", t.GulfOfGuinea = "Gulf Of Guinea", t.GulfOfMexico = "Gulf Of Mexico", t.GulfOfStLawrence = "Gulf of St. Lawrence", t.Halkidiki = "Halkidiki", t.Hawaii = "Hawaii", t.Hecatestrait = "Hecate Strait", t.HongKong = "Hong Kong", t.HornOfAfrica = "Horn Of Africa", t.Iceland = "Iceland", t.IndianSubcontinent = "Indian Subcontinent", t.IrishSea = "Irish Sea", t.Italia = "Italia", t.Japan = "Japan", t.JuanDeFucaStrait = "Juan De Fuca Strait", t.Korea = "Korea", t.Labyrinth = "Labyrinth", t.LasVegasStrip = "Las Vegas Strip", t.Lemnos = "Lemnos", t.Levant = "Levant", t.Lisbon = "Lisbon", t.London = "London", t.LosAngeles = "Los Angeles", t.Luna = "Luna", t.Madagascar = "Madagascar", t.Manicouagan = "Manicouagan", t.MareNostrum = "Mare Nostrum", t.Mars = "Mars", t.Mena = "Mena", t.Mexico = "Mexico", t.MiddleEast = "Middle East", t.MilkyWay = "MilkyWay", t.MississippiRiver = "Mississippi River", t.Montreal = "Montreal", t.MoreThanLuck = "More Than Luck", t.NewYorkCity = "New York City", t.NewZealand = "New Zealand", t.NileDelta = "Nile Delta", t.NorthAmerica = "North America", t.NorthwestPassage = "Northwest Passage", t.Oceania = "Oceania", t.Ommatrypta = "Ommatrypta", t.Onion = "Onion", t.OttomanEmpire = "Ottoman Empire", t.Pangaea = "Pangaea", t.Paris = "Paris", t.Passage = "Passage", t.Pluto = "Pluto", t.PulicatLake = "Pulicat Lake", t.QingChina = "Qing China", t.RioDeJaneiro = "Rio de Janeiro", t.Russia = "Russia", t.SanFrancisco = "San Francisco", t.Scandinavia = "Scandinavia", t.Sierpinski = "Sierpinski", t.Sol = "Sol", t.SouthAmerica = "South America", t.SoutheastAsia = "SoutheastAsia", t.StraitOfGibraltar = "Strait of Gibraltar", t.StraitOfHormuz = "Strait of Hormuz", t.StraitOfMalacca = "Strait Of Malacca", t.Surrounded = "Surrounded", t.Svalmel = "Svalmel", t.TaiwanStrait = "Taiwan Strait", t.TheBox = "The Box", t.TierraDelFuego = "Tierra Del Fuego", t.Titan = "Titan", t.Tourney1 = "Tourney 2 Teams", t.Tourney2 = "Tourney 3 Teams", t.Tourney3 = "Tourney 4 Teams", t.Tourney4 = "Tourney 8 Teams", t.TradersDream = "Traders Dream", t.Turkiye = "Turkiye", t.Tutorial = "Tutorial", t.TwoLakes = "Two Lakes", t.UnitedStates = "United States", t.VancouverIsland = "Vancouver Island", t.Venice = "Venice", t.Vietnam = "Vietnam", t.WarshipWarship = "Warship Warship", t.World = "World", t.World10000 = "World 10000", t.World4000 = "World 4000", t.WorldInverted = "World Inverted", t.YangtzeRiver = "Yangtze River", t.YellowSea = "Yellow Sea", t.Yenisei = "Yenisei", t.Zealandia = "Zealandia", t;
 	})({});
 	const Fs = [
 		{
@@ -341,7 +341,7 @@ var O = `(function() {
 			id: "Brahmaputra",
 			type: "Brahmaputra",
 			translationKey: "map.brahmaputra",
-			categories: ["asia"],
+			categories: ["asia", "new"],
 			defaultNationCount: 37,
 			specialTeamCount: 2,
 			themes: ["asia"],
@@ -406,7 +406,11 @@ var O = `(function() {
 			id: "Canada",
 			type: "Canada",
 			translationKey: "map.canada",
-			categories: ["north_america", "countries"],
+			categories: [
+				"north_america",
+				"new",
+				"countries"
+			],
 			defaultNationCount: 38,
 			themes: ["north_america"],
 			customTribes: [
@@ -1838,7 +1842,7 @@ var O = `(function() {
 			id: "London",
 			type: "London",
 			translationKey: "map.london",
-			categories: ["europe"],
+			categories: ["new", "europe"],
 			defaultNationCount: 32,
 			themes: ["europe"],
 			author: "Tristar",
@@ -2535,7 +2539,11 @@ var O = `(function() {
 			id: "Mexico",
 			type: "Mexico",
 			translationKey: "map.mexico",
-			categories: ["north_america", "countries"],
+			categories: [
+				"north_america",
+				"new",
+				"countries"
+			],
 			defaultNationCount: 32,
 			themes: ["north_america"],
 			author: "crunchybbb",
@@ -2726,7 +2734,8 @@ var O = `(function() {
 				"europe",
 				"asia",
 				"africa",
-				"countries"
+				"countries",
+				"new"
 			],
 			defaultNationCount: 46,
 			themes: [
@@ -2751,7 +2760,7 @@ var O = `(function() {
 			id: "Paris",
 			type: "Paris",
 			translationKey: "map.paris",
-			categories: ["europe"],
+			categories: ["europe", "new"],
 			defaultNationCount: 60,
 			themes: ["europe"],
 			customTribes: [
@@ -3312,7 +3321,8 @@ var O = `(function() {
 			categories: [
 				"countries",
 				"europe",
-				"asia"
+				"asia",
+				"new"
 			],
 			defaultNationCount: 30,
 			themes: ["europe", "asia"],
@@ -3341,428 +3351,6 @@ var O = `(function() {
 			location: {
 				lat: 40.95,
 				lon: 20.9
-			}
-		},
-		{
-			id: "Ukraine",
-			type: "Ukraine",
-			translationKey: "map.ukraine",
-			categories: [
-				"europe",
-				"countries",
-				"new"
-			],
-			defaultNationCount: 33,
-			themes: ["ukraine"],
-			customTribes: [
-				{
-					name: "Znamianka",
-					coordinates: [1197, 672]
-				},
-				{
-					name: "Berehove",
-					coordinates: [83, 758]
-				},
-				{
-					name: "Yalta",
-					coordinates: [1364, 1356]
-				},
-				{
-					name: "Starobilsk",
-					coordinates: [1891, 577]
-				},
-				{
-					name: "Sarny",
-					coordinates: [524, 219]
-				},
-				{
-					name: "Bolhrad",
-					coordinates: [746, 1170]
-				},
-				{
-					name: "Shostka",
-					coordinates: [1287, 124]
-				},
-				{
-					name: "Berdiansk",
-					coordinates: [1655, 997]
-				},
-				{
-					name: "Mohyliv-Podilskyi",
-					coordinates: [657, 718]
-				},
-				{
-					name: "Irpin",
-					coordinates: [928, 363]
-				},
-				{
-					name: "Ochakiv",
-					coordinates: [1072, 1019]
-				},
-				{
-					name: "Okhtyrka",
-					coordinates: [1444, 399]
-				},
-				{
-					name: "Pavlohrad",
-					coordinates: [1553, 703]
-				},
-				{
-					name: "Chervonohrad",
-					coordinates: [261, 385]
-				},
-				{
-					name: "Uman",
-					coordinates: [925, 667]
-				},
-				{
-					name: "Kolomyia",
-					coordinates: [349, 705]
-				},
-				{
-					name: "Henichesk",
-					coordinates: [1435, 1091]
-				},
-				{
-					name: "Pryluky",
-					coordinates: [1166, 350]
-				},
-				{
-					name: "Makiivka",
-					coordinates: [1787, 783]
-				},
-				{
-					name: "Nikopol",
-					coordinates: [1389, 864]
-				},
-				{
-					name: "Kerch",
-					coordinates: [1620, 1221]
-				},
-				{
-					name: "Chuhuiv",
-					coordinates: [1643, 481]
-				},
-				{
-					name: "Berdychiv",
-					coordinates: [743, 471]
-				},
-				{
-					name: "Truskavets",
-					coordinates: [179, 585]
-				},
-				{
-					name: "Yuzhnoukrainsk",
-					coordinates: [1032, 822]
-				},
-				{
-					name: "Slavutych",
-					coordinates: [985, 186]
-				},
-				{
-					name: "Podilsk",
-					coordinates: [848, 834]
-				},
-				{
-					name: "Korosten",
-					coordinates: [749, 288]
-				},
-				{
-					name: "Nova Kakhovka",
-					coordinates: [1271, 1e3]
-				},
-				{
-					name: "Netishyn",
-					coordinates: [529, 395]
-				},
-				{
-					name: "Orikhiv",
-					coordinates: [1544, 863]
-				},
-				{
-					name: "Sviatohirsk",
-					coordinates: [1742, 619]
-				},
-				{
-					name: "Myrhorod",
-					coordinates: [1302, 460]
-				},
-				{
-					name: "Kovel",
-					coordinates: [312, 241]
-				},
-				{
-					name: "Bilhorod-Dnistrovskyi",
-					coordinates: [939, 1088]
-				},
-				{
-					name: "Yevpatoriia",
-					coordinates: [1275, 1246]
-				},
-				{
-					name: "Kamianets-Podilskyi",
-					coordinates: [521, 679]
-				},
-				{
-					name: "Kamianske",
-					coordinates: [1413, 706]
-				},
-				{
-					name: "Pereiaslav",
-					coordinates: [1061, 442]
-				},
-				{
-					name: "Feodosiia",
-					coordinates: [1498, 1272]
-				},
-				{
-					name: "Melitopol",
-					coordinates: [1499, 982]
-				},
-				{
-					name: "Bila Tserkva",
-					coordinates: [914, 487]
-				},
-				{
-					name: "Smila",
-					coordinates: [1110, 584]
-				},
-				{
-					name: "Rakhiv",
-					coordinates: [257, 783]
-				},
-				{
-					name: "Konotop",
-					coordinates: [1257, 236]
-				},
-				{
-					name: "Novohrad-Volynskyi",
-					coordinates: [635, 350]
-				},
-				{
-					name: "Alchevsk",
-					coordinates: [1879, 714]
-				},
-				{
-					name: "Kremenets",
-					coordinates: [425, 437]
-				},
-				{
-					name: "Skadovsk",
-					coordinates: [1224, 1099]
-				},
-				{
-					name: "Dobropillia",
-					coordinates: [1689, 714]
-				},
-				{
-					name: "Kremenchuk",
-					coordinates: [1282, 608]
-				},
-				{
-					name: "Kupiansk",
-					coordinates: [1747, 503]
-				},
-				{
-					name: "Chortkiv",
-					coordinates: [433, 622]
-				},
-				{
-					name: "Zhmerynka",
-					coordinates: [691, 619]
-				},
-				{
-					name: "Kalush",
-					coordinates: [274, 620]
-				},
-				{
-					name: "Nizhyn",
-					coordinates: [1110, 270]
-				},
-				{
-					name: "Vuhledar",
-					coordinates: [1706, 829]
-				},
-				{
-					name: "Haisyn",
-					coordinates: [833, 656]
-				},
-				{
-					name: "Bakhmut",
-					coordinates: [1790, 694]
-				},
-				{
-					name: "Dzhankoi",
-					coordinates: [1389, 1164]
-				},
-				{
-					name: "Varash",
-					coordinates: [440, 216]
-				},
-				{
-					name: "Volodymyr",
-					coordinates: [270, 306]
-				},
-				{
-					name: "Lozova",
-					coordinates: [1603, 644]
-				},
-				{
-					name: "Chornobyl",
-					coordinates: [925, 232]
-				},
-				{
-					name: "Boryspil",
-					coordinates: [1006, 392]
-				},
-				{
-					name: "Sievierodonetsk",
-					coordinates: [1845, 633]
-				},
-				{
-					name: "Khust",
-					coordinates: [155, 763]
-				},
-				{
-					name: "Lubny",
-					coordinates: [1235, 451]
-				},
-				{
-					name: "Sambir",
-					coordinates: [144, 536]
-				},
-				{
-					name: "Selydove",
-					coordinates: [1712, 768]
-				},
-				{
-					name: "Izmail",
-					coordinates: [771, 1222]
-				},
-				{
-					name: "Yaremche",
-					coordinates: [294, 716]
-				},
-				{
-					name: "Huliaipole",
-					coordinates: [1597, 848]
-				},
-				{
-					name: "Dubno",
-					coordinates: [428, 382]
-				},
-				{
-					name: "Pervomaisk",
-					coordinates: [993, 784]
-				},
-				{
-					name: "Tokmak",
-					coordinates: [1535, 915]
-				},
-				{
-					name: "Shepetivka",
-					coordinates: [574, 422]
-				},
-				{
-					name: "Fastiv",
-					coordinates: [891, 440]
-				},
-				{
-					name: "Oleksandriia",
-					coordinates: [1247, 680]
-				},
-				{
-					name: "Siversk",
-					coordinates: [1800, 647]
-				},
-				{
-					name: "Voznesensk",
-					coordinates: [1049, 864]
-				},
-				{
-					name: "Horlivka",
-					coordinates: [1790, 741]
-				},
-				{
-					name: "Izium",
-					coordinates: [1710, 592]
-				},
-				{
-					name: "Volnovakha",
-					coordinates: [1734, 858]
-				},
-				{
-					name: "Mukachevo",
-					coordinates: [91, 719]
-				},
-				{
-					name: "Alushta",
-					coordinates: [1391, 1328]
-				},
-				{
-					name: "Chornomorsk",
-					coordinates: [973, 1070]
-				},
-				{
-					name: "Stryi",
-					coordinates: [217, 581]
-				},
-				{
-					name: "Mykolaivka",
-					coordinates: [1766, 648]
-				},
-				{
-					name: "Brovary",
-					coordinates: [988, 364]
-				},
-				{
-					name: "Enerhodar",
-					coordinates: [1419, 877]
-				},
-				{
-					name: "Avdiivka",
-					coordinates: [1762, 770]
-				},
-				{
-					name: "Kurakhove",
-					coordinates: [1710, 795]
-				},
-				{
-					name: "Pokrovsk",
-					coordinates: [1699, 746]
-				},
-				{
-					name: "Yenakiieve",
-					coordinates: [1811, 754]
-				},
-				{
-					name: "Toretsk",
-					coordinates: [1773, 726]
-				},
-				{
-					name: "Soledar",
-					coordinates: [1798, 675]
-				},
-				{
-					name: "Chasiv Yar",
-					coordinates: [1770, 689]
-				},
-				{
-					name: "Lyman",
-					coordinates: [1770, 628]
-				},
-				{
-					name: "Kakhovka",
-					coordinates: [1288, 989]
-				},
-				{
-					name: "Drohobych",
-					coordinates: [179, 565]
-				}
-			],
-			location: {
-				lat: 49,
-				lon: 31
 			}
 		},
 		{
@@ -3854,7 +3442,7 @@ var O = `(function() {
 			id: "World10000",
 			type: "World 10000",
 			translationKey: "map.world10000",
-			categories: ["world"],
+			categories: ["new", "world"],
 			defaultNationCount: 377,
 			layers: [{
 				id: "w10kland",
@@ -3871,7 +3459,11 @@ var O = `(function() {
 			id: "World4000",
 			type: "World 4000",
 			translationKey: "map.world4000",
-			categories: ["featured", "world"],
+			categories: [
+				"new",
+				"featured",
+				"world"
+			],
 			defaultNationCount: 111,
 			featuredRank: 1,
 			forcedModifiers: ["isCrowded:50"],
@@ -3940,7 +3532,11 @@ var O = `(function() {
 			id: "Zealandia",
 			type: "Zealandia",
 			translationKey: "map.zealandia",
-			categories: ["oceania", "fictional"],
+			categories: [
+				"oceania",
+				"new",
+				"fictional"
+			],
 			defaultNationCount: 27,
 			themes: ["under_ocean", "oceania"],
 			location: {
@@ -3949,7 +3545,7 @@ var O = `(function() {
 			}
 		}
 	], Ct = "AllPlayers";
-	let b = (function(t) {
+	let w = (function(t) {
 		return t.Easy = "Easy", t.Medium = "Medium", t.Hard = "Hard", t.Impossible = "Impossible", t;
 	})({});
 	const Ws = "Duos", $s = "Trios", Hs = "Quads", qs = "Humans Vs Nations", Mt = {
@@ -3965,7 +3561,7 @@ var O = `(function() {
 		Nations: "Nations"
 	};
 	Fs.filter((t) => !t.hidden);
-	let jt = (function(t) {
+	let Kt = (function(t) {
 		return t.Singleplayer = "Singleplayer", t.Public = "Public", t.Private = "Private", t;
 	})({}), ut = (function(t) {
 		return t.FFA = "Free For All", t.Team = "Team", t;
@@ -4072,7 +3668,7 @@ var O = `(function() {
 	}, kh = (t, e, i) => {
 		const n = t & 4095, s = e !== void 0 ? e & 4095 : 4095, a = bh(i) & 31;
 		return n | s << 12 | a << 24;
-	}, vh = (t) => {
+	}, _h = (t) => {
 		let e = 0;
 		if (e |= t.level & 255, t.isActive && (e |= 256), t.reachedTarget && (e |= 512), t.targetable && (e |= 1024), t.underConstruction && (e |= 2048), t.hasTrainStation && (e |= 4096), t.loaded !== void 0 && (e |= (t.loaded ? 2 : 1) << 13), e |= (Th(t.trainType) & 3) << 15, t.warshipState) {
 			e |= 1 << 17;
@@ -4081,7 +3677,7 @@ var O = `(function() {
 		}
 		return t.transportShipState && (e |= 1 << 27, t.transportShipState.isRetreating && (e |= 1 << 28)), t.nukeState && (e |= 1 << 29, t.nukeState.targetedBySam && (e |= 1 << 30)), t.samUpgrade && (e |= 1 << 31), e;
 	};
-	function _h(t) {
+	function vh(t) {
 		const e = new Float64Array(t.length * 21);
 		let i = 0;
 		for (let a = 0; a < t.length; a++) t[a].missileTimerQueue && t[a].missileTimerQueue.length > 0 && (i += 2 + t[a].missileTimerQueue.length);
@@ -4089,7 +3685,7 @@ var O = `(function() {
 		let s = 0;
 		for (let a = 0; a < t.length; a++) {
 			const r = t[a], o = a * 21;
-			if (e[o + 0] = r.id, e[o + 1] = r.pos, e[o + 2] = r.lastPos, e[o + 3] = r.troops, e[o + 4] = r.health ?? NaN, e[o + 5] = r.targetTile ?? NaN, e[o + 6] = r.targetUnitId ?? NaN, e[o + 7] = r.markedForDeletion !== !1 ? r.markedForDeletion : NaN, r.warshipState ? (e[o + 8] = r.warshipState.lastCombatTick, e[o + 9] = r.warshipState.patrolTile ?? NaN, e[o + 10] = r.warshipState.retreatPort ?? NaN, e[o + 11] = r.warshipState.veterancyProgress) : (e[o + 8] = 0, e[o + 9] = NaN, e[o + 10] = NaN, e[o + 11] = 0), r.samUpgrade ? (e[o + 12] = r.samUpgrade.upgradeStartTick ?? NaN, e[o + 13] = r.samUpgrade.duration ?? NaN, e[o + 14] = r.samUpgrade.startRange ?? NaN, e[o + 15] = r.samUpgrade.targetLevel ?? NaN) : (e[o + 12] = 0, e[o + 13] = 0, e[o + 14] = 0, e[o + 15] = 0), e[o + 16] = r.transportShipState ? r.transportShipState.troops : 0, e[o + 17] = r.nukeState ? r.nukeState.waitTicks : 0, e[o + 18] = kh(r.ownerID, r.lastOwnerID, r.unitType), e[o + 19] = vh(r), e[o + 20] = r.level, r.missileTimerQueue && r.missileTimerQueue.length > 0) {
+			if (e[o + 0] = r.id, e[o + 1] = r.pos, e[o + 2] = r.lastPos, e[o + 3] = r.troops, e[o + 4] = r.health ?? NaN, e[o + 5] = r.targetTile ?? NaN, e[o + 6] = r.targetUnitId ?? NaN, e[o + 7] = r.markedForDeletion !== !1 ? r.markedForDeletion : NaN, r.warshipState ? (e[o + 8] = r.warshipState.lastCombatTick, e[o + 9] = r.warshipState.patrolTile ?? NaN, e[o + 10] = r.warshipState.retreatPort ?? NaN, e[o + 11] = r.warshipState.veterancyProgress) : (e[o + 8] = 0, e[o + 9] = NaN, e[o + 10] = NaN, e[o + 11] = 0), r.samUpgrade ? (e[o + 12] = r.samUpgrade.upgradeStartTick ?? NaN, e[o + 13] = r.samUpgrade.duration ?? NaN, e[o + 14] = r.samUpgrade.startRange ?? NaN, e[o + 15] = r.samUpgrade.targetLevel ?? NaN) : (e[o + 12] = 0, e[o + 13] = 0, e[o + 14] = 0, e[o + 15] = 0), e[o + 16] = r.transportShipState ? r.transportShipState.troops : 0, e[o + 17] = r.nukeState ? r.nukeState.waitTicks : 0, e[o + 18] = kh(r.ownerID, r.lastOwnerID, r.unitType), e[o + 19] = _h(r), e[o + 20] = r.level, r.missileTimerQueue && r.missileTimerQueue.length > 0) {
 				n[s++] = r.id, n[s++] = r.missileTimerQueue.length;
 				for (let l = 0; l < r.missileTimerQueue.length; l++) n[s++] = r.missileTimerQueue[l];
 			}
@@ -4143,7 +3739,7 @@ var O = `(function() {
 	function se(t) {
 		return t && Object.assign(Ii, t), Ii;
 	}
-	function Ks(t) {
+	function js(t) {
 		const e = Object.values(t).filter((i) => typeof i == "number");
 		return Object.entries(t).filter(([i, n]) => e.indexOf(+i) === -1).map(([i, n]) => n);
 	}
@@ -4170,12 +3766,12 @@ var O = `(function() {
 		const i = t / e, n = Math.round(i), s = Number.EPSILON * Math.max(Math.abs(i), 1);
 		return Math.abs(i - n) < s ? 0 : i - n;
 	}
-	const js = Symbol("evaluating");
+	const Ks = Symbol("evaluating");
 	function V(t, e, i) {
 		let n;
 		Object.defineProperty(t, e, {
 			get() {
-				if (n !== js) return n === void 0 && (n = js, n = i()), n;
+				if (n !== Ks) return n === void 0 && (n = Ks, n = i()), n;
 			},
 			set(s) {
 				Object.defineProperty(t, e, { value: s });
@@ -4392,7 +3988,7 @@ var O = `(function() {
 		const n = t.message ? t.message : Pi(t.inst?._zod.def?.error?.(t)) ?? Pi(e?.error?.(t)) ?? Pi(i.customError?.(t)) ?? Pi(i.localeError?.(t)) ?? "Invalid input", { inst: s, continue: a, input: r, ...o } = t;
 		return o.path ?? (o.path = []), o.message = n, e?.reportInput && (o.input = r), o;
 	}
-	function vn(t) {
+	function _n(t) {
 		return Array.isArray(t) ? "array" : typeof t == "string" ? "string" : "unknown";
 	}
 	function si(...t) {
@@ -4443,7 +4039,7 @@ var O = `(function() {
 		};
 		return n(t), i;
 	}
-	const _n = (t) => (e, i, n, s) => {
+	const vn = (t) => (e, i, n, s) => {
 		const a = n ? {
 			...n,
 			async: !1
@@ -4508,20 +4104,20 @@ var O = `(function() {
 			...n,
 			direction: "backward"
 		} : { direction: "backward" };
-		return _n(t)(e, i, s);
-	}, qh = (t) => (e, i, n) => _n(t)(e, i, n), Gh = (t) => async (e, i, n) => {
+		return vn(t)(e, i, s);
+	}, qh = (t) => (e, i, n) => vn(t)(e, i, n), Gh = (t) => async (e, i, n) => {
 		const s = n ? {
 			...n,
 			direction: "backward"
 		} : { direction: "backward" };
 		return An(t)(e, i, s);
-	}, Vh = (t) => async (e, i, n) => An(t)(e, i, n), Kh = (t) => (e, i, n) => {
+	}, Vh = (t) => async (e, i, n) => An(t)(e, i, n), jh = (t) => (e, i, n) => {
 		const s = n ? {
 			...n,
 			direction: "backward"
 		} : { direction: "backward" };
 		return Ei(t)(e, i, s);
-	}, jh = (t) => (e, i, n) => Ei(t)(e, i, n), Zh = (t) => async (e, i, n) => {
+	}, Kh = (t) => (e, i, n) => Ei(t)(e, i, n), Zh = (t) => async (e, i, n) => {
 		const s = n ? {
 			...n,
 			direction: "backward"
@@ -4548,7 +4144,7 @@ var O = `(function() {
 	const Su = (t) => {
 		const e = t ? \`[\\\\s\\\\S]{\${t?.minimum ?? 0},\${t?.maximum ?? ""}}\` : "[\\\\s\\\\S]*";
 		return new RegExp(\`^\${e}$\`);
-	}, wu = /^-?\\d+n?$/, bu = /^-?\\d+$/, aa = /^-?\\d+(?:\\.\\d+)?$/, Tu = /^(?:true|false)$/i, ku = /^[^A-Z]*$/, vu = /^[^a-z]*$/, Lt = E("$ZodCheck", (t, e) => {
+	}, wu = /^-?\\d+n?$/, bu = /^-?\\d+$/, aa = /^-?\\d+(?:\\.\\d+)?$/, Tu = /^(?:true|false)$/i, ku = /^[^A-Z]*$/, _u = /^[^a-z]*$/, Lt = E("$ZodCheck", (t, e) => {
 		var i;
 		t._zod ?? (t._zod = {}), t._zod.def = e, (i = t._zod).onattach ?? (i.onattach = []);
 	}), ra = {
@@ -4589,7 +4185,7 @@ var O = `(function() {
 				continue: !e.abort
 			});
 		};
-	}), _u = E("$ZodCheckMultipleOf", (t, e) => {
+	}), vu = E("$ZodCheckMultipleOf", (t, e) => {
 		Lt.init(t, e), t._zod.onattach.push((i) => {
 			var n;
 			(n = i._zod.bag).multipleOf ?? (n.multipleOf = e.value);
@@ -4676,7 +4272,7 @@ var O = `(function() {
 		}), t._zod.check = (n) => {
 			const s = n.value;
 			if (s.length <= e.maximum) return;
-			const a = vn(s);
+			const a = _n(s);
 			n.issues.push({
 				origin: a,
 				code: "too_big",
@@ -4698,7 +4294,7 @@ var O = `(function() {
 		}), t._zod.check = (n) => {
 			const s = n.value;
 			if (s.length >= e.minimum) return;
-			const a = vn(s);
+			const a = _n(s);
 			n.issues.push({
 				origin: a,
 				code: "too_small",
@@ -4720,7 +4316,7 @@ var O = `(function() {
 		}), t._zod.check = (n) => {
 			const s = n.value, a = s.length;
 			if (a === e.length) return;
-			const r = vn(s), o = a > e.length;
+			const r = _n(s), o = a > e.length;
 			n.issues.push({
 				origin: r,
 				...o ? {
@@ -4768,7 +4364,7 @@ var O = `(function() {
 	}), Mu = E("$ZodCheckLowerCase", (t, e) => {
 		e.pattern ?? (e.pattern = ku), Di.init(t, e);
 	}), Du = E("$ZodCheckUpperCase", (t, e) => {
-		e.pattern ?? (e.pattern = vu), Di.init(t, e);
+		e.pattern ?? (e.pattern = _u), Di.init(t, e);
 	}), xu = E("$ZodCheckIncludes", (t, e) => {
 		Lt.init(t, e);
 		const i = ze(e.includes), n = new RegExp(typeof e.position == "number" ? \`^.{\${e.position}}\${i}\` : i);
@@ -5007,9 +4603,9 @@ var O = `(function() {
 		e.pattern ?? (e.pattern = Jh), dt.init(t, e);
 	}), Vu = E("$ZodULID", (t, e) => {
 		e.pattern ?? (e.pattern = Qh), dt.init(t, e);
-	}), Ku = E("$ZodXID", (t, e) => {
+	}), ju = E("$ZodXID", (t, e) => {
 		e.pattern ?? (e.pattern = tu), dt.init(t, e);
-	}), ju = E("$ZodKSUID", (t, e) => {
+	}), Ku = E("$ZodKSUID", (t, e) => {
 		e.pattern ?? (e.pattern = eu), dt.init(t, e);
 	}), Zu = E("$ZodISODateTime", (t, e) => {
 		e.pattern ?? (e.pattern = yu(e)), dt.init(t, e);
@@ -5296,72 +4892,72 @@ var O = `(function() {
 				"payload",
 				"ctx"
 			]), f = n.value, g = (T) => {
-				const k = Zs(T);
-				return \`shape[\${k}]._zod.run({ value: input[\${k}], issues: [] }, ctx)\`;
+				const _ = Zs(T);
+				return \`shape[\${_}]._zod.run({ value: input[\${_}], issues: [] }, ctx)\`;
 			};
 			p.write("const input = payload.value;");
 			const y = Object.create(null);
-			let w = 0;
-			for (const T of f.keys) y[T] = \`key_\${w++}\`;
+			let b = 0;
+			for (const T of f.keys) y[T] = \`key_\${b++}\`;
 			p.write("const newResult = {};");
 			for (const T of f.keys) {
-				const k = y[T], v = Zs(T), _ = m[T], M = _?._zod?.optin === "optional", x = _?._zod?.optout === "optional";
-				p.write(\`const \${k} = \${g(T)};\`), M && x ? p.write(\`
-        if (\${k}.issues.length) {
-          if (\${v} in input) {
-            payload.issues = payload.issues.concat(\${k}.issues.map(iss => ({
+				const _ = y[T], k = Zs(T), v = m[T], M = v?._zod?.optin === "optional", x = v?._zod?.optout === "optional";
+				p.write(\`const \${_} = \${g(T)};\`), M && x ? p.write(\`
+        if (\${_}.issues.length) {
+          if (\${k} in input) {
+            payload.issues = payload.issues.concat(\${_}.issues.map(iss => ({
               ...iss,
-              path: iss.path ? [\${v}, ...iss.path] : [\${v}]
+              path: iss.path ? [\${k}, ...iss.path] : [\${k}]
             })));
           }
         }
         
-        if (\${k}.value === undefined) {
-          if (\${v} in input) {
-            newResult[\${v}] = undefined;
+        if (\${_}.value === undefined) {
+          if (\${k} in input) {
+            newResult[\${k}] = undefined;
           }
         } else {
-          newResult[\${v}] = \${k}.value;
+          newResult[\${k}] = \${_}.value;
         }
         
       \`) : M ? p.write(\`
-        if (\${k}.issues.length) {
-          payload.issues = payload.issues.concat(\${k}.issues.map(iss => ({
+        if (\${_}.issues.length) {
+          payload.issues = payload.issues.concat(\${_}.issues.map(iss => ({
             ...iss,
-            path: iss.path ? [\${v}, ...iss.path] : [\${v}]
+            path: iss.path ? [\${k}, ...iss.path] : [\${k}]
           })));
         }
         
-        if (\${k}.value === undefined) {
-          if (\${v} in input) {
-            newResult[\${v}] = undefined;
+        if (\${_}.value === undefined) {
+          if (\${k} in input) {
+            newResult[\${k}] = undefined;
           }
         } else {
-          newResult[\${v}] = \${k}.value;
+          newResult[\${k}] = \${_}.value;
         }
         
       \`) : p.write(\`
-        const \${k}_present = \${v} in input;
-        if (\${k}.issues.length) {
-          payload.issues = payload.issues.concat(\${k}.issues.map(iss => ({
+        const \${_}_present = \${k} in input;
+        if (\${_}.issues.length) {
+          payload.issues = payload.issues.concat(\${_}.issues.map(iss => ({
             ...iss,
-            path: iss.path ? [\${v}, ...iss.path] : [\${v}]
+            path: iss.path ? [\${k}, ...iss.path] : [\${k}]
           })));
         }
-        if (!\${k}_present && !\${k}.issues.length) {
+        if (!\${_}_present && !\${_}.issues.length) {
           payload.issues.push({
             code: "invalid_type",
             expected: "nonoptional",
             input: undefined,
-            path: [\${v}]
+            path: [\${k}]
           });
         }
 
-        if (\${k}_present) {
-          if (\${k}.value === undefined) {
-            newResult[\${v}] = undefined;
+        if (\${_}_present) {
+          if (\${_}.value === undefined) {
+            newResult[\${k}] = undefined;
           } else {
-            newResult[\${v}] = \${k}.value;
+            newResult[\${k}] = \${_}.value;
           }
         }
 
@@ -5369,7 +4965,7 @@ var O = `(function() {
 			}
 			p.write("payload.value = newResult;"), p.write("return payload;");
 			const S = p.compile();
-			return (T, k) => S(m, T, k);
+			return (T, _) => S(m, T, _);
 		};
 		let a;
 		const r = ni, o = !Ii.jitless, c = o && Ch.value, h = e.catchall;
@@ -5716,7 +5312,7 @@ var O = `(function() {
 		};
 	}), Td = E("$ZodEnum", (t, e) => {
 		at.init(t, e);
-		const i = Ks(e.entries), n = new Set(i);
+		const i = js(e.entries), n = new Set(i);
 		t._zod.values = n, t._zod.pattern = new RegExp(\`^(\${i.filter((s) => Ph.has(typeof s)).map((s) => typeof s == "string" ? ze(s) : s.toString()).join("|")})$\`), t._zod.parse = (s, a) => {
 			const r = s.value;
 			return n.has(r) || s.issues.push({
@@ -5738,7 +5334,7 @@ var O = `(function() {
 				inst: t
 			}), n;
 		};
-	}), vd = E("$ZodTransform", (t, e) => {
+	}), _d = E("$ZodTransform", (t, e) => {
 		at.init(t, e), t._zod.parse = (i, n) => {
 			if (n.direction === "backward") throw new Vs(t.constructor.name);
 			const s = e.transform(i.value, i);
@@ -5764,7 +5360,7 @@ var O = `(function() {
 			}
 			return i.value === void 0 ? i : e.innerType._zod.run(i, n);
 		};
-	}), _d = E("$ZodExactOptional", (t, e) => {
+	}), vd = E("$ZodExactOptional", (t, e) => {
 		Ta.init(t, e), V(t._zod, "values", () => e.innerType._zod.values), V(t._zod, "pattern", () => e.innerType._zod.pattern), t._zod.parse = (i, n) => e.innerType._zod.run(i, n);
 	}), Ad = E("$ZodNullable", (t, e) => {
 		at.init(t, e), V(t._zod, "optin", () => e.innerType._zod.optin), V(t._zod, "optout", () => e.innerType._zod.optout), V(t._zod, "pattern", () => {
@@ -5790,10 +5386,10 @@ var O = `(function() {
 			return i ? new Set([...i].filter((n) => n !== void 0)) : void 0;
 		}), t._zod.parse = (i, n) => {
 			const s = e.innerType._zod.run(i, n);
-			return s instanceof Promise ? s.then((a) => va(a, t)) : va(s, t);
+			return s instanceof Promise ? s.then((a) => _a(a, t)) : _a(s, t);
 		};
 	});
-	function va(t, e) {
+	function _a(t, e) {
 		return !t.issues.length && t.value === void 0 && t.issues.push({
 			code: "invalid_type",
 			expected: "nonoptional",
@@ -5815,7 +5411,7 @@ var O = `(function() {
 				input: i.value
 			}), i.issues = []), i);
 		};
-	}), _a = E("$ZodPipe", (t, e) => {
+	}), va = E("$ZodPipe", (t, e) => {
 		at.init(t, e), V(t._zod, "values", () => e.in._zod.values), V(t._zod, "optin", () => e.in._zod.optin), V(t._zod, "optout", () => e.out._zod.optout), V(t._zod, "propValues", () => e.in._zod.propValues), t._zod.parse = (i, n) => {
 			if (n.direction === "backward") {
 				const a = e.out._zod.run(i, n);
@@ -5832,7 +5428,7 @@ var O = `(function() {
 		}, i);
 	}
 	const Md = E("$ZodPreprocess", (t, e) => {
-		_a.init(t, e), V(t._zod, "optin", () => e.out._zod.optin), V(t._zod, "optout", () => e.out._zod.optout);
+		va.init(t, e), V(t._zod, "optin", () => e.out._zod.optin), V(t._zod, "optout", () => e.out._zod.optout);
 	}), Dd = E("$ZodReadonly", (t, e) => {
 		at.init(t, e), V(t._zod, "propValues", () => e.innerType._zod.propValues), V(t._zod, "values", () => e.innerType._zod.values), V(t._zod, "optin", () => e.innerType?._zod?.optin), V(t._zod, "optout", () => e.innerType?._zod?.optout), t._zod.parse = (i, n) => {
 			if (n.direction === "backward") return e.innerType._zod.run(i, n);
@@ -6012,7 +5608,7 @@ var O = `(function() {
 			...U(e)
 		});
 	}
-	function Kd(t, e) {
+	function jd(t, e) {
 		return new t({
 			type: "string",
 			format: "ulid",
@@ -6021,7 +5617,7 @@ var O = `(function() {
 			...U(e)
 		});
 	}
-	function jd(t, e) {
+	function Kd(t, e) {
 		return new t({
 			type: "string",
 			format: "xid",
@@ -6217,7 +5813,7 @@ var O = `(function() {
 		});
 	}
 	function Pn(t, e) {
-		return new _u({
+		return new vu({
 			check: "multiple_of",
 			...U(e),
 			value: t
@@ -6305,10 +5901,10 @@ var O = `(function() {
 	function km() {
 		return $e((t) => t.toLowerCase());
 	}
-	function vm() {
+	function _m() {
 		return $e((t) => t.toUpperCase());
 	}
-	function _m() {
+	function vm() {
 		return $e((t) => Ih(t));
 	}
 	function Am(t, e, i) {
@@ -6600,7 +6196,7 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 	}, Om = (t, e, i, n) => {
 		i.not = {};
 	}, Lm = (t, e, i, n) => {
-		const s = t._zod.def, a = Ks(s.entries);
+		const s = t._zod.def, a = js(s.entries);
 		a.every((r) => typeof r == "number") && (i.type = "number"), a.every((r) => typeof r == "string") && (i.type = "string"), i.enum = a;
 	}, zm = (t, e, i, n) => {
 		const s = t._zod.def, a = [];
@@ -6692,7 +6288,7 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 		e.target === "draft-2020-12" ? (s.prefixItems = l, c && (s.items = c)) : e.target === "openapi-3.0" ? (s.items = { anyOf: l }, c && s.items.anyOf.push(c), s.minItems = l.length, c || (s.maxItems = l.length)) : (s.items = l, c && (s.additionalItems = c));
 		const { minimum: h, maximum: u } = t._zod.bag;
 		typeof h == "number" && (s.minItems = h), typeof u == "number" && (s.maxItems = u);
-	}, Km = (t, e, i, n) => {
+	}, jm = (t, e, i, n) => {
 		const s = i, a = t._zod.def;
 		s.type = "object";
 		const r = a.keyType, o = r._zod.bag?.patterns;
@@ -6719,7 +6315,7 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 			const c = [...l].filter((h) => typeof h == "string" || typeof h == "number");
 			c.length > 0 && (s.required = c);
 		}
-	}, jm = (t, e, i, n) => {
+	}, Km = (t, e, i, n) => {
 		const s = t._zod.def, a = yt(s.innerType, e, n), r = e.seen.get(t);
 		e.target === "openapi-3.0" ? (r.ref = s.innerType, i.nullable = !0) : i.anyOf = [a, { type: "null" }];
 	}, Zm = (t, e, i, n) => {
@@ -6807,7 +6403,7 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 				return t.issues.length === 0;
 			} }
 		});
-	}, { Parent: Error }), hp = _n(Gt), up = An(Gt), dp = Ei(Gt), mp = Mi(Gt), pp = Hh(Gt), fp = qh(Gt), gp = Gh(Gt), yp = Vh(Gt), Sp = Kh(Gt), wp = jh(Gt), bp = Zh(Gt), Tp = Yh(Gt), Ba = /* @__PURE__ */ new WeakMap();
+	}, { Parent: Error }), hp = vn(Gt), up = An(Gt), dp = Ei(Gt), mp = Mi(Gt), pp = Hh(Gt), fp = qh(Gt), gp = Gh(Gt), yp = Vh(Gt), Sp = jh(Gt), wp = Kh(Gt), bp = Zh(Gt), Tp = Yh(Gt), Ba = /* @__PURE__ */ new WeakMap();
 	function ri(t, e, i) {
 		const n = Object.getPrototypeOf(t);
 		let s = Ba.get(n);
@@ -6981,27 +6577,27 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 				return this.check(km());
 			},
 			toUpperCase() {
-				return this.check(vm());
+				return this.check(_m());
 			},
 			slugify() {
-				return this.check(_m());
+				return this.check(vm());
 			}
 		});
 	}), kp = E("ZodString", (t, e) => {
-		In.init(t, e), Oa.init(t, e), t.email = (i) => t.check(Ud(vp, i)), t.url = (i) => t.check($d(_p, i)), t.jwt = (i) => t.check(nm(zp, i)), t.emoji = (i) => t.check(Hd(Ap, i)), t.guid = (i) => t.check(Pa(Ua, i)), t.uuid = (i) => t.check(Ld(Li, i)), t.uuidv4 = (i) => t.check(zd(Li, i)), t.uuidv6 = (i) => t.check(Fd(Li, i)), t.uuidv7 = (i) => t.check(Wd(Li, i)), t.nanoid = (i) => t.check(qd(Ip, i)), t.guid = (i) => t.check(Pa(Ua, i)), t.cuid = (i) => t.check(Gd(Cp, i)), t.cuid2 = (i) => t.check(Vd(Pp, i)), t.ulid = (i) => t.check(Kd(Ep, i)), t.base64 = (i) => t.check(tm(Op, i)), t.base64url = (i) => t.check(em(Up, i)), t.xid = (i) => t.check(jd(Mp, i)), t.ksuid = (i) => t.check(Zd(Dp, i)), t.ipv4 = (i) => t.check(Yd(xp, i)), t.ipv6 = (i) => t.check(Xd(Rp, i)), t.cidrv4 = (i) => t.check(Jd(Np, i)), t.cidrv6 = (i) => t.check(Qd(Bp, i)), t.e164 = (i) => t.check(im(Lp, i)), t.datetime = (i) => t.check(np(i)), t.date = (i) => t.check(ap(i)), t.time = (i) => t.check(op(i)), t.duration = (i) => t.check(cp(i));
+		In.init(t, e), Oa.init(t, e), t.email = (i) => t.check(Ud(_p, i)), t.url = (i) => t.check($d(vp, i)), t.jwt = (i) => t.check(nm(zp, i)), t.emoji = (i) => t.check(Hd(Ap, i)), t.guid = (i) => t.check(Pa(Ua, i)), t.uuid = (i) => t.check(Ld(Li, i)), t.uuidv4 = (i) => t.check(zd(Li, i)), t.uuidv6 = (i) => t.check(Fd(Li, i)), t.uuidv7 = (i) => t.check(Wd(Li, i)), t.nanoid = (i) => t.check(qd(Ip, i)), t.guid = (i) => t.check(Pa(Ua, i)), t.cuid = (i) => t.check(Gd(Cp, i)), t.cuid2 = (i) => t.check(Vd(Pp, i)), t.ulid = (i) => t.check(jd(Ep, i)), t.base64 = (i) => t.check(tm(Op, i)), t.base64url = (i) => t.check(em(Up, i)), t.xid = (i) => t.check(Kd(Mp, i)), t.ksuid = (i) => t.check(Zd(Dp, i)), t.ipv4 = (i) => t.check(Yd(xp, i)), t.ipv6 = (i) => t.check(Xd(Rp, i)), t.cidrv4 = (i) => t.check(Jd(Np, i)), t.cidrv6 = (i) => t.check(Qd(Bp, i)), t.e164 = (i) => t.check(im(Lp, i)), t.datetime = (i) => t.check(np(i)), t.date = (i) => t.check(ap(i)), t.time = (i) => t.check(op(i)), t.duration = (i) => t.check(cp(i));
 	});
 	function $(t) {
 		return Od(kp, t);
 	}
 	const St = E("ZodStringFormat", (t, e) => {
 		dt.init(t, e), Oa.init(t, e);
-	}), vp = E("ZodEmail", (t, e) => {
+	}), _p = E("ZodEmail", (t, e) => {
 		Fu.init(t, e), St.init(t, e);
 	}), Ua = E("ZodGUID", (t, e) => {
 		Lu.init(t, e), St.init(t, e);
 	}), Li = E("ZodUUID", (t, e) => {
 		zu.init(t, e), St.init(t, e);
-	}), _p = E("ZodURL", (t, e) => {
+	}), vp = E("ZodURL", (t, e) => {
 		Wu.init(t, e), St.init(t, e);
 	}), Ap = E("ZodEmoji", (t, e) => {
 		$u.init(t, e), St.init(t, e);
@@ -7014,9 +6610,9 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 	}), Ep = E("ZodULID", (t, e) => {
 		Vu.init(t, e), St.init(t, e);
 	}), Mp = E("ZodXID", (t, e) => {
-		Ku.init(t, e), St.init(t, e);
-	}), Dp = E("ZodKSUID", (t, e) => {
 		ju.init(t, e), St.init(t, e);
+	}), Dp = E("ZodKSUID", (t, e) => {
+		Ku.init(t, e), St.init(t, e);
 	}), xp = E("ZodIPv4", (t, e) => {
 		Qu.init(t, e), St.init(t, e);
 	}), Rp = E("ZodIPv6", (t, e) => {
@@ -7141,7 +6737,7 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 	function R(t, e) {
 		return Am(Vp, t, e);
 	}
-	const Kp = E("ZodObject", (t, e) => {
+	const jp = E("ZodObject", (t, e) => {
 		gd.init(t, e), lt.init(t, e), t._zod.processJSONSchema = (i, n, s) => Hm(t, i, n, s), V(t, "shape", () => e.shape), ri(t, "ZodObject", {
 			keyof() {
 				return mt(Object.keys(this._zod.def.shape));
@@ -7195,12 +6791,12 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 				return Oh(qa, this, i[0]);
 			},
 			required(...i) {
-				return Uh(Ka, this, i[0]);
+				return Uh(ja, this, i[0]);
 			}
 		});
 	});
 	function A(t, e) {
-		return new Kp({
+		return new jp({
 			type: "object",
 			shape: t ?? {},
 			...U(e)
@@ -7216,11 +6812,11 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 			...U(e)
 		});
 	}
-	const jp = E("ZodDiscriminatedUnion", (t, e) => {
+	const Kp = E("ZodDiscriminatedUnion", (t, e) => {
 		Fa.init(t, e), yd.init(t, e);
 	});
 	function Zp(t, e, i) {
-		return new jp({
+		return new Kp({
 			type: "union",
 			options: e,
 			discriminator: t,
@@ -7253,7 +6849,7 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 		});
 	}
 	const En = E("ZodRecord", (t, e) => {
-		bd.init(t, e), lt.init(t, e), t._zod.processJSONSchema = (i, n, s) => Km(t, i, n, s), t.keyType = e.keyType, t.valueType = e.valueType;
+		bd.init(t, e), lt.init(t, e), t._zod.processJSONSchema = (i, n, s) => jm(t, i, n, s), t.keyType = e.keyType, t.valueType = e.valueType;
 	});
 	function $a(t, e, i) {
 		return !e || !e._zod ? new En({
@@ -7323,7 +6919,7 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 		});
 	}
 	const Qp = E("ZodTransform", (t, e) => {
-		vd.init(t, e), lt.init(t, e), t._zod.processJSONSchema = (i, n, s) => Wm(t, i, n, s), t._zod.parse = (i, n) => {
+		_d.init(t, e), lt.init(t, e), t._zod.processJSONSchema = (i, n, s) => Wm(t, i, n, s), t._zod.parse = (i, n) => {
 			if (n.direction === "backward") throw new Vs(t.constructor.name);
 			i.addIssue = (a) => {
 				if (typeof a == "string") i.issues.push(si(a, i.value, e));
@@ -7352,7 +6948,7 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 		});
 	}
 	const tf = E("ZodExactOptional", (t, e) => {
-		_d.init(t, e), lt.init(t, e), t._zod.processJSONSchema = (i, n, s) => Na(t, i, n, s), t.unwrap = () => t._zod.def.innerType;
+		vd.init(t, e), lt.init(t, e), t._zod.processJSONSchema = (i, n, s) => Na(t, i, n, s), t.unwrap = () => t._zod.def.innerType;
 	});
 	function ef(t) {
 		return new tf({
@@ -7361,7 +6957,7 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 		});
 	}
 	const nf = E("ZodNullable", (t, e) => {
-		Ad.init(t, e), lt.init(t, e), t._zod.processJSONSchema = (i, n, s) => jm(t, i, n, s), t.unwrap = () => t._zod.def.innerType;
+		Ad.init(t, e), lt.init(t, e), t._zod.processJSONSchema = (i, n, s) => Km(t, i, n, s), t.unwrap = () => t._zod.def.innerType;
 	});
 	function Va(t) {
 		return new nf({
@@ -7393,11 +6989,11 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 			}
 		});
 	}
-	const Ka = E("ZodNonOptional", (t, e) => {
+	const ja = E("ZodNonOptional", (t, e) => {
 		Pd.init(t, e), lt.init(t, e), t._zod.processJSONSchema = (i, n, s) => Zm(t, i, n, s), t.unwrap = () => t._zod.def.innerType;
 	});
 	function lf(t, e) {
-		return new Ka({
+		return new ja({
 			type: "nonoptional",
 			innerType: t,
 			...U(e)
@@ -7413,18 +7009,18 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 			catchValue: typeof e == "function" ? e : () => e
 		});
 	}
-	const ja = E("ZodPipe", (t, e) => {
-		_a.init(t, e), lt.init(t, e), t._zod.processJSONSchema = (i, n, s) => Qm(t, i, n, s), t.in = e.in, t.out = e.out;
+	const Ka = E("ZodPipe", (t, e) => {
+		va.init(t, e), lt.init(t, e), t._zod.processJSONSchema = (i, n, s) => Qm(t, i, n, s), t.in = e.in, t.out = e.out;
 	});
 	function Za(t, e) {
-		return new ja({
+		return new Ka({
 			type: "pipe",
 			in: t,
 			out: e
 		});
 	}
 	const uf = E("ZodPreprocess", (t, e) => {
-		ja.init(t, e), Md.init(t, e);
+		Ka.init(t, e), Md.init(t, e);
 	}), df = E("ZodReadonly", (t, e) => {
 		Dd.init(t, e), lt.init(t, e), t._zod.processJSONSchema = (i, n, s) => tp(t, i, n, s), t.unwrap = () => t._zod.def.innerType;
 	});
@@ -7481,7 +7077,7 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 			super(...t), this.name = "SnapshotError";
 		}
 	};
-	function _t(t, e) {
+	function vt(t, e) {
 		const i = pt.safeParse(e);
 		if (!i.success) throw new $t(\`\${t.name}: malformed record\`);
 		let { v: n, d: s } = i.data;
@@ -7495,7 +7091,7 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 		if (!a.success) throw new $t(\`\${t.name} v\${n}: invalid data: \${a.error.message}\`);
 		return a.data;
 	}
-	const C = () => xt().int(), K = () => oi((t) => typeof t == "number", "expected a number"), it = () => xt().int().nonnegative(), It = () => oi((t) => t instanceof Uint32Array, "expected tiles"), xn = () => oi((t) => t instanceof Uint8Array, "expected bytes"), Sf = () => oi((t) => t instanceof Uint16Array, "expected u16s"), zt = () => Pt([
+	const C = () => xt().int(), j = () => oi((t) => typeof t == "number", "expected a number"), it = () => xt().int().nonnegative(), It = () => oi((t) => t instanceof Uint32Array, "expected tiles"), xn = () => oi((t) => t instanceof Uint8Array, "expected bytes"), Sf = () => oi((t) => t instanceof Uint16Array, "expected u16s"), zt = () => Pt([
 		C(),
 		C(),
 		C(),
@@ -8055,14 +7651,14 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 	};
 	const ci = new Float64Array(1), qe = new Uint32Array(ci.buffer);
 	ci[0] = 1;
-	const hi = qe[1] === 1072693248 ? 1 : 0, vf = 1 - hi, Qa = .6931471805599453, _f = 1.4426950408889634, Af = 1.4142135623730951, tr = 3.141592653589793, er = 1.5707963267948966, If = .7853981633974483, Cf = .41421356237309503;
+	const hi = qe[1] === 1072693248 ? 1 : 0, _f = 1 - hi, Qa = .6931471805599453, vf = 1.4426950408889634, Af = 1.4142135623730951, tr = 3.141592653589793, er = 1.5707963267948966, If = .7853981633974483, Cf = .41421356237309503;
 	function $i(t) {
-		return t > 1023 ? Infinity : t < -1022 ? 0 : (qe[hi] = t + 1023 << 20, qe[vf] = 0, ci[0]);
+		return t > 1023 ? Infinity : t < -1022 ? 0 : (qe[hi] = t + 1023 << 20, qe[_f] = 0, ci[0]);
 	}
 	function Hi(t) {
 		if (t > 709) return Infinity;
 		if (t < -708) return 0;
-		const e = Math.floor(t * _f + .5), i = t - e * Qa;
+		const e = Math.floor(t * vf + .5), i = t - e * Qa;
 		return (1 + i * (1 + i * (1 / 2 + i * (1 / 6 + i * (1 / 24 + i * (1 / 120 + i * (1 / 720 + i * (1 / 5040 + i * (1 / 40320))))))))) * $i(e);
 	}
 	function Nn(t) {
@@ -8156,7 +7752,7 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 	function rr(t) {
 		return new qt(t.min.x + Math.floor((t.max.x - t.min.x) / 2), t.min.y + Math.floor((t.max.y - t.min.y) / 2));
 	}
-	function j(t) {
+	function K(t) {
 		throw new Error("Unexpected value: " + t);
 	}
 	function ce(t) {
@@ -8336,7 +7932,7 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 				case d.Train:
 					i = {};
 					break;
-				default: j(t);
+				default: K(t);
 			}
 			return this.unitInfoCache.set(t, i), i;
 		}
@@ -8369,7 +7965,7 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 			return .8;
 		}
 		numSpawnPhaseTurns() {
-			return this._gameConfig.gameType === jt.Singleplayer ? 100 : this.isRandomSpawn() ? 150 : 200;
+			return this._gameConfig.gameType === Kt.Singleplayer ? 100 : this.isRandomSpawn() ? 150 : 200;
 		}
 		maxTroops(t) {
 			return this.troopCap(t, !0);
@@ -8383,11 +7979,11 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 			if (t.type() === D.Bot) return n / 3;
 			if (t.type() === D.Human) return n;
 			switch (this._gameConfig.difficulty) {
-				case b.Easy: return n * .5;
-				case b.Medium: return n * .75;
-				case b.Hard: return n * 1;
-				case b.Impossible: return n * 1.25;
-				default: j(this._gameConfig.difficulty);
+				case w.Easy: return n * .5;
+				case w.Medium: return n * .75;
+				case w.Hard: return n * 1;
+				case w.Impossible: return n * 1.25;
+				default: K(this._gameConfig.difficulty);
 			}
 		}
 		troopIncreaseRate(t) {
@@ -8395,19 +7991,19 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 			let i = 10 + ir(t.troops(), .73) / 4;
 			const n = 1 - t.troops() / e;
 			if (i *= n, t.type() === D.Bot && (i *= .5), t.type() === D.Nation) switch (this._gameConfig.difficulty) {
-				case b.Easy:
+				case w.Easy:
 					i *= .9;
 					break;
-				case b.Medium:
+				case w.Medium:
 					i *= .95;
 					break;
-				case b.Hard:
+				case w.Hard:
 					i *= 1;
 					break;
-				case b.Impossible:
+				case w.Impossible:
 					i *= 1.05;
 					break;
-				default: j(this._gameConfig.difficulty);
+				default: K(this._gameConfig.difficulty);
 			}
 			return Math.min(t.troops() + i, e) - t.troops();
 		}
@@ -8450,7 +8046,7 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 			return 300;
 		}
 	};
-	const Uf = 3e5, Lf = 2.5, zf = .7, Ff = .3, Wf = .7, $f = 2e3, Hf = 5, qf = 100, Gf = .463, or = .6, Vf = .0039, Kf = 8.55, jf = .73;
+	const Uf = 3e5, Lf = 2.5, zf = .7, Ff = .3, Wf = .7, $f = 2e3, Hf = 5, qf = 100, Gf = .463, or = .6, Vf = .0039, jf = 8.55, Kf = .73;
 	function Ln(t, e) {
 		return 1 - e * ui(Nn(t), Lf, Nn(Uf));
 	}
@@ -8535,7 +8131,7 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 			return Math.max(e, i);
 		}
 		trainSpawnRate(t, e) {
-			const i = (t + 20) * 165 / 21, n = this.smallEconomySpawnBoost(t);
+			const i = (t + 10) * 15, n = this.smallEconomySpawnBoost(t);
 			return Math.max(1, Math.floor(i / (this.trainSaturation(e) * n)));
 		}
 		smallEconomySpawnBoost(t) {
@@ -8607,7 +8203,7 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 				case d.MIRVWarhead:
 				case d.TradeShip:
 				case d.Train: return () => 0n;
-				default: j(t);
+				default: K(t);
 			}
 		}
 		hasInfiniteTroopsForInfo(t) {
@@ -8689,7 +8285,7 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 				};
 			}
 			n.isDisconnectedTeammate && (s = 0), (i.type === D.Human || i.type === D.Nation) && n.type === D.Bot && (s *= Wf);
-			const r = Ln(i.numTiles, zf), o = Ln(n.numTiles, Ff), l = n.isTraitor ? this.traitorDefenseDebuff() : 1, c = n.isTraitor ? this.traitorSpeedDebuff() : 1, h = n.troops / n.numTiles, u = n.troops / e, m = s * l * le(u, or, 2) * (Gf * r * o + Vf * h), p = le(u, .82, 7.5) * le(u / 20, 1, 50) / Kf, f = Ln(i.numTiles, jf);
+			const r = Ln(i.numTiles, zf), o = Ln(n.numTiles, Ff), l = n.isTraitor ? this.traitorDefenseDebuff() : 1, c = n.isTraitor ? this.traitorSpeedDebuff() : 1, h = n.troops / n.numTiles, u = n.troops / e, m = s * l * le(u, or, 2) * (Gf * r * o + Vf * h), p = le(u, .82, 7.5) * le(u / 20, 1, 50) / jf, f = Ln(i.numTiles, Kf);
 			return {
 				attackerTroopLoss: m,
 				defenderTroopLoss: h,
@@ -8714,11 +8310,11 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 		startManpower(t) {
 			if (t.playerType === D.Bot) return 1e4;
 			if (t.playerType === D.Nation) switch (this._gameConfig.difficulty) {
-				case b.Easy: return 12500;
-				case b.Medium: return 18750;
-				case b.Hard: return 25e3;
-				case b.Impossible: return 31250;
-				default: j(this._gameConfig.difficulty);
+				case w.Easy: return 12500;
+				case w.Medium: return 18750;
+				case w.Hard: return 25e3;
+				case w.Impossible: return 31250;
+				default: K(this._gameConfig.difficulty);
 			}
 			return this._gameConfig.tutorial ? 6e4 : this.hasInfiniteTroopsForInfo(t) ? 1e6 : 25e3;
 		}
@@ -9040,13 +8636,13 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 					f.enterDoomsdayClock();
 					const g = Math.floor(f.doomsdayClockTicks() / 10);
 					if (g >= i.warnSeconds) {
-						const y = g - i.warnSeconds, w = e.config().maxTroops(f), S = sg(w, y, i), T = hr(w, y, i);
+						const y = g - i.warnSeconds, b = e.config().maxTroops(f), S = sg(b, y, i), T = hr(b, y, i);
 						f.removeTroops(Math.min(T, Math.max(0, f.troops() - S))), i.rotDeathSeconds > 0 && y >= i.floorDecaySeconds && f.troops() <= S && this.rot(e, f, g, i);
-						for (const k of f.units(d.Warship)) {
-							const v = Math.floor(k.maxHealth() * i.drainFloorPercent / 100), _ = Math.max(0, k.health() - v);
-							if (_ <= 0) continue;
-							const M = hr(k.maxHealth(), y, n, i.warshipDrainCurveExponent);
-							k.modifyHealth(-Math.min(M, _));
+						for (const _ of f.units(d.Warship)) {
+							const k = Math.floor(_.maxHealth() * i.drainFloorPercent / 100), v = Math.max(0, _.health() - k);
+							if (v <= 0) continue;
+							const M = hr(_.maxHealth(), y, n, i.warshipDrainCurveExponent);
+							_.modifyHealth(-Math.min(M, v));
 						}
 					}
 				}
@@ -9160,7 +8756,7 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 		}),
 		cls: () => ur
 	});
-	var Ki = class {
+	var ji = class {
 		constructor(t, e) {
 			this.from = t, this.toID = e;
 		}
@@ -9206,7 +8802,7 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 			from: O(),
 			toID: $()
 		}),
-		cls: () => Ki
+		cls: () => ji
 	});
 	var pr = class {
 		constructor(t, e) {
@@ -9550,22 +9146,22 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 			}
 			if (this.mg.stats().attackMaxIncoming(this.target, this.attack.troops()), !this.target.isPlayer()) return;
 			const i = this.mg.config().gameConfig().difficulty;
-			if (i !== b.Easy && this._owner.relation(this.target) === kt.Hostile) return;
+			if (i !== w.Easy && this._owner.relation(this.target) === kt.Hostile) return;
 			let n;
 			switch (i) {
-				case b.Easy:
+				case w.Easy:
 					n = -60;
 					break;
-				case b.Medium:
+				case w.Medium:
 					n = -70;
 					break;
-				case b.Hard:
+				case w.Hard:
 					n = -80;
 					break;
-				case b.Impossible:
+				case w.Impossible:
 					n = -100;
 					break;
-				default: j(i);
+				default: K(i);
 			}
 			this.target.updateRelation(this._owner, n);
 		}
@@ -9749,7 +9345,7 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 			random: zt(),
 			target: O().nullable(),
 			attack: N().nullable(),
-			startTroops: K().nullable(),
+			startTroops: j().nullable(),
 			owner: O(),
 			targetID: $().nullable(),
 			sourceTile: it().nullable(),
@@ -9780,7 +9376,7 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 			return !1;
 		}
 		snapshot(t) {
-			return vr.write({
+			return _r.write({
 				active: this.active,
 				player: t.player(this.player),
 				unitID: this.unitID
@@ -9790,7 +9386,7 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 			this.active = t.active, this.player = e.player(t.player), this.unitID = t.unitID;
 		}
 	};
-	const vr = G({
+	const _r = G({
 		name: "BoatRetreat",
 		version: 1,
 		schema: A({
@@ -9799,7 +9395,7 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 			unitID: C()
 		}),
 		cls: () => kr
-	}), ji = A({
+	}), Ki = A({
 		name: $(),
 		playerType: mt(D),
 		clientID: $().nullable(),
@@ -9826,7 +9422,7 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 	function Yi(t) {
 		return new ne(t.name, t.playerType, t.clientID, t.id, t.isLobbyCreator, t.clanTag, t.friends, t.teamIndex, t.nationFlag);
 	}
-	function _r(t, e) {
+	function vr(t, e) {
 		return e.game.findPlayerInfo(t.id) ?? Yi(t);
 	}
 	const Sg = A({
@@ -9844,7 +9440,7 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 	}
 	const Ir = A({
 		spawnCell: Sg.nullable(),
-		playerInfo: ji
+		playerInfo: Ki
 	});
 	function Cr(t) {
 		return {
@@ -10447,11 +10043,11 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 		}),
 		cls: () => Lr
 	}), Ht = [];
-	function Ke() {
+	function je() {
 		return globalThis.__DEBUG_SPAN_ENABLED__ === !0;
 	}
 	const W = {
-		isEnabled: Ke,
+		isEnabled: je,
 		enable() {
 			globalThis.__DEBUG_SPAN_ENABLED__ = !0;
 		},
@@ -10459,7 +10055,7 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 			globalThis.__DEBUG_SPAN_ENABLED__ = !1;
 		},
 		start(t) {
-			if (!Ke()) return;
+			if (!je()) return;
 			const e = {
 				name: t,
 				timeStart: performance.now(),
@@ -10469,7 +10065,7 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 			Ht[Ht.length - 1]?.children.push(e), Ht.push(e);
 		},
 		end(t) {
-			if (!Ke()) return;
+			if (!je()) return;
 			if (Ht.length === 0) {
 				const i = t ? \`"\${t}"\` : "";
 				throw new Error(\`DebugSpan.end(\${i}): no open span\`);
@@ -10485,7 +10081,7 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 			e.timeEnd = performance.now(), e.duration = e.timeEnd - e.timeStart, Ht.length === 0 && W.storeSpan(e);
 		},
 		storeSpan(t) {
-			if (!Ke()) return;
+			if (!je()) return;
 			globalThis.__DEBUG_SPANS__ = globalThis.__DEBUG_SPANS__ ?? [], globalThis.__DEBUG_SPANS__.push(t);
 			const e = (n) => Object.fromEntries(Object.entries(n.data).filter(([s]) => typeof s == "string" && s.startsWith("$"))), i = {
 				timings: { total: t.duration },
@@ -10519,13 +10115,13 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 			}
 		},
 		set(t, e, i = !0) {
-			if (!Ke()) return;
+			if (!je()) return;
 			if (Ht.length === 0) throw new Error(\`DebugSpan.set("\${t}"): no open span\`);
 			const n = i ? Ht[0] : Ht[Ht.length - 1];
 			n.data[t] = e(n.data[t]);
 		},
 		getLastSpan(t) {
-			if (Ke()) {
+			if (je()) {
 				if (globalThis.__DEBUG_SPANS__ = globalThis.__DEBUG_SPANS__ ?? [], t) {
 					for (let e = globalThis.__DEBUG_SPANS__.length - 1 || 0; e >= 0; e--) {
 						const i = globalThis.__DEBUG_SPANS__[e];
@@ -10624,10 +10220,10 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 				if (s[m] = i, m === e) return this.buildPath(e);
 				const p = r[m], f = o[m], g = n.neighbors(m, c);
 				for (let y = 0; y < g; y++) {
-					const w = c[y];
-					if (s[w] === i) continue;
-					const S = p + n.cost(m, w, f === -1 ? void 0 : f);
-					(a[w] !== i || S < r[w]) && (o[w] = m, r[w] = S, a[w] = i, l.push(w, S + n.heuristic(w, e)));
+					const b = c[y];
+					if (s[b] === i) continue;
+					const S = p + n.cost(m, b, f === -1 ? void 0 : f);
+					(a[b] !== i || S < r[b]) && (o[b] = m, r[b] = S, a[b] = i, l.push(b, S + n.heuristic(b, e)));
 				}
 			}
 			return null;
@@ -10705,9 +10301,9 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 			this.stamp++, this.stamp > 4294967295 && (this.closedStamp.fill(0), this.gScoreStamp.fill(0), this.stamp = 1);
 			const i = this.stamp, n = this.width, s = this.numNodes, a = this.terrain, r = this.closedStamp, o = this.gScoreStamp, l = this.gScore, c = this.cameFrom, h = this.queue, u = this.heuristicWeight, m = 1 << Pg, p = e % n, f = e / n | 0;
 			h.clear();
-			const g = Array.isArray(t) ? t : [t], y = g[0], w = y % n, S = y / n | 0, T = p - w, k = f - S, v = Math.max(1, Math.abs(T) + Math.abs(k)), _ = (x, L) => {
-				const H = x - p, Y = L - f, B = Math.abs(T * Y - k * H);
-				return Math.floor(B * (tn - 1) / v / v);
+			const g = Array.isArray(t) ? t : [t], y = g[0], b = y % n, S = y / n | 0, T = p - b, _ = f - S, k = Math.max(1, Math.abs(T) + Math.abs(_)), v = (x, L) => {
+				const H = x - p, Y = L - f, B = Math.abs(T * Y - _ * H);
+				return Math.floor(B * (tn - 1) / k / k);
 			};
 			for (const x of g) {
 				l[x] = 0, o[x] = i, c[x] = -1;
@@ -10727,7 +10323,7 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 						const nt = L + (he + en(J & Qi));
 						if (o[B] !== i || nt < l[B]) {
 							c[B] = x, l[B] = nt, o[B] = i;
-							const F = Y - 1, Q = nt + u * he * (Math.abs(H - p) + Math.abs(F - f)) + _(H, F);
+							const F = Y - 1, Q = nt + u * he * (Math.abs(H - p) + Math.abs(F - f)) + v(H, F);
 							h.push(B, Q);
 						}
 					}
@@ -10738,7 +10334,7 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 						const nt = L + (he + en(J & Qi));
 						if (o[B] !== i || nt < l[B]) {
 							c[B] = x, l[B] = nt, o[B] = i;
-							const F = Y + 1, Q = nt + u * he * (Math.abs(H - p) + Math.abs(F - f)) + _(H, F);
+							const F = Y + 1, Q = nt + u * he * (Math.abs(H - p) + Math.abs(F - f)) + v(H, F);
 							h.push(B, Q);
 						}
 					}
@@ -10749,7 +10345,7 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 						const nt = L + (he + en(J & Qi));
 						if (o[B] !== i || nt < l[B]) {
 							c[B] = x, l[B] = nt, o[B] = i;
-							const F = H - 1, Q = nt + u * he * (Math.abs(F - p) + Math.abs(Y - f)) + _(F, Y);
+							const F = H - 1, Q = nt + u * he * (Math.abs(F - p) + Math.abs(Y - f)) + v(F, Y);
 							h.push(B, Q);
 						}
 					}
@@ -10760,7 +10356,7 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 						const nt = L + (he + en(J & Qi));
 						if (o[B] !== i || nt < l[B]) {
 							c[B] = x, l[B] = nt, o[B] = i;
-							const F = H + 1, Q = nt + u * he * (Math.abs(F - p) + Math.abs(Y - f)) + _(F, Y);
+							const F = H + 1, Q = nt + u * he * (Math.abs(F - p) + Math.abs(Y - f)) + v(F, Y);
 							h.push(B, Q);
 						}
 					}
@@ -10875,8 +10471,8 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 				}), h.accumDist -= h.stepThreshold;
 				return;
 			}
-			const u = e + n >> 1, m = i + s >> 1, p = n + a >> 1, f = s + r >> 1, g = a + o >> 1, y = r + l >> 1, w = u + p >> 1, S = m + f >> 1, T = p + g >> 1, k = f + y >> 1, v = w + T >> 1, _ = S + k >> 1;
-			ye.sharedSubdivide(e, i, u, m, w, S, v, _, c + 1, h), ye.sharedSubdivide(v, _, T, k, g, y, o, l, c + 1, h);
+			const u = e + n >> 1, m = i + s >> 1, p = n + a >> 1, f = s + r >> 1, g = a + o >> 1, y = r + l >> 1, b = u + p >> 1, S = m + f >> 1, T = p + g >> 1, _ = f + y >> 1, k = b + T >> 1, v = S + _ >> 1;
+			ye.sharedSubdivide(e, i, u, m, b, S, k, v, c + 1, h), ye.sharedSubdivide(k, v, T, _, g, y, o, l, c + 1, h);
 		}
 	};
 	let X = (function(t) {
@@ -10989,7 +10585,7 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 			const s = this.game.x(i.tile()), a = this.game.y(i.tile()), r = this.game.x(n.tile()), o = this.game.y(n.tile());
 			return Math.abs(s - r) + Math.abs(a - o);
 		}
-	}, je = class {
+	}, Ke = class {
 		constructor(t, e = { equals: (i, n) => i === n }) {
 			this.finder = t, this.config = e, this.path = null, this.pathIndex = 0, this.lastTo = null;
 		}
@@ -11067,7 +10663,7 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 			}, e;
 		}
 		buildWithStepper(e) {
-			return new je(this.build(), e);
+			return new Ke(this.build(), e);
 		}
 	}, Bg = class {
 		constructor(t, e) {
@@ -11198,39 +10794,39 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 		}
 		searchBounded(t, e, i) {
 			this.stamp++, this.stamp > 4294967295 && (this.closedStamp.fill(0), this.gScoreStamp.fill(0), this.stamp = 1);
-			const n = this.stamp, s = this.mapWidth, a = this.terrain, r = this.closedStamp, o = this.gScoreStamp, l = this.gScore, c = this.cameFrom, h = this.queue, u = this.heuristicWeight, m = 1 << Lg, { minX: p, maxX: f, minY: g, maxY: y } = i, w = f - p + 1, S = e % s, T = e / s | 0, k = w * (y - g + 1);
-			if (k > this.closedStamp.length) return null;
-			const v = (ot, Tt = !1) => {
+			const n = this.stamp, s = this.mapWidth, a = this.terrain, r = this.closedStamp, o = this.gScoreStamp, l = this.gScore, c = this.cameFrom, h = this.queue, u = this.heuristicWeight, m = 1 << Lg, { minX: p, maxX: f, minY: g, maxY: y } = i, b = f - p + 1, S = e % s, T = e / s | 0, _ = b * (y - g + 1);
+			if (_ > this.closedStamp.length) return null;
+			const k = (ot, Tt = !1) => {
 				let Ft = ot % s, Et = ot / s | 0;
-				return Tt && (Ft = Math.max(p, Math.min(f, Ft)), Et = Math.max(g, Math.min(y, Et))), (Et - g) * w + (Ft - p);
-			}, _ = (ot) => {
-				const Tt = ot % w;
-				return ((ot / w | 0) + g) * s + (Tt + p);
-			}, M = v(e, !0);
-			if (M < 0 || M >= k) return null;
+				return Tt && (Ft = Math.max(p, Math.min(f, Ft)), Et = Math.max(g, Math.min(y, Et))), (Et - g) * b + (Ft - p);
+			}, v = (ot) => {
+				const Tt = ot % b;
+				return ((ot / b | 0) + g) * s + (Tt + p);
+			}, M = k(e, !0);
+			if (M < 0 || M >= _) return null;
 			h.clear();
 			const x = Array.isArray(t) ? t : [t], L = x[0], H = L % s, Y = L / s | 0, B = S - H, J = T - Y, nt = Math.max(1, Math.abs(B) + Math.abs(J)), F = (ot, Tt) => {
-				const Ft = ot - S, Et = Tt - T, Kt = Math.abs(B * Et - J * Ft);
-				return Math.floor(Kt * (an - 1) / nt / nt);
+				const Ft = ot - S, Et = Tt - T, jt = Math.abs(B * Et - J * Ft);
+				return Math.floor(jt * (an - 1) / nt / nt);
 			};
 			for (const ot of x) {
-				const Tt = v(ot, !0);
-				if (Tt < 0 || Tt >= k) continue;
+				const Tt = k(ot, !0);
+				if (Tt < 0 || Tt >= _) continue;
 				l[Tt] = 0, o[Tt] = n, c[Tt] = -1;
-				const Ft = ot % s, Et = ot / s | 0, Kt = u * ue * (Math.abs(Ft - S) + Math.abs(Et - T));
-				h.push(Tt, Kt);
+				const Ft = ot % s, Et = ot / s | 0, jt = u * ue * (Math.abs(Ft - S) + Math.abs(Et - T));
+				h.push(Tt, jt);
 			}
 			let Q = this.maxIterations;
 			for (; !h.isEmpty();) {
 				if (--Q <= 0) return null;
 				const ot = h.pop();
 				if (r[ot] === n) continue;
-				if (r[ot] = n, ot === M) return this.buildPath(M, _, k);
-				const Tt = l[ot], Ft = _(ot), Et = Ft % s, Kt = Ft / s | 0;
-				if (Kt > g) {
-					const Xt = Ft - s, tt = ot - w, Jt = a[Xt];
+				if (r[ot] = n, ot === M) return this.buildPath(M, v, _);
+				const Tt = l[ot], Ft = v(ot), Et = Ft % s, jt = Ft / s | 0;
+				if (jt > g) {
+					const Xt = Ft - s, tt = ot - b, Jt = a[Xt];
 					if (r[tt] !== n && (Xt === e || (Jt & m) === 0)) {
-						const Qt = Kt - 1, Re = Math.abs(Et - S) + Math.abs(Qt - T), Ot = Tt + (ue + rn(Jt & sn));
+						const Qt = jt - 1, Re = Math.abs(Et - S) + Math.abs(Qt - T), Ot = Tt + (ue + rn(Jt & sn));
 						if (o[tt] !== n || Ot < l[tt]) {
 							c[tt] = ot, l[tt] = Ot, o[tt] = n;
 							const Ne = Ot + u * ue * Re + F(Et, Qt);
@@ -11238,10 +10834,10 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 						}
 					}
 				}
-				if (Kt < y) {
-					const Xt = Ft + s, tt = ot + w, Jt = a[Xt];
+				if (jt < y) {
+					const Xt = Ft + s, tt = ot + b, Jt = a[Xt];
 					if (r[tt] !== n && (Xt === e || (Jt & m) === 0)) {
-						const Qt = Kt + 1, Re = Math.abs(Et - S) + Math.abs(Qt - T), Ot = Tt + (ue + rn(Jt & sn));
+						const Qt = jt + 1, Re = Math.abs(Et - S) + Math.abs(Qt - T), Ot = Tt + (ue + rn(Jt & sn));
 						if (o[tt] !== n || Ot < l[tt]) {
 							c[tt] = ot, l[tt] = Ot, o[tt] = n;
 							const Ne = Ot + u * ue * Re + F(Et, Qt);
@@ -11252,10 +10848,10 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 				if (Et > p) {
 					const Xt = Ft - 1, tt = ot - 1, Jt = a[Xt];
 					if (r[tt] !== n && (Xt === e || (Jt & m) === 0)) {
-						const Qt = Et - 1, Re = Math.abs(Qt - S) + Math.abs(Kt - T), Ot = Tt + (ue + rn(Jt & sn));
+						const Qt = Et - 1, Re = Math.abs(Qt - S) + Math.abs(jt - T), Ot = Tt + (ue + rn(Jt & sn));
 						if (o[tt] !== n || Ot < l[tt]) {
 							c[tt] = ot, l[tt] = Ot, o[tt] = n;
-							const Ne = Ot + u * ue * Re + F(Qt, Kt);
+							const Ne = Ot + u * ue * Re + F(Qt, jt);
 							h.push(tt, Ne);
 						}
 					}
@@ -11263,10 +10859,10 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 				if (Et < f) {
 					const Xt = Ft + 1, tt = ot + 1, Jt = a[Xt];
 					if (r[tt] !== n && (Xt === e || (Jt & m) === 0)) {
-						const Qt = Et + 1, Re = Math.abs(Qt - S) + Math.abs(Kt - T), Ot = Tt + (ue + rn(Jt & sn));
+						const Qt = Et + 1, Re = Math.abs(Qt - S) + Math.abs(jt - T), Ot = Tt + (ue + rn(Jt & sn));
 						if (o[tt] !== n || Ot < l[tt]) {
 							c[tt] = ot, l[tt] = Ot, o[tt] = n;
-							const Ne = Ot + u * ue * Re + F(Qt, Kt);
+							const Ne = Ot + u * ue * Re + F(Qt, jt);
 							h.push(tt, Ne);
 						}
 					}
@@ -11353,14 +10949,14 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 				const y = p * this.mapWidth + m;
 				if (!this.isTraversable(y) || (this.terrain[y] & Vn) < i) return !1;
 				if (m === a && p === r) return !0;
-				const w = 2 * u, S = w > -l, T = w < o;
+				const b = 2 * u, S = b > -l, T = b < o;
 				if (S && T) {
 					m += c, u -= l;
-					const k = p * this.mapWidth + m, v = this.terrain[k] & Vn;
-					if (!this.isTraversable(k) || v < i) {
+					const _ = p * this.mapWidth + m, k = this.terrain[_] & Vn;
+					if (!this.isTraversable(_) || k < i) {
 						m -= c, u += l, p += h, u += o;
-						const _ = p * this.mapWidth + m, M = this.terrain[_] & Vn;
-						if (!this.isTraversable(_) || M < i) return !1;
+						const v = p * this.mapWidth + m, M = this.terrain[v] & Vn;
+						if (!this.isTraversable(v) || M < i) return !1;
 						m += c, u -= l;
 					} else p += h, u += o;
 				} else S && (m += c, u -= l), T && (p += h, u += o);
@@ -11376,16 +10972,16 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 				const y = p * this.mapWidth + m;
 				if (!this.isTraversable(y)) return null;
 				if (r.push(y), m === s && p === a) break;
-				const w = 2 * u, S = w > -l, T = w < o;
+				const b = 2 * u, S = b > -l, T = b < o;
 				if (S && T) {
 					m += c, u -= l;
-					const k = p * this.mapWidth + m;
-					if (this.isTraversable(k)) r.push(k), p += h, u += o;
+					const _ = p * this.mapWidth + m;
+					if (this.isTraversable(_)) r.push(_), p += h, u += o;
 					else {
 						m -= c, u += l, p += h, u += o;
-						const v = p * this.mapWidth + m;
-						if (!this.isTraversable(v)) return null;
-						r.push(v), m += c, u -= l;
+						const k = p * this.mapWidth + m;
+						if (!this.isTraversable(k)) return null;
+						r.push(k), m += c, u -= l;
 					}
 				} else S && (m += c, u -= l), T && (p += h, u += o);
 			}
@@ -11436,7 +11032,7 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 			return r;
 		}
 	};
-	function Kn(t, e = !1) {
+	function jn(t, e = !1) {
 		const i = t.waterGraphVersion();
 		let n = $r.get(t);
 		if (!n || n.version !== i) {
@@ -11460,13 +11056,13 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 	}
 	var Ee = class ch {
 		static Water(e) {
-			return new je(Kn(e), on(e));
+			return new Ke(jn(e), on(e));
 		}
 		static WaterSimple(e) {
 			return ch.Water(e);
 		}
 		static Rail(e) {
-			return new je(Vg(e), on(e));
+			return new Ke(Vg(e), on(e));
 		}
 		static Stations(e) {
 			const i = new Rg(e);
@@ -11481,7 +11077,7 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 		}
 	}, yi = class hh {
 		constructor(e, i = 0, n = !1) {
-			this.game = e, this._stagger = i, this._memoized = n, this._rebuilt = !1, this._pendingVersion = -1, this.stepper = new je(Kn(e, n), on(e)), this._waterGraphVersion = e.waterGraphVersion(), this._staggerCountdown = 0;
+			this.game = e, this._stagger = i, this._memoized = n, this._rebuilt = !1, this._pendingVersion = -1, this.stepper = new Ke(jn(e, n), on(e)), this._waterGraphVersion = e.waterGraphVersion(), this._staggerCountdown = 0;
 		}
 		static {
 			this.STAGGER_SPREAD = 50;
@@ -11498,7 +11094,7 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 					this._staggerCountdown--;
 					return;
 				}
-				this._waterGraphVersion = e, this.stepper = new je(Kn(this.game, this._memoized), on(this.game)), this._rebuilt = !0;
+				this._waterGraphVersion = e, this.stepper = new Ke(jn(this.game, this._memoized), on(this.game)), this._rebuilt = !0;
 			}
 		}
 		next(e, i, n) {
@@ -11544,10 +11140,10 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 		lastTo: it().nullable()
 	});
 	function ln(t) {
-		if (!(t instanceof je)) throw new Error("expected a PathFinderStepper");
+		if (!(t instanceof Ke)) throw new Error("expected a PathFinderStepper");
 		return t;
 	}
-	function Kg(t) {
+	function jg(t) {
 		const e = ln(t).getState();
 		return {
 			path: e.path === null ? null : Uint32Array.from(e.path),
@@ -11555,7 +11151,7 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 			lastTo: e.lastTo
 		};
 	}
-	function jg(t, e) {
+	function Kg(t, e) {
 		ln(t).setState({
 			path: e.path === null ? null : e.path.slice(),
 			pathIndex: e.pathIndex,
@@ -11569,19 +11165,19 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 	function Vr(t) {
 		return {
 			seed: ln(t).innerFinder().getSeed(),
-			stepper: Kg(t)
+			stepper: jg(t)
 		};
 	}
-	function Kr(t, e) {
+	function jr(t, e) {
 		const i = Ee.Air(t);
-		return ln(i).innerFinder().setSeed(e.seed), jg(i, e.stepper), i;
+		return ln(i).innerFinder().setSeed(e.seed), Kg(i, e.stepper), i;
 	}
 	A({
 		path: R(N()).nullable(),
 		pathIndex: C(),
 		lastTo: N().nullable()
 	});
-	const jn = A({
+	const Kn = A({
 		stagger: C(),
 		memoized: I(),
 		waterGraphVersion: C(),
@@ -11612,11 +11208,11 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 		});
 	}
 	const cn = A({
-		x: K(),
-		y: K()
-	}), jr = A({
+		x: j(),
+		y: j()
+	}), Kr = A({
 		options: A({
-			increment: K().optional(),
+			increment: j().optional(),
 			distanceBasedHeight: I().optional(),
 			directionUp: I().optional(),
 			ignoreMapBounds: I().optional()
@@ -11702,7 +11298,7 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 			});
 		}
 		restoreSnapshot(t, e) {
-			this.active = t.active, t.init !== null && (this.mg = e.game, this.pathFinder = Kr(e.game, t.init.pathFinder), this.random = e.random(t.init.random)), t.shell !== null && (this.shell = e.unit(t.shell)), this.destroyAtTick = t.destroyAtTick, this.spawn = t.spawn, this._owner = e.player(t.owner), this.ownerUnit = e.unit(t.ownerUnit), this.target = e.unit(t.target);
+			this.active = t.active, t.init !== null && (this.mg = e.game, this.pathFinder = jr(e.game, t.init.pathFinder), this.random = e.random(t.init.random)), t.shell !== null && (this.shell = e.unit(t.shell)), this.destroyAtTick = t.destroyAtTick, this.spawn = t.spawn, this._owner = e.player(t.owner), this.ownerUnit = e.unit(t.ownerUnit), this.target = e.unit(t.target);
 		}
 	};
 	const Xr = G({
@@ -11855,19 +11451,19 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 				for (let g = 0; g < 16; g++) a[g] = e.nextFloat(i, n);
 				const r = [...a];
 				for (let g = 0; g < 16; g++) {
-					const y = (g - 1 + 16) % 16, w = (g + 1) % 16;
-					a[g] = r[g] * .6 + r[y] * .2 + r[w] * .2;
+					const y = (g - 1 + 16) % 16, b = (g + 1) % 16;
+					a[g] = r[g] * .6 + r[y] * .2 + r[b] * .2;
 				}
 				const o = this.mg.x(this.dst), l = this.mg.y(this.dst), c = t.outer, h = new Pe(), u = Math.max(0, o - c), m = Math.max(0, l - c), p = Math.min(this.mg.width() - 1, o + c), f = Math.min(this.mg.height() - 1, l + c);
 				for (let g = m; g <= f; g++) for (let y = u; y <= p; y++) {
-					const w = y - o, S = g - l, T = w * w + S * S;
+					const b = y - o, S = g - l, T = b * b + S * S;
 					if (T > n) continue;
 					if (T > i) {
-						const v = (Pf(S, w) + Math.PI) / (2 * Math.PI) * 16, _ = Math.floor(v) % 16, M = (_ + 1) % 16, x = v - Math.floor(v);
-						if (T > a[_] * (1 - x) + a[M] * x) continue;
+						const k = (Pf(S, b) + Math.PI) / (2 * Math.PI) * 16, v = Math.floor(k) % 16, M = (v + 1) % 16, x = k - Math.floor(k);
+						if (T > a[v] * (1 - x) + a[M] * x) continue;
 					}
-					const k = this.mg.ref(y, g);
-					this.mg.isImpassable(k) || h.add(k);
+					const _ = this.mg.ref(y, g);
+					this.mg.isImpassable(_) || h.add(_);
 				}
 				this.tilesToDestroyCache = h;
 			} else this.tilesToDestroyCache = this.mg.bfs(this.dst, (s, a) => {
@@ -11974,12 +11570,12 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 					const g = c - f;
 					o.removeTroops(e.nukeDeathFactor(this.nukeType, o.troops(), g, p));
 					for (const y of m) {
-						const w = y.troops(), S = e.nukeDeathFactor(this.nukeType, w, g, p);
-						y.setTroops(w - S);
+						const b = y.troops(), S = e.nukeDeathFactor(this.nukeType, b, g, p);
+						y.setTroops(b - S);
 					}
 					for (const y of h) {
-						const w = u.get(y) ?? y.troops(), S = e.nukeDeathFactor(this.nukeType, w, g, p);
-						u.set(y, Math.max(0, w - S));
+						const b = u.get(y) ?? y.troops(), S = e.nukeDeathFactor(this.nukeType, b, g, p);
+						u.set(y, Math.max(0, b - S));
 					}
 				}
 				for (const [f, g] of u) f.setTroops(g);
@@ -12037,13 +11633,13 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 		version: 1,
 		schema: A({
 			active: I(),
-			pathFinder: jr.nullable(),
+			pathFinder: Kr.nullable(),
 			nuke: N().nullable(),
 			nukeType: di,
 			player: O(),
 			dst: it(),
 			src: it().nullable().optional(),
-			speed: K(),
+			speed: j(),
 			waitTicks: C(),
 			rocketDirectionUp: I()
 		}),
@@ -12210,7 +11806,7 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 				h = l - Math.floor(Math.sqrt(T)) * Wt.shortFlightMult;
 			}
 			h = Math.max(Wt.MATH_SCALE, h);
-			const [u, m, p, f] = qn(this.mg, e, i), g = nn.getLength(u, m, p, f), y = Math.round(g * 256) * Wt.MATH_SCALE, w = h, S = Math.floor((y + Math.floor(w / 2)) / w);
+			const [u, m, p, f] = qn(this.mg, e, i), g = nn.getLength(u, m, p, f), y = Math.round(g * 256) * Wt.MATH_SCALE, b = h, S = Math.floor((y + Math.floor(b / 2)) / b);
 			return Math.max(1, S / 256);
 		}
 		snapshot(e) {
@@ -12268,9 +11864,9 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 			launch: A({
 				spawnTile: it(),
 				separateDst: it(),
-				pathFinder: jr
+				pathFinder: Kr
 			}).nullable(),
-			speed: K(),
+			speed: j(),
 			fullPath: It(),
 			pathIndex: C(),
 			stagedTargets: It(),
@@ -12442,7 +12038,7 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 			initialized: I(),
 			tradeShip: N().nullable(),
 			wasCaptured: I(),
-			pathFinder: jn.nullable(),
+			pathFinder: Kn.nullable(),
 			tilesTraveled: C(),
 			motionPlanId: C(),
 			motionPlanDst: it().nullable(),
@@ -12601,7 +12197,7 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 			});
 		}
 		restoreSnapshot(t, e) {
-			this.active = t.active, t.pathFinder !== null && (this.mg = e.game, this.pathFinder = Kr(e.game, t.pathFinder)), t.missile !== null && (this.SAMMissile = e.unit(t.missile)), this.speed = t.speed, this.spawn = t.spawn, this._owner = e.player(t.owner), this.ownerUnit = e.unit(t.ownerUnit), this.target = e.unit(t.target), this.targetTile = t.targetTile;
+			this.active = t.active, t.pathFinder !== null && (this.mg = e.game, this.pathFinder = jr(e.game, t.pathFinder)), t.missile !== null && (this.SAMMissile = e.unit(t.missile)), this.speed = t.speed, this.spawn = t.spawn, this._owner = e.player(t.owner), this.ownerUnit = e.unit(t.ownerUnit), this.target = e.unit(t.target), this.targetTile = t.targetTile;
 		}
 	};
 	const ho = G({
@@ -12611,7 +12207,7 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 			active: I(),
 			pathFinder: Gr.nullable(),
 			missile: N().nullable(),
-			speed: K(),
+			speed: j(),
 			spawn: it(),
 			owner: O(),
 			ownerUnit: N(),
@@ -12674,16 +12270,16 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 			for (let g = s; g <= r; g++) {
 				const y = n[g];
 				if (y === void 0) continue;
-				const w = this.mg.euclideanDistSquared(e, y);
-				w < l && (l = w, c = y), h = u !== -1 && w > u ? h + 1 : 0, u = w;
-				const S = g - s + a, T = this.tickToReach(e, y), k = this.mg.config().dynamicSamRange(this.sam, i + S);
-				if (w <= k * k && S >= T && m !== void 0 && p !== void 0 && this.isTargetableAt(y, m, p)) return {
+				const b = this.mg.euclideanDistSquared(e, y);
+				b < l && (l = b, c = y), h = u !== -1 && b > u ? h + 1 : 0, u = b;
+				const S = g - s + a, T = this.tickToReach(e, y), _ = this.mg.config().dynamicSamRange(this.sam, i + S);
+				if (b <= _ * _ && S >= T && m !== void 0 && p !== void 0 && this.isTargetableAt(y, m, p)) return {
 					tick: S - T,
 					tile: y,
 					minDistSq: l,
 					lastSeenTick: i
 				};
-				if (h > 3 && w > o) break;
+				if (h > 3 && b > o) break;
 			}
 			const f = this.checkDetonationInterception(t, e, i);
 			return f ? {
@@ -12701,7 +12297,7 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 		isValidNukeTarget(t) {
 			if (!hn(t) || t.targetedBySAM() || t.owner() === this.sam.owner()) return !1;
 			const e = this.sam.owner(), i = t.owner();
-			return e.isFriendly(i) ? this.mg.getWinner() !== null && this.mg.config().gameConfig().gameType !== jt.Singleplayer && e.isOnSameTeam(i) : !0;
+			return e.isFriendly(i) ? this.mg.getWinner() !== null && this.mg.config().gameConfig().gameType !== Kt.Singleplayer && e.isOnSameTeam(i) : !0;
 		}
 		computeTargetScore(t) {
 			const e = this.sam.tile(), i = t.unit, n = i.trajectory(), s = i.trajectoryIndex(), a = Math.max(1, n.length - s), r = i.targetTile() ?? (n.length > 0 ? n[n.length - 1] : e), o = this.mg.manhattanDist(e, r), l = i.type() === d.HydrogenBomb ? 70001 : 0, c = Math.max(0, 2e5 - o * 1e3), h = Math.max(0, 1e4 - a * 100);
@@ -12806,7 +12402,7 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 		id: C(),
 		tick: C(),
 		tile: it(),
-		minDistSq: K(),
+		minDistSq: j(),
 		lastSeenTick: C()
 	})), po = G({
 		name: "SAMLauncher",
@@ -12905,7 +12501,7 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 			for (const { unit: p, distSquared: f } of a) {
 				if (p === this.warship || p.owner() === s || !s.canAttackPlayer(p.owner(), !0) || this.alreadySentShell.has(p) || p.type() === d.Warship && p.warshipState().state === "docked") continue;
 				const g = p.type();
-				if (e && g === d.TradeShip && (c === void 0 && (c = i.getWaterComponent(this.warship.tile()), r = c !== null && s.units(d.Port).some((w) => w.isActive() && !w.isMarkedForDeletion() && !w.isUnderConstruction() && i.hasWaterComponent(w.tile(), c)), o = this.warship.warshipState().patrolTile, l = n.warshipPatrolRange() ** 2), !r || o === void 0 || p.isSafeFromPirates() || p.targetUnit()?.owner() === s || p.targetUnit()?.owner().isFriendly(s) || i.euclideanDistSquared(o, p.tile()) > l)) continue;
+				if (e && g === d.TradeShip && (c === void 0 && (c = i.getWaterComponent(this.warship.tile()), r = c !== null && s.units(d.Port).some((b) => b.isActive() && !b.isMarkedForDeletion() && !b.isUnderConstruction() && i.hasWaterComponent(b.tile(), c)), o = this.warship.warshipState().patrolTile, l = n.warshipPatrolRange() ** 2), !r || o === void 0 || p.isSafeFromPirates() || p.targetUnit()?.owner() === s || p.targetUnit()?.owner().isFriendly(s) || i.euclideanDistSquared(o, p.tile()) > l)) continue;
 				const y = g === d.TransportShip ? 0 : g === d.Warship ? 1 : 2;
 				(h === void 0 || y < u || y === u && f < m) && (h = p, u = y, m = f);
 			}
@@ -13155,12 +12751,12 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 			initialized: I(),
 			random: zt().nullable(),
 			warship: N().nullable(),
-			pathfinder: jn.nullable(),
+			pathfinder: Kn.nullable(),
 			lastShellAttack: C(),
 			alreadySentShell: R(N()),
 			lastManualMoveTickRetreatDisabled: C(),
 			lastObservedPatrolTile: it().optional(),
-			activeHealingRemainder: K(),
+			activeHealingRemainder: j(),
 			lastEmittedCombat: I()
 		}),
 		cls: () => fo
@@ -13665,7 +13261,7 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 	function ee(t, e) {
 		const i = wi.get(t) ?? ns.get(t);
 		if (i) return i;
-		const n = vy(t, e);
+		const n = _y(t, e);
 		return ns.set(t, n), n;
 	}
 	function ko(t, e) {
@@ -13678,7 +13274,7 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 		const n = new Set(Object.values(i).filter((s) => typeof s == "number").map(String));
 		return Object.entries(i).filter(([s]) => !n.has(s)).map(([, s]) => s);
 	}
-	function vy(t, e) {
+	function _y(t, e) {
 		const i = de(t);
 		switch (i.type) {
 			case "string": return To;
@@ -13691,7 +13287,7 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 			case "enum": return ss(ko(t, e), e);
 			case "optional":
 			case "nullable":
-			case "default": return _y(t, e);
+			case "default": return vy(t, e);
 			case "object": return Ay(i.shape, e);
 			case "array": return Iy(i.element, e);
 			case "record": return Cy(i.keyType, i.valueType, e);
@@ -13703,7 +13299,7 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 			default: throw te(e, \`unsupported zod type "\${i.type}" — use a zb builder or wrap the subtree with zb.json()\`);
 		}
 	}
-	function vo(t) {
+	function _o(t) {
 		let e = t, i = !1, n = !1, s;
 		for (;;) {
 			const a = de(e);
@@ -13721,8 +13317,8 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 			};
 		}
 	}
-	function _y(t, e) {
-		const { inner: i, optionalLike: n, nullable: s, defaultValue: a } = vo(t), r = ee(i, e);
+	function vy(t, e) {
+		const { inner: i, optionalLike: n, nullable: s, defaultValue: a } = _o(t), r = ee(i, e);
 		return {
 			enc: (o, l, c) => {
 				if (l === void 0) {
@@ -13753,13 +13349,13 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 		const i = [];
 		let n = 0;
 		for (const [l, c] of Object.entries(t)) {
-			const { inner: h, optionalLike: u, nullable: m, defaultValue: p } = vo(c), f = de(h);
-			let g = "body", y, w = null;
+			const { inner: h, optionalLike: u, nullable: m, defaultValue: p } = _o(c), f = de(h);
+			let g = "body", y, b = null;
 			const S = wi.get(h);
-			S !== void 0 ? w = S : f.type === "boolean" ? g = "bool" : f.type === "literal" && f.values.length === 1 ? (g = "const", y = f.values[0]) : w = ee(h, \`\${e}.\${l}\`), i.push({
+			S !== void 0 ? b = S : f.type === "boolean" ? g = "bool" : f.type === "literal" && f.values.length === 1 ? (g = "const", y = f.values[0]) : b = ee(h, \`\${e}.\${l}\`), i.push({
 				key: l,
 				mode: g,
-				codec: w,
+				codec: b,
 				constValue: y,
 				optionalLike: u,
 				nullable: m,
@@ -13886,7 +13482,7 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 		if (s.type !== "literal" || s.values.length !== 1) throw te(i, \`discriminator "\${e}" must be a single-value literal\`);
 		return s.values[0];
 	}
-	function _o(t, e, i) {
+	function vo(t, e, i) {
 		const n = /* @__PURE__ */ new Map(), s = [];
 		return e.forEach((a, r) => {
 			const o = Py(a, t, \`\${i}#\${r}\`), l = ee(a, \`\${i}#\${String(o)}\`);
@@ -13905,7 +13501,7 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 		return e === Infinity ? 0 : e;
 	}
 	function Ey(t, e, i) {
-		const { byValue: n, codecs: s } = _o(t, e, i);
+		const { byValue: n, codecs: s } = vo(t, e, i);
 		return {
 			enc: (a, r, o) => {
 				const l = n.get(r?.[t]);
@@ -14061,7 +13657,7 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 		i.options.forEach((o, l) => {
 			for (const c of Object.keys(de(o).shape ?? {})) if (Object.prototype.hasOwnProperty.call(e, c)) throw te(\`$#\${l}\`, \`variant field "\${c}" collides with a zb.stamped extra\`);
 		});
-		const { byValue: n, codecs: s } = _o(i.discriminator, i.options, "$"), a = A(e), r = ee(a, "$&");
+		const { byValue: n, codecs: s } = vo(i.discriminator, i.options, "$"), a = A(e), r = ee(a, "$&");
 		return Co(Wa(t, a), {
 			enc: (o, l, c) => {
 				const h = l?.[i.discriminator], u = n.get(h);
@@ -14472,18 +14068,18 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 	new RegExp(\`[\${Mo}]\`, "u");
 	const Gy = $().regex(new RegExp(\`^(?=.*\\\\S)[\${ds}]+$\`, "u")).min(3).max(27);
 	$().regex(new RegExp(\`^(?=.*\\\\S)[\${ds}]+$\`, "u")).min(3).max(20);
-	const Vy = $().regex(/^[a-zA-Z0-9]{2,5}$/).nullable(), Ky = [
+	const Vy = $().regex(/^[a-zA-Z0-9]{2,5}$/).nullable(), jy = [
 		Ws,
 		$s,
 		Hs,
 		qs
-	], jy = us([
+	], Ky = us([
 		et(),
 		q(Ws),
 		q($s),
 		q(Hs),
 		q(qs)
-	], { select: (t) => typeof t == "number" ? 0 : Ky.indexOf(t) + 1 }), Zy = A({
+	], { select: (t) => typeof t == "number" ? 0 : jy.indexOf(t) + 1 }), Zy = A({
 		enabled: I().optional(),
 		speed: mt([
 			"slow",
@@ -14505,10 +14101,10 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 		path: ["siblings"]
 	}), bi = A({
 		gameMap: mt(mh),
-		difficulty: mt(b),
+		difficulty: mt(w),
 		donateGold: I(),
 		donateTroops: I(),
-		gameType: mt(jt),
+		gameType: mt(Kt),
 		gameMode: mt(ut),
 		rankedType: mt(Be).optional(),
 		gameMapSize: mt(Ae),
@@ -14565,7 +14161,7 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 		startDelay: et({ max: 600 }).nullable().optional(),
 		spawnImmunityDuration: et().nullable().optional(),
 		disabledUnits: mt(d).array().optional(),
-		playerTeams: jy.optional(),
+		playerTeams: Ky.optional(),
 		goldMultiplier: ke({
 			min: .1,
 			max: 1e3
@@ -14869,7 +14465,7 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 			});
 		}
 		restoreSnapshot(t, e, i, n) {
-			const s = _t(Lo, t);
+			const s = vt(Lo, t);
 			this.random = i, this.game = e.game, this.player = n, this.lastEmojiSent = new Map(s.lastEmojiSent.map(([a, r]) => [e.player(a), r])), this.gameOver = s.gameOver;
 		}
 		maybeSendCasualEmoji() {
@@ -14965,16 +14561,16 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 			return !0;
 		}
 	};
-	function KS(t, e, i, n, s) {
+	function jS(t, e, i, n, s) {
 		n === "AllPlayers" || n.type() !== D.Nation || n.canSendEmoji(i) && (s === "🖕" && (n.updateRelation(i, -100), t.addExecution(new fe(n, i.id(), e.randElement(OS)))), s === "🤡" && (n.updateRelation(i, -10), t.addExecution(new fe(n, i.id(), e.randElement(ki)))), [
 			"🕊️",
 			"🏳️",
 			"❤️",
 			"🥰",
 			"👏"
-		].includes(s) && (t.config().gameConfig().difficulty === b.Easy && n.updateRelation(i, 15), t.addExecution(new fe(n, i.id(), i.relation(n) >= kt.Neutral ? e.randElement(Ti) : e.randElement(ki)))));
+		].includes(s) && (t.config().gameConfig().difficulty === w.Easy && n.updateRelation(i, 15), t.addExecution(new fe(n, i.id(), i.relation(n) >= kt.Neutral ? e.randElement(Ti) : e.randElement(ki)))));
 	}
-	function jS(t, e, i) {
+	function KS(t, e, i) {
 		e.chance(8) && i.canSendEmoji("AllPlayers") && t.addExecution(new fe(i, Ct, e.randElement(No)));
 	}
 	const Lo = wt({
@@ -14998,7 +14594,7 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 		}
 		tick(t) {
 			const e = ps[this.emoji];
-			e === void 0 ? console.warn(\`cannot send emoji \${this.emoji} from \${this.requestor} to \${this.recipient}\`) : this.requestor.canSendEmoji(this.recipient) ? (this.requestor.sendEmoji(this.recipient, e), KS(this.mg, this.random, this.requestor, this.recipient, e)) : console.warn(\`cannot send emoji from \${this.requestor} to \${this.recipient}\`), this.active = !1;
+			e === void 0 ? console.warn(\`cannot send emoji \${this.emoji} from \${this.requestor} to \${this.recipient}\`) : this.requestor.canSendEmoji(this.recipient) ? (this.requestor.sendEmoji(this.recipient, e), jS(this.mg, this.random, this.requestor, this.recipient, e)) : console.warn(\`cannot send emoji from \${this.requestor} to \${this.recipient}\`), this.active = !1;
 		}
 		isActive() {
 			return this.active;
@@ -15031,7 +14627,7 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 			random: zt().nullable(),
 			requestor: O(),
 			recipientID: $(),
-			emoji: K()
+			emoji: j()
 		}),
 		cls: () => fe
 	});
@@ -15060,11 +14656,11 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 		getGoldChunkSize() {
 			const { difficulty: t } = this.mg.config().gameConfig();
 			switch (t) {
-				case b.Easy: return 2500;
-				case b.Medium: return 5e3;
-				case b.Hard: return 12500;
-				case b.Impossible: return 25e3;
-				default: j(t);
+				case w.Easy: return 2500;
+				case w.Medium: return 5e3;
+				case w.Hard: return 12500;
+				case w.Impossible: return 25e3;
+				default: K(t);
 			}
 		}
 		calculateRelationUpdate(t, e) {
@@ -15127,11 +14723,11 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 		getMinTroopsForRelationUpdate() {
 			const { difficulty: t } = this.mg.config().gameConfig(), e = this.mg.config().maxTroops(this.recipient);
 			switch (t) {
-				case b.Easy: return this.random.nextInt(e / 13, e / 11);
-				case b.Medium: return this.random.nextInt(e / 11, e / 9);
-				case b.Hard: return this.random.nextInt(e / 9, e / 7);
-				case b.Impossible: return this.random.nextInt(e / 7, e / 5);
-				default: j(t);
+				case w.Easy: return this.random.nextInt(e / 13, e / 11);
+				case w.Medium: return this.random.nextInt(e / 11, e / 9);
+				case w.Hard: return this.random.nextInt(e / 9, e / 7);
+				case w.Impossible: return this.random.nextInt(e / 7, e / 5);
+				default: K(t);
 			}
 		}
 		isActive() {
@@ -15165,7 +14761,7 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 			random: zt().nullable(),
 			sender: O(),
 			recipientID: $(),
-			troops: K().nullable()
+			troops: j().nullable()
 		}),
 		cls: () => fs
 	});
@@ -15250,7 +14846,7 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 		}),
 		cls: () => Go
 	});
-	var Ko = class {
+	var jo = class {
 		constructor(t, e) {
 			this.player = t, this.isDisconnected = e;
 		}
@@ -15273,7 +14869,7 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 			return !1;
 		}
 		snapshot(t) {
-			return jo.write({
+			return Ko.write({
 				player: t.player(this.player),
 				isDisconnected: this.isDisconnected
 			});
@@ -15282,14 +14878,14 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 			this.player = e.player(t.player), this.isDisconnected = t.isDisconnected;
 		}
 	};
-	const jo = G({
+	const Ko = G({
 		name: "MarkDisconnected",
 		version: 1,
 		schema: A({
 			player: O(),
 			isDisconnected: I()
 		}),
-		cls: () => Ko
+		cls: () => jo
 	});
 	var Zo = class {
 		constructor(t, e, i) {
@@ -15337,8 +14933,8 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 		version: 1,
 		schema: A({
 			owner: O(),
-			unitIds: R(K()),
-			position: K()
+			unitIds: R(j()),
+			position: j()
 		}),
 		cls: () => Zo
 	}), iw = 3000000n;
@@ -15346,10 +14942,10 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 		return t.config().startingGold(e.info()) >= iw;
 	}
 	const nw = {
-		[b.Easy]: Infinity,
-		[b.Medium]: Infinity,
-		[b.Hard]: 5,
-		[b.Impossible]: 6
+		[w.Easy]: Infinity,
+		[w.Medium]: Infinity,
+		[w.Hard]: 5,
+		[w.Impossible]: 6
 	};
 	function Jo(t, e, i) {
 		const n = nw[t.config().gameConfig().difficulty], s = Number(i - e.gold());
@@ -15398,11 +14994,11 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 	}
 	function aw(t) {
 		switch (t) {
-			case b.Easy: return null;
-			case b.Medium: return 3;
-			case b.Hard: return 2;
-			case b.Impossible: return 1.5;
-			default: j(t);
+			case w.Easy: return null;
+			case w.Medium: return 3;
+			case w.Hard: return 2;
+			case w.Impossible: return 1.5;
+			default: K(t);
 		}
 	}
 	function Ss(t) {
@@ -15422,7 +15018,7 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 			return t.versioned(tl, {});
 		}
 		restoreSnapshot(t, e, i, n, s) {
-			_t(tl, t), this.random = i, this.game = e.game, this.player = n, this.emojiBehavior = s;
+			vt(tl, t), this.random = i, this.game = e.game, this.player = n, this.emojiBehavior = s;
 		}
 		handleAllianceRequests() {
 			if (!this.game.config().disableAlliances()) for (const t of this.player.incomingAllianceRequests()) {
@@ -15437,12 +15033,12 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 			if (!this.game.config().disableAlliances()) for (const t of this.player.alliances()) {
 				if (!t.onlyOneAgreedToExtend()) continue;
 				const e = t.other(this.player);
-				this.getAllianceDecision(e, !0) && this.game.addExecution(new Ki(this.player, e.id()));
+				this.getAllianceDecision(e, !0) && this.game.addExecution(new ji(this.player, e.id()));
 			}
 		}
 		maybeSendAllianceRequests(t) {
 			if (this.game.config().disableAlliances()) return;
-			const e = (i) => i.type() === D.Bot && this.game.config().gameConfig().difficulty === b.Easy || i.type() !== D.Bot;
+			const e = (i) => i.type() === D.Bot && this.game.config().gameConfig().difficulty === w.Easy || i.type() !== D.Bot;
 			for (const i of t) this.random.chance(30) && e(i) && this.player.canSendAllianceRequest(i) && this.getAllianceDecision(i, !1) && this.game.addExecution(new Wn(this.player, i.id()));
 		}
 		getAllianceDecision(t, e) {
@@ -15450,9 +15046,9 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 		}
 		hasTooManyAlliances(t) {
 			const { difficulty: e } = this.game.config().gameConfig();
-			if (e !== b.Hard && e !== b.Impossible) return !1;
+			if (e !== w.Hard && e !== w.Impossible) return !1;
 			const i = this.game.players().filter((s) => s.type() !== D.Bot).length, n = t.alliances().length - (t.isAlliedWith(this.player) ? 1 : 0);
-			return e === b.Hard ? n >= i * .5 : n >= i * .25;
+			return e === w.Hard ? n >= i * .5 : n >= i * .25;
 		}
 		isRunawayLeader(t) {
 			return Ss(this.game) === t;
@@ -15460,88 +15056,88 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 		isConfused() {
 			const { difficulty: t } = this.game.config().gameConfig();
 			switch (t) {
-				case b.Easy: return this.random.chance(10);
-				case b.Medium: return this.random.chance(20);
-				case b.Hard: return this.random.chance(40);
-				case b.Impossible: return !1;
-				default: j(t);
+				case w.Easy: return this.random.chance(10);
+				case w.Medium: return this.random.chance(20);
+				case w.Hard: return this.random.chance(40);
+				case w.Impossible: return !1;
+				default: K(t);
 			}
 		}
 		isEarlygame() {
 			const t = this.game.config().numSpawnPhaseTurns(), { difficulty: e } = this.game.config().gameConfig();
 			switch (e) {
-				case b.Easy: return this.game.ticks() < 3e3 + t && this.random.nextInt(0, 100) >= 10;
-				case b.Medium: return this.game.ticks() < 1800 + t && this.random.nextInt(0, 100) >= 30;
-				case b.Hard: return this.game.ticks() < 1800 + t && this.random.nextInt(0, 100) >= 50;
-				case b.Impossible: return this.game.ticks() < 600 + t && this.random.nextInt(0, 100) >= 70;
-				default: j(e);
+				case w.Easy: return this.game.ticks() < 3e3 + t && this.random.nextInt(0, 100) >= 10;
+				case w.Medium: return this.game.ticks() < 1800 + t && this.random.nextInt(0, 100) >= 30;
+				case w.Hard: return this.game.ticks() < 1800 + t && this.random.nextInt(0, 100) >= 50;
+				case w.Impossible: return this.game.ticks() < 600 + t && this.random.nextInt(0, 100) >= 70;
+				default: K(e);
 			}
 		}
 		isAlliancePartnerThreat(t) {
 			const { difficulty: e } = this.game.config().gameConfig();
 			switch (e) {
-				case b.Easy: return !1;
-				case b.Medium: return t.troops() > this.player.troops() * 2.5;
-				case b.Hard: return t.troops() > this.player.troops() && this.game.config().maxTroops(t) > this.game.config().maxTroops(this.player) * 2;
-				case b.Impossible: {
+				case w.Easy: return !1;
+				case w.Medium: return t.troops() > this.player.troops() * 2.5;
+				case w.Hard: return t.troops() > this.player.troops() && this.game.config().maxTroops(t) > this.game.config().maxTroops(this.player) * 2;
+				case w.Impossible: {
 					const i = t.troops() > this.player.troops() * 1.5, n = t.troops() > this.player.troops() && this.game.config().maxTroops(t) > this.game.config().maxTroops(this.player) * 1.5, s = t.troops() > this.player.troops() && t.numTilesOwned() > this.player.numTilesOwned() * 1.5;
 					return i || n || s;
 				}
-				default: j(e);
+				default: K(e);
 			}
 		}
 		shouldRejectInTeamGame() {
 			if (this.game.config().gameConfig().gameMode !== ut.Team) return !1;
 			const { difficulty: t } = this.game.config().gameConfig();
 			switch (t) {
-				case b.Easy: return this.random.nextInt(0, 100) < 25;
-				case b.Medium: return this.random.nextInt(0, 100) < 50;
-				case b.Hard: return this.random.nextInt(0, 100) < 75;
-				case b.Impossible: return !0;
-				default: j(t);
+				case w.Easy: return this.random.nextInt(0, 100) < 25;
+				case w.Medium: return this.random.nextInt(0, 100) < 50;
+				case w.Hard: return this.random.nextInt(0, 100) < 75;
+				case w.Impossible: return !0;
+				default: K(t);
 			}
 		}
 		checkAlreadyEnoughAlliances(t) {
 			const { difficulty: e } = this.game.config().gameConfig();
 			switch (e) {
-				case b.Easy: return !1;
-				case b.Medium: return this.player.alliances().length >= this.random.nextInt(4, 6);
-				case b.Hard:
-				case b.Impossible: {
+				case w.Easy: return !1;
+				case w.Medium: return this.player.alliances().length >= this.random.nextInt(4, 6);
+				case w.Hard:
+				case w.Impossible: {
 					const i = this.player.nearby().filter((s) => s.isPlayer() && s.type() !== D.Bot), n = i.filter((s) => this.player?.isFriendly(s) === !0);
-					return i.length >= 2 && i.includes(t) ? i.length <= n.length + 1 : e === b.Hard ? this.player.alliances().length >= this.random.nextInt(3, 5) : this.player.alliances().length >= this.random.nextInt(2, 4);
+					return i.length >= 2 && i.includes(t) ? i.length <= n.length + 1 : e === w.Hard ? this.player.alliances().length >= this.random.nextInt(3, 5) : this.player.alliances().length >= this.random.nextInt(2, 4);
 				}
-				default: j(e);
+				default: K(e);
 			}
 		}
 		isAlliancePartnerFriendly(t) {
 			const { difficulty: e } = this.game.config().gameConfig();
 			switch (e) {
-				case b.Easy:
-				case b.Medium: return this.player.relation(t) === kt.Friendly;
-				case b.Hard: return this.player.relation(t) === kt.Friendly && this.random.nextInt(0, 100) >= 17;
-				case b.Impossible: return this.player.relation(t) === kt.Friendly && this.random.nextInt(0, 100) >= 33;
-				default: j(e);
+				case w.Easy:
+				case w.Medium: return this.player.relation(t) === kt.Friendly;
+				case w.Hard: return this.player.relation(t) === kt.Friendly && this.random.nextInt(0, 100) >= 17;
+				case w.Impossible: return this.player.relation(t) === kt.Friendly && this.random.nextInt(0, 100) >= 33;
+				default: K(e);
 			}
 		}
 		isAlliancePartnerSimilarlyStrong(t) {
 			const { difficulty: e } = this.game.config().gameConfig(), i = {
-				[b.Easy]: [60, 70],
-				[b.Medium]: [70, 80],
-				[b.Hard]: [75, 85],
-				[b.Impossible]: [80, 90]
+				[w.Easy]: [60, 70],
+				[w.Medium]: [70, 80],
+				[w.Hard]: [75, 85],
+				[w.Impossible]: [80, 90]
 			}, n = {
-				[b.Easy]: [70, 80],
-				[b.Medium]: [80, 90],
-				[b.Hard]: [85, 95],
-				[b.Impossible]: [90, 100]
+				[w.Easy]: [70, 80],
+				[w.Medium]: [80, 90],
+				[w.Hard]: [85, 95],
+				[w.Impossible]: [90, 100]
 			}, s = i[e], a = n[e], r = this.player.outgoingAttacks().reduce((f, g) => f + g.troops(), 0), o = t.outgoingAttacks().reduce((f, g) => f + g.troops(), 0), l = this.player.troops() + r, c = t.troops() + o, h = l * (this.random.nextInt(s[0], s[1]) / 100), u = this.player.numTilesOwned() * (this.random.nextInt(a[0], a[1]) / 100), m = c > h, p = t.numTilesOwned() > u && c > l * .5;
 			return m || p;
 		}
 		maybeBetray(t, e, i, n) {
 			if (!this.player.isAlliedWith(t)) return !1;
 			const { difficulty: s } = this.game.config().gameConfig();
-			return (s === b.Hard || s === b.Impossible) && e === t && this.isSafeToBetray(t, i, n) ? (this.betray(t), !0) : (s === b.Easy || s === b.Medium) && !(s === b.Easy && t.type() === D.Human) && this.player.troops() >= t.troops() * 10 ? (this.betray(t), !0) : s !== b.Easy && t.isTraitor() && t.troops() < this.player.troops() * 1.2 ? (this.betray(t), !0) : s !== b.Easy && i.length + n.length === 1 && t.troops() * 3 < this.player.troops() ? (this.betray(t), !0) : !1;
+			return (s === w.Hard || s === w.Impossible) && e === t && this.isSafeToBetray(t, i, n) ? (this.betray(t), !0) : (s === w.Easy || s === w.Medium) && !(s === w.Easy && t.type() === D.Human) && this.player.troops() >= t.troops() * 10 ? (this.betray(t), !0) : s !== w.Easy && t.isTraitor() && t.troops() < this.player.troops() * 1.2 ? (this.betray(t), !0) : s !== w.Easy && i.length + n.length === 1 && t.troops() * 3 < this.player.troops() ? (this.betray(t), !0) : !1;
 		}
 		findJuiciestAlly(t) {
 			const e = t.filter((i) => this.player.isAlliedWith(i));
@@ -15670,37 +15266,37 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 		}
 		refineStartTile(t, e, i) {
 			if (t.length <= 50) return t[0];
-			const o = t[0], l = i.map(), c = e.filter((_) => l.manhattanDist(_, o) <= 20);
+			const o = t[0], l = i.map(), c = e.filter((v) => l.manhattanDist(v, o) <= 20);
 			if (c.length <= 1) return o;
 			let h = l.x(c[0]), u = h, m = l.y(c[0]), p = m;
-			for (let _ = 1; _ < c.length; _++) {
-				const M = l.x(c[_]), x = l.y(c[_]);
+			for (let v = 1; v < c.length; v++) {
+				const M = l.x(c[v]), x = l.y(c[v]);
 				h = Math.min(h, M), u = Math.max(u, M), m = Math.min(m, x), p = Math.max(p, x);
 			}
 			let f = 50, g = Math.min(200, t.length - 1), y = f;
-			for (let _ = 0; _ < 5 && f <= g; _++) {
+			for (let v = 0; v < 5 && f <= g; v++) {
 				const M = f + g >> 1, x = t[M], L = l.x(x), H = l.y(x), Y = Math.min(h, L) - 10, B = Math.max(u, L) + 10, J = Math.min(m, H) - 10, nt = Math.max(p, H) + 10;
 				(B - Y + 1) * (nt - J + 1) <= bs ? (y = M, f = M + 1) : g = M - 1;
 			}
-			const w = t[y], S = l.x(w), T = l.y(w), k = {
+			const b = t[y], S = l.x(b), T = l.y(b), _ = {
 				minX: Math.max(0, Math.min(h, S) - 10),
 				maxX: Math.min(l.width() - 1, Math.max(u, S) + 10),
 				minY: Math.max(0, Math.min(m, T) - 10),
 				maxY: Math.min(l.height() - 1, Math.max(p, T) + 10)
 			};
-			if ((k.maxX - k.minX + 1) * (k.maxY - k.minY + 1) > bs) return o;
-			const v = this.getBoundedAStar().searchBounded(c, w, k);
-			return W.set("$candidates", () => c), W.set("$refinedPath", () => v), W.set("$originalBestTile", () => o), W.set("$newBestTile", () => v?.[0] ?? o), v?.[0] ?? o;
+			if ((_.maxX - _.minX + 1) * (_.maxY - _.minY + 1) > bs) return o;
+			const k = this.getBoundedAStar().searchBounded(c, b, _);
+			return W.set("$candidates", () => c), W.set("$refinedPath", () => k), W.set("$originalBestTile", () => o), W.set("$newBestTile", () => k?.[0] ?? o), k?.[0] ?? o;
 		}
 	};
 	function dn(t, e, i) {
 		if (e.unitCount(d.TransportShip) >= t.config().boatMaxNumber()) return !1;
-		const n = vi(t, e, i);
+		const n = _i(t, e, i);
 		if (n === null) return !1;
 		const s = t.owner(i);
 		return s === e || s.isPlayer() && !e.canAttackPlayer(s) ? !1 : new Ts(t).closestShoreByWater(e, n) ?? !1;
 	}
-	function vi(t, e, i) {
+	function _i(t, e, i) {
 		return new Ts(t).closestReachableShore(t.owner(i), e, i);
 	}
 	function ow(t, e, i) {
@@ -15737,7 +15333,7 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 				this.active = !1;
 				return;
 			}
-			if (this.troops ??= this.mg.config().boatAttackAmount(this.attacker, this.target), this.troops = Math.min(this.troops, this.attacker.troops()), this.dst = vi(this.mg, this.attacker, this.ref), this.dst === null) {
+			if (this.troops ??= this.mg.config().boatAttackAmount(this.attacker, this.target), this.troops = Math.min(this.troops, this.attacker.troops()), this.dst = _i(this.mg, this.attacker, this.ref), this.dst === null) {
 				console.warn(\`\${this.attacker} cannot send ship to \${this.target}, cannot find target tile\`), this.active = !1;
 				return;
 			}
@@ -15854,7 +15450,7 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 			ticksPerMove: C(),
 			lastMove: C().optional(),
 			target: O().optional(),
-			pathFinder: jn.optional(),
+			pathFinder: Kn.optional(),
 			dst: it().nullable().optional(),
 			src: it().nullable().optional(),
 			retreatDst: Vt([it(), q(!1)]).nullable(),
@@ -15864,7 +15460,7 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 			originalOwner: O(),
 			attacker: O(),
 			ref: C(),
-			troops: K()
+			troops: j()
 		}),
 		cls: () => Xe
 	});
@@ -15872,7 +15468,7 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 		const n = Array.from(t.bfs(e, Rn(e, 4, !0))), s = (a) => t.hasOwner(a) || !t.isLand(a) || t.isImpassable(a);
 		return i ? n.some(s) ? null : n : n.filter((a) => !s(a));
 	}
-	function ve(t, e, i) {
+	function _e(t, e, i) {
 		let n = Infinity;
 		for (const s of e) {
 			const a = t.manhattanDist(s, i);
@@ -15885,7 +15481,7 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 	}
 	function mn(t, e, i, n) {
 		if (!hw(e)) {
-			const l = ve(t, e, i);
+			const l = _e(t, e, i);
 			return l <= n ? l : Infinity;
 		}
 		if (e.size === 0) return Infinity;
@@ -15955,7 +15551,7 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 			});
 		}
 		restoreRecord(t, e, i, n) {
-			const s = _t(ll, t);
+			const s = vt(ll, t);
 			return this.random = i, this.game = e.game, this.player = n, this.boatRoutes = null, this.sentThisTick = null, this.triggerRatio = s.triggerRatio, this.reserveRatio = s.reserveRatio, this.expandRatio = s.expandRatio, this.nbuf = [
 				0,
 				0,
@@ -16101,17 +15697,17 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 			const { difficulty: s } = this.game.config().gameConfig();
 			let a;
 			switch (s) {
-				case b.Easy: return [];
-				case b.Medium:
+				case w.Easy: return [];
+				case w.Medium:
 					a = 1;
 					break;
-				case b.Hard:
+				case w.Hard:
 					a = 2;
 					break;
-				case b.Impossible:
+				case w.Impossible:
 					a = 4;
 					break;
-				default: j(s);
+				default: K(s);
 			}
 			const r = this.dangerRange() ** 2, o = Math.max(1, Math.floor(t.length / 32)), l = t.filter((m, p) => p % o === 0), c = [], h = Math.max(1, Math.floor(e.length / 32));
 			for (let m = 0; m < e.length; m += h) {
@@ -16142,7 +15738,7 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 			return this.game.config().warshipTargettingRange() + 20;
 		}
 		sail(t, e, i) {
-			const n = vi(this.game, this.player, e) ?? e;
+			const n = _i(this.game, this.player, e) ?? e;
 			return {
 				length: this.game.manhattanDist(t, n),
 				blocker: null
@@ -16153,11 +15749,11 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 		name: "AiAttackBehavior",
 		version: 2,
 		schema: A({
-			botAttackTroopsSent: K(),
+			botAttackTroopsSent: j(),
 			followedLandings: R(N()),
-			triggerRatio: K(),
-			reserveRatio: K(),
-			expandRatio: K()
+			triggerRatio: j(),
+			reserveRatio: j(),
+			expandRatio: j()
 		}),
 		migrations: { 1: (t) => ({
 			...t,
@@ -16175,19 +15771,19 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 		for (const g of a) for (const y of s.get(g).bots) {
 			if (s.has(y) || r.has(y)) continue;
 			r.add(y);
-			const w = n.scan(y, !0);
-			w !== null && s.set(y, w);
+			const b = n.scan(y, !0);
+			b !== null && s.set(y, b);
 		}
 		const o = cl(e), l = [...s.values()].filter((g) => !g.open && g.bots.size > 0 && !o.has(g.bot) && !gw(g.bot)).sort((g, y) => y.bot.numTilesOwned() - g.bot.numTilesOwned()), c = /* @__PURE__ */ new Set(), h = /* @__PURE__ */ new Set(), u = /* @__PURE__ */ new Map();
 		for (const g of l) {
 			if (h.has(g.bot)) continue;
 			c.add(g.bot);
 			const y = g.bot.numTilesOwned() / g.bots.size;
-			for (const w of g.bots) h.add(w), u.set(w, (u.get(w) ?? 0) + y);
+			for (const b of g.bots) h.add(b), u.set(b, (u.get(b) ?? 0) + y);
 		}
 		const m = (g) => (g.numTilesOwned() + (u.get(g) ?? 0)) / Math.max(1, g.troops()), p = (g, y) => m(y) - m(g), f = i.filter((g) => {
-			const y = s.get(g), w = y.bordersUs && !y.open && y.bots.size === 0;
-			return !c.has(g) && !w;
+			const y = s.get(g), b = y.bordersUs && !y.open && y.bots.size === 0;
+			return !c.has(g) && !b;
 		}).sort(p);
 		return f.some((g) => s.get(g).bordersUs) || f.push(...a.filter((g) => c.has(g)).sort(p)), f;
 	}
@@ -16369,7 +15965,7 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 		}
 		attackBestTarget(t, e) {
 			const { difficulty: i } = this.game.config().gameConfig();
-			if ((i === b.Hard || i === b.Impossible) && this.retaliate() || (this.annexWalledInBots(), (this.hasNeighboringBotWithStructures() || this.expandsPastCityTroops() && this.hasTriggerRatioTroops(!0)) && this.attackBots()) || !this.hasReserveRatioTroops() || i === b.Medium && this.retaliate() || !this.hasTriggerRatioTroops() && !this.random.chance(10)) return;
+			if ((i === w.Hard || i === w.Impossible) && this.retaliate() || (this.annexWalledInBots(), (this.hasNeighboringBotWithStructures() || this.expandsPastCityTroops() && this.hasTriggerRatioTroops(!0)) && this.attackBots()) || !this.hasReserveRatioTroops() || i === w.Medium && this.retaliate() || !this.hasTriggerRatioTroops() && !this.random.chance(10)) return;
 			const n = this.getAttackStrategies(t, e);
 			for (const s of n) if (s()) return;
 		}
@@ -16378,65 +15974,65 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 			let n = null;
 			const s = () => {
 				if (n !== null) return n;
-				const v = (M, x) => M.troops() - x.troops(), _ = e.some((M) => this.bordersByLand(M));
-				return i === b.Impossible && _ ? n = [e, this.overseasTargets(e).sort(v)] : (i === b.Hard || i === b.Impossible) && !_ ? n = [[...e, ...this.overseasTargets(e)].sort(v)] : n = [e], n;
-			}, a = (v) => {
-				for (const _ of s()) {
-					let M = _;
+				const k = (M, x) => M.troops() - x.troops(), v = e.some((M) => this.bordersByLand(M));
+				return i === w.Impossible && v ? n = [e, this.overseasTargets(e).sort(k)] : (i === w.Hard || i === w.Impossible) && !v ? n = [[...e, ...this.overseasTargets(e)].sort(k)] : n = [e], n;
+			}, a = (k) => {
+				for (const v of s()) {
+					let M = v;
 					for (;;) {
-						const x = v(M);
+						const x = k(M);
 						if (x === null) break;
-						if (i === b.Easy || this.canReach(x)) return x;
+						if (i === w.Easy || this.canReach(x)) return x;
 						M = M.filter((L) => L !== x);
 					}
 				}
 				return null;
 			}, r = () => this.retaliate(), o = () => this.attackBots(), l = () => this.assistAllies(), c = () => {
-				const v = a((_) => this.findTraitor(_));
-				return v ? this.sendAttack(v) : !1;
+				const k = a((v) => this.findTraitor(v));
+				return k ? this.sendAttack(k) : !1;
 			}, h = () => {
-				const v = a((_) => _.find((M) => M.isDisconnected() && (!this.isFFA() || M.troops() < this.player.troops() * 3)) ?? null);
-				return v ? this.sendAttack(v) : !1;
+				const k = a((v) => v.find((M) => M.isDisconnected() && (!this.isFFA() || M.troops() < this.player.troops() * 3)) ?? null);
+				return k ? this.sendAttack(k) : !1;
 			}, u = () => this.maybeBetrayAndAttack(t, e), m = () => this.isBorderingNukedTerritory() ? this.sendAttack(this.game.terraNullius()) : !1, p = () => {
-				const v = a((_) => this.findVictim(_));
-				return v ? this.sendAttack(v) : !1;
+				const k = a((v) => this.findVictim(v));
+				return k ? this.sendAttack(k) : !1;
 			}, f = () => {
-				const v = a((_) => this.findJuicyTarget(_));
-				return v !== null ? this.sendAttack(v) : !1;
+				const k = a((v) => this.findJuicyTarget(v));
+				return k !== null ? this.sendAttack(k) : !1;
 			}, g = () => {
-				for (const v of this.player.allRelationsSorted()) {
-					if (v.relation !== kt.Hostile) continue;
-					const _ = v.player;
-					if (!this.player.isFriendly(_) && !(this.isFFA() && _.troops() > this.player.troops() * 3) && !(i !== b.Easy && !this.canReach(_))) return this.sendAttack(_);
+				for (const k of this.player.allRelationsSorted()) {
+					if (k.relation !== kt.Hostile) continue;
+					const v = k.player;
+					if (!this.player.isFriendly(v) && !(this.isFFA() && v.troops() > this.player.troops() * 3) && !(i !== w.Easy && !this.canReach(v))) return this.sendAttack(v);
 				}
 				return !1;
 			}, y = () => {
-				const v = a((_) => this.findVeryWeakEnemy(_));
-				return v ? this.sendAttack(v) : !1;
-			}, w = () => {
-				const v = a((_) => _.find((M) => !this.isFFA() || M.troops() < this.player.troops()) ?? null);
-				return v !== null ? this.sendAttack(v) : !1;
+				const k = a((v) => this.findVeryWeakEnemy(v));
+				return k ? this.sendAttack(k) : !1;
+			}, b = () => {
+				const k = a((v) => v.find((M) => !this.isFFA() || M.troops() < this.player.troops()) ?? null);
+				return k !== null ? this.sendAttack(k) : !1;
 			}, S = () => {
-				if (a((v) => v[0] ?? null) === null) {
-					const v = this.findNearestIslandEnemy();
-					if (v) return this.sendAttack(v);
+				if (a((k) => k[0] ?? null) === null) {
+					const k = this.findNearestIslandEnemy();
+					if (k) return this.sendAttack(k);
 				}
 				return !1;
-			}, T = () => this.donateTroops(), k = () => {
-				const v = this.findCrownTarget(e);
-				return v !== null && this.shouldAttack(v) && this.sendLandAttack(v, void 0, v);
+			}, T = () => this.donateTroops(), _ = () => {
+				const k = this.findCrownTarget(e);
+				return k !== null && this.shouldAttack(k) && this.sendLandAttack(k, void 0, k);
 			};
 			switch (i) {
-				case b.Easy: return [
+				case w.Easy: return [
 					m,
 					o,
 					r,
 					l,
 					u,
 					g,
-					w
+					b
 				];
-				case b.Medium: return [
+				case w.Medium: return [
 					o,
 					m,
 					l,
@@ -16444,12 +16040,12 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 					g,
 					h,
 					c,
-					k,
-					w,
+					_,
+					b,
 					S,
 					T
 				];
-				case b.Hard: return [
+				case w.Hard: return [
 					o,
 					l,
 					u,
@@ -16460,28 +16056,28 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 					y,
 					f,
 					p,
-					k,
-					w,
+					_,
+					b,
 					S,
 					T
 				];
-				case b.Impossible: return [
+				case w.Impossible: return [
 					o,
 					y,
 					u,
 					l,
 					p,
-					k,
+					_,
 					c,
 					f,
 					h,
 					m,
 					g,
-					w,
+					b,
 					S,
 					T
 				];
-				default: j(i);
+				default: K(i);
 			}
 		}
 		hasNeighboringBotWithStructures() {
@@ -16495,17 +16091,17 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 			const t = this.findIncomingAttackPlayer();
 			if (t === null) return !1;
 			const { difficulty: e } = this.game.config().gameConfig();
-			return (e === b.Hard || e === b.Impossible) && this.isFFA() && this.player.sharesBorderWith(t) ? this.sendRetaliation(t) : this.sendAttack(t, !0);
+			return (e === w.Hard || e === w.Impossible) && this.isFFA() && this.player.sharesBorderWith(t) ? this.sendRetaliation(t) : this.sendAttack(t, !0);
 		}
 		holdsBoatsUnderAttack() {
 			if (this.findIncomingAttackPlayer() === null) return !1;
 			const { difficulty: t } = this.game.config().gameConfig();
 			switch (t) {
-				case b.Easy: return !1;
-				case b.Medium: return this.random.chance(2);
-				case b.Hard:
-				case b.Impossible: return !0;
-				default: j(t);
+				case w.Easy: return !1;
+				case w.Medium: return this.random.chance(2);
+				case w.Hard:
+				case w.Impossible: return !0;
+				default: K(t);
 			}
 		}
 		sendRetaliation(t) {
@@ -16527,7 +16123,7 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 			const e = Ss(this.game);
 			if (e === null || !t.includes(e) || !this.player.sharesBorderWith(e)) return null;
 			const { difficulty: i } = this.game.config().gameConfig();
-			return i === b.Hard || i === b.Impossible || this.incomingTroops(e) >= e.troops() * .1 ? e : null;
+			return i === w.Hard || i === w.Impossible || this.incomingTroops(e) >= e.troops() * .1 ? e : null;
 		}
 		incomingTroops(t) {
 			return t.incomingAttacks().reduce((e, i) => e + i.troops(), 0);
@@ -16550,7 +16146,7 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 			return this.player.nearby().filter((t) => t.isPlayer() && this.player.isFriendly(t) === !1 && t.type() === D.Bot);
 		}
 		overseasBots() {
-			if (this.game.config().gameConfig().difficulty === b.Easy || this.game.config().isUnitDisabled(d.TransportShip) || this.player.unitCount(d.TransportShip) >= this.game.config().boatMaxNumber()) return [];
+			if (this.game.config().gameConfig().difficulty === w.Easy || this.game.config().isUnitDisabled(d.TransportShip) || this.player.unitCount(d.TransportShip) >= this.game.config().boatMaxNumber()) return [];
 			const t = /* @__PURE__ */ new Set();
 			for (const s of this.player.units(d.TransportShip)) {
 				const a = s.targetTile();
@@ -16573,7 +16169,7 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 		}
 		annexesBots() {
 			const { difficulty: t } = this.game.config().gameConfig();
-			return t === b.Hard || t === b.Impossible;
+			return t === w.Hard || t === w.Impossible;
 		}
 		annexWalledInBots() {
 			if (!this.annexesBots()) return;
@@ -16585,11 +16181,11 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 		getBotAttackMaxParallelism() {
 			const { difficulty: t } = this.game.config().gameConfig();
 			switch (t) {
-				case b.Easy: return 1;
-				case b.Medium: return this.random.chance(2) ? 1 : 2;
-				case b.Hard: return 3;
-				case b.Impossible: return 100;
-				default: j(t);
+				case w.Easy: return 1;
+				case w.Medium: return this.random.chance(2) ? 1 : 2;
+				case w.Hard: return 3;
+				case w.Impossible: return 100;
+				default: K(t);
 			}
 		}
 		assistAllies() {
@@ -16676,7 +16272,7 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 		shouldAttack(t) {
 			if (t.isPlayer() === !1 || t.type() !== D.Human || t.isTraitor() || this.game.config().gameConfig().playerTeams === "Humans Vs Nations") return !0;
 			const { difficulty: e } = this.game.config().gameConfig();
-			return !(e === b.Easy && this.random.nextInt(0, 4) !== 0 || e === b.Medium && this.random.chance(4));
+			return !(e === w.Easy && this.random.nextInt(0, 4) !== 0 || e === w.Medium && this.random.chance(4));
 		}
 		ignoresAttacksFrom(t) {
 			return t.type() === D.Bot;
@@ -16684,7 +16280,7 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 		isAttackTooWeak(t, e) {
 			if (this.game.config().gameConfig().gameMode === ut.Team || this.player.incomingAttacks().length > 0) return !1;
 			const { difficulty: i } = this.game.config().gameConfig();
-			return (i === b.Hard || i === b.Impossible) && t < e.troops() * .2;
+			return (i === w.Hard || i === w.Impossible) && t < e.troops() * .2;
 		}
 		troopSendCap(t) {
 			let e = this.neighborTroopCap(t);
@@ -16700,10 +16296,10 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 			const { difficulty: e } = this.game.config().gameConfig();
 			let i;
 			switch (e) {
-				case b.Hard:
+				case w.Hard:
 					i = .75;
 					break;
-				case b.Impossible:
+				case w.Impossible:
 					i = .9;
 					break;
 				default: return Infinity;
@@ -16739,7 +16335,7 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 		}
 		landsBeachheads() {
 			const { difficulty: t } = this.game.config().gameConfig();
-			return t === b.Hard || t === b.Impossible;
+			return t === w.Hard || t === w.Impossible;
 		}
 		sendBeachhead(t, e) {
 			const i = this.calculateAttackTroops(t, (s) => this.homeTroops() - s, t.isPlayer() ? t : void 0);
@@ -16756,12 +16352,12 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 			return e !== null && e.blocker === null && e.length <= this.maxBoatRoute();
 		}
 		sail(t, e, i = this.hostileWarships()) {
-			const n = vi(this.game, this.player, e) ?? e, s = this.game.manhattanDist(t, n), { difficulty: a } = this.game.config().gameConfig();
-			if (a === b.Easy) return {
+			const n = _i(this.game, this.player, e) ?? e, s = this.game.manhattanDist(t, n), { difficulty: a } = this.game.config().gameConfig();
+			if (a === w.Easy) return {
 				length: s,
 				blocker: null
 			};
-			const r = a === b.Medium || s <= 20 ? null : Ee.Water(this.game).findPath(t, n), o = r?.length ?? s;
+			const r = a === w.Medium || s <= 20 ? null : Ee.Water(this.game).findPath(t, n), o = r?.length ?? s;
 			return {
 				length: o,
 				blocker: this.blockerOn(r ?? [t, n], o, r !== null, i)
@@ -16783,8 +16379,8 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 			return null;
 		}
 		everyLaunchBlocked(t, e) {
-			if (e.length === 0 || this.game.config().gameConfig().difficulty !== b.Medium) return !1;
-			const i = vi(this.game, this.player, t);
+			if (e.length === 0 || this.game.config().gameConfig().difficulty !== w.Medium) return !1;
+			const i = _i(this.game, this.player, t);
 			if (i === null) return !1;
 			const n = this.game.getWaterComponent(i);
 			if (n === null) return !1;
@@ -16798,11 +16394,11 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 		maxBoatRoute() {
 			const { difficulty: t } = this.game.config().gameConfig();
 			switch (t) {
-				case b.Easy:
-				case b.Medium: return Infinity;
-				case b.Hard: return 300;
-				case b.Impossible: return 500;
-				default: j(t);
+				case w.Easy:
+				case w.Medium: return Infinity;
+				case w.Hard: return 300;
+				case w.Impossible: return 500;
+				default: K(t);
 			}
 		}
 		overseasTargets(t) {
@@ -16812,7 +16408,7 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 		}
 		clearBlockedLane(t, e) {
 			const { difficulty: i } = this.game.config().gameConfig();
-			if (i !== b.Hard && i !== b.Impossible) return;
+			if (i !== w.Hard && i !== w.Impossible) return;
 			const n = this.maxBoatRoute(), s = /* @__PURE__ */ new Map();
 			for (const [r, o] of t) o?.blocker && (!e || o.length <= n) && (!this.isFFA() || r.troops() < this.player.troops()) && s.set(r, o.blocker);
 			const a = ys(this.game, [...s.keys()]);
@@ -16821,17 +16417,17 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 		calculateBotAttackTroops(t, e) {
 			const { difficulty: i } = this.game.config().gameConfig();
 			switch (i) {
-				case b.Easy: return e;
-				case b.Medium: {
+				case w.Easy: return e;
+				case w.Medium: {
 					let n = t.troops() * 4;
 					return n > e && (e < t.troops() * 2 ? n = 0 : n = e), n;
 				}
-				case b.Hard:
-				case b.Impossible: {
+				case w.Hard:
+				case w.Impossible: {
 					const n = this.botAttackTroopsNeeded(t) * 1.3 - this.ourStackAgainst(t);
 					return n <= e ? n : 0;
 				}
-				default: j(i);
+				default: K(i);
 			}
 		}
 		botAttackTroopsNeeded(t) {
@@ -16840,7 +16436,7 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 		}
 		botTileLoss(t, e) {
 			const i = [], n = t.largestClusterBoundingBox, { difficulty: s } = this.game.config().gameConfig();
-			if (s === b.Impossible && n) {
+			if (s === w.Impossible && n) {
 				const r = n.max.x - n.min.x + 1, o = n.max.y - n.min.y + 1;
 				for (let l = 0; l < 6; l++) for (let c = 0; c < 6; c++) {
 					const h = this.game.ref(n.min.x + Math.floor((2 * l + 1) * r / 12), n.min.y + Math.floor((2 * c + 1) * o / 12));
@@ -16876,18 +16472,18 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 			return e;
 		}
 		donateTroops() {
-			if (this.game.config().gameConfig().gameMode !== ut.Team || this.game.config().gameConfig().gameType === jt.Public || this.game.config().donateTroops() === !1) return !1;
+			if (this.game.config().gameConfig().gameMode !== ut.Team || this.game.config().gameConfig().gameType === Kt.Public || this.game.config().donateTroops() === !1) return !1;
 			const { difficulty: t } = this.game.config().gameConfig();
 			switch (t) {
-				case b.Easy: return !1;
-				case b.Medium:
+				case w.Easy: return !1;
+				case w.Medium:
 					if (!this.random.chance(4)) return !1;
 					break;
-				case b.Hard:
+				case w.Hard:
 					if (!this.random.chance(2)) return !1;
 					break;
-				case b.Impossible: break;
-				default: j(t);
+				case w.Impossible: break;
+				default: K(t);
 			}
 			const e = this.game.players().filter((r) => this.player.isOnSameTeam(r)).filter((r) => r.incomingAttacks().length > 0 || r.outgoingAttacks().length > 0);
 			if (e.length === 0) return !1;
@@ -16909,13 +16505,13 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 		}
 	};
 	const Sw = 300, ww = {
-		[b.Easy]: 0,
-		[b.Medium]: .1,
-		[b.Hard]: .2,
-		[b.Impossible]: .25
-	}, bw = 350, Tw = 2e3, kw = .5, vw = 40;
-	function _w(t, e, i) {
-		const n = Math.min(bw, Math.max(1, i.numTilesOwned() / Tw)), s = gs(new ft(t.ticks() * 1024 + i.smallID()), t, i, vw);
+		[w.Easy]: 0,
+		[w.Medium]: .1,
+		[w.Hard]: .2,
+		[w.Impossible]: .25
+	}, bw = 350, Tw = 2e3, kw = .5, _w = 40;
+	function vw(t, e, i) {
+		const n = Math.min(bw, Math.max(1, i.numTilesOwned() / Tw)), s = gs(new ft(t.ticks() * 1024 + i.smallID()), t, i, _w);
 		if (s.length === 0) return 1;
 		const a = t.config(), r = n / s.length, o = /* @__PURE__ */ new Map();
 		let l = 0;
@@ -16934,9 +16530,9 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 	}
 	function ks(t, e, i) {
 		const n = ww[t.config().gameConfig().difficulty];
-		return n === 0 || _w(t, e, i) >= n;
+		return n === 0 || vw(t, e, i) >= n;
 	}
-	function vs(t, e) {
+	function _s(t, e) {
 		let i = null, n = null;
 		for (const s of ml(t, e)) (i === null || s.numTilesOwned() > i.numTilesOwned()) && (i = s), (n === null || s.unitCount(d.City) > n.unitCount(d.City)) && (n = s);
 		return i !== null && ks(t, e, i) ? !0 : n !== null && n !== i && ks(t, e, n);
@@ -16952,46 +16548,46 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 			return t.versioned(fl, {});
 		}
 		restoreSnapshot(t, e, i, n, s) {
-			_t(fl, t), this.random = i, this.game = e.game, this.player = n, this.emojiBehavior = s;
+			vt(fl, t), this.random = i, this.game = e.game, this.player = n, this.emojiBehavior = s;
 		}
 		get hesitationOdds() {
 			const { difficulty: t } = this.game.config().gameConfig();
 			switch (t) {
-				case b.Easy: return 2;
-				case b.Medium: return 4;
-				case b.Hard: return 8;
-				case b.Impossible: return 16;
-				default: j(t);
+				case w.Easy: return 2;
+				case w.Medium: return 4;
+				case w.Hard: return 8;
+				case w.Impossible: return 16;
+				default: K(t);
 			}
 		}
 		get victoryDenialThresholdPercent() {
 			const { difficulty: t } = this.game.config().gameConfig();
 			switch (t) {
-				case b.Easy: return 75;
-				case b.Medium: return 65;
-				case b.Hard: return 55;
-				case b.Impossible: return 40;
-				default: j(t);
+				case w.Easy: return 75;
+				case w.Medium: return 65;
+				case w.Hard: return 55;
+				case w.Impossible: return 40;
+				default: K(t);
 			}
 		}
 		get steamrollCityGapMultiplier() {
 			const { difficulty: t } = this.game.config().gameConfig();
 			switch (t) {
-				case b.Easy: return 2;
-				case b.Medium: return 1.5;
-				case b.Hard: return 1.25;
-				case b.Impossible: return 1.15;
-				default: j(t);
+				case w.Easy: return 2;
+				case w.Medium: return 1.5;
+				case w.Hard: return 1.25;
+				case w.Impossible: return 1.15;
+				default: K(t);
 			}
 		}
 		get steamrollMinLeaderCities() {
 			const { difficulty: t } = this.game.config().gameConfig();
 			switch (t) {
-				case b.Easy: return 20;
-				case b.Medium:
-				case b.Hard: return 10;
-				case b.Impossible: return 8;
-				default: j(t);
+				case w.Easy: return 20;
+				case w.Medium:
+				case w.Hard: return 10;
+				case w.Impossible: return 8;
+				default: K(t);
 			}
 		}
 		considerMIRV() {
@@ -17060,7 +16656,7 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 		}
 		selectRivalTarget() {
 			const { difficulty: t } = this.game.config().gameConfig();
-			if (t !== b.Hard && t !== b.Impossible) return null;
+			if (t !== w.Hard && t !== w.Impossible) return null;
 			const e = this.player.numTilesOwned() * kw;
 			let i = null;
 			for (const n of this.getValidMirvTargetPlayers()) this.player.isFriendly(n) || n.numTilesOwned() < e || i !== null && n.numTilesOwned() <= i.numTilesOwned() || this.player.sharesBorderWith(n) && (i = n);
@@ -17090,7 +16686,7 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 			if (this.player === null) throw new Error("not initialized");
 			this.emojiBehavior.maybeSendAttackEmoji(t);
 			const e = this.calculateTerritoryCenter(t);
-			e && this.player.canBuild(d.MIRV, e) && (this.game.addExecution(new Jn(this.player, e)), this.recordMirvHit(t), this.emojiBehavior.sendEmoji(Ct, Ro), jS(this.game, this.random, t));
+			e && this.player.canBuild(d.MIRV, e) && (this.game.addExecution(new Jn(this.player, e)), this.recordMirvHit(t), this.emojiBehavior.sendEmoji(Ct, Ro), KS(this.game, this.random, t));
 		}
 		countCities(t) {
 			return t.unitCount(d.City);
@@ -17150,8 +16746,8 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 		schema: A({
 			structure: N().nullable(),
 			player: O(),
-			unitId: K(),
-			amount: K()
+			unitId: j(),
+			amount: j()
 		}),
 		cls: () => pn
 	}), yl = 5;
@@ -17187,7 +16783,7 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 		}
 		return !1;
 	}
-	function _s(t, e, i, n, s) {
+	function vs(t, e, i, n, s) {
 		const a = t.config().nukeSpeed(d.AtomBomb), r = gi.Parabola(t, {
 			increment: a,
 			distanceBasedHeight: !0,
@@ -17243,7 +16839,7 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 			for (const F of a) {
 				const Q = F.level() - F.missileTimerQueue().length;
 				if (Q <= 0) continue;
-				const ot = _s(t, e, F.tile(), c, u), Tt = gi.Parabola(t, {
+				const ot = vs(t, e, F.tile(), c, u), Tt = gi.Parabola(t, {
 					increment: p,
 					distanceBasedHeight: !0,
 					directionUp: !0
@@ -17261,7 +16857,7 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 				flightTicks: F.flightTicks,
 				interceptable: F.interceptable
 			});
-			const y = t.config().SAMCooldown(), w = Math.floor(y / 2), S = m + Math.floor(m / 5), T = [];
+			const y = t.config().SAMCooldown(), b = Math.floor(y / 2), S = m + Math.floor(m / 5), T = [];
 			for (let F = 0; F < g.length; F++) g[F].interceptable || T.push({
 				index: F,
 				flightTicks: g[F].flightTicks
@@ -17274,14 +16870,14 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 				};
 				continue;
 			}
-			const k = [...T].sort((F, Q) => F.flightTicks - Q.flightTicks);
-			let v = 0, _ = 0;
-			for (let F = 0; F < k.length; F++) {
+			const _ = [...T].sort((F, Q) => F.flightTicks - Q.flightTicks);
+			let k = 0, v = 0;
+			for (let F = 0; F < _.length; F++) {
 				let Q = F;
-				for (; Q < k.length && k[Q].flightTicks - k[F].flightTicks <= w;) Q++;
-				Q - F > _ && (_ = Q - F, v = F);
+				for (; Q < _.length && _[Q].flightTicks - _[F].flightTicks <= b;) Q++;
+				Q - F > v && (v = Q - F, k = F);
 			}
-			if (_ < S) {
+			if (v < S) {
 				o ??= {
 					targetTile: c,
 					coveringSamIds: u,
@@ -17289,7 +16885,7 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 				};
 				continue;
 			}
-			const M = [...k.slice(v, v + _)].sort((F, Q) => F.index - Q.index).slice(0, S), x = new Set(M.map((F) => F.index)), L = M[M.length - 1].index + 1, H = Math.min(...M.map((F) => F.flightTicks)), Y = Math.max(1, Math.floor(w / S));
+			const M = [..._.slice(k, k + v)].sort((F, Q) => F.index - Q.index).slice(0, S), x = new Set(M.map((F) => F.index)), L = M[M.length - 1].index + 1, H = Math.min(...M.map((F) => F.flightTicks)), Y = Math.max(1, Math.floor(b / S));
 			let B = 0;
 			const J = [];
 			for (let F = 0; F < L; F++) if (x.has(F)) {
@@ -17324,7 +16920,7 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 		const n = e.units(d.MissileSilo);
 		if (n.length === 0) return null;
 		const s = [];
-		for (const l of n) _s(t, e, l.tile(), i.targetTile, i.coveringSamIds) || s.push(l);
+		for (const l of n) vs(t, e, l.tile(), i.targetTile, i.coveringSamIds) || s.push(l);
 		if (s.length === 0 || s.length * yl < i.totalBombs) return null;
 		const a = e.units(d.SAMLauncher);
 		let r = null, o = -1;
@@ -17348,7 +16944,7 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 			this.random = t, this.game = e, this.player = i, this.attackBehavior = n, this.emojiBehavior = s, this.recentlySentNukes = [], this.atomBombsLaunched = 0, this.atomBombPerceivedCost = this.cost(d.AtomBomb), this.atomBombLastLaunch = null, this.hydrogenBombsLaunched = 0, this.hydrogenBombPerceivedCost = this.cost(d.HydrogenBomb), this.hydrogenBombLastLaunch = null, this.strikes = [];
 		}
 		snapshot(t) {
-			return t.versioned(vl, {
+			return t.versioned(_l, {
 				recentlySentNukes: this.recentlySentNukes.map(([e, i, n]) => [
 					e,
 					i,
@@ -17369,7 +16965,7 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 			});
 		}
 		restoreSnapshot(t, e, i, n, s, a) {
-			const r = _t(vl, t);
+			const r = vt(_l, t);
 			this.random = i, this.game = e.game, this.player = n, this.attackBehavior = s, this.emojiBehavior = a, this.recentlySentNukes = r.recentlySentNukes.map(([o, l, c]) => [
 				o,
 				l,
@@ -17392,7 +16988,7 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 			if (a && !this.isHittingUs(n)) return;
 			const r = this.nukeTypesToTry(a);
 			if (r.length === 0) return;
-			const o = n.units(At.types), l = this.game.config().gameConfig().difficulty, c = l === b.Impossible ? 30 : 10, h = gs(this.random, this.game, n, c), u = new Set(h.concat(o.map((m) => m.tile())));
+			const o = n.units(At.types), l = this.game.config().gameConfig().difficulty, c = l === w.Impossible ? 30 : 10, h = gs(this.random, this.game, n, c), u = new Set(h.concat(o.map((m) => m.tile())));
 			this.removeOldNukeEvents();
 			for (const m of r) {
 				const p = this.findBestNukeTile(m, n, u, t, o, s);
@@ -17406,11 +17002,11 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 					return;
 				}
 			}
-			l === b.Impossible && !a && this.maybeDestroyEnemySam(n);
+			l === w.Impossible && !a && this.maybeDestroyEnemySam(n);
 		}
 		nukeTypesToTry(t) {
 			const e = this.game.config(), i = e.gameConfig().difficulty, n = [];
-			return !t && !e.isUnitDisabled(d.HydrogenBomb) && this.player.gold() >= this.getPerceivedNukeCost(d.HydrogenBomb) && n.push(d.HydrogenBomb), (n.length === 0 || i === b.Hard || i === b.Impossible) && !e.isUnitDisabled(d.AtomBomb) && this.player.gold() >= this.getPerceivedNukeCost(d.AtomBomb) && n.push(d.AtomBomb), n;
+			return !t && !e.isUnitDisabled(d.HydrogenBomb) && this.player.gold() >= this.getPerceivedNukeCost(d.HydrogenBomb) && n.push(d.HydrogenBomb), (n.length === 0 || i === w.Hard || i === w.Impossible) && !e.isUnitDisabled(d.AtomBomb) && this.player.gold() >= this.getPerceivedNukeCost(d.AtomBomb) && n.push(d.AtomBomb), n;
 		}
 		findBestNukeTile(t, e, i, n, s, a) {
 			const r = this.game.config().gameConfig().difficulty, o = this.game.config().nukeMagnitudes(t).outer, l = [];
@@ -17420,9 +17016,9 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 				const m = this.player.canBuild(t, h);
 				if (m === !1) continue;
 				let p = 0;
-				if (r !== b.Easy && (Iw(this.game, h, t) || (p = Cw(this.game, this.player, h, t), p < Rw[t])) || (r === b.Hard || r === b.Impossible) && _s(this.game, this.player, m, h)) continue;
+				if (r !== w.Easy && (Iw(this.game, h, t) || (p = Cw(this.game, this.player, h, t), p < Rw[t])) || (r === w.Hard || r === w.Impossible) && vs(this.game, this.player, m, h)) continue;
 				const f = this.nukeTileScore(h, n, s, t);
-				(r === b.Impossible && !a ? f <= 0 : f < 0) || l.push({
+				(r === w.Impossible && !a ? f <= 0 : f < 0) || l.push({
 					tile: h,
 					score: f + p * Nw
 				});
@@ -17437,17 +17033,17 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 			const { difficulty: e } = this.game.config().gameConfig();
 			let i;
 			switch (e) {
-				case b.Easy:
+				case w.Easy:
 					i = !1;
 					break;
-				case b.Medium:
+				case w.Medium:
 					i = this.ourTroopsAttacking(t) > 0;
 					break;
-				case b.Hard:
-				case b.Impossible:
+				case w.Hard:
+				case w.Impossible:
 					i = this.canStrike(t);
 					break;
-				default: j(e);
+				default: K(e);
 			}
 			return {
 				target: t,
@@ -17456,7 +17052,7 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 		}
 		findBestNukeTarget() {
 			const { difficulty: t } = this.game.config().gameConfig();
-			if ((t === b.Hard || t === b.Impossible) && this.game.players().length === 2) {
+			if ((t === w.Hard || t === w.Impossible) && this.game.players().length === 2) {
 				const h = this.game.players().find((u) => u !== this.player);
 				if (h) return h;
 			}
@@ -17467,7 +17063,7 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 			const n = this.findTeammateFightTarget();
 			if (n) return n;
 			const { difficulty: s, gameMode: a } = this.game.config().gameConfig();
-			if (s === b.Impossible && a === ut.FFA) {
+			if (s === w.Impossible && a === ut.FFA) {
 				const h = this.game.numLandTiles() - this.game.numTilesWithFallout();
 				if (h > 0) {
 					const u = this.game.players().slice().sort((m, p) => p.numTilesOwned() - m.numTilesOwned())[0];
@@ -17476,7 +17072,7 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 			}
 			const r = this.findStrikeTarget();
 			if (r !== null) return r;
-			if (t === b.Impossible && this.isRichestNation() && this.random.chance(2)) {
+			if (t === w.Impossible && this.isRichestNation() && this.random.chance(2)) {
 				const h = this.findHighDensityTarget();
 				if (h !== null) return h;
 			}
@@ -17496,20 +17092,20 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 		findStrikeTarget() {
 			const t = this.player.troops(), e = (n) => n.isPlayer() && n.type() !== D.Bot && !this.player.isFriendly(n) && n.troops() >= t * Bw, { difficulty: i } = this.game.config().gameConfig();
 			switch (i) {
-				case b.Easy: return null;
-				case b.Medium:
+				case w.Easy: return null;
+				case w.Medium:
 					for (const n of this.player.outgoingAttacks()) {
 						const s = n.target();
 						if (e(s)) return s;
 					}
 					return null;
-				case b.Hard:
-				case b.Impossible: {
+				case w.Hard:
+				case w.Impossible: {
 					let n = null;
 					for (const s of this.player.nearby()) e(s) && (n !== null && s.troops() <= n.troops() || this.canStrike(s) && (n = s));
 					return n;
 				}
-				default: j(i);
+				default: K(i);
 			}
 		}
 		canStrike(t) {
@@ -17517,7 +17113,7 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 		}
 		followsUpStrikes() {
 			const { difficulty: t } = this.game.config().gameConfig();
-			return t === b.Hard || t === b.Impossible;
+			return t === w.Hard || t === w.Impossible;
 		}
 		followUpStrikes() {
 			if (this.followsUpStrikes() && this.player.unitCount(d.MIRV) > 0 && this.trackMirvStrikes(), this.strikes.length === 0) return;
@@ -17602,23 +17198,23 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 			if (Ss(this.game) !== i) return null;
 			let a;
 			switch (t) {
-				case b.Easy: return null;
-				case b.Medium:
+				case w.Easy: return null;
+				case w.Medium:
 					a = .3;
 					break;
-				case b.Hard:
+				case w.Hard:
 					a = .2;
 					break;
-				case b.Impossible:
+				case w.Impossible:
 					a = .1;
 					break;
-				default: j(t);
+				default: K(t);
 			}
 			return this.player.sharesBorderWith(i) || (a *= 2), s - this.player.numTilesOwned() / n > a ? i : null;
 		}
 		findTeammateFightTarget() {
 			const { difficulty: t, gameMode: e } = this.game.config().gameConfig();
-			if (e !== ut.Team || t === b.Easy) return null;
+			if (e !== ut.Team || t === w.Easy) return null;
 			const i = this.game.players().filter((r) => r !== this.player && this.player.isOnSameTeam(r)), n = (r) => r.isPlayer() && r.type() !== D.Bot && !this.player.isFriendly(r);
 			let s = null, a = 0;
 			for (const r of i) for (const o of r.incomingAttacks()) {
@@ -17650,7 +17246,7 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 			const s = e.get(n).filter((r) => !this.player.isFriendly(r));
 			if (s.length === 0) return null;
 			const { difficulty: a } = this.game.config().gameConfig();
-			if (a === b.Hard || a === b.Impossible) {
+			if (a === w.Hard || a === w.Impossible) {
 				const r = s.map((o) => ({
 					p: o,
 					levels: kl(o)
@@ -17660,16 +17256,16 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 			return this.random.chance(2) ? s.reduce((r, o) => this.game.config().maxTroops(r) > this.game.config().maxTroops(o) ? r : o) : this.random.randElement(s);
 		}
 		getPerceivedNukeCost(t) {
-			return this.paysRealNukePrice() ? this.cost(t) : !this.forgetsNukePrices() && !vs(this.game, this.player) ? this.cost(t) : this.inflatedNukeCost(t);
+			return this.paysRealNukePrice() ? this.cost(t) : !this.forgetsNukePrices() && !_s(this.game, this.player) ? this.cost(t) : this.inflatedNukeCost(t);
 		}
 		paysRealNukePrice() {
 			if (this.game.players().length === 2 || this.game.config().isUnitDisabled(d.MIRV) || this.game.config().gameConfig().gameMode === ut.Team && this.player.gold() > this.cost(d.HydrogenBomb) || this.player.gold() > this.mirvSaveUpTarget()) return !0;
 			const t = this.game.config().gameConfig().difficulty;
-			return (t === b.Hard || t === b.Impossible) && this.isUnderHeavyAttack();
+			return (t === w.Hard || t === w.Impossible) && this.isUnderHeavyAttack();
 		}
 		forgetsNukePrices() {
 			const { difficulty: t, gameMode: e } = this.game.config().gameConfig();
-			return (t === b.Hard || t === b.Impossible) && e !== ut.Team;
+			return (t === w.Hard || t === w.Impossible) && e !== ut.Team;
 		}
 		inflatedNukeCost(t) {
 			const e = this.cost(t), [i, n] = t === d.AtomBomb ? [this.atomBombPerceivedCost, this.atomBombLastLaunch] : [this.hydrogenBombPerceivedCost, this.hydrogenBombLastLaunch];
@@ -17679,7 +17275,7 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 			return s <= 0 ? e : e + (i - e) * BigInt(s) / BigInt(bl);
 		}
 		isSavingForMirv() {
-			return this.forgetsNukePrices() && !this.paysRealNukePrice() && vs(this.game, this.player) && Jo(this.game, this.player, this.mirvSaveUpTarget());
+			return this.forgetsNukePrices() && !this.paysRealNukePrice() && _s(this.game, this.player) && Jo(this.game, this.player, this.mirvSaveUpTarget());
 		}
 		mirvSaveUpTarget() {
 			return this.cost(d.MIRV) + this.cost(d.HydrogenBomb);
@@ -17708,7 +17304,7 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 		}
 		isValidNukeTile(t, e) {
 			const i = this.game.config().gameConfig().difficulty, n = this.game.owner(t);
-			return n === e || (i === b.Hard || i === b.Impossible) && (!n.isPlayer() || !this.player.isFriendly(n, !0));
+			return n === e || (i === w.Hard || i === w.Impossible) && (!n.isPlayer() || !this.player.isFriendly(n, !0));
 		}
 		nukeTileScore(t, e, i, n) {
 			const s = Rn(t, this.game.config().nukeMagnitudes(n).outer, !1);
@@ -17724,11 +17320,11 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 				}
 			}).reduce((m, p) => m + p, 0);
 			const r = this.game.config().gameConfig().difficulty;
-			if (r === b.Medium) {
+			if (r === w.Medium) {
 				const m = Rn(t, 50, !1);
 				if (i.some((p) => p.type() === d.SAMLauncher && m(this.game, p.tile()))) return -1;
 			}
-			if (r === b.Impossible && n === d.HydrogenBomb) {
+			if (r === w.Impossible && n === d.HydrogenBomb) {
 				const m = this.game.config().nukeMagnitudes(d.HydrogenBomb), p = this.game.nearbyUnits(t, m.outer, d.SAMLauncher);
 				for (const f of p) {
 					const g = f.unit.level();
@@ -17774,7 +17370,7 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 		for (const i of t.units(At.types)) e += i.level();
 		return e;
 	}
-	const vl = wt({
+	const _l = wt({
 		name: "NationNukeBehavior",
 		version: 2,
 		schema: A({
@@ -17803,7 +17399,7 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 			strikes: []
 		}) }
 	}), zw = 3e3;
-	var _l = class {
+	var vl = class {
 		constructor(t, e, i) {
 			this.random = t, this.game = e, this.player = i, this.reachableStationsCache = null, this._sharedWaterComponents = null;
 		}
@@ -17834,7 +17430,7 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 					const a = this.game.getWaterComponent(s);
 					if (a === null || !e.has(a)) continue;
 					const { difficulty: r } = this.game.config().gameConfig();
-					if (r !== b.Easy) {
+					if (r !== w.Easy) {
 						const o = this.game.getWaterComponentSize(s);
 						if (o !== null && o < zw) continue;
 					}
@@ -17873,7 +17469,7 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 				r += Math.min(o, n);
 				const l = new Set(i.map((h) => h.tile()));
 				l.delete(a);
-				const c = ve(t, l, a);
+				const c = _e(t, l, a);
 				return c !== Infinity && (r += Math.min(c, s)), r;
 			};
 		}
@@ -17883,7 +17479,7 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 				let n = 0;
 				const s = new Set(e.map((r) => r.tile()));
 				s.delete(i);
-				const a = ve(t, s, i);
+				const a = _e(t, s, i);
 				return n += a, n;
 			};
 		}
@@ -17896,28 +17492,28 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 				f += Math.min(g, s);
 				const y = new Set(n.map((T) => T.tile()));
 				y.delete(p);
-				const w = ve(t, y, p);
-				w !== Infinity && (f += Math.min(w, r));
-				const S = ve(t, m, p);
+				const b = _e(t, y, p);
+				b !== Infinity && (f += Math.min(b, r));
+				const S = _e(t, m, p);
 				return S !== Infinity && (f += Math.min(S, a)), c && (f += this.computeConnectivityScore(p, h, u, o) * a), f;
 			};
 		}
 		shouldUseConnectivityScore(t) {
 			let e;
 			switch (t) {
-				case b.Easy:
+				case w.Easy:
 					e = 0;
 					break;
-				case b.Medium:
+				case w.Medium:
 					e = 60;
 					break;
-				case b.Hard:
+				case w.Hard:
 					e = 75;
 					break;
-				case b.Impossible:
+				case w.Impossible:
 					e = 100;
 					break;
-				default: j(t);
+				default: K(t);
 			}
 			return this.random.nextInt(0, 100) < e;
 		}
@@ -17964,14 +17560,14 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 				f += Math.min(g, s);
 				const y = new Set(n.map((T) => T.tile()));
 				y.delete(p);
-				const w = ve(t, y, p);
-				w !== Infinity && (f += Math.min(w, a));
-				const S = ve(t, m, p);
+				const b = _e(t, y, p);
+				b !== Infinity && (f += Math.min(b, a));
+				const S = _e(t, m, p);
 				return S !== Infinity && (f += Math.min(S, a)), c && (f += this.computeConnectivityScore(p, h, u, o) * a), f;
 			};
 		}
 		samLauncherValue() {
-			const t = this.game, e = this.player, i = e.borderTiles(), n = e.units(d.SAMLauncher), { borderSpacing: s, structureSpacing: a } = this.spacingConstants(), { difficulty: r } = t.config().gameConfig(), o = r === b.Hard || r === b.Impossible, l = [];
+			const t = this.game, e = this.player, i = e.borderTiles(), n = e.units(d.SAMLauncher), { borderSpacing: s, structureSpacing: a } = this.spacingConstants(), { difficulty: r } = t.config().gameConfig(), o = r === w.Hard || r === w.Impossible, l = [];
 			for (const p of e.units()) switch (p.type()) {
 				case d.City:
 				case d.Factory:
@@ -17981,7 +17577,7 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 					weight: o ? p.level() : 1
 				});
 			}
-			const c = t.config().defaultSamRange(), h = c * c, u = r !== b.Easy && this.random.nextInt(0, 100) < 25;
+			const c = t.config().defaultSamRange(), h = c * c, u = r !== w.Easy && this.random.nextInt(0, 100) < 25;
 			let m = null;
 			if (u) {
 				m = /* @__PURE__ */ new Map();
@@ -17989,8 +17585,8 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 				for (const f of l) {
 					let g = 0;
 					for (const y of p) {
-						const w = t.config().samRange(y.level());
-						t.euclideanDistSquared(f.tile, y.tile()) <= w * w && (g += y.level());
+						const b = t.config().samRange(y.level());
+						t.euclideanDistSquared(f.tile, y.tile()) <= b * b && (g += y.level());
 					}
 					m.set(f.tile, g);
 				}
@@ -18002,8 +17598,8 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 				i.size > 0 && (f += Math.min(g, s));
 				const y = new Set(n.map((S) => S.tile()));
 				y.delete(p);
-				const w = ve(t, y, p);
-				if (w !== Infinity && (f += Math.min(w, a)), r !== b.Easy) {
+				const b = _e(t, y, p);
+				if (b !== Infinity && (f += Math.min(b, a)), r !== w.Easy) {
 					for (const S of l) if (!(t.euclideanDistSquared(p, S.tile) > h)) if (u && m !== null) {
 						const T = 1 / (1 + (m.get(S.tile) ?? 0));
 						f += a * S.weight * T;
@@ -18021,13 +17617,13 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 		}
 	};
 	const Fw = {
-		[b.Easy]: .15,
-		[b.Medium]: .2,
-		[b.Hard]: .25,
-		[b.Impossible]: .3
+		[w.Easy]: .15,
+		[w.Medium]: .2,
+		[w.Hard]: .25,
+		[w.Impossible]: .3
 	}, Ww = 1;
 	function Al(t, e) {
-		const i = e === ut.Team && t !== b.Easy;
+		const i = e === ut.Team && t !== w.Easy;
 		return {
 			[d.Port]: {
 				ratioPerCity: i ? Ww : .75,
@@ -18048,35 +17644,35 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 		};
 	}
 	const $w = 1, Hw = {
-		[b.Easy]: 0,
-		[b.Medium]: 3,
-		[b.Hard]: 4,
-		[b.Impossible]: 5
+		[w.Easy]: 0,
+		[w.Medium]: 3,
+		[w.Hard]: 4,
+		[w.Impossible]: 5
 	}, qw = {
-		[b.Easy]: 1,
-		[b.Medium]: .8,
-		[b.Hard]: .6,
-		[b.Impossible]: .4
+		[w.Easy]: 1,
+		[w.Medium]: .8,
+		[w.Hard]: .6,
+		[w.Impossible]: .4
 	}, Gw = {
-		[b.Easy]: .33,
-		[b.Medium]: .45,
-		[b.Hard]: .55,
-		[b.Impossible]: .6
+		[w.Easy]: .33,
+		[w.Medium]: .45,
+		[w.Hard]: .55,
+		[w.Impossible]: .6
 	}, Il = [
 		d.City,
 		d.Factory,
 		d.MissileSilo,
 		d.Port
 	], Vw = {
-		[b.Easy]: 0,
-		[b.Medium]: 50,
-		[b.Hard]: 100,
-		[b.Impossible]: 100
-	}, Kw = 3, jw = .4, Zw = 1 / 1500, Yw = {
-		[b.Easy]: 3,
-		[b.Medium]: 10,
-		[b.Hard]: Infinity,
-		[b.Impossible]: Infinity
+		[w.Easy]: 0,
+		[w.Medium]: 50,
+		[w.Hard]: 100,
+		[w.Impossible]: 100
+	}, jw = 3, Kw = .4, Zw = 1 / 1500, Yw = {
+		[w.Easy]: 3,
+		[w.Medium]: 10,
+		[w.Hard]: Infinity,
+		[w.Impossible]: Infinity
 	}, Xw = At.types.filter((t) => t !== d.DefensePost), Jw = 2e3, Qw = 1 / 7500, tb = 10000000n, eb = [
 		0,
 		0,
@@ -18084,8 +17680,8 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 		150,
 		100
 	], Cl = 150, Pl = .35, ib = .4, nb = 2 / 3, sb = 1 / 3, ab = 2, rb = 1 / 2, ob = 1 / 2, lb = 1, cb = 2, hb = .5, ub = {
-		[b.Hard]: 1,
-		[b.Impossible]: .5
+		[w.Hard]: 1,
+		[w.Impossible]: .5
 	}, db = 150, mb = [
 		0,
 		0,
@@ -18094,7 +17690,7 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 	];
 	var El = class {
 		constructor(t, e, i) {
-			this.random = t, this.game = e, this.player = i, this.lastStructureTick = null, this.placementsCount = 0, this.builtCrowdedMapFirstStructure = !1, this._hasHighStartingGold = null, this._postSaveUpStartTick = null, this.mirvWorthSavingMemo = null, this.placement = new _l(t, e, i);
+			this.random = t, this.game = e, this.player = i, this.lastStructureTick = null, this.placementsCount = 0, this.builtCrowdedMapFirstStructure = !1, this._hasHighStartingGold = null, this._postSaveUpStartTick = null, this.mirvWorthSavingMemo = null, this.placement = new vl(t, e, i);
 		}
 		snapshot(t) {
 			return t.versioned(Ml, {
@@ -18106,8 +17702,8 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 			});
 		}
 		restoreSnapshot(t, e, i, n) {
-			const s = _t(Ml, t);
-			this.random = i, this.game = e.game, this.player = n, this.placement = new _l(i, e.game, n), this.mirvWorthSavingMemo = null, this.lastStructureTick = s.lastStructureTick, this.placementsCount = s.placementsCount, this.builtCrowdedMapFirstStructure = s.builtCrowdedMapFirstStructure, this._hasHighStartingGold = s.hasHighStartingGold, this._postSaveUpStartTick = s.postSaveUpStartTick;
+			const s = vt(Ml, t);
+			this.random = i, this.game = e.game, this.player = n, this.placement = new vl(i, e.game, n), this.mirvWorthSavingMemo = null, this.lastStructureTick = s.lastStructureTick, this.placementsCount = s.placementsCount, this.builtCrowdedMapFirstStructure = s.builtCrowdedMapFirstStructure, this._hasHighStartingGold = s.hasHighStartingGold, this._postSaveUpStartTick = s.postSaveUpStartTick;
 		}
 		handleStructures() {
 			if (this.placementsCount > 0 && !this.game.config().isUnitDisabled(d.DefensePost)) {
@@ -18120,7 +17716,7 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 		}
 		tryBuildDefensePost() {
 			const { difficulty: t } = this.game.config().gameConfig();
-			if (t === b.Easy || t === b.Medium && !this.random.chance(2)) return !1;
+			if (t === w.Easy || t === w.Medium && !this.random.chance(2)) return !1;
 			const e = this.player, i = e.incomingAttacks();
 			if (i.length === 0) return !1;
 			const n = e.troops();
@@ -18128,8 +17724,8 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 			const s = i.reduce((h, u) => h + u.troops(), 0) / n;
 			if (s < Pl) return !1;
 			let a;
-			t === b.Medium ? a = 1 : a = Math.ceil(s / ib);
-			const r = this.game.config().defensePostRange(), o = r * (nb + sb * (t === b.Medium ? 0 : Math.min(s, ab))), l = o + r * rb, c = this.getAttackFrontTiles(i);
+			t === w.Medium ? a = 1 : a = Math.ceil(s / ib);
+			const r = this.game.config().defensePostRange(), o = r * (nb + sb * (t === w.Medium ? 0 : Math.min(s, ab))), l = o + r * rb, c = this.getAttackFrontTiles(i);
 			return this.countDefensePostsNearFront(c, l, a) >= a ? !1 : this.buildDefensePostBehind(c, o, l);
 		}
 		maybeBuildProactiveDefensePost() {
@@ -18153,7 +17749,7 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 		}
 		defensePostNeeded() {
 			const { difficulty: t } = this.game.config().gameConfig();
-			if (t === b.Easy) return !1;
+			if (t === w.Easy) return !1;
 			const e = this.player.incomingAttacks();
 			if (e.length === 0) return !1;
 			const i = this.player.troops();
@@ -18199,12 +17795,12 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 			if (l.length === 0) return null;
 			const c = e ** 2, h = i ** 2, u = Math.ceil(i);
 			for (let m = 0; m < db; m++) {
-				const p = this.random.randElement(l), f = n.x(p), g = n.y(p), y = this.random.nextInt(f - u, f + u + 1), w = this.random.nextInt(g - u, g + u + 1);
-				if (!n.isValidCoord(y, w)) continue;
-				const S = n.ref(y, w);
+				const p = this.random.randElement(l), f = n.x(p), g = n.y(p), y = this.random.nextInt(f - u, f + u + 1), b = this.random.nextInt(g - u, g + u + 1);
+				if (!n.isValidCoord(y, b)) continue;
+				const S = n.ref(y, b);
 				if (n.owner(S) !== s || o(S)) continue;
 				let T = Infinity;
-				for (const k of t) if (T = Math.min(T, n.euclideanDistSquared(S, k)), T < c) break;
+				for (const _ of t) if (T = Math.min(T, n.euclideanDistSquared(S, _)), T < c) break;
 				if (!(T < c || T > h) && s.canBuild(d.DefensePost, S)) return S;
 			}
 			return null;
@@ -18226,8 +17822,8 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 		doHandleStructures() {
 			this.placement.startRound();
 			const t = this.game.config(), e = t.isUnitDisabled(d.City), i = this.cityCount(), n = this.placement.hasCoastalTiles(), s = !t.isUnitDisabled(d.MissileSilo), { difficulty: a } = t.gameConfig();
-			if (this.placementsCount === 0 && (a === b.Hard || a === b.Impossible) && !t.isUnitDisabled(d.AtomBomb) && s && !t.isUnitDisabled(d.SAMLauncher) && this.hasHighStartingGold() && this.maybeSpawnStructure(d.SAMLauncher)) return !0;
-			if (!e && !this.builtCrowdedMapFirstStructure && (this.isHighNationDensity() || a !== b.Easy && this.startsInTeamSpawnArea())) {
+			if (this.placementsCount === 0 && (a === w.Hard || a === w.Impossible) && !t.isUnitDisabled(d.AtomBomb) && s && !t.isUnitDisabled(d.SAMLauncher) && this.hasHighStartingGold() && this.maybeSpawnStructure(d.SAMLauncher)) return !0;
+			if (!e && !this.builtCrowdedMapFirstStructure && (this.isHighNationDensity() || a !== w.Easy && this.startsInTeamSpawnArea())) {
 				const l = n && !t.isUnitDisabled(d.Port) ? d.Port : d.Factory;
 				if (t.isUnitDisabled(l)) this.builtCrowdedMapFirstStructure = !0;
 				else if (this.maybeSpawnStructure(l)) return this.builtCrowdedMapFirstStructure = !0, !0;
@@ -18266,7 +17862,7 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 			t === d.Factory && i && !n.isUnitDisabled(d.Port) && (o *= Gw[s]);
 			const l = this.player.unitsOwned(t);
 			let c;
-			return t === d.MissileSilo ? (l === 0 && (o = jw), c = Math.min(Math.floor(e * o), Kw)) : c = Math.floor(e * o), c - l;
+			return t === d.MissileSilo ? (l === 0 && (o = Kw), c = Math.min(Math.floor(e * o), jw)) : c = Math.floor(e * o), c - l;
 		}
 		cost(t, e = 0) {
 			return this.game.unitInfo(t).cost(this.game, this.player, e);
@@ -18281,7 +17877,7 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 				if (n.length > 0) return !1;
 			}
 			const a = this.placement.spawnTile(t);
-			return a === null ? s && e.config().gameConfig().difficulty !== b.Easy && this.maybeUpgradeStructure(n) : this.player.canBuild(t, a) === !1 ? !1 : (e.addExecution(new Te(this.player, t, a)), !0);
+			return a === null ? s && e.config().gameConfig().difficulty !== w.Easy && this.maybeUpgradeStructure(n) : this.player.canBuild(t, a) === !1 ? !1 : (e.addExecution(new Te(this.player, t, a)), !0);
 		}
 		getPerceivedCost(t) {
 			const e = this.cost(t), i = this.getSaveUpTarget();
@@ -18305,7 +17901,7 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 			const t = this.game.ticks();
 			return this.mirvWorthSavingMemo?.tick !== t && (this.mirvWorthSavingMemo = {
 				tick: t,
-				worth: vs(this.game, this.player)
+				worth: _s(this.game, this.player)
 			}), this.mirvWorthSavingMemo.worth;
 		}
 		maybeUpgradeStructure(t) {
@@ -18355,19 +17951,19 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 			const { difficulty: n } = e.config().gameConfig();
 			let s;
 			switch (n) {
-				case b.Easy:
+				case w.Easy:
 					s = 70;
 					break;
-				case b.Medium:
+				case w.Medium:
 					s = 40;
 					break;
-				case b.Hard:
+				case w.Hard:
 					s = 25;
 					break;
-				case b.Impossible:
+				case w.Impossible:
 					s = 10;
 					break;
-				default: j(n);
+				default: K(n);
 			}
 			if (this.random.nextInt(0, 100) < s) return this.random.randElement(i);
 			const a = this.player.units(d.SAMLauncher), r = [];
@@ -18410,7 +18006,7 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 			});
 		}
 		restoreSnapshot(t, e, i, n, s) {
-			const a = _t(xl, t), r = (o) => new Set(o.map((l) => e.unit(l)));
+			const a = vt(xl, t), r = (o) => new Set(o.map((l) => e.unit(l)));
 			this.random = i, this.game = e.game, this.player = n, this.emojiBehavior = s, this.trackedTransportShips = r(a.trackedTransportShips), this.trackedTradeShips = r(a.trackedTradeShips), this.trackedIncomingTransportShips = r(a.trackedIncomingTransportShips), this.dealtWithTransportShip = r(a.dealtWithTransportShip);
 		}
 		maybeSpawnWarship() {
@@ -18490,7 +18086,7 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 				return;
 			}
 			const { difficulty: n } = this.game.config().gameConfig();
-			if (n === b.Medium && this.random.nextInt(0, 100) < 15 || n === b.Hard && this.random.nextInt(0, 100) < 50 || n === b.Impossible && this.random.nextInt(0, 100) < 80) {
+			if (n === w.Medium && this.random.nextInt(0, 100) < 15 || n === w.Hard && this.random.nextInt(0, 100) < 50 || n === w.Impossible && this.random.nextInt(0, 100) < 80) {
 				const s = this.player.canBuild(d.Warship, t), a = i === "invasion" || this.spareGold() >= this.cost(d.Warship);
 				if (s === !1 || !a) {
 					this.maybeMoveWarship(t);
@@ -18504,15 +18100,15 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 			const { difficulty: e } = this.game.config().gameConfig(), i = t.tile(), n = this.hostileWarshipsNear(i);
 			let s;
 			switch (e) {
-				case b.Easy:
-				case b.Medium: return;
-				case b.Hard:
+				case w.Easy:
+				case w.Medium: return;
+				case w.Hard:
 					s = n;
 					break;
-				case b.Impossible:
+				case w.Impossible:
 					s = n + 1;
 					break;
-				default: j(e);
+				default: K(e);
 			}
 			const a = this.warshipsCovering(i), r = this.game.getWaterComponent(i), o = this.player.units(d.Warship).filter((c) => {
 				const h = c.warshipState();
@@ -18556,7 +18152,7 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 		shouldCounterWarshipInfestation() {
 			if (this.game.config().isUnitDisabled(d.Warship)) return !1;
 			const { difficulty: t } = this.game.config().gameConfig();
-			return !(t !== b.Hard && t !== b.Impossible || this.game.unitCount(d.Warship) <= 10 || this.cost(d.Warship) > this.spareGold() || this.player.units(d.Port).length === 0 || this.player.units(d.Warship).length >= 10);
+			return !(t !== w.Hard && t !== w.Impossible || this.game.unitCount(d.Warship) <= 10 || this.cost(d.Warship) > this.spareGold() || this.player.units(d.Port).length === 0 || this.player.units(d.Warship).length >= 10);
 		}
 		isRichPlayer(t) {
 			return this.game.players().filter((e) => e.type() === D.Human ? !1 : t ? e.team() === this.player.team() : !0).sort((e, i) => Number(i.gold() - e.gold())).slice(0, 3).some((e) => e.id() === this.player.id());
@@ -18802,7 +18398,7 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 				max: new qt(c, h)
 			};
 			const u = new Uint8Array(t.length), m = this.surroundedBySamePlayer(a, o, l, c, h);
-			m && !m.isFriendly(this.player) && this.removeCluster(a, o, l, c, h, m, !!i[s]) && (u[s] = 1), this.executeSecondaryPass(t, e, i, s, u), this.executePinchPass(t, e, i, u, n?.clusterTileTIds ?? [], n?.territoryAreas ?? [0], n?.territoryFallout ?? [!1], n?.maxTerritoryArea ?? 0);
+			m && !m.isFriendly(this.player) && this.removeCluster(a, o, l, c, h, m, !!i[s]) && (u[s] = 1), this.executeSecondaryPass(t, e, i, s, u), this.executePinchPass(t, e, i, u, n?.clusterTileTIds ?? [], n?.territoryAreas ?? [0], n?.maxTerritoryArea ?? 0);
 		}
 		executeSecondaryPass(t, e, i, n, s) {
 			for (let a = 0; a < t.length && this.player.isAlive(); a++) {
@@ -18811,77 +18407,75 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 				this.classifyCluster(t[a], o, l, c, h) & Bl && this.removeCluster(t[a], o, l, c, h, void 0, !!i[a]) && (s[a] = 1);
 			}
 		}
-		executePinchPass(t, e, i, n, s, a, r, o) {
+		executePinchPass(t, e, i, n, s, a, r) {
 			this.clusterTerritoryIds = null, this.nextTerritoryId = 1;
 			try {
-				for (let l = 0; l < t.length && this.player.isAlive(); l++) n[l] || !i[l] || this.isHoleCluster(l, t, e) || this.evaluatePinchCandidates(t[l], o, s[l], a, r);
+				for (let o = 0; o < t.length && this.player.isAlive(); o++) n[o] || !i[o] || this.isHoleCluster(o, t, e) || this.evaluatePinchCandidates(t[o], r, s[o], a);
 			} finally {
 				if (this.clusterTerritoryIds !== null) {
-					const l = this.traversalState();
-					for (let c = 0; c < t.length; c++) {
-						const h = t[c];
-						for (let u = 0; u < h.length; u++) l.clusterIndexMap[h[u]] = 0;
+					const o = this.traversalState();
+					for (let l = 0; l < t.length; l++) {
+						const c = t[l];
+						for (let h = 0; h < c.length; h++) o.clusterIndexMap[c[h]] = 0;
 					}
 					this.clusterTerritoryIds = null;
 				}
 				this.nextTerritoryId = 1;
 			}
 		}
-		floodComponent(t, e, i, n, s) {
-			const a = this.map, r = this.player.smallID(), o = a.width(), l = (a.height() - 1) * o, c = this.traversalState(), h = c.visited, u = c.stack;
-			u.length = 0, u.push(t);
-			let m = !1, p = 0;
-			for (; u.length > 0;) {
-				const f = u.pop();
-				if (h[f] >= i) continue;
-				const g = f - f % o, y = g + o - 1;
-				let w = f;
-				for (; w > g && h[w - 1] < i && a.ownerID(w - 1) === r;) w--;
-				let S = f;
-				for (; S < y && h[S + 1] < i && a.ownerID(S + 1) === r;) S++;
-				for (let T = w; T <= S; T++) h[T] = e;
-				p += S - w + 1, m ||= w > g && a.hasFallout(w - 1) || S < y && a.hasFallout(S + 1), g > 0 && (m = this.seedSpan(w - o, S - o, r, i) || m), g < l && (m = this.seedSpan(w + o, S + o, r, i) || m);
+		floodComponent(t, e, i) {
+			const n = this.map, s = this.player.smallID(), a = n.width(), r = (n.height() - 1) * a, o = this.traversalState(), l = o.visited, c = o.stack;
+			c.length = 0, c.push(t);
+			let h = 0;
+			for (; c.length > 0;) {
+				const u = c.pop();
+				if (l[u] >= i) continue;
+				const m = u - u % a, p = m + a - 1;
+				let f = u;
+				for (; f > m && l[f - 1] < i && n.ownerID(f - 1) === s;) f--;
+				let g = u;
+				for (; g < p && l[g + 1] < i && n.ownerID(g + 1) === s;) g++;
+				for (let y = f; y <= g; y++) l[y] = e;
+				h += g - f + 1, m > 0 && this.seedSpan(f - a, g - a, s, i), m < r && this.seedSpan(f + a, g + a, s, i);
 			}
-			return s[n] = m, p;
+			return h;
 		}
 		seedSpan(t, e, i, n) {
 			const s = this.map, a = this.traversalState(), r = a.visited, o = a.stack;
-			let l = !1, c = !1;
-			for (let h = t; h <= e; h++) r[h] < n && s.ownerID(h) === i ? l || (o.push(h), l = !0) : (l = !1, c ||= s.hasFallout(h));
-			return c;
+			let l = !1;
+			for (let c = t; c <= e; c++) r[c] < n && s.ownerID(c) === i ? l || (o.push(c), l = !0) : l = !1;
 		}
 		floodTerritoryAreas(t) {
-			const e = this.map, i = this.player.smallID(), n = new Int32Array(t.length), s = new Array(t.length), a = [0], r = [!1];
-			let o = 0;
-			const l = this.traversalState(), c = this.bumpGenerations(t.length * 4 + 16);
-			let h = 1;
-			for (let u = 0; u < t.length; u++) {
-				const m = t[u], p = new Int32Array(m.length);
-				s[u] = p;
-				let f = 0;
-				for (let g = 0; g < m.length; g++) {
-					const y = m[g];
-					if (l.visited[y] >= c) {
-						const k = l.visited[y] - c + 1;
-						p[g] = k, a[k] > f && (f = a[k]);
+			const e = this.map, i = this.player.smallID(), n = new Int32Array(t.length), s = new Array(t.length), a = [0];
+			let r = 0;
+			const o = this.traversalState(), l = this.bumpGenerations(t.length * 4 + 16);
+			let c = 1;
+			for (let h = 0; h < t.length; h++) {
+				const u = t[h], m = new Int32Array(u.length);
+				s[h] = m;
+				let p = 0;
+				for (let f = 0; f < u.length; f++) {
+					const g = u[f];
+					if (o.visited[g] >= l) {
+						const T = o.visited[g] - l + 1;
+						m[f] = T, a[T] > p && (p = a[T]);
 						continue;
 					}
-					if (e.ownerID(y) !== i) continue;
-					const w = h++;
-					p[g] = w;
-					const S = c + w - 1;
-					for (; l.gen < S && l.gen >= c;) this.bumpGeneration();
-					const T = this.floodComponent(y, S, c, w, r);
-					a[w] = T, T > f && (f = T);
+					if (e.ownerID(g) !== i) continue;
+					const y = c++;
+					m[f] = y;
+					const b = l + y - 1;
+					for (; o.gen < b && o.gen >= l;) this.bumpGeneration();
+					const S = this.floodComponent(g, b, l);
+					a[y] = S, S > p && (p = S);
 				}
-				n[u] = f, f > o && (o = f);
+				n[h] = p, p > r && (r = p);
 			}
 			return {
 				clusterSizes: n,
 				clusterTileTIds: s,
 				territoryAreas: a,
-				territoryFallout: r,
-				maxTerritoryArea: o
+				maxTerritoryArea: r
 			};
 		}
 		findLargestClusterIndex(t, e, i) {
@@ -18905,38 +18499,38 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 			}
 			return !1;
 		}
-		evaluatePinchCandidates(t, e, i, n, s) {
+		evaluatePinchCandidates(t, e, i, n) {
 			if (!this.player.isAlive()) return;
-			const a = this.map, r = this.player.smallID(), o = this.traversalState();
-			let l = this.bumpGeneration();
-			const c = o.visited;
-			for (let h = 0; h < t.length && this.player.isAlive(); h++) {
-				if (i && n && s) {
-					const T = i[h];
-					if (T !== 0 && (n[T] >= e || !s[T])) continue;
+			const s = this.map, a = this.player.smallID(), r = this.traversalState();
+			let o = this.bumpGeneration();
+			const l = r.visited;
+			for (let c = 0; c < t.length && this.player.isAlive(); c++) {
+				if (i && n) {
+					const S = i[c];
+					if (S !== 0 && n[S] >= e) continue;
 				}
-				const u = t[h];
-				if (o.gen < l && (l = this.bumpGeneration()), a.ownerID(u) !== r || c[u] >= l) continue;
-				let m = !1;
-				c[u] = l;
-				const p = o.stack;
-				p.length = 0, p.push(u);
-				const f = [u];
-				let g = a.x(u), y = a.y(u), w = g, S = y;
-				for (; p.length > 0;) {
-					const T = p.pop(), k = a.x(T), v = a.y(T);
-					k < g && (g = k), v < y && (y = v), k > w && (w = k), v > S && (S = v);
-					const _ = a.neighbors4(T, this.nbuf);
-					for (let M = 0; M < _; M++) {
-						const x = this.nbuf[M];
-						!m && a.hasFallout(x) && (m = !0), c[x] < l && a.ownerID(x) === r && (c[x] = l, f.push(x), p.push(x));
+				const h = t[c];
+				if (r.gen < o && (o = this.bumpGeneration()), s.ownerID(h) !== a || l[h] >= o) continue;
+				let u = !1;
+				l[h] = o;
+				const m = r.stack;
+				m.length = 0, m.push(h);
+				const p = [h];
+				let f = s.x(h), g = s.y(h), y = f, b = g;
+				for (; m.length > 0;) {
+					const S = m.pop(), T = s.x(S), _ = s.y(S);
+					T < f && (f = T), _ < g && (g = _), T > y && (y = T), _ > b && (b = _);
+					const k = s.neighbors4(S, this.nbuf);
+					for (let v = 0; v < k; v++) {
+						const M = this.nbuf[v];
+						!u && s.hasFallout(M) && (u = !0), l[M] < o && s.ownerID(M) === a && (l[M] = o, p.push(M), m.push(M));
 					}
 				}
-				if (!(f.length >= e) && m && this.isEnclosed(u, g, y, w, S)) {
-					const T = this.getCapturingPlayer(f);
-					if (T !== null) {
-						this.player.numTilesOwned() === f.length && this.mg.conquerPlayer(T, this.player);
-						for (const k of f) T.conquer(k);
+				if (!(p.length >= e) && u && this.isEnclosed(h, f, g, y, b)) {
+					const S = this.getCapturingPlayer(p);
+					if (S !== null) {
+						this.player.numTilesOwned() === p.length && this.mg.conquerPlayer(S, this.player);
+						for (const T of p) S.conquer(T);
 					}
 				}
 			}
@@ -18969,24 +18563,16 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 			const s = n[i] === -1 ? i : e, a = this.nextTerritoryId++, r = this.traversalState(), o = r.visited, l = this.bumpGeneration(), c = r.stack;
 			c.length = 0;
 			const h = t[s]?.[0], u = this.map, m = this.player.smallID();
-			if (h === void 0 || u.ownerID(h) !== m) return;
-			n[s] = a;
-			const p = r.clusterIndexMap, f = u.width(), g = (u.height() - 1) * f;
-			for (c.push(h); c.length > 0;) {
-				const y = c.pop();
-				if (o[y] >= l) continue;
-				const w = y - y % f, S = w + f - 1;
-				let T = y;
-				for (; T > w && o[T - 1] < l && u.ownerID(T - 1) === m;) T--;
-				let k = y;
-				for (; k < S && o[k + 1] < l && u.ownerID(k + 1) === m;) k++;
-				for (let M = T; M <= k; M++) {
-					o[M] = l;
-					const x = p[M];
-					x > 0 && (n[x - 1] = a);
+			if (!(h === void 0 || u.ownerID(h) !== m)) for (o[h] = l, c.push(h), n[s] = a; c.length > 0;) {
+				const p = c.pop(), f = u.neighbors8(p, this.nbuf8);
+				for (let g = 0; g < f; g++) {
+					const y = this.nbuf8[g];
+					if (o[y] !== l && u.ownerID(y) === m) {
+						o[y] = l, c.push(y);
+						const b = r.clusterIndexMap[y];
+						b > 0 && (n[b - 1] = a);
+					}
 				}
-				const v = T > w ? T - 1 : T, _ = k < S ? k + 1 : k;
-				w > 0 && this.seedSpan(v - f, _ - f, m, l), w < g && this.seedSpan(v + f, _ + f, m, l);
 			}
 		}
 		surroundedBySamePlayer(t, e, i, n, s) {
@@ -18997,11 +18583,11 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 				if (h.isOceanShore(p) || h.isOnEdgeOfMap(p)) return null;
 				const f = h.neighbors4(p, this.nbuf);
 				for (let g = 0; g < f; g++) {
-					const y = this.nbuf[g], w = h.ownerID(y);
-					if (w === u) continue;
-					if (w === 0) return null;
-					if (a === 0) a = w;
-					else if (a !== w) return null;
+					const y = this.nbuf[g], b = h.ownerID(y);
+					if (b === u) continue;
+					if (b === 0) return null;
+					if (a === 0) a = b;
+					else if (a !== b) return null;
 					const S = h.x(y), T = h.y(y);
 					S < r && (r = S), T < o && (o = T), S > l && (l = S), T > c && (c = T);
 				}
@@ -19016,12 +18602,12 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 				if (h.isShore(p) || h.isOnEdgeOfMap(p)) return 0;
 				const f = h.neighbors4(p, this.nbuf);
 				for (let g = 0; g < f; g++) {
-					const y = this.nbuf[g], w = h.ownerID(y);
-					if (w !== 0 && w !== u) {
+					const y = this.nbuf[g], b = h.ownerID(y);
+					if (b !== 0 && b !== u) {
 						a = !0;
 						const S = h.x(y), T = h.y(y);
 						S < r && (r = S), T < o && (o = T), S > l && (l = S), T > c && (c = T);
-					} else if (w === 0) if (h.hasFallout(y)) {
+					} else if (b === 0) if (h.hasFallout(y)) {
 						const S = h.x(y), T = h.y(y);
 						S < r && (r = S), T < o && (o = T), S > l && (l = S), T > c && (c = T);
 					} else return 0;
@@ -19075,8 +18661,8 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 				for (let f = 0; f < p; f++) {
 					const g = this.nbuf[f];
 					if (o[g] === e || c.ownerID(g) !== h) continue;
-					const y = g % u, w = g / u | 0;
-					y >= i && y <= s && w >= n && w <= a && (o[g] = e, l.push(g));
+					const y = g % u, b = g / u | 0;
+					y >= i && y <= s && b >= n && b <= a && (o[g] = e, l.push(g));
 				}
 			}
 		}
@@ -19085,19 +18671,19 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 			h.length = 0, c[t] = l, h.push(t);
 			const u = e - 1, m = n + 1, p = i - 1, f = s + 1, g = a.width();
 			for (; h.length > 0;) {
-				const y = h.pop(), w = y % g, S = y / g | 0;
-				if (w < u || w > m || S < p || S > f || a.isOnEdgeOfMap(y)) return !1;
+				const y = h.pop(), b = y % g, S = y / g | 0;
+				if (b < u || b > m || S < p || S > f || a.isOnEdgeOfMap(y)) return !1;
 				const T = a.neighbors4(y, this.nbuf);
-				for (let k = 0; k < T; k++) {
-					const v = this.nbuf[k];
-					if (c[v] === l) continue;
-					const _ = a.ownerID(v);
-					if (_ === r) {
-						c[v] = l, h.push(v);
+				for (let _ = 0; _ < T; _++) {
+					const k = this.nbuf[_];
+					if (c[k] === l) continue;
+					const v = a.ownerID(k);
+					if (v === r) {
+						c[k] = l, h.push(k);
 						continue;
 					}
-					if (_ === 0) {
-						if (!a.isLand(v) || !a.hasFallout(v)) return !1;
+					if (v === 0) {
+						if (!a.isLand(k) || !a.hasFallout(k)) return !1;
 						continue;
 					}
 				}
@@ -19171,17 +18757,17 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 			let c = 1e9, h = 1e9, u = -1e9, m = -1e9;
 			const p = this.map;
 			for (const g of i) if (e[g] !== t && s(g) && (e[g] = t, o.push(g), l.push(g), a !== void 0)) {
-				const y = p.x(g), w = p.y(g);
-				y < c && (c = y), w < h && (h = w), y > u && (u = y), w > m && (m = w);
+				const y = p.x(g), b = p.y(g);
+				y < c && (c = y), b < h && (h = b), y > u && (u = y), b > m && (m = b);
 			}
 			const f = n ? this.nbuf8 : this.nbuf;
 			for (; l.length > 0;) {
 				const g = l.pop(), y = n ? p.neighbors8(g, f) : p.neighbors4(g, f);
-				for (let w = 0; w < y; w++) {
-					const S = f[w];
+				for (let b = 0; b < y; b++) {
+					const S = f[b];
 					if (e[S] !== t && s(S) && (e[S] = t, o.push(S), l.push(S), a !== void 0)) {
-						const T = p.x(S), k = p.y(S);
-						T < c && (c = T), k < h && (h = k), T > u && (u = T), k > m && (m = k);
+						const T = p.x(S), _ = p.y(S);
+						T < c && (c = T), _ < h && (h = _), T > u && (u = T), _ > m && (m = _);
 					}
 				}
 			}
@@ -19286,7 +18872,7 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 			for (const t of this.tribe.alliances()) {
 				if (!t.onlyOneAgreedToExtend()) continue;
 				const e = t.other(this.tribe);
-				this.mg.addExecution(new Ki(this.tribe, e.id()));
+				this.mg.addExecution(new ji(this.tribe, e.id()));
 			}
 		}
 		deleteNextStructure() {
@@ -19349,11 +18935,11 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 			initialized: I(),
 			neighborsTerraNullius: I(),
 			attackBehavior: pt.nullable(),
-			attackRate: K(),
-			attackTick: K(),
-			triggerRatio: K(),
-			reserveRatio: K(),
-			expandRatio: K()
+			attackRate: j(),
+			attackTick: j(),
+			triggerRatio: j(),
+			reserveRatio: j(),
+			expandRatio: j()
 		}),
 		cls: () => As
 	});
@@ -19386,7 +18972,7 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 			}
 			s.tiles.forEach((a) => {
 				i.conquer(a);
-			}), i.hasSpawned() || (this.mg.addExecution(new Ol(i)), i.type() === D.Bot && this.mg.addExecution(new As(i))), i.setSpawnTile(s.center), this.mg.stats().recordSpawnTile(i, s.center), this.mg.config().gameConfig().gameType === jt.Singleplayer && this.playerInfo.playerType === D.Human && this.mg.endSpawnPhase();
+			}), i.hasSpawned() || (this.mg.addExecution(new Ol(i)), i.type() === D.Bot && this.mg.addExecution(new As(i))), i.setSpawnTile(s.center), this.mg.stats().recordSpawnTile(i, s.center), this.mg.config().gameConfig().gameType === Kt.Singleplayer && this.playerInfo.playerType === D.Human && this.mg.endSpawnPhase();
 		}
 		isActive() {
 			return this.active;
@@ -19442,7 +19028,7 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 			});
 		}
 		restoreSnapshot(e, i) {
-			this.random = i.random(e.random), this.active = e.active, e.initialized && (this.mg = i.game), this.queuedDuringSpawnPhase = e.queuedDuringSpawnPhase, this.playerInfo = _r(e.playerInfo, i), e.tile !== void 0 && (this.tile = e.tile), this.fromIntent = e.fromIntent;
+			this.random = i.random(e.random), this.active = e.active, e.initialized && (this.mg = i.game), this.queuedDuringSpawnPhase = e.queuedDuringSpawnPhase, this.playerInfo = vr(e.playerInfo, i), e.tile !== void 0 && (this.tile = e.tile), this.fromIntent = e.fromIntent;
 		}
 	};
 	const Fl = G({
@@ -19453,13 +19039,13 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 			active: I(),
 			initialized: I(),
 			queuedDuringSpawnPhase: I(),
-			playerInfo: ji,
-			tile: K().optional(),
+			playerInfo: Ki,
+			tile: j().optional(),
 			fromIntent: I()
 		}),
 		cls: () => ge
 	});
-	var _i = class {
+	var vi = class {
 		constructor(t, e) {
 			this.gameID = t, this.nation = e, this.active = !0, this.behaviorsInitialized = !1, this.spawnExecAdded = !1, this.player = null, this.embargoMalusApplied = /* @__PURE__ */ new Set(), this.random = new ft(Rt(e.playerInfo.id) + Rt(t)), this.triggerRatio = this.random.nextInt(50, 60) / 100, this.reserveRatio = this.random.nextInt(30, 40) / 100, this.expandRatio = this.random.nextInt(10, 20) / 100;
 		}
@@ -19484,15 +19070,15 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 		getAttackRate() {
 			const { difficulty: t } = this.mg.config().gameConfig();
 			switch (t) {
-				case b.Easy: return this.random.nextInt(65, 100);
-				case b.Medium: return this.random.nextInt(55, 70);
-				case b.Hard: return this.random.nextInt(45, 60);
-				case b.Impossible: return this.random.nextInt(30, 50);
-				default: j(t);
+				case w.Easy: return this.random.nextInt(65, 100);
+				case w.Medium: return this.random.nextInt(55, 70);
+				case w.Hard: return this.random.nextInt(45, 60);
+				case w.Impossible: return this.random.nextInt(30, 50);
+				default: K(t);
 			}
 		}
 		tick(t) {
-			if (this.behaviorsInitialized && this.player !== null && this.player.isAlive() && this.mg.config().gameConfig().difficulty !== b.Easy && !this.mg.config().gameConfig().tutorial && this.player.unitsConstructed(d.Port) && !this.mg.config().isUnitDisabled(d.Warship) && this.warshipBehavior.trackShipsAndRetaliate(), this.player !== null) {
+			if (this.behaviorsInitialized && this.player !== null && this.player.isAlive() && this.mg.config().gameConfig().difficulty !== w.Easy && !this.mg.config().gameConfig().tutorial && this.player.unitsConstructed(d.Port) && !this.mg.config().isUnitDisabled(d.Warship) && this.warshipBehavior.trackShipsAndRetaliate(), this.player !== null) {
 				if (this.mg.inSpawnPhase()) {
 					if (this.player.hasSpawned()) {
 						if (t % this.attackRate !== this.attackTick) return;
@@ -19575,13 +19161,13 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 		handleEmbargoesToHostileNations() {
 			const t = this.player;
 			if (t === null) return;
-			const e = this.mg.players().filter((a) => a.id() !== t.id()), i = this.mg.config().gameConfig().difficulty, n = i === b.Hard || i === b.Impossible, s = this.mg.config().gameConfig().gameMode === ut.Team;
+			const e = this.mg.players().filter((a) => a.id() !== t.id()), i = this.mg.config().gameConfig().difficulty, n = i === w.Hard || i === w.Impossible, s = this.mg.config().gameConfig().gameMode === ut.Team;
 			e.forEach((a) => {
 				if (s && n && a.type() !== D.Bot && !t.isOnSameTeam(a)) {
 					t.hasEmbargoAgainst(a) || t.addEmbargo(a, !1);
 					return;
 				}
-				t.relation(a) <= kt.Hostile && !t.hasEmbargoAgainst(a) && !t.isOnSameTeam(a) ? t.addEmbargo(a, !1) : (t.relation(a) >= kt.Neutral && t.hasEmbargoAgainst(a) && i !== b.Hard && i !== b.Impossible || t.relation(a) >= kt.Friendly && t.hasEmbargoAgainst(a) && i !== b.Impossible) && t.stopEmbargo(a);
+				t.relation(a) <= kt.Hostile && !t.hasEmbargoAgainst(a) && !t.isOnSameTeam(a) ? t.addEmbargo(a, !1) : (t.relation(a) >= kt.Neutral && t.hasEmbargoAgainst(a) && i !== w.Hard && i !== w.Impossible || t.relation(a) >= kt.Friendly && t.hasEmbargoAgainst(a) && i !== w.Impossible) && t.stopEmbargo(a);
 			});
 		}
 		isActive() {
@@ -19622,7 +19208,7 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 			if (this.active = t.active, this.gameID = t.gameID, t.nationIndex !== null) this.nation = e.game.nations()[t.nationIndex];
 			else if (t.nation !== null) {
 				const p = t.nation.spawnCell;
-				this.nation = new Oe(p === null ? void 0 : Ar(p), _r(t.nation.playerInfo, e));
+				this.nation = new Oe(p === null ? void 0 : Ar(p), vr(t.nation.playerInfo, e));
 			}
 			const i = e.random(t.random);
 			this.random = i, t.initialized && (this.mg = e.game), this.player = e.playerOrNull(t.player), t.attackRate !== null && (this.attackRate = t.attackRate), t.attackTick !== null && (this.attackTick = t.attackTick), this.triggerRatio = t.triggerRatio, this.reserveRatio = t.reserveRatio, this.expandRatio = t.expandRatio, this.embargoMalusApplied = new Set(t.embargoMalusApplied), this.spawnExecAdded = t.spawnExecAdded, this.behaviorsInitialized = t.behaviors !== null;
@@ -19643,11 +19229,11 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 			random: zt(),
 			initialized: I(),
 			player: O().nullable(),
-			attackRate: K().nullable(),
-			attackTick: K().nullable(),
-			triggerRatio: K(),
-			reserveRatio: K(),
-			expandRatio: K(),
+			attackRate: j().nullable(),
+			attackTick: j().nullable(),
+			triggerRatio: j(),
+			reserveRatio: j(),
+			expandRatio: j(),
 			embargoMalusApplied: R($()),
 			spawnExecAdded: I(),
 			behaviors: A({
@@ -19660,7 +19246,7 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 				structure: pt
 			}).nullable()
 		}),
-		cls: () => _i
+		cls: () => vi
 	});
 	var $l = class {
 		isActive() {
@@ -19693,7 +19279,7 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 			return !0;
 		}
 		init(t, e) {
-			(this.player.isLobbyCreator() || t.config().gameConfig().gameType === jt.Singleplayer) && t.setPaused(this.paused);
+			(this.player.isLobbyCreator() || t.config().gameConfig().gameType === Kt.Singleplayer) && t.setPaused(this.paused);
 		}
 		tick(t) {}
 		snapshot(t) {
@@ -19747,7 +19333,7 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 			return t.split(".");
 		}
 		snapshot(t) {
-			return Kl.write({
+			return jl.write({
 				active: this.active,
 				initialized: this.mg !== void 0,
 				recipient: this.recipient === void 0 ? null : t.player(this.recipient),
@@ -19761,7 +19347,7 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 			this.active = t.active, t.initialized && (this.mg = e.game), t.recipient !== null && (this.recipient = e.player(t.recipient)), this.sender = e.player(t.sender), this.recipientID = t.recipientID, this.quickChatKey = t.quickChatKey, this.target = t.target;
 		}
 	};
-	const Kl = G({
+	const jl = G({
 		name: "QuickChat",
 		version: 1,
 		schema: A({
@@ -19775,7 +19361,7 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 		}),
 		cls: () => Vl
 	}), Pb = 20;
-	var jl = class {
+	var Kl = class {
 		constructor(t, e) {
 			this.player = t, this.attackID = e, this.active = !0, this.retreatOrdered = !1;
 		}
@@ -19819,7 +19405,7 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 			player: O(),
 			attackID: $()
 		}),
-		cls: () => jl
+		cls: () => Kl
 	});
 	var Yl = class {
 		constructor(t, e) {
@@ -21527,52 +21113,6 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 				"Federation",
 				"Confederation"
 			]
-		},
-		ukraine: {
-			prefixes: [
-				"Cossack",
-				"Zaporizhian",
-				"Hutsul",
-				"Boyko",
-				"Lemko",
-				"Polissian",
-				"Volhynian",
-				"Podolian",
-				"Slobozhan",
-				"Tavrian",
-				"Donbas",
-				"Galician",
-				"Bukovinian",
-				"Siverian",
-				"Kyivan",
-				"Chumak",
-				"Haidamak",
-				"Steppe",
-				"Dnipro",
-				"Carpathian",
-				"Azov",
-				"Budzhak",
-				"Pokuttian",
-				"Sloboda"
-			],
-			suffixes: [
-				"Sich",
-				"Hromada",
-				"Khutir",
-				"Stanytsia",
-				"Sotnia",
-				"Polk",
-				"Hetmanate",
-				"Rada",
-				"Kurin",
-				"Selo",
-				"Posad",
-				"Zastava",
-				"Volost",
-				"Band",
-				"Brotherhood",
-				"Horde"
-			]
 		}
 	};
 	function xb(t) {
@@ -21688,7 +21228,7 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 			if (!e) return console.warn(\`player with clientID \${t.clientID} not found\`), new $l();
 			switch (t.type) {
 				case "attack": return new Ge(t.troops, e, t.targetID, null);
-				case "cancel_attack": return new jl(e, t.attackID);
+				case "cancel_attack": return new Kl(e, t.attackID);
 				case "cancel_boat": return new kr(e, t.unitID);
 				case "move_warship": return new Zo(e, t.unitIds, t.tile);
 				case "spawn": return new ge(this.gameID_, e.info(), t.tile, !0);
@@ -21703,11 +21243,11 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 				case "embargo": return new Go(e, t.targetID, t.action);
 				case "embargo_all": return new Ho(e, t.action);
 				case "build_unit": return new Te(e, t.unit, t.tile, t.rocketDirectionUp, t.amount);
-				case "allianceExtension": return new Ki(e, t.recipient);
+				case "allianceExtension": return new ji(e, t.recipient);
 				case "upgrade_structure": return new pn(e, t.unitId, t.amount);
 				case "delete_unit": return new ts(e, t.unitId);
 				case "quick_chat": return new Vl(e, t.recipient, t.quickChatKey, t.target);
-				case "mark_disconnected": return new Ko(e, t.isDisconnected);
+				case "mark_disconnected": return new jo(e, t.isDisconnected);
 				case "toggle_pause": return new ql(e, t.paused);
 				default: throw new Error(\`intent type \${t} not found\`);
 			}
@@ -21721,7 +21261,7 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 		}
 		nationExecutions() {
 			const t = [];
-			for (const e of this.mg.nations()) t.push(new _i(this.gameID_, e));
+			for (const e of this.mg.nations()) t.push(new vi(this.gameID_, e));
 			return t;
 		}
 	}, Ql = class {
@@ -21923,59 +21463,59 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 	}
 	function zb(t, e, i, n = Wb(t.length, e.length)) {
 		const s = /* @__PURE__ */ new Map(), a = /* @__PURE__ */ new Map(), r = [];
-		for (const w of t) {
-			const S = w.teamIndex === null ? void 0 : e[w.teamIndex];
+		for (const b of t) {
+			const S = b.teamIndex === null ? void 0 : e[b.teamIndex];
 			if (S === void 0) {
-				r.push(w);
+				r.push(b);
 				continue;
 			}
-			s.set(w, S), a.set(S, (a.get(S) ?? 0) + 1);
+			s.set(b, S), a.set(S, (a.get(S) ?? 0) + 1);
 		}
 		const o = /* @__PURE__ */ new Map(), l = [];
-		for (const w of r) w.clanTag ? (o.has(w.clanTag) || o.set(w.clanTag, []), o.get(w.clanTag).push(w)) : l.push(w);
-		const c = Array.from(o.values()).sort((w, S) => S.length - w.length);
-		for (const w of c) {
+		for (const b of r) b.clanTag ? (o.has(b.clanTag) || o.set(b.clanTag, []), o.get(b.clanTag).push(b)) : l.push(b);
+		const c = Array.from(o.values()).sort((b, S) => S.length - b.length);
+		for (const b of c) {
 			let S = null, T = 0;
-			for (const k of e) {
-				const v = a.get(k) ?? 0;
-				S !== null && T <= v || (T = v, S = k);
+			for (const _ of e) {
+				const k = a.get(_) ?? 0;
+				S !== null && T <= k || (T = k, S = _);
 			}
 			if (S !== null) {
-				for (const k of w) T < n ? (T++, s.set(k, S)) : s.set(k, "kicked");
+				for (const _ of b) T < n ? (T++, s.set(_, S)) : s.set(_, "kicked");
 				a.set(S, T);
 			}
 		}
 		const h = /* @__PURE__ */ new Set();
-		for (const w of t) w.clientID !== null && h.add(w.clientID);
-		const u = /* @__PURE__ */ new Map(), m = (w, S) => {
-			let T = u.get(w);
-			T === void 0 && (T = /* @__PURE__ */ new Set(), u.set(w, T)), T.add(S);
+		for (const b of t) b.clientID !== null && h.add(b.clientID);
+		const u = /* @__PURE__ */ new Map(), m = (b, S) => {
+			let T = u.get(b);
+			T === void 0 && (T = /* @__PURE__ */ new Set(), u.set(b, T)), T.add(S);
 		};
-		for (const w of t) if (w.clientID !== null) for (const S of w.friends) h.has(S) && (m(w.clientID, S), m(S, w.clientID));
+		for (const b of t) if (b.clientID !== null) for (const S of b.friends) h.has(S) && (m(b.clientID, S), m(S, b.clientID));
 		const p = /* @__PURE__ */ new Map();
-		for (const [w, S] of s.entries()) w.clientID !== null && S !== "kicked" && p.set(w.clientID, S);
-		const f = (w, S) => {
-			const T = w.clientID !== null ? u.get(w.clientID) : void 0;
-			let k = null, v = -1, _ = -1, M = i ? -1 : Infinity;
+		for (const [b, S] of s.entries()) b.clientID !== null && S !== "kicked" && p.set(b.clientID, S);
+		const f = (b, S) => {
+			const T = b.clientID !== null ? u.get(b.clientID) : void 0;
+			let _ = null, k = -1, v = -1, M = i ? -1 : Infinity;
 			for (const x of e) {
 				const L = a.get(x) ?? 0;
 				if (L >= n) continue;
 				let H = 0;
 				if (T !== void 0) for (const B of T) p.get(B) === x && H++;
 				const Y = Math.min(S, n - L);
-				(H > v || H === v && (Y > _ || Y === _ && (i ? L > M : L < M))) && (v = H, _ = Y, M = L, k = x);
+				(H > k || H === k && (Y > v || Y === v && (i ? L > M : L < M))) && (k = H, v = Y, M = L, _ = x);
 			}
-			if (k === null) {
-				s.set(w, "kicked");
+			if (_ === null) {
+				s.set(b, "kicked");
 				return;
 			}
-			a.set(k, (a.get(k) ?? 0) + 1), s.set(w, k), w.clientID !== null && p.set(w.clientID, k);
+			a.set(_, (a.get(_) ?? 0) + 1), s.set(b, _), b.clientID !== null && p.set(b.clientID, _);
 		};
-		let g = l.filter((w) => w.playerType === D.Nation);
+		let g = l.filter((b) => b.playerType === D.Nation);
 		g.length > 0 && (g = new ft(Rt(g[0].id)).shuffleArray(g));
-		const y = l.filter((w) => w.playerType !== D.Nation);
-		for (const w of Fb(y, u, p)) w.forEach((S, T) => f(S, w.length - T));
-		for (const w of g) f(w, 1);
+		const y = l.filter((b) => b.playerType !== D.Nation);
+		for (const b of Fb(y, u, p)) b.forEach((S, T) => f(S, b.length - T));
+		for (const b of g) f(b, 1);
 		return s;
 	}
 	function Fb(t, e, i) {
@@ -22101,15 +21641,15 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 			const a = [], r = this.gm, o = r.x(t), l = r.y(t), { startGridX: c, endGridX: h, startGridY: u, endGridY: m } = this.getCellsInRange(t, e), p = e * e;
 			if (Array.isArray(i)) {
 				for (let g = u; g <= m; g++) for (let y = c; y <= h; y++) {
-					const w = this.grid[g][y];
+					const b = this.grid[g][y];
 					for (const S of i) {
-						const T = w.get(S);
-						if (T !== void 0) for (const k of T) {
-							if (!k.isActive() || !s && k.isUnderConstruction()) continue;
-							const v = k.tile(), _ = r.x(v) - o, M = r.y(v) - l, x = _ * _ + M * M;
+						const T = b.get(S);
+						if (T !== void 0) for (const _ of T) {
+							if (!_.isActive() || !s && _.isUnderConstruction()) continue;
+							const k = _.tile(), v = r.x(k) - o, M = r.y(k) - l, x = v * v + M * M;
 							if (x > p) continue;
 							const L = {
-								unit: k,
+								unit: _,
 								distSquared: x
 							};
 							n !== void 0 && !n(L) || a.push(L);
@@ -22120,14 +21660,14 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 			}
 			const f = i;
 			for (let g = u; g <= m; g++) for (let y = c; y <= h; y++) {
-				const w = this.grid[g][y].get(f);
-				if (w !== void 0) for (const S of w) {
+				const b = this.grid[g][y].get(f);
+				if (b !== void 0) for (const S of b) {
 					if (!S.isActive() || !s && S.isUnderConstruction()) continue;
-					const T = S.tile(), k = r.x(T) - o, v = r.y(T) - l, _ = k * k + v * v;
-					if (_ > p) continue;
+					const T = S.tile(), _ = r.x(T) - o, k = r.y(T) - l, v = _ * _ + k * k;
+					if (v > p) continue;
 					const M = {
 						unit: S,
-						distSquared: _
+						distSquared: v
 					};
 					n !== void 0 && !n(M) || a.push(M);
 				}
@@ -22159,7 +21699,7 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 		}
 	};
 	const Gb = 30, Vb = -1;
-	var Kb = class {
+	var jb = class {
 		constructor(t) {
 			this.game = t, this.tick = -Infinity, this.byPlayer = null, this.playerWater = /* @__PURE__ */ new Map();
 		}
@@ -22236,7 +21776,7 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 		name: "SharedWaterCache",
 		version: 1,
 		schema: A({
-			tick: K(),
+			tick: j(),
 			byPlayer: R(Pt([O(), R(C()).nullable()])).nullable()
 		})
 	});
@@ -22446,7 +21986,7 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 				const u = l / h, m = c / h;
 				let p = r[0], f = Infinity;
 				for (const g of r) {
-					const y = i.x(g) - u, w = i.y(g) - m, S = y * y + w * w;
+					const y = i.x(g) - u, b = i.y(g) - m, S = y * y + b * b;
 					S < f && (f = S, p = g);
 				}
 				s.push({
@@ -22488,7 +22028,7 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 			id: $(),
 			target: O(),
 			attacker: O(),
-			troops: K(),
+			troops: j(),
 			sourceTile: it().nullable(),
 			border: It(),
 			borderSize: C(),
@@ -22497,7 +22037,7 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 			retreated: I()
 		})
 	});
-	function jb(t, e) {
+	function Kb(t, e) {
 		if (t.clientID === e.clientID && t.name === e.name && t.displayName === e.displayName && t.clanTag === e.clanTag && t.nationFlag === e.nationFlag && t.team === e.team && t.smallID === e.smallID && t.playerType === e.playerType && t.isAlive === e.isAlive && t.isDisconnected === e.isDisconnected && t.killedBy === e.killedBy && t.deathPosition === e.deathPosition && t.tradeGold === e.tradeGold && t.trainGold === e.trainGold && t.piracyGold === e.piracyGold && t.isTraitor === e.isTraitor && t.traitorRemainingTicks === e.traitorRemainingTicks && t.inDoomsdayClock === e.inDoomsdayClock && t.markedDoomsdayClockTick === e.markedDoomsdayClockTick && t.isDecaying === e.isDecaying && t.hasSpawned === e.hasSpawned && t.spawnTile === e.spawnTile && t.betrayals === e.betrayals && t.lastDeleteUnitTick === e.lastDeleteUnitTick && t.isLobbyCreator === e.isLobbyCreator && yn(t.allies, e.allies) && yn(t.targets, e.targets) && dc(t.outgoingAllianceRequests, e.outgoingAllianceRequests) && mc(t.embargoes, e.embargoes) && gc(t.outgoingEmojis, e.outgoingEmojis) && Ai(t.outgoingAttacks, e.outgoingAttacks) && Ai(t.incomingAttacks, e.incomingAttacks) && fc(t.alliances, e.alliances)) return null;
 		const i = {
 			type: Z.Player,
@@ -23020,7 +22560,7 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 			health: Zt(),
 			transportShipState: A({
 				isRetreating: I(),
-				troops: K()
+				troops: j()
 			}).nullable(),
 			warshipState: A({
 				state: mt([
@@ -23047,7 +22587,7 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 			lastSetSafeFromPirates: C(),
 			underConstruction: I(),
 			lastOwner: O().nullable(),
-			troops: K(),
+			troops: j(),
 			missileTimerQueue: R(C()),
 			hasTrainStation: I(),
 			level: C(),
@@ -23057,7 +22597,7 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 			deletionAt: C().nullable(),
 			samLauncherState: A({
 				upgradeStartTick: C().optional(),
-				startRange: K(),
+				startRange: j(),
 				targetLevel: C(),
 				duration: C()
 			}).nullable()
@@ -23091,7 +22631,7 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 		}
 		toUpdate(t, e) {
 			const i = this.toFullUpdate(), n = this.lastSentUpdate;
-			return this.lastSentUpdate = i, n === void 0 ? i : (t !== void 0 && (n.tilesOwned !== i.tilesOwned || n.gold !== i.gold || n.troops !== i.troops || n.goldEarned !== i.goldEarned) && t.push(i.smallID, i.tilesOwned, Number(i.gold), i.troops, Number(i.goldEarned)), e !== void 0 && (pc(n.outgoingAttacks, i.outgoingAttacks, i.smallID, 0, e), pc(n.incomingAttacks, i.incomingAttacks, i.smallID, 1, e)), jb(n, i));
+			return this.lastSentUpdate = i, n === void 0 ? i : (t !== void 0 && (n.tilesOwned !== i.tilesOwned || n.gold !== i.gold || n.troops !== i.troops || n.goldEarned !== i.goldEarned) && t.push(i.smallID, i.tilesOwned, Number(i.gold), i.troops, Number(i.goldEarned)), e !== void 0 && (pc(n.outgoingAttacks, i.outgoingAttacks, i.smallID, 0, e), pc(n.incomingAttacks, i.incomingAttacks, i.smallID, 1, e)), Kb(n, i));
 		}
 		toFullUpdate() {
 			let t = Ms;
@@ -23713,8 +23253,8 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 				let p = !1, f = !1;
 				if (t !== null && this.canBuildUnitType(u, m) && !r) {
 					if (this.canUpgradeUnitType(u)) {
-						const w = this.findExistingUnitToUpgrade(u, t);
-						w !== !1 && this.isUnitValidToUpgrade(w) && (p = w.id());
+						const b = this.findExistingUnitToUpgrade(u, t);
+						b !== !1 && this.isUnitValidToUpgrade(b) && (p = b.id());
 					}
 					f = this.canSpawnUnitType(u, t, o);
 				}
@@ -23722,8 +23262,8 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 				let y;
 				if (p !== !1) {
 					y = new Array(50);
-					let w = 0n;
-					for (let S = 0; S < 50; S++) w += s.unitInfo(u).cost(n, this, S), y[S] = w;
+					let b = 0n;
+					for (let S = 0; S < 50; S++) b += s.unitInfo(u).cost(n, this, S), y[S] = b;
 				}
 				c[h] = {
 					type: u,
@@ -23758,13 +23298,13 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 				case d.SAMLauncher:
 				case d.City:
 				case d.Factory: return this.landBasedStructureSpawn(e, i);
-				default: j(t);
+				default: K(t);
 			}
 		}
 		nukeSpawn(t, e) {
 			const i = this.mg;
 			if (i.isSpawnImmunityActive() || i.isImpassable(t)) return !1;
-			const n = this.mg.owner(t), s = i.getWinner() !== null && i.config().gameConfig().gameType !== jt.Singleplayer;
+			const n = this.mg.owner(t), s = i.getWinner() !== null && i.config().gameConfig().gameType !== Kt.Singleplayer;
 			if (n.isPlayer() && this.isOnSameTeam(n) && !s) return !1;
 			const a = i.config();
 			if (a.gameConfig().gameMode === ut.Team && e !== d.MIRV && !s) {
@@ -23794,8 +23334,8 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 		validStructureSpawnTiles(t) {
 			if (this.mg.owner(t) !== this) return [];
 			const e = 15, i = e ** 2, n = this.mg.nearbyUnits(t, e * 2, At.types, void 0, !0), s = this.mg.map(), a = s.width(), r = t % a, o = t / a | 0, l = this.smallID(), c = (S) => {
-				const T = S % a - r, k = (S / a | 0) - o;
-				return T * T + k * k < i && s.ownerID(S) === l;
+				const T = S % a - r, _ = (S / a | 0) - o;
+				return T * T + _ * _ < i && s.ownerID(S) === l;
 			}, h = ws(this.mg), u = un(h), m = h.visited, p = h.stack;
 			p.length = 0;
 			const f = [];
@@ -23804,16 +23344,16 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 				m[S] !== u && c(S) && (m[S] = u, f.push(S), p.push(S));
 			};
 			for (; p.length > 0;) s.forEachNeighbor(p.pop(), g);
-			const y = this.mg.config().structureMinDist() ** 2, w = [];
+			const y = this.mg.config().structureMinDist() ** 2, b = [];
 			for (const S of f) {
 				let T = !1;
-				for (const { unit: k } of n) if (this.mg.euclideanDistSquared(k.tile(), S) < y) {
+				for (const { unit: _ } of n) if (this.mg.euclideanDistSquared(_.tile(), S) < y) {
 					T = !0;
 					break;
 				}
-				T || w.push(S);
+				T || b.push(S);
 			}
-			return w.sort((S, T) => this.mg.euclideanDistSquared(S, t) - this.mg.euclideanDistSquared(T, t)), w;
+			return b.sort((S, T) => this.mg.euclideanDistSquared(S, t) - this.mg.euclideanDistSquared(T, t)), b;
 		}
 		tradeShipSpawn(t) {
 			return this.units(d.Port).find((e) => e.tile() === t) ? t : !1;
@@ -23970,7 +23510,7 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 		version: 1,
 		schema: A({
 			smallID: C(),
-			info: ji,
+			info: Ki,
 			team: $().nullable(),
 			lastTileChange: C(),
 			tileChangeVersion: C(),
@@ -24011,7 +23551,7 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 				recipient: O(),
 				tick: C()
 			})),
-			relations: R(Pt([O(), K()])),
+			relations: R(Pt([O(), j()])),
 			lastDeleteUnitTick: C(),
 			lastEmbargoAllTick: C(),
 			incomingAttacks: R(N()),
@@ -24126,7 +23666,7 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 		}
 	};
 	const a0 = 12, r0 = 32, o0 = 32;
-	var vc = class {
+	var _c = class {
 		constructor(t, e, i, n) {
 			this.state = t, this.tileRef = e, this.canConnect = i, this.live = n, this.railroads = /* @__PURE__ */ new Set();
 		}
@@ -24157,10 +23697,10 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 		}
 		ghostForStation(t) {
 			let e = this.ghostByStation.get(t);
-			return e === void 0 && (e = new vc(this, t.tile(), t.getCluster() !== null, t), this.ghostByStation.set(t, e)), e;
+			return e === void 0 && (e = new _c(this, t.tile(), t.getCluster() !== null, t), this.ghostByStation.set(t, e)), e;
 		}
 		addGhostStation(t, e) {
-			const i = new vc(this, t, !0, null);
+			const i = new _c(this, t, !0, null);
 			return e !== null && this.ghostByUnit.set(e, i), i;
 		}
 		isStation(t) {
@@ -24486,7 +24026,7 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 			this._stationManager.restoreSnapshot(t.stationManager, e), this.nextId = t.nextId, this.dirtyClusters = new Set(t.dirtyClusters.map((i) => e.cluster(i))), this.railGrid.restoreSnapshot(t.railGrid, (i) => e.railroad(i)), this.networkVersion++, this.ghostPathsCache.clear();
 		}
 	};
-	const _c = wt({
+	const vc = wt({
 		name: "RailNetwork",
 		version: 1,
 		schema: A({
@@ -24502,7 +24042,7 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 			})
 		})
 	});
-	function vt(t) {
+	function _t(t) {
 		switch (typeof t) {
 			case "bigint": return t;
 			case "number": return BigInt(Math.floor(t));
@@ -24545,65 +24085,65 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 			const n = this._makePlayerStats(t);
 			if (n !== void 0) {
 				for (n.attacks ??= [0n]; n.attacks.length <= e;) n.attacks.push(0n);
-				n.attacks[e] += vt(i);
+				n.attacks[e] += _t(i);
 			}
 		}
 		_maxAttack(t, e, i) {
 			const n = this._makePlayerStats(t);
 			if (n === void 0) return;
 			for (n.attacks ??= [0n]; n.attacks.length <= e;) n.attacks.push(0n);
-			const s = vt(i);
+			const s = _t(i);
 			s > n.attacks[e] && (n.attacks[e] = s);
 		}
 		_addBetrayal(t, e) {
 			const i = this._makePlayerStats(t);
-			i !== void 0 && (i.betrayals ??= 0n, i.betrayals += vt(e));
+			i !== void 0 && (i.betrayals ??= 0n, i.betrayals += _t(e));
 		}
 		_addBoat(t, e, i, n) {
 			const s = this._makePlayerStats(t);
 			if (s !== void 0) {
 				for (s.boats ??= { [e]: [0n] }, s.boats[e] ??= [0n]; s.boats[e].length <= i;) s.boats[e].push(0n);
-				s.boats[e][i] += vt(n);
+				s.boats[e][i] += _t(n);
 			}
 		}
 		_addBomb(t, e, i, n) {
 			const s = zy[e], a = this._makePlayerStats(t);
 			if (a !== void 0) {
 				for (a.bombs ??= { [s]: [0n] }, a.bombs[s] ??= [0n]; a.bombs[s].length <= i;) a.bombs[s].push(0n);
-				a.bombs[s][i] += vt(n);
+				a.bombs[s][i] += _t(n);
 			}
 		}
 		_addGold(t, e, i) {
 			const n = this._makePlayerStats(t);
 			if (n !== void 0) {
 				for (n.gold ??= [0n]; n.gold.length <= e;) n.gold.push(0n);
-				n.gold[e] += vt(i);
+				n.gold[e] += _t(i);
 			}
 		}
 		_addDonation(t, e, i) {
 			const n = this._makePlayerStats(t);
 			if (n !== void 0) {
 				for (n.donations ??= [0n]; n.donations.length <= e;) n.donations.push(0n);
-				n.donations[e] += vt(i);
+				n.donations[e] += _t(i);
 			}
 		}
 		_addOtherUnit(t, e, i, n) {
 			const s = Hy[e], a = this._makePlayerStats(t);
 			if (a !== void 0) {
 				for (a.units ??= { [s]: [0n] }, a.units[s] ??= [0n]; a.units[s].length <= i;) a.units[s].push(0n);
-				a.units[s][i] += vt(n);
+				a.units[s][i] += _t(n);
 			}
 		}
 		_addConquest(t, e) {
 			const i = this._makePlayerStats(t);
 			if (i !== void 0) {
 				for (i.conquests ??= [0n]; i.conquests.length <= e;) i.conquests.push(0n);
-				i.conquests[e] += vt(1);
+				i.conquests[e] += _t(1);
 			}
 		}
 		_addPlayerKilled(t, e) {
 			const i = this._makePlayerStats(t);
-			i !== void 0 && (i.killedAt = vt(e));
+			i !== void 0 && (i.killedAt = _t(e));
 		}
 		_allianceArray(t, e) {
 			for (t.alliances ??= [0n]; t.alliances.length <= e;) t.alliances.push(0n);
@@ -24612,20 +24152,20 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 		_maxAlliance(t, e, i) {
 			const n = this._makePlayerStats(t);
 			if (n === void 0) return;
-			const s = this._allianceArray(n, e), a = vt(i);
+			const s = this._allianceArray(n, e), a = _t(i);
 			a > s[e] && (s[e] = a);
 		}
 		_addAlliance(t, e, i) {
 			const n = this._makePlayerStats(t);
 			if (n === void 0) return;
 			const s = this._allianceArray(n, e);
-			s[e] += vt(i);
+			s[e] += _t(i);
 		}
 		_setAlliance(t, e, i) {
 			const n = this._makePlayerStats(t);
 			if (n === void 0) return;
 			const s = this._allianceArray(n, e);
-			s[e] = vt(i);
+			s[e] = _t(i);
 		}
 		attack(t, e, i) {
 			this._addAttack(t, 0, i), e.isPlayer() && this._addAttack(e, 1, i);
@@ -24685,7 +24225,7 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 			this._addGold(t, 0, e);
 		}
 		goldDonationReceived(t, e, i) {
-			this._addGold(t, 6, e), this._addDonation(t, 0, 1), vt(i) < 50000n && this._addDonation(t, 1, 1);
+			this._addGold(t, 6, e), this._addDonation(t, 0, 1), _t(i) < 50000n && this._addDonation(t, 1, 1);
 		}
 		goldWar(t, e, i) {
 			this._addGold(t, 1, i);
@@ -24712,7 +24252,7 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 		}
 		recordFinalTiles(t, e) {
 			const i = this._makePlayerStats(t);
-			i !== void 0 && (i.finalTiles = vt(e));
+			i !== void 0 && (i.finalTiles = _t(e));
 		}
 		recordSpawnTile(t, e) {
 			const i = this._makePlayerStats(t);
@@ -24750,7 +24290,7 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 				} else (r.ddPeak === 0 || e < r.peak && (r.peak - e) * r.ddPeak > (r.ddPeak - r.ddTrough) * r.peak) && (r.ddPeak = r.peak, r.ddTrough = e, a.tiles[1] = a.tiles[0], a.tiles[2] = BigInt(e));
 				i > r.peakTroops && (r.peakTroops = i, a.peakTroops = BigInt(i)), n > r.peakAlliance && (r.peakAlliance = n, a.alliances[4] = BigInt(n));
 			} else {
-				const o = vt(e);
+				const o = _t(e);
 				for (a.tiles ??= [
 					0n,
 					0n,
@@ -24759,9 +24299,9 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 				o > a.tiles[0] && (a.tiles[0] = o);
 				const l = a.tiles[0], c = a.tiles[1], h = a.tiles[2];
 				(c === 0n || (l - o) * c > (c - h) * l) && (a.tiles[1] = l, a.tiles[2] = o);
-				const u = vt(i);
+				const u = _t(i);
 				for ((a.peakTroops === void 0 || u > a.peakTroops) && (a.peakTroops = u), a.alliances ??= [0n]; a.alliances.length <= 4;) a.alliances.push(0n);
-				const m = vt(n);
+				const m = _t(n);
 				m > a.alliances[4] && (a.alliances[4] = m), r.peak = Number(a.tiles[0]), r.ddPeak = Number(a.tiles[1]), r.ddTrough = Number(a.tiles[2]), r.peakTroops = Number(a.peakTroops), r.peakAlliance = Number(a.alliances[4]);
 			}
 		}
@@ -24780,7 +24320,7 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 			const s = this._makePlayerStats(t);
 			s !== void 0 && (s.kills ??= [], s.kills.push({
 				victim: n,
-				tick: vt(i)
+				tick: _t(i)
 			}));
 		}
 		trainSelfTrade(t, e) {
@@ -25279,17 +24819,17 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 				const y = l.pop();
 				if (s[y] === i) continue;
 				if (s[y] = i, y === e) return this.buildPathFromGoal(e);
-				const w = r[y], S = n.getNodeEdges(y);
+				const b = r[y], S = n.getNodeEdges(y);
 				for (let T = 0; T < S.length; T++) {
-					const k = S[T], v = n.getOtherNode(k, y);
-					if (s[v] === i) continue;
-					const _ = w + k.cost;
-					if (a[v] !== i || _ < r[v]) {
-						o[v] = y, r[v] = _, a[v] = i;
-						const M = n.getNode(v);
+					const _ = S[T], k = n.getOtherNode(_, y);
+					if (s[k] === i) continue;
+					const v = b + _.cost;
+					if (a[k] !== i || v < r[k]) {
+						o[k] = y, r[k] = v, a[k] = i;
+						const M = n.getNode(k);
 						if (M) {
 							const x = c * (Math.abs(M.x - u) + Math.abs(M.y - m));
-							l.push(v, _ + x);
+							l.push(k, v + x);
 						}
 					}
 				}
@@ -25308,8 +24848,8 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 				const y = n.getNode(g);
 				if (!y) continue;
 				r[g] = 0, a[g] = i, o[g] = -1, l[g] = g;
-				const w = h * (Math.abs(y.x - m) + Math.abs(y.y - p));
-				c.push(g, w);
+				const b = h * (Math.abs(y.x - m) + Math.abs(y.y - p));
+				c.push(g, b);
 			}
 			let f = this.maxIterations;
 			for (; !c.isEmpty();) {
@@ -25317,17 +24857,17 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 				const g = c.pop();
 				if (s[g] === i) continue;
 				if (s[g] = i, g === e) return this.buildPathFromGoal(e);
-				const y = r[g], w = l[g], S = n.getNodeEdges(g);
+				const y = r[g], b = l[g], S = n.getNodeEdges(g);
 				for (let T = 0; T < S.length; T++) {
-					const k = S[T], v = n.getOtherNode(k, g);
-					if (s[v] === i) continue;
-					const _ = y + k.cost;
-					if (a[v] !== i || _ < r[v]) {
-						o[v] = g, r[v] = _, a[v] = i, l[v] = w;
-						const M = n.getNode(v);
+					const _ = S[T], k = n.getOtherNode(_, g);
+					if (s[k] === i) continue;
+					const v = y + _.cost;
+					if (a[k] !== i || v < r[k]) {
+						o[k] = g, r[k] = v, a[k] = i, l[k] = b;
+						const M = n.getNode(k);
 						if (M) {
 							const x = h * (Math.abs(M.x - m) + Math.abs(M.y - p));
-							c.push(v, _ + x);
+							c.push(k, v + x);
 						}
 					}
 				}
@@ -25394,16 +24934,16 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 		findPathSingle(t, e) {
 			if (this.map.manhattanDist(t, e) <= this.graph.clusterSize) {
 				W.start("earlyExit");
-				const S = this.map.x(t), T = this.map.y(t), k = Math.floor(S / this.graph.clusterSize), v = Math.floor(T / this.graph.clusterSize), _ = this.findLocalPath(t, e, k, v, !0);
-				if (W.end(), _) return _;
+				const S = this.map.x(t), T = this.map.y(t), _ = Math.floor(S / this.graph.clusterSize), k = Math.floor(T / this.graph.clusterSize), v = this.findLocalPath(t, e, _, k, !0);
+				if (W.end(), v) return v;
 			}
 			W.start("nodeLookup");
 			const i = this.findNearestNode(t), n = this.findNearestNode(e);
 			if (W.end(), !i || !n) return null;
 			if (i.id === n.id) {
 				W.start("sameNodeLocalPath");
-				const S = Math.floor(i.x / this.graph.clusterSize), T = Math.floor(i.y / this.graph.clusterSize), k = this.findLocalPath(t, e, S, T, !0);
-				return W.end(), k;
+				const S = Math.floor(i.x / this.graph.clusterSize), T = Math.floor(i.y / this.graph.clusterSize), _ = this.findLocalPath(t, e, S, T, !0);
+				return W.end(), _;
 			}
 			W.start("abstractPath");
 			const s = this.findAbstractPath(i.id, n.id);
@@ -25418,22 +24958,22 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 			if (!u) return null;
 			a.push(...u);
 			for (let S = 0; S < s.length - 1; S++) {
-				const T = s[S], k = s[S + 1], v = this.graph.getEdgeBetween(T, k);
-				if (!v) return null;
-				const _ = this.graph.getNode(T), M = this.graph.getNode(k), x = _.tile, L = M.tile;
+				const T = s[S], _ = s[S + 1], k = this.graph.getEdgeBetween(T, _);
+				if (!k) return null;
+				const v = this.graph.getNode(T), M = this.graph.getNode(_), x = v.tile, L = M.tile;
 				if (this.options.cachePaths) {
-					const Y = this.graph.getCachedPath(v.id, T);
+					const Y = this.graph.getCachedPath(k.id, T);
 					if (Y && Y.length > 0) {
 						a.push(...Y.slice(1)), W.set("$cachedSegmentsUsed", (B) => (B ?? 0) + 1);
 						continue;
 					}
 				}
-				const H = this.findLocalPath(x, L, v.clusterX, v.clusterY);
+				const H = this.findLocalPath(x, L, k.clusterX, k.clusterY);
 				if (!H) return null;
-				a.push(...H.slice(1)), this.options.cachePaths && this.graph.setCachedPath(v.id, T, H);
+				a.push(...H.slice(1)), this.options.cachePaths && this.graph.setCachedPath(k.id, T, H);
 			}
-			const m = this.graph.getNode(s[s.length - 1]).tile, p = this.map.x(e), f = this.map.y(e), g = Math.floor(p / this.graph.clusterSize), y = Math.floor(f / this.graph.clusterSize), w = this.findLocalPath(m, e, g, y);
-			return w ? (a.push(...w.slice(1)), W.set("initialPath", () => a), a) : null;
+			const m = this.graph.getNode(s[s.length - 1]).tile, p = this.map.x(e), f = this.map.y(e), g = Math.floor(p / this.graph.clusterSize), y = Math.floor(f / this.graph.clusterSize), b = this.findLocalPath(m, e, g, y);
+			return b ? (a.push(...b.slice(1)), W.set("initialPath", () => a), a) : null;
 		}
 		findNearestNode(t) {
 			const e = this.map.x(t), i = this.map.y(t), n = Math.floor(e / this.graph.clusterSize), s = Math.floor(i / this.graph.clusterSize), a = this.graph.clusterSize, r = n * a, o = s * a, l = Math.min(this.map.width() - 1, r + a - 1), c = Math.min(this.map.height() - 1, o + a - 1), h = this.graph.getCluster(n, s);
@@ -25441,7 +24981,7 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 			const u = h.nodeIds.map((p) => this.graph.getNode(p)), m = a * a;
 			return this.tileBFS.search(this.map.width(), this.map.height(), t, m, (p) => this.map.isWater(p), (p, f) => {
 				const g = this.map.x(p), y = this.map.y(p);
-				for (const w of u) if (w.x === g && w.y === y) return w;
+				for (const b of u) if (b.x === g && b.y === y) return b;
 				if (g < r || g > l || y < o || y > c) return null;
 			});
 		}
@@ -25565,16 +25105,16 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 			W.start("WaterManager:finalizeWaterChanges");
 			const n = this.map, s = n.width(), a = s * n.height(), r = /* @__PURE__ */ new Set();
 			for (const S of i) r.add(S);
-			const o = (S, T, k) => {
-				S >= s && (T[k++] = S - s), S < a - s && (T[k++] = S + s);
-				const v = S % s;
-				return v > 0 && (T[k++] = S - 1), v < s - 1 && (T[k++] = S + 1), k;
+			const o = (S, T, _) => {
+				S >= s && (T[_++] = S - s), S < a - s && (T[_++] = S + s);
+				const k = S % s;
+				return k > 0 && (T[_++] = S - 1), k < s - 1 && (T[_++] = S + 1), _;
 			}, l = new Array(8);
 			W.start("ocean");
 			const c = [];
 			for (const S of i) {
 				const T = o(S, l, 0);
-				for (let k = 0; k < T; k++) if (!i.has(l[k]) && n.isOcean(l[k])) {
+				for (let _ = 0; _ < T; _++) if (!i.has(l[_]) && n.isOcean(l[_])) {
 					n.setOcean(S), c.push(S);
 					break;
 				}
@@ -25582,7 +25122,7 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 			let h = 0;
 			for (; h < c.length;) {
 				const S = c[h++], T = o(S, l, 0);
-				for (let k = 0; k < T; k++) n.isWater(l[k]) && !n.isOcean(l[k]) && (n.setOcean(l[k]), r.add(l[k]), c.push(l[k]));
+				for (let _ = 0; _ < T; _++) n.isWater(l[_]) && !n.isOcean(l[_]) && (n.setOcean(l[_]), r.add(l[_]), c.push(l[_]));
 			}
 			W.end("ocean"), W.start("magnitude"), (!this._waterDistArr || this._waterDistArr.length !== a) && (this._waterDistArr = new Uint16Array(a), this._waterStampArr = new Uint16Array(a), this._waterStamp = 0);
 			const u = this.computeCraterGroups(i, s, ie);
@@ -25594,10 +25134,10 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 			for (const S of i) {
 				g(S);
 				const T = o(S, l, 0);
-				for (let k = 0; k < T; k++) {
-					g(l[k]);
-					const v = o(l[k], l, T);
-					for (let _ = T; _ < v; _++) g(l[_]);
+				for (let _ = 0; _ < T; _++) {
+					g(l[_]);
+					const k = o(l[_], l, T);
+					for (let v = T; v < k; v++) g(l[v]);
 				}
 			}
 			for (const S of f) {
@@ -25606,65 +25146,65 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 					continue;
 				}
 				const T = n.isLand(S);
-				let k = !1;
-				const v = o(S, l, 0);
-				for (let M = 0; M < v; M++) if (!n.isImpassable(l[M]) && n.isLand(l[M]) !== T) {
-					k = !0;
+				let _ = !1;
+				const k = o(S, l, 0);
+				for (let M = 0; M < k; M++) if (!n.isImpassable(l[M]) && n.isLand(l[M]) !== T) {
+					_ = !0;
 					break;
 				}
-				const _ = n.isShoreline(S);
-				k ? _ || (n.setShorelineBit(S), r.add(S)) : _ && (n.clearShorelineBit(S), r.add(S));
+				const v = n.isShoreline(S);
+				_ ? v || (n.setShorelineBit(S), r.add(S)) : v && (n.clearShorelineBit(S), r.add(S));
 			}
 			W.end("shoreline"), W.start("minimap");
-			const y = /* @__PURE__ */ new Set(), w = /* @__PURE__ */ new Set();
+			const y = /* @__PURE__ */ new Set(), b = /* @__PURE__ */ new Set();
 			for (const S of i) {
-				const T = Math.floor(n.x(S) / 2), k = Math.floor(n.y(S) / 2);
-				this.miniMap.isValidCoord(T, k) && y.add(this.miniMap.ref(T, k));
+				const T = Math.floor(n.x(S) / 2), _ = Math.floor(n.y(S) / 2);
+				this.miniMap.isValidCoord(T, _) && y.add(this.miniMap.ref(T, _));
 			}
 			for (const S of y) {
 				if (!this.miniMap.isLand(S)) continue;
-				const T = this.miniMap.x(S) * 2, k = this.miniMap.y(S) * 2;
-				let v = !1;
-				for (let _ = 0; _ < 2; _++) {
-					for (let M = 0; M < 2; M++) if (n.isValidCoord(T + M, k + _) && n.isWater(n.ref(T + M, k + _))) {
-						v = !0;
+				const T = this.miniMap.x(S) * 2, _ = this.miniMap.y(S) * 2;
+				let k = !1;
+				for (let v = 0; v < 2; v++) {
+					for (let M = 0; M < 2; M++) if (n.isValidCoord(T + M, _ + v) && n.isWater(n.ref(T + M, _ + v))) {
+						k = !0;
 						break;
 					}
-					if (v) break;
+					if (k) break;
 				}
-				v && (this.miniMap.setWater(S), w.add(S));
+				k && (this.miniMap.setWater(S), b.add(S));
 			}
-			if (W.end("minimap"), W.start("miniMagnitude"), w.size > 0) {
-				const S = this.miniMap.width(), T = this.miniMap.height(), k = (H, Y) => {
+			if (W.end("minimap"), W.start("miniMagnitude"), b.size > 0) {
+				const S = this.miniMap.width(), T = this.miniMap.height(), _ = (H, Y) => {
 					const B = H % S, J = (H - B) / S;
 					let nt = 0;
 					return J > 0 && (Y[nt++] = H - S), J < T - 1 && (Y[nt++] = H + S), B > 0 && (Y[nt++] = H - 1), B < S - 1 && (Y[nt++] = H + 1), nt;
-				}, v = new Array(4), _ = [];
-				for (const H of w) {
-					const Y = k(H, v);
+				}, k = new Array(4), v = [];
+				for (const H of b) {
+					const Y = _(H, k);
 					let B = !1;
-					for (let J = 0; J < Y; J++) if (this.miniMap.isOcean(v[J])) {
+					for (let J = 0; J < Y; J++) if (this.miniMap.isOcean(k[J])) {
 						B = !0;
 						break;
 					}
-					B && (this.miniMap.setOcean(H), _.push(H));
+					B && (this.miniMap.setOcean(H), v.push(H));
 				}
 				let M = 0;
-				for (; M < _.length;) {
-					const H = _[M++], Y = k(H, v);
+				for (; M < v.length;) {
+					const H = v[M++], Y = _(H, k);
 					for (let B = 0; B < Y; B++) {
-						const J = v[B];
-						this.miniMap.isWater(J) && !this.miniMap.isOcean(J) && (this.miniMap.setOcean(J), _.push(J));
+						const J = k[B];
+						this.miniMap.isWater(J) && !this.miniMap.isOcean(J) && (this.miniMap.setOcean(J), v.push(J));
 					}
 				}
 				const x = S * T;
 				(!this._miniDistArr || this._miniDistArr.length !== x) && (this._miniDistArr = new Uint16Array(x), this._miniStampArr = new Uint16Array(x), this._miniStamp = 0);
-				const L = this.computeCraterGroups(w, S, ie);
+				const L = this.computeCraterGroups(b, S, ie);
 				for (const H of L) this.recomputeMagnitudesInBox(this.miniMap, H, this._miniStampArr, this._miniDistArr, this.bumpMiniStamp(), !1, null);
 			}
-			if (W.end("miniMagnitude"), w.size > 0) {
-				this._miniWaterCC?.addWaterTiles(w), this._waterGraphDirty = !0;
-				for (const S of w) this._dirtyMiniTiles.add(S);
+			if (W.end("miniMagnitude"), b.size > 0) {
+				this._miniWaterCC?.addWaterTiles(b), this._waterGraphDirty = !0;
+				for (const S of b) this._dirtyMiniTiles.add(S);
 			}
 			W.end("WaterManager:finalizeWaterChanges");
 			for (const S of r) e.push(S);
@@ -25678,13 +25218,13 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 		computeCraterGroups(t, e, i) {
 			const n = i, s = Math.ceil(e / n), a = /* @__PURE__ */ new Map();
 			for (const p of t) {
-				const f = p % e, g = (p - f) / e, y = Math.floor(g / n) * s + Math.floor(f / n), w = a.get(y);
-				w === void 0 ? a.set(y, {
+				const f = p % e, g = (p - f) / e, y = Math.floor(g / n) * s + Math.floor(f / n), b = a.get(y);
+				b === void 0 ? a.set(y, {
 					minX: f,
 					maxX: f,
 					minY: g,
 					maxY: g
-				}) : (f < w.minX && (w.minX = f), f > w.maxX && (w.maxX = f), g < w.minY && (w.minY = g), g > w.maxY && (w.maxY = g));
+				}) : (f < b.minX && (b.minX = f), f > b.maxX && (b.maxX = f), g < b.minY && (b.minY = g), g > b.maxY && (b.maxY = g));
 			}
 			const r = /* @__PURE__ */ new Map();
 			for (const p of a.keys()) r.set(p, p);
@@ -25700,14 +25240,14 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 			};
 			for (const p of a.keys()) {
 				const f = p % s, g = (p - f) / s;
-				for (let y = -1; y <= 1; y++) for (let w = -1; w <= 1; w++) {
-					if (w === 0 && y === 0) continue;
-					const S = f + w, T = g + y;
+				for (let y = -1; y <= 1; y++) for (let b = -1; b <= 1; b++) {
+					if (b === 0 && y === 0) continue;
+					const S = f + b, T = g + y;
 					if (S < 0 || S >= s || T < 0) continue;
-					const k = T * s + S;
-					if (!a.has(k)) continue;
-					const v = o(p), _ = o(k);
-					v !== _ && r.set(Math.max(v, _), Math.min(v, _));
+					const _ = T * s + S;
+					if (!a.has(_)) continue;
+					const k = o(p), v = o(_);
+					k !== v && r.set(Math.max(k, v), Math.min(k, v));
 				}
 			}
 			const l = /* @__PURE__ */ new Map();
@@ -25720,14 +25260,14 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 			for (; m;) {
 				m = !1;
 				for (let p = 0; p < c.length && !m; p++) for (let f = p + 1; f < c.length; f++) {
-					const g = c[p], y = c[f], w = {
+					const g = c[p], y = c[f], b = {
 						minX: Math.min(g.minX, y.minX),
 						maxX: Math.max(g.maxX, y.maxX),
 						minY: Math.min(g.minY, y.minY),
 						maxY: Math.max(g.maxY, y.maxY)
 					};
-					if (u(w) < u(g) + u(y)) {
-						c[p] = w, c.splice(f, 1), m = !0;
+					if (u(b) < u(g) + u(y)) {
+						c[p] = b, c.splice(f, 1), m = !0;
 						break;
 					}
 				}
@@ -25735,38 +25275,38 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 			return c;
 		}
 		recomputeMagnitudesInBox(t, e, i, n, s, a, r) {
-			const o = t.width(), l = t.height(), c = t.terrain, h = Math.max(0, e.minX - ie), u = Math.min(o - 1, e.maxX + ie), m = Math.max(0, e.minY - ie), p = Math.min(l - 1, e.maxY + ie), f = Math.max(0, e.minX - ie * 2), g = Math.min(o - 1, e.maxX + ie * 2), y = Math.max(0, e.minY - ie * 2), w = Math.min(l - 1, e.maxY + ie * 2), S = (v) => (v & Me) !== 0 && (!a || (v & xc) !== f0), T = [];
-			for (let v = y; v <= w; v++) {
-				const _ = v * o;
+			const o = t.width(), l = t.height(), c = t.terrain, h = Math.max(0, e.minX - ie), u = Math.min(o - 1, e.maxX + ie), m = Math.max(0, e.minY - ie), p = Math.min(l - 1, e.maxY + ie), f = Math.max(0, e.minX - ie * 2), g = Math.min(o - 1, e.maxX + ie * 2), y = Math.max(0, e.minY - ie * 2), b = Math.min(l - 1, e.maxY + ie * 2), S = (k) => (k & Me) !== 0 && (!a || (k & xc) !== f0), T = [];
+			for (let k = y; k <= b; k++) {
+				const v = k * o;
 				for (let M = f; M <= g; M++) {
-					const x = _ + M;
-					!(c[x] & Me) && i[x] !== s && (v > 0 && S(c[x - o]) || v < l - 1 && S(c[x + o]) || M > 0 && S(c[x - 1]) || M < o - 1 && S(c[x + 1])) && (i[x] = s, n[x] = 0, T.push(x));
+					const x = v + M;
+					!(c[x] & Me) && i[x] !== s && (k > 0 && S(c[x - o]) || k < l - 1 && S(c[x + o]) || M > 0 && S(c[x - 1]) || M < o - 1 && S(c[x + 1])) && (i[x] = s, n[x] = 0, T.push(x));
 				}
 			}
-			let k = 0;
-			for (; k < T.length;) {
-				const v = T[k++], _ = n[v] + 1, M = v % o, x = (v - M) / o;
+			let _ = 0;
+			for (; _ < T.length;) {
+				const k = T[_++], v = n[k] + 1, M = k % o, x = (k - M) / o;
 				if (x > y) {
-					const L = v - o;
-					!(c[L] & Me) && i[L] !== s && (i[L] = s, n[L] = _, T.push(L));
+					const L = k - o;
+					!(c[L] & Me) && i[L] !== s && (i[L] = s, n[L] = v, T.push(L));
 				}
-				if (x < w) {
-					const L = v + o;
-					!(c[L] & Me) && i[L] !== s && (i[L] = s, n[L] = _, T.push(L));
+				if (x < b) {
+					const L = k + o;
+					!(c[L] & Me) && i[L] !== s && (i[L] = s, n[L] = v, T.push(L));
 				}
 				if (M > f) {
-					const L = v - 1;
-					!(c[L] & Me) && i[L] !== s && (i[L] = s, n[L] = _, T.push(L));
+					const L = k - 1;
+					!(c[L] & Me) && i[L] !== s && (i[L] = s, n[L] = v, T.push(L));
 				}
 				if (M < g) {
-					const L = v + 1;
-					!(c[L] & Me) && i[L] !== s && (i[L] = s, n[L] = _, T.push(L));
+					const L = k + 1;
+					!(c[L] & Me) && i[L] !== s && (i[L] = s, n[L] = v, T.push(L));
 				}
 			}
-			for (let v = m; v <= p; v++) {
-				const _ = v * o;
+			for (let k = m; k <= p; k++) {
+				const v = k * o;
 				for (let M = h; M <= u; M++) {
-					const x = _ + M, L = c[x];
+					const x = v + M, L = c[x];
 					if ((L & Me) !== 0) continue;
 					const H = i[x] === s ? Math.min(Math.ceil(n[x] / 2), 31) : 31;
 					(L & xc) !== H && (t.setMagnitude(x, H), r?.add(x));
@@ -25807,7 +25347,7 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 				0
 			], this._unitsVersion = 0, this.unitsByTypeMemo = /* @__PURE__ */ new Map(), this._structureVersion = 0, this._territoryVersion = 0;
 			const l = performance.now();
-			this._teamGameSpawnAreas = r, this._terraNullius = new Hb(), this._width = i.width(), this._height = i.height(), this.unitGrid = new qb(this._map), this._waterManager = new g0(this._map, this.miniGameMap, s.disableNavMesh()), this._sharedWaterCache = new Kb(this), o || (s.gameConfig().gameMode === ut.Team && this.populateTeams(), this.addPlayers()), console.log(\`[GameImpl] Constructor total: \${(performance.now() - l).toFixed(0)}ms\`);
+			this._teamGameSpawnAreas = r, this._terraNullius = new Hb(), this._width = i.width(), this._height = i.height(), this.unitGrid = new qb(this._map), this._waterManager = new g0(this._map, this.miniGameMap, s.disableNavMesh()), this._sharedWaterCache = new jb(this), o || (s.gameConfig().gameMode === ut.Team && this.populateTeams(), this.addPlayers()), console.log(\`[GameImpl] Constructor total: \${(performance.now() - l).toFixed(0)}ms\`);
 		}
 		populateTeams() {
 			const t = this._humans.length + this._nations.length;
@@ -26104,7 +25644,7 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 		takeoverPlayer(t, e) {
 			const i = typeof t == "string" ? this.player(t) : t, n = i.clientID();
 			n !== null && this._stats.migrateClientID(n, e);
-			for (const r of this.executions()) (r instanceof _i || r instanceof As) && r.playerID() === i.id() && this.removeExecution(r);
+			for (const r of this.executions()) (r instanceof vi || r instanceof As) && r.playerID() === i.id() && this.removeExecution(r);
 			const s = i.info(), a = new ne(s.name, D.Human, e, s.id, s.isLobbyCreator, s.clanTag, s.friends, s.teamIndex, s.nationFlag);
 			i.setPlayerInfo(a), i.markDisconnected(!1), this._humans = this._humans.filter((r) => r.id !== i.id()), this._humans.push(a), this._nations = this._nations.filter((r) => r.playerInfo.id !== i.id());
 		}
@@ -26121,12 +25661,12 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 			this.clearHumanPlayer(i), this._nations = this._nations.filter((r) => r.playerInfo.id !== i.id());
 			const n = i.spawnTile(), s = new Oe(n !== void 0 ? this.cell(n) : void 0, i.info());
 			this._nations.push(s);
-			const a = new _i(e, s);
+			const a = new vi(e, s);
 			return this.addExecution(a), a;
 		}
 		applySingleplayerConfig(t) {
-			this.config().setGameType(jt.Singleplayer), t !== void 0 && this.config().setDifficulty(t);
-			for (const e of this.executions()) e instanceof Cs ? this.removeExecution(e) : t !== void 0 && e instanceof _i && e.isActive() && e.isInitialized() && e.refreshDifficulty();
+			this.config().setGameType(Kt.Singleplayer), t !== void 0 && this.config().setDifficulty(t);
+			for (const e of this.executions()) e instanceof Cs ? this.removeExecution(e) : t !== void 0 && e instanceof vi && e.isActive() && e.isInitialized() && e.refreshDifficulty();
 		}
 		playerView(t) {
 			return this.player(t);
@@ -26570,7 +26110,7 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 				shipStaggers: { ...this.shipStaggers },
 				nationMirvTargets: [...this._nationMirvTargets],
 				mirvsLaunched: this._mirvsLaunched,
-				rail: t.versioned(_c, this._railNetwork.snapshot(t)),
+				rail: t.versioned(vc, this._railNetwork.snapshot(t)),
 				water: t.versioned(Rc, this._waterManager.snapshot()),
 				sharedWaterCache: t.versioned(ac, this._sharedWaterCache.snapshot(t)),
 				stats: t.versioned(Cc, this._stats.snapshot())
@@ -26583,7 +26123,7 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 			this._ticks = t.ticks, this.startTick = t.startTick, this.execs = t.execs.map((i) => e.exec(i)), this.unInitExecs = t.unInitExecs.map((i) => e.exec(i)), this.allianceRequests = t.allianceRequests.map((i) => e.allianceRequest(i)), this.nextPlayerID = t.nextPlayerID, this._nextUnitID = t.nextUnitID, this.nextAllianceID = t.nextAllianceID, this._unitMap = new Map(t.units.map((i) => {
 				const n = e.unit(i);
 				return [n.id(), n];
-			})), this.planDrivenUnitIds = new Set(t.planDrivenUnitIds), this.unitGrid.restoreSnapshot(t.unitGrid, (i) => e.unit(i)), this.playerTeams = [...t.playerTeams], this.botTeam = t.botTeam, this._isPaused = t.isPaused, this._winner = t.winner === null ? null : "team" in t.winner ? t.winner.team : e.player(t.winner.player), this._unitsVersion = t.unitsVersion, this._territoryVersion = t.territoryVersion, this._structureVersion++, this.shipStaggers = { ...t.shipStaggers }, this._nationMirvTargets = new Map(t.nationMirvTargets), this._mirvsLaunched = t.mirvsLaunched, this._railNetwork.restoreSnapshot(_t(_c, t.rail), e), this._waterManager.restoreSnapshot(_t(Rc, t.water)), this._sharedWaterCache.restoreSnapshot(_t(ac, t.sharedWaterCache), e), this._stats.restoreSnapshot(_t(Cc, t.stats));
+			})), this.planDrivenUnitIds = new Set(t.planDrivenUnitIds), this.unitGrid.restoreSnapshot(t.unitGrid, (i) => e.unit(i)), this.playerTeams = [...t.playerTeams], this.botTeam = t.botTeam, this._isPaused = t.isPaused, this._winner = t.winner === null ? null : "team" in t.winner ? t.winner.team : e.player(t.winner.player), this._unitsVersion = t.unitsVersion, this._territoryVersion = t.territoryVersion, this._structureVersion++, this.shipStaggers = { ...t.shipStaggers }, this._nationMirvTargets = new Map(t.nationMirvTargets), this._mirvsLaunched = t.mirvsLaunched, this._railNetwork.restoreSnapshot(vt(vc, t.rail), e), this._waterManager.restoreSnapshot(vt(Rc, t.water)), this._sharedWaterCache.restoreSnapshot(vt(ac, t.sharedWaterCache), e), this._stats.restoreSnapshot(vt(Cc, t.stats));
 		}
 		conquerPlayer(t, e) {
 			if (e.isDisconnected() && t.isOnSameTeam(e)) {
@@ -26608,7 +26148,7 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 		schema: A({
 			ticks: C(),
 			startTick: C().nullable(),
-			humans: R(ji),
+			humans: R(Ki),
 			nations: R(Ir),
 			players: R(O()),
 			execs: R(N()),
@@ -26708,7 +26248,7 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 		};
 	}
 	function T0(t, e) {
-		const i = e.largestClusterBoundingBox ?? qi(t, e.borderTiles()), n = w0(i.max.x - i.min.x, i.max.y - i.min.y), s = Math.floor(i.min.x / n), a = Math.floor(i.max.x / n), r = Math.floor(i.min.y / n), o = Math.floor(i.max.y / n), l = a - s + 1, c = o - r + 1, h = $c(v0(t, e, i, n), l, c);
+		const i = e.largestClusterBoundingBox ?? qi(t, e.borderTiles()), n = w0(i.max.x - i.min.x, i.max.y - i.min.y), s = Math.floor(i.min.x / n), a = Math.floor(i.max.x / n), r = Math.floor(i.min.y / n), o = Math.floor(i.max.y / n), l = a - s + 1, c = o - r + 1, h = $c(_0(t, e, i, n), l, c);
 		h.x *= n, h.y *= n, h.width *= n, h.height *= n;
 		const u = Hc(h, e.displayName()), m = Math.floor(h.x + h.width / 2 + i.min.x), p = Math.floor(h.y + h.height / 2 + i.min.y) - u / 3;
 		return {
@@ -26722,7 +26262,7 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 		const s = t.ref(i, n);
 		return t.isShore(s) || t.isOcean(s) && t.magnitude(s) < 10 || t.owner(s) === e || t.hasFallout(s);
 	}
-	function v0(t, e, i, n) {
+	function _0(t, e, i, n) {
 		const s = Math.floor(i.min.x / n), a = Math.floor(i.min.y / n), r = Math.floor(i.max.x / n), o = Math.floor(i.max.y / n), l = r - s + 1, c = o - a + 1;
 		if (l <= 0 || c <= 0) return new Uint8Array(0);
 		const h = new Uint8Array(l * c);
@@ -26732,7 +26272,7 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 		}
 		return h;
 	}
-	function _0(t) {
+	function v0(t) {
 		const e = t.length, i = e > 0 ? t[0]?.length ?? 0 : 0;
 		if (e === 0 || i === 0) return {
 			x: 0,
@@ -26761,7 +26301,7 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 		};
 	}
 	function $c(t, e, i) {
-		if (Array.isArray(t)) return _0(t);
+		if (Array.isArray(t)) return v0(t);
 		const n = e ?? 0, s = i ?? (n > 0 ? t.length / n | 0 : 0);
 		return n <= 0 || s <= 0 ? {
 			x: 0,
@@ -26801,7 +26341,7 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 			kind: "random",
 			count: t.nations
 		};
-		if (t.gameType === jt.Public) {
+		if (t.gameType === Kt.Public) {
 			if (t.gameMode === ut.Team && t.playerTeams === "Humans Vs Nations") return {
 				kind: "random",
 				count: i
@@ -27475,7 +27015,7 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 		"Tomato",
 		"Volcano",
 		"Torpedo"
-	]), Kc = new Map([
+	]), jc = new Map([
 		["Cactus", "Cacti"],
 		["Platypus", "Platypuses"],
 		["Moose", "Moose"],
@@ -27489,14 +27029,14 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 		["Mitochondria", "Mitochondria"]
 	]);
 	function N0(t) {
-		return Kc.has(t) ? Kc.get(t) : t.endsWith("s") || t.endsWith("ch") || t.endsWith("sh") || t.endsWith("x") || t.endsWith("z") ? \`\${t}es\` : t.endsWith("y") && !"aeiou".includes(t[t.length - 2]) ? \`\${t.slice(0, -1)}ies\` : R0.has(t) ? \`\${t}es\` : \`\${t}s\`;
+		return jc.has(t) ? jc.get(t) : t.endsWith("s") || t.endsWith("ch") || t.endsWith("sh") || t.endsWith("x") || t.endsWith("z") ? \`\${t}es\` : t.endsWith("y") && !"aeiou".includes(t[t.length - 2]) ? \`\${t.slice(0, -1)}ies\` : R0.has(t) ? \`\${t}es\` : \`\${t}s\`;
 	}
 	const B0 = [
 		mr,
 		fr,
 		gr,
 		Tr,
-		vr,
+		_r,
 		Sr,
 		zr,
 		yo,
@@ -27509,7 +27049,7 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 		Vo,
 		zo,
 		eo,
-		jo,
+		Ko,
 		no,
 		so,
 		Yo,
@@ -27519,7 +27059,7 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 		Gl,
 		Ul,
 		lo,
-		Kl,
+		jl,
 		tc,
 		Zl,
 		po,
@@ -27726,7 +27266,7 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 		}, a = s();
 		return e.expectEnd(), a;
 	}
-	var _e = class {
+	var ve = class {
 		constructor() {
 			this.index = /* @__PURE__ */ new Map(), this.items = [];
 		}
@@ -27739,7 +27279,7 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 		}
 	}, $0 = class {
 		constructor(t) {
-			this.game = t, this.units = new _e(), this.attacks = new _e(), this.alliances = new _e(), this.allianceRequests = new _e(), this.execs = new _e(), this.stations = new _e(), this.railroads = new _e(), this.clusters = new _e();
+			this.game = t, this.units = new ve(), this.attacks = new ve(), this.alliances = new ve(), this.allianceRequests = new ve(), this.execs = new ve(), this.stations = new ve(), this.railroads = new ve(), this.clusters = new ve();
 		}
 		player(t) {
 			return t.smallID();
@@ -27845,12 +27385,12 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 			return ft.fromState(t);
 		}
 	};
-	const jc = "OpenFrontGameSnapshot", q0 = A({
+	const Kc = "OpenFrontGameSnapshot", q0 = A({
 		t: $(),
 		v: xt().int(),
 		d: He()
 	}), G0 = A({
-		magic: q(jc),
+		magic: q(Kc),
 		format: xt().int(),
 		gitCommit: $(),
 		gameID: $().nullable(),
@@ -27870,26 +27410,26 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 		execs: R(q0)
 	}), Zc = B0, V0 = new Map(Zc.map((t) => [t.name, t]));
 	let Yc = null;
-	function K0(t) {
+	function j0(t) {
 		return Yc ??= new Map(Zc.map((e) => [e.cls().prototype, e.name])), Yc.get(Object.getPrototypeOf(t));
 	}
-	function j0(t, e = {}) {
+	function K0(t, e = {}) {
 		return F0(Z0(t, e));
 	}
 	function Z0(t, e = {}) {
-		const i = t, n = new $0(i), s = i.allPlayers().map((y) => n.versioned(kc, y.snapshot(n))), a = n.versioned(Ns, i.snapshotState(n)), r = [], o = [], l = [], c = [], h = [], u = [], m = [], p = [], f = (y, w, S) => {
-			const T = w.length;
-			for (; w.length < y.items.length;) w.push(S(y.items[w.length]));
-			return w.length !== T;
+		const i = t, n = new $0(i), s = i.allPlayers().map((y) => n.versioned(kc, y.snapshot(n))), a = n.versioned(Ns, i.snapshotState(n)), r = [], o = [], l = [], c = [], h = [], u = [], m = [], p = [], f = (y, b, S) => {
+			const T = b.length;
+			for (; b.length < y.items.length;) b.push(S(y.items[b.length]));
+			return b.length !== T;
 		};
 		let g = !0;
 		for (; g;) g = !1, g ||= f(n.execs, p, (y) => {
-			const w = y.snapshot(n);
-			if (K0(y) !== w.t) throw new $t(\`execution \${y.constructor.name} is not registered for snapshots as \${w.t}\`);
-			return w;
+			const b = y.snapshot(n);
+			if (j0(y) !== b.t) throw new $t(\`execution \${y.constructor.name} is not registered for snapshots as \${b.t}\`);
+			return b;
 		}), g ||= f(n.units, r, (y) => n.versioned(Sc, y.snapshot(n))), g ||= f(n.attacks, o, (y) => n.versioned(uc, y.snapshot(n))), g ||= f(n.alliances, l, (y) => n.versioned(oc, y.snapshot(n))), g ||= f(n.allianceRequests, c, (y) => n.versioned(cc, y.snapshot(n))), g ||= f(n.stations, h, (y) => n.versioned(Dr, y.snapshot(n))), g ||= f(n.railroads, u, (y) => n.versioned(Rr, y.snapshot(n))), g ||= f(n.clusters, m, (y) => n.versioned(xr, y.snapshot(n)));
 		return {
-			magic: jc,
+			magic: Kc,
 			format: 1,
 			gitCommit: e.gitCommit ?? "",
 			gameID: e.gameID ?? null,
@@ -27924,7 +27464,7 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 		return n.data;
 	}
 	function Jc(t) {
-		const e = Xc(t), i = _t(Ns, e.game).humans.flatMap((n) => n.clientID === null ? [] : [{
+		const e = Xc(t), i = vt(Ns, e.game).humans.flatMap((n) => n.clientID === null ? [] : [{
 			clientID: n.clientID,
 			name: n.name
 		}]);
@@ -27938,25 +27478,25 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 		};
 	}
 	function Y0(t, e) {
-		const i = Xc(t), n = bi.parse(i.gameConfig), s = e.config(n), a = _t(Ns, i.game);
-		e.gameMap.restoreSnapshot(_t(Fi, i.map)), e.miniGameMap.restoreSnapshot(_t(Fi, i.miniMap));
-		const r = new Nc(a.humans.map(Yi), a.nations.map((_) => new Oe(_.spawnCell ? Ar(_.spawnCell) : void 0, Yi(_.playerInfo))), e.gameMap, e.miniGameMap, s, new Ic(), e.teamGameSpawnAreas, !0), o = i.players.map((_) => _t(kc, _)), l = o.map((_) => {
+		const i = Xc(t), n = bi.parse(i.gameConfig), s = e.config(n), a = vt(Ns, i.game);
+		e.gameMap.restoreSnapshot(vt(Fi, i.map)), e.miniGameMap.restoreSnapshot(vt(Fi, i.miniMap));
+		const r = new Nc(a.humans.map(Yi), a.nations.map((v) => new Oe(v.spawnCell ? Ar(v.spawnCell) : void 0, Yi(v.playerInfo))), e.gameMap, e.miniGameMap, s, new Ic(), e.teamGameSpawnAreas, !0), o = i.players.map((v) => vt(kc, v)), l = o.map((v) => {
 			const M = Object.create(Tc.prototype);
-			return r.addRestoredPlayer(M, _.info.id, _.smallID), M;
-		}), c = (_, M, x) => {
-			const L = _.map((H) => _t(M, H));
+			return r.addRestoredPlayer(M, v.info.id, v.smallID), M;
+		}), c = (v, M, x) => {
+			const L = v.map((H) => vt(M, H));
 			return {
 				data: L,
 				objs: L.map(() => Object.create(x))
 			};
-		}, h = c(i.units, Sc, yc.prototype), u = c(i.attacks, uc, hc.prototype), m = c(i.alliances, oc, rc.prototype), p = c(i.allianceRequests, cc, lc.prototype), f = c(i.stations, Dr, Mr.prototype), g = c(i.railroads, Rr, Ji.prototype), y = c(i.clusters, xr, Xi.prototype), w = i.execs.map((_) => {
-			const M = V0.get(_.t);
-			if (M === void 0) throw new $t(\`unknown execution type \${_.t}\`);
+		}, h = c(i.units, Sc, yc.prototype), u = c(i.attacks, uc, hc.prototype), m = c(i.alliances, oc, rc.prototype), p = c(i.allianceRequests, cc, lc.prototype), f = c(i.stations, Dr, Mr.prototype), g = c(i.railroads, Rr, Ji.prototype), y = c(i.clusters, xr, Xi.prototype), b = i.execs.map((v) => {
+			const M = V0.get(v.t);
+			if (M === void 0) throw new $t(\`unknown execution type \${v.t}\`);
 			return {
 				type: M,
-				data: _t(M, _)
+				data: vt(M, v)
 			};
-		}), S = w.map(({ type: _ }) => Object.create(_.cls().prototype)), T = new H0(r, {
+		}), S = b.map(({ type: v }) => Object.create(v.cls().prototype)), T = new H0(r, {
 			units: h.objs,
 			attacks: u.objs,
 			alliances: m.objs,
@@ -27965,17 +27505,17 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 			stations: f.objs,
 			railroads: g.objs,
 			clusters: y.objs,
-			playerIds: new Map(o.map((_) => [_.smallID, _.info.id]))
+			playerIds: new Map(o.map((v) => [v.smallID, v.info.id]))
 		});
-		o.forEach((_, M) => l[M].restoreSnapshot(_, T));
-		const k = (_) => _.objs.forEach((M, x) => M.restoreSnapshot(_.data[x], T));
-		k(h), k(u), k(m), k(p), k(f), k(g), k(y), w.forEach(({ data: _ }, M) => {
-			S[M].restoreSnapshot(_, T);
+		o.forEach((v, M) => l[M].restoreSnapshot(v, T));
+		const _ = (v) => v.objs.forEach((M, x) => M.restoreSnapshot(v.data[x], T));
+		_(h), _(u), _(m), _(p), _(f), _(g), _(y), b.forEach(({ data: v }, M) => {
+			S[M].restoreSnapshot(v, T);
 		}), r.restoreState(a, T);
-		const v = e.gameMap;
-		for (const _ of l) {
-			const M = _.smallID();
-			for (const x of _.tiles()) v.setOwnerID(x, M);
+		const k = e.gameMap;
+		for (const v of l) {
+			const M = v.smallID();
+			for (const x of v.tiles()) k.setOwnerID(x, M);
 		}
 		return r;
 	}
@@ -28002,13 +27542,13 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 		}
 		snapshot(t) {
 			if (this.isExecuting) throw new Error("cannot snapshot while a tick is executing");
-			return j0(this.game, {
+			return K0(this.game, {
 				gameID: this.execManager.gameID(),
 				gitCommit: t
 			});
 		}
 		init() {
-			this.game.config().gameConfig().gameType !== jt.Singleplayer && this.game.addExecution(new Cs()), this.game.config().spawnNations() && this.game.addExecution(...this.execManager.nationExecutions()), this.game.config().isRandomSpawn() && this.game.addExecution(...this.execManager.spawnPlayers()), this.game.config().bots() > 0 && this.game.addExecution(...this.execManager.spawnTribes(this.game.config().bots())), this.game.addExecution(new ic()), this.game.config().doomsdayClockConfig().enabled && this.game.addExecution(new ur()), this.game.config().isUnitDisabled(d.Factory) || this.game.addExecution(new Ql(this.game.railNetwork()));
+			this.game.config().gameConfig().gameType !== Kt.Singleplayer && this.game.addExecution(new Cs()), this.game.config().spawnNations() && this.game.addExecution(...this.execManager.nationExecutions()), this.game.config().isRandomSpawn() && this.game.addExecution(...this.execManager.spawnPlayers()), this.game.config().bots() > 0 && this.game.addExecution(...this.execManager.spawnTribes(this.game.config().bots())), this.game.addExecution(new ic()), this.game.config().doomsdayClockConfig().enabled && this.game.addExecution(new ur()), this.game.config().isUnitDisabled(d.Factory) || this.game.addExecution(new Ql(this.game.railNetwork()));
 		}
 		addTurn(t) {
 			this.turns.push(t);
@@ -28042,7 +27582,7 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 			let m, p;
 			const f = i[Z.Unit];
 			if (f && f.length > 0) {
-				const g = _h(f);
+				const g = vh(f);
 				m = g.packedUnitUpdates, g.packedMissileTimers.length > 0 && (p = g.packedMissileTimers), i[Z.Unit] = [];
 			}
 			return this.callBack({
@@ -28164,7 +27704,7 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 				}],
 				config: {
 					...s.config().gameConfig(),
-					gameType: jt.Singleplayer
+					gameType: Kt.Singleplayer
 				}
 			},
 			tick: s.ticks()
@@ -28524,9 +28064,9 @@ var L = `(function() {
 	function tr(e) {
 		return Xa(e, Ga(), er());
 	}
-	var xe, wn, nr = nt((() => {
-		xe = (function(e) {
-			return e.Achiran = "Achiran", e.Aegean = "Aegean", e.Africa = "Africa", e.Alps = "Alps", e.AmazonRiver = "Amazon River", e.Antarctica = "Antarctica", e.ArchipelagoSea = "ArchipelagoSea", e.Arctic = "Arctic", e.Asia = "Asia", e.Australia = "Australia", e.BabelMandebStrait = "Bab el-Mandeb Strait", e.Baikal = "Baikal", e.BaikalNukeWars = "Baikal Nuke Wars", e.BajaCalifornia = "Baja California", e.Balkans = "Balkans", e.Balkhash = "Balkhash", e.Baltics = "Baltics", e.Benelux = "Benelux", e.BeringSea = "Bering Sea", e.BeringStrait = "Bering Strait", e.BetweenTwoSeas = "Between Two Seas", e.BlackSea = "Black Sea", e.BosphorusStraits = "Bosphorus Straits", e.Brahmaputra = "Brahmaputra", e.BrainRot = "Brain Rot", e.BranchingPaths = "Branching Paths", e.Britannia = "Britannia", e.BritanniaClassic = "Britannia Classic", e.Canada = "Canada", e.CanaryIslands = "Canary Islands", e.CapeCod = "Cape Cod", e.CapeOfGoodHope = "Cape Of Good Hope", e.Caribbean = "Caribbean", e.CaspianSea = "Caspian Sea", e.Caucasus = "Caucasus", e.CentralAmerica = "Central America", e.ChannelIslands = "Channel Islands", e.China = "China", e.ChoppingBlock = "Chopping Block", e.ClearwaterLakes = "Clearwater Lakes", e.Conakry = "Conakry", e.Crimea = "Crimea", e.DanishStraits = "Danish Straits", e.DeglaciatedAntarctica = "Deglaciated Antarctica", e.Didier = "Didier", e.DidierFrance = "Didier France", e.Dyslexdria = "Dyslexdria", e.EastAsia = "East Asia", e.Europe = "Europe", e.EuropeClassic = "Europe Classic", e.FalklandIslands = "Falkland Islands", e.FaroeIslands = "Faroe Islands", e.FingerLakes = "Finger Lakes", e.FourIslands = "Four Islands", e.France = "France", e.GatewayToTheAtlantic = "Gateway to the Atlantic", e.Germany = "Germany", e.GiantWorldMap = "Giant World Map", e.GreatLakes = "Great Lakes", e.GulfOfGuinea = "Gulf Of Guinea", e.GulfOfMexico = "Gulf Of Mexico", e.GulfOfStLawrence = "Gulf of St. Lawrence", e.Halkidiki = "Halkidiki", e.Hawaii = "Hawaii", e.Hecatestrait = "Hecate Strait", e.HongKong = "Hong Kong", e.HornOfAfrica = "Horn Of Africa", e.Iceland = "Iceland", e.IndianSubcontinent = "Indian Subcontinent", e.IrishSea = "Irish Sea", e.Italia = "Italia", e.Japan = "Japan", e.JuanDeFucaStrait = "Juan De Fuca Strait", e.Korea = "Korea", e.Labyrinth = "Labyrinth", e.LasVegasStrip = "Las Vegas Strip", e.Lemnos = "Lemnos", e.Levant = "Levant", e.Lisbon = "Lisbon", e.London = "London", e.LosAngeles = "Los Angeles", e.Luna = "Luna", e.Madagascar = "Madagascar", e.Manicouagan = "Manicouagan", e.MareNostrum = "Mare Nostrum", e.Mars = "Mars", e.Mena = "Mena", e.Mexico = "Mexico", e.MiddleEast = "Middle East", e.MilkyWay = "MilkyWay", e.MississippiRiver = "Mississippi River", e.Montreal = "Montreal", e.MoreThanLuck = "More Than Luck", e.NewYorkCity = "New York City", e.NewZealand = "New Zealand", e.NileDelta = "Nile Delta", e.NorthAmerica = "North America", e.NorthwestPassage = "Northwest Passage", e.Oceania = "Oceania", e.Ommatrypta = "Ommatrypta", e.Onion = "Onion", e.OttomanEmpire = "Ottoman Empire", e.Pangaea = "Pangaea", e.Paris = "Paris", e.Passage = "Passage", e.Pluto = "Pluto", e.PulicatLake = "Pulicat Lake", e.QingChina = "Qing China", e.RioDeJaneiro = "Rio de Janeiro", e.Russia = "Russia", e.SanFrancisco = "San Francisco", e.Scandinavia = "Scandinavia", e.Sierpinski = "Sierpinski", e.Sol = "Sol", e.SouthAmerica = "South America", e.SoutheastAsia = "SoutheastAsia", e.StraitOfGibraltar = "Strait of Gibraltar", e.StraitOfHormuz = "Strait of Hormuz", e.StraitOfMalacca = "Strait Of Malacca", e.Surrounded = "Surrounded", e.Svalmel = "Svalmel", e.TaiwanStrait = "Taiwan Strait", e.TheBox = "The Box", e.TierraDelFuego = "Tierra Del Fuego", e.Titan = "Titan", e.Tourney1 = "Tourney 2 Teams", e.Tourney2 = "Tourney 3 Teams", e.Tourney3 = "Tourney 4 Teams", e.Tourney4 = "Tourney 8 Teams", e.TradersDream = "Traders Dream", e.Turkiye = "Turkiye", e.Tutorial = "Tutorial", e.TwoLakes = "Two Lakes", e.Ukraine = "Ukraine", e.UnitedStates = "United States", e.VancouverIsland = "Vancouver Island", e.Venice = "Venice", e.Vietnam = "Vietnam", e.WarshipWarship = "Warship Warship", e.World = "World", e.World10000 = "World 10000", e.World4000 = "World 4000", e.WorldInverted = "World Inverted", e.YangtzeRiver = "Yangtze River", e.YellowSea = "Yellow Sea", e.Yenisei = "Yenisei", e.Zealandia = "Zealandia", e;
+	var Le, wn, nr = nt((() => {
+		Le = (function(e) {
+			return e.Achiran = "Achiran", e.Aegean = "Aegean", e.Africa = "Africa", e.Alps = "Alps", e.AmazonRiver = "Amazon River", e.Antarctica = "Antarctica", e.ArchipelagoSea = "ArchipelagoSea", e.Arctic = "Arctic", e.Asia = "Asia", e.Australia = "Australia", e.BabelMandebStrait = "Bab el-Mandeb Strait", e.Baikal = "Baikal", e.BaikalNukeWars = "Baikal Nuke Wars", e.BajaCalifornia = "Baja California", e.Balkans = "Balkans", e.Balkhash = "Balkhash", e.Baltics = "Baltics", e.Benelux = "Benelux", e.BeringSea = "Bering Sea", e.BeringStrait = "Bering Strait", e.BetweenTwoSeas = "Between Two Seas", e.BlackSea = "Black Sea", e.BosphorusStraits = "Bosphorus Straits", e.Brahmaputra = "Brahmaputra", e.BrainRot = "Brain Rot", e.BranchingPaths = "Branching Paths", e.Britannia = "Britannia", e.BritanniaClassic = "Britannia Classic", e.Canada = "Canada", e.CanaryIslands = "Canary Islands", e.CapeCod = "Cape Cod", e.CapeOfGoodHope = "Cape Of Good Hope", e.Caribbean = "Caribbean", e.CaspianSea = "Caspian Sea", e.Caucasus = "Caucasus", e.CentralAmerica = "Central America", e.ChannelIslands = "Channel Islands", e.China = "China", e.ChoppingBlock = "Chopping Block", e.ClearwaterLakes = "Clearwater Lakes", e.Conakry = "Conakry", e.Crimea = "Crimea", e.DanishStraits = "Danish Straits", e.DeglaciatedAntarctica = "Deglaciated Antarctica", e.Didier = "Didier", e.DidierFrance = "Didier France", e.Dyslexdria = "Dyslexdria", e.EastAsia = "East Asia", e.Europe = "Europe", e.EuropeClassic = "Europe Classic", e.FalklandIslands = "Falkland Islands", e.FaroeIslands = "Faroe Islands", e.FingerLakes = "Finger Lakes", e.FourIslands = "Four Islands", e.France = "France", e.GatewayToTheAtlantic = "Gateway to the Atlantic", e.Germany = "Germany", e.GiantWorldMap = "Giant World Map", e.GreatLakes = "Great Lakes", e.GulfOfGuinea = "Gulf Of Guinea", e.GulfOfMexico = "Gulf Of Mexico", e.GulfOfStLawrence = "Gulf of St. Lawrence", e.Halkidiki = "Halkidiki", e.Hawaii = "Hawaii", e.Hecatestrait = "Hecate Strait", e.HongKong = "Hong Kong", e.HornOfAfrica = "Horn Of Africa", e.Iceland = "Iceland", e.IndianSubcontinent = "Indian Subcontinent", e.IrishSea = "Irish Sea", e.Italia = "Italia", e.Japan = "Japan", e.JuanDeFucaStrait = "Juan De Fuca Strait", e.Korea = "Korea", e.Labyrinth = "Labyrinth", e.LasVegasStrip = "Las Vegas Strip", e.Lemnos = "Lemnos", e.Levant = "Levant", e.Lisbon = "Lisbon", e.London = "London", e.LosAngeles = "Los Angeles", e.Luna = "Luna", e.Madagascar = "Madagascar", e.Manicouagan = "Manicouagan", e.MareNostrum = "Mare Nostrum", e.Mars = "Mars", e.Mena = "Mena", e.Mexico = "Mexico", e.MiddleEast = "Middle East", e.MilkyWay = "MilkyWay", e.MississippiRiver = "Mississippi River", e.Montreal = "Montreal", e.MoreThanLuck = "More Than Luck", e.NewYorkCity = "New York City", e.NewZealand = "New Zealand", e.NileDelta = "Nile Delta", e.NorthAmerica = "North America", e.NorthwestPassage = "Northwest Passage", e.Oceania = "Oceania", e.Ommatrypta = "Ommatrypta", e.Onion = "Onion", e.OttomanEmpire = "Ottoman Empire", e.Pangaea = "Pangaea", e.Paris = "Paris", e.Passage = "Passage", e.Pluto = "Pluto", e.PulicatLake = "Pulicat Lake", e.QingChina = "Qing China", e.RioDeJaneiro = "Rio de Janeiro", e.Russia = "Russia", e.SanFrancisco = "San Francisco", e.Scandinavia = "Scandinavia", e.Sierpinski = "Sierpinski", e.Sol = "Sol", e.SouthAmerica = "South America", e.SoutheastAsia = "SoutheastAsia", e.StraitOfGibraltar = "Strait of Gibraltar", e.StraitOfHormuz = "Strait of Hormuz", e.StraitOfMalacca = "Strait Of Malacca", e.Surrounded = "Surrounded", e.Svalmel = "Svalmel", e.TaiwanStrait = "Taiwan Strait", e.TheBox = "The Box", e.TierraDelFuego = "Tierra Del Fuego", e.Titan = "Titan", e.Tourney1 = "Tourney 2 Teams", e.Tourney2 = "Tourney 3 Teams", e.Tourney3 = "Tourney 4 Teams", e.Tourney4 = "Tourney 8 Teams", e.TradersDream = "Traders Dream", e.Turkiye = "Turkiye", e.Tutorial = "Tutorial", e.TwoLakes = "Two Lakes", e.UnitedStates = "United States", e.VancouverIsland = "Vancouver Island", e.Venice = "Venice", e.Vietnam = "Vietnam", e.WarshipWarship = "Warship Warship", e.World = "World", e.World10000 = "World 10000", e.World4000 = "World 4000", e.WorldInverted = "World Inverted", e.YangtzeRiver = "Yangtze River", e.YellowSea = "Yellow Sea", e.Yenisei = "Yenisei", e.Zealandia = "Zealandia", e;
 		})({}), wn = [
 			{
 				id: "Achiran",
@@ -28866,7 +28406,7 @@ var L = `(function() {
 				id: "Brahmaputra",
 				type: "Brahmaputra",
 				translationKey: "map.brahmaputra",
-				categories: ["asia"],
+				categories: ["asia", "new"],
 				defaultNationCount: 37,
 				specialTeamCount: 2,
 				themes: ["asia"],
@@ -28931,7 +28471,11 @@ var L = `(function() {
 				id: "Canada",
 				type: "Canada",
 				translationKey: "map.canada",
-				categories: ["north_america", "countries"],
+				categories: [
+					"north_america",
+					"new",
+					"countries"
+				],
 				defaultNationCount: 38,
 				themes: ["north_america"],
 				customTribes: [
@@ -30363,7 +29907,7 @@ var L = `(function() {
 				id: "London",
 				type: "London",
 				translationKey: "map.london",
-				categories: ["europe"],
+				categories: ["new", "europe"],
 				defaultNationCount: 32,
 				themes: ["europe"],
 				author: "Tristar",
@@ -31060,7 +30604,11 @@ var L = `(function() {
 				id: "Mexico",
 				type: "Mexico",
 				translationKey: "map.mexico",
-				categories: ["north_america", "countries"],
+				categories: [
+					"north_america",
+					"new",
+					"countries"
+				],
 				defaultNationCount: 32,
 				themes: ["north_america"],
 				author: "crunchybbb",
@@ -31251,7 +30799,8 @@ var L = `(function() {
 					"europe",
 					"asia",
 					"africa",
-					"countries"
+					"countries",
+					"new"
 				],
 				defaultNationCount: 46,
 				themes: [
@@ -31276,7 +30825,7 @@ var L = `(function() {
 				id: "Paris",
 				type: "Paris",
 				translationKey: "map.paris",
-				categories: ["europe"],
+				categories: ["europe", "new"],
 				defaultNationCount: 60,
 				themes: ["europe"],
 				customTribes: [
@@ -31837,7 +31386,8 @@ var L = `(function() {
 				categories: [
 					"countries",
 					"europe",
-					"asia"
+					"asia",
+					"new"
 				],
 				defaultNationCount: 30,
 				themes: ["europe", "asia"],
@@ -31866,428 +31416,6 @@ var L = `(function() {
 				location: {
 					lat: 40.95,
 					lon: 20.9
-				}
-			},
-			{
-				id: "Ukraine",
-				type: "Ukraine",
-				translationKey: "map.ukraine",
-				categories: [
-					"europe",
-					"countries",
-					"new"
-				],
-				defaultNationCount: 33,
-				themes: ["ukraine"],
-				customTribes: [
-					{
-						name: "Znamianka",
-						coordinates: [1197, 672]
-					},
-					{
-						name: "Berehove",
-						coordinates: [83, 758]
-					},
-					{
-						name: "Yalta",
-						coordinates: [1364, 1356]
-					},
-					{
-						name: "Starobilsk",
-						coordinates: [1891, 577]
-					},
-					{
-						name: "Sarny",
-						coordinates: [524, 219]
-					},
-					{
-						name: "Bolhrad",
-						coordinates: [746, 1170]
-					},
-					{
-						name: "Shostka",
-						coordinates: [1287, 124]
-					},
-					{
-						name: "Berdiansk",
-						coordinates: [1655, 997]
-					},
-					{
-						name: "Mohyliv-Podilskyi",
-						coordinates: [657, 718]
-					},
-					{
-						name: "Irpin",
-						coordinates: [928, 363]
-					},
-					{
-						name: "Ochakiv",
-						coordinates: [1072, 1019]
-					},
-					{
-						name: "Okhtyrka",
-						coordinates: [1444, 399]
-					},
-					{
-						name: "Pavlohrad",
-						coordinates: [1553, 703]
-					},
-					{
-						name: "Chervonohrad",
-						coordinates: [261, 385]
-					},
-					{
-						name: "Uman",
-						coordinates: [925, 667]
-					},
-					{
-						name: "Kolomyia",
-						coordinates: [349, 705]
-					},
-					{
-						name: "Henichesk",
-						coordinates: [1435, 1091]
-					},
-					{
-						name: "Pryluky",
-						coordinates: [1166, 350]
-					},
-					{
-						name: "Makiivka",
-						coordinates: [1787, 783]
-					},
-					{
-						name: "Nikopol",
-						coordinates: [1389, 864]
-					},
-					{
-						name: "Kerch",
-						coordinates: [1620, 1221]
-					},
-					{
-						name: "Chuhuiv",
-						coordinates: [1643, 481]
-					},
-					{
-						name: "Berdychiv",
-						coordinates: [743, 471]
-					},
-					{
-						name: "Truskavets",
-						coordinates: [179, 585]
-					},
-					{
-						name: "Yuzhnoukrainsk",
-						coordinates: [1032, 822]
-					},
-					{
-						name: "Slavutych",
-						coordinates: [985, 186]
-					},
-					{
-						name: "Podilsk",
-						coordinates: [848, 834]
-					},
-					{
-						name: "Korosten",
-						coordinates: [749, 288]
-					},
-					{
-						name: "Nova Kakhovka",
-						coordinates: [1271, 1e3]
-					},
-					{
-						name: "Netishyn",
-						coordinates: [529, 395]
-					},
-					{
-						name: "Orikhiv",
-						coordinates: [1544, 863]
-					},
-					{
-						name: "Sviatohirsk",
-						coordinates: [1742, 619]
-					},
-					{
-						name: "Myrhorod",
-						coordinates: [1302, 460]
-					},
-					{
-						name: "Kovel",
-						coordinates: [312, 241]
-					},
-					{
-						name: "Bilhorod-Dnistrovskyi",
-						coordinates: [939, 1088]
-					},
-					{
-						name: "Yevpatoriia",
-						coordinates: [1275, 1246]
-					},
-					{
-						name: "Kamianets-Podilskyi",
-						coordinates: [521, 679]
-					},
-					{
-						name: "Kamianske",
-						coordinates: [1413, 706]
-					},
-					{
-						name: "Pereiaslav",
-						coordinates: [1061, 442]
-					},
-					{
-						name: "Feodosiia",
-						coordinates: [1498, 1272]
-					},
-					{
-						name: "Melitopol",
-						coordinates: [1499, 982]
-					},
-					{
-						name: "Bila Tserkva",
-						coordinates: [914, 487]
-					},
-					{
-						name: "Smila",
-						coordinates: [1110, 584]
-					},
-					{
-						name: "Rakhiv",
-						coordinates: [257, 783]
-					},
-					{
-						name: "Konotop",
-						coordinates: [1257, 236]
-					},
-					{
-						name: "Novohrad-Volynskyi",
-						coordinates: [635, 350]
-					},
-					{
-						name: "Alchevsk",
-						coordinates: [1879, 714]
-					},
-					{
-						name: "Kremenets",
-						coordinates: [425, 437]
-					},
-					{
-						name: "Skadovsk",
-						coordinates: [1224, 1099]
-					},
-					{
-						name: "Dobropillia",
-						coordinates: [1689, 714]
-					},
-					{
-						name: "Kremenchuk",
-						coordinates: [1282, 608]
-					},
-					{
-						name: "Kupiansk",
-						coordinates: [1747, 503]
-					},
-					{
-						name: "Chortkiv",
-						coordinates: [433, 622]
-					},
-					{
-						name: "Zhmerynka",
-						coordinates: [691, 619]
-					},
-					{
-						name: "Kalush",
-						coordinates: [274, 620]
-					},
-					{
-						name: "Nizhyn",
-						coordinates: [1110, 270]
-					},
-					{
-						name: "Vuhledar",
-						coordinates: [1706, 829]
-					},
-					{
-						name: "Haisyn",
-						coordinates: [833, 656]
-					},
-					{
-						name: "Bakhmut",
-						coordinates: [1790, 694]
-					},
-					{
-						name: "Dzhankoi",
-						coordinates: [1389, 1164]
-					},
-					{
-						name: "Varash",
-						coordinates: [440, 216]
-					},
-					{
-						name: "Volodymyr",
-						coordinates: [270, 306]
-					},
-					{
-						name: "Lozova",
-						coordinates: [1603, 644]
-					},
-					{
-						name: "Chornobyl",
-						coordinates: [925, 232]
-					},
-					{
-						name: "Boryspil",
-						coordinates: [1006, 392]
-					},
-					{
-						name: "Sievierodonetsk",
-						coordinates: [1845, 633]
-					},
-					{
-						name: "Khust",
-						coordinates: [155, 763]
-					},
-					{
-						name: "Lubny",
-						coordinates: [1235, 451]
-					},
-					{
-						name: "Sambir",
-						coordinates: [144, 536]
-					},
-					{
-						name: "Selydove",
-						coordinates: [1712, 768]
-					},
-					{
-						name: "Izmail",
-						coordinates: [771, 1222]
-					},
-					{
-						name: "Yaremche",
-						coordinates: [294, 716]
-					},
-					{
-						name: "Huliaipole",
-						coordinates: [1597, 848]
-					},
-					{
-						name: "Dubno",
-						coordinates: [428, 382]
-					},
-					{
-						name: "Pervomaisk",
-						coordinates: [993, 784]
-					},
-					{
-						name: "Tokmak",
-						coordinates: [1535, 915]
-					},
-					{
-						name: "Shepetivka",
-						coordinates: [574, 422]
-					},
-					{
-						name: "Fastiv",
-						coordinates: [891, 440]
-					},
-					{
-						name: "Oleksandriia",
-						coordinates: [1247, 680]
-					},
-					{
-						name: "Siversk",
-						coordinates: [1800, 647]
-					},
-					{
-						name: "Voznesensk",
-						coordinates: [1049, 864]
-					},
-					{
-						name: "Horlivka",
-						coordinates: [1790, 741]
-					},
-					{
-						name: "Izium",
-						coordinates: [1710, 592]
-					},
-					{
-						name: "Volnovakha",
-						coordinates: [1734, 858]
-					},
-					{
-						name: "Mukachevo",
-						coordinates: [91, 719]
-					},
-					{
-						name: "Alushta",
-						coordinates: [1391, 1328]
-					},
-					{
-						name: "Chornomorsk",
-						coordinates: [973, 1070]
-					},
-					{
-						name: "Stryi",
-						coordinates: [217, 581]
-					},
-					{
-						name: "Mykolaivka",
-						coordinates: [1766, 648]
-					},
-					{
-						name: "Brovary",
-						coordinates: [988, 364]
-					},
-					{
-						name: "Enerhodar",
-						coordinates: [1419, 877]
-					},
-					{
-						name: "Avdiivka",
-						coordinates: [1762, 770]
-					},
-					{
-						name: "Kurakhove",
-						coordinates: [1710, 795]
-					},
-					{
-						name: "Pokrovsk",
-						coordinates: [1699, 746]
-					},
-					{
-						name: "Yenakiieve",
-						coordinates: [1811, 754]
-					},
-					{
-						name: "Toretsk",
-						coordinates: [1773, 726]
-					},
-					{
-						name: "Soledar",
-						coordinates: [1798, 675]
-					},
-					{
-						name: "Chasiv Yar",
-						coordinates: [1770, 689]
-					},
-					{
-						name: "Lyman",
-						coordinates: [1770, 628]
-					},
-					{
-						name: "Kakhovka",
-						coordinates: [1288, 989]
-					},
-					{
-						name: "Drohobych",
-						coordinates: [179, 565]
-					}
-				],
-				location: {
-					lat: 49,
-					lon: 31
 				}
 			},
 			{
@@ -32379,7 +31507,7 @@ var L = `(function() {
 				id: "World10000",
 				type: "World 10000",
 				translationKey: "map.world10000",
-				categories: ["world"],
+				categories: ["new", "world"],
 				defaultNationCount: 377,
 				layers: [{
 					id: "w10kland",
@@ -32396,7 +31524,11 @@ var L = `(function() {
 				id: "World4000",
 				type: "World 4000",
 				translationKey: "map.world4000",
-				categories: ["featured", "world"],
+				categories: [
+					"new",
+					"featured",
+					"world"
+				],
 				defaultNationCount: 111,
 				featuredRank: 1,
 				forcedModifiers: ["isCrowded:50"],
@@ -32465,7 +31597,11 @@ var L = `(function() {
 				id: "Zealandia",
 				type: "Zealandia",
 				translationKey: "map.zealandia",
-				categories: ["oceania", "fictional"],
+				categories: [
+					"oceania",
+					"new",
+					"fictional"
+				],
 				defaultNationCount: 27,
 				themes: ["under_ocean", "oceania"],
 				location: {
@@ -32475,7 +31611,7 @@ var L = `(function() {
 			}
 		];
 	}));
-	function Le(e) {
+	function Ke(e) {
 		return {
 			types: e,
 			has(t) {
@@ -32498,19 +31634,19 @@ var L = `(function() {
 			return e.TransportShip = "Transport", e.Warship = "Warship", e.Shell = "Shell", e.SAMMissile = "SAMMissile", e.Port = "Port", e.AtomBomb = "Atom Bomb", e.HydrogenBomb = "Hydrogen Bomb", e.TradeShip = "Trade Ship", e.MissileSilo = "Missile Silo", e.DefensePost = "Defense Post", e.SAMLauncher = "SAM Launcher", e.City = "City", e.MIRV = "MIRV", e.MIRVWarhead = "MIRV Warhead", e.Train = "Train", e.Factory = "Factory", e;
 		})({}), ve = (function(e) {
 			return e.Engine = "Engine", e.TailEngine = "TailEngine", e.Carriage = "Carriage", e;
-		})({}), Tn = Le([
+		})({}), Tn = Ke([
 			"Atom Bomb",
 			"Hydrogen Bomb",
 			"MIRV",
 			"Warship"
-		]), In = Le([
+		]), In = Ke([
 			"City",
 			"Defense Post",
 			"SAM Launcher",
 			"Missile Silo",
 			"Port",
 			"Factory"
-		]), En = Le([...In.types, ...Tn.types]), [...En.types], Pn = class {
+		]), En = Ke([...In.types, ...Tn.types]), [...En.types], Pn = class {
 			constructor(e, t) {
 				this.x = e, this.y = t, this.strRepr = \`Cell[\${this.x},\${this.y}]\`;
 			}
@@ -32537,7 +31673,7 @@ var L = `(function() {
 		getMapData(e) {
 			const t = this.maps.get(e);
 			if (t) return t;
-			const n = Object.keys(xe).find((a) => xe[a] === e)?.toLowerCase();
+			const n = Object.keys(Le).find((a) => Le[a] === e)?.toLowerCase();
 			if (!n) throw new Error(\`Unknown map: \${e}\`);
 			const i = {
 				mapBin: () => this.loadBinaryFromUrl(this.url(n, "map.bin")),
@@ -33011,11 +32147,11 @@ var L = `(function() {
 			direction: "backward"
 		} : { direction: "backward" };
 		return ct(e)(t, n, a);
-	}, Dr = (e) => async (t, n, i) => ct(e)(t, n, i), Br = /^[cC][0-9a-z]{6,}$/, Rr = /^[0-9a-z]+$/, Ur = /^[0-9A-HJKMNP-TV-Za-hjkmnp-tv-z]{26}$/, Kr = /^[0-9a-vA-V]{20}$/, xr = /^[A-Za-z0-9]{27}$/, Lr = /^[a-zA-Z0-9_-]{21}$/, Fr = /^P(?:(\\d+W)|(?!.*W)(?=\\d|T\\d)(\\d+Y)?(\\d+M)?(\\d+D)?(T(?=\\d)(\\d+H)?(\\d+M)?(\\d+([.,]\\d+)?S)?)?)$/, Mr = /^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$/, Kn = (e) => e ? new RegExp(\`^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-\${e}[0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12})$\`) : /^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$/, Zr = /^(?!\\.)(?!.*\\.\\.)([A-Za-z0-9_'+\\-\\.]*)[A-Za-z0-9_+-]@([A-Za-z0-9][A-Za-z0-9\\-]*\\.)+[A-Za-z]{2,}$/, jr = "^(\\\\p{Extended_Pictographic}|\\\\p{Emoji_Component})+$";
+	}, Dr = (e) => async (t, n, i) => ct(e)(t, n, i), Br = /^[cC][0-9a-z]{6,}$/, Rr = /^[0-9a-z]+$/, Ur = /^[0-9A-HJKMNP-TV-Za-hjkmnp-tv-z]{26}$/, xr = /^[0-9a-vA-V]{20}$/, Lr = /^[A-Za-z0-9]{27}$/, Kr = /^[a-zA-Z0-9_-]{21}$/, Fr = /^P(?:(\\d+W)|(?!.*W)(?=\\d|T\\d)(\\d+Y)?(\\d+M)?(\\d+D)?(T(?=\\d)(\\d+H)?(\\d+M)?(\\d+([.,]\\d+)?S)?)?)$/, Mr = /^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$/, xn = (e) => e ? new RegExp(\`^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-\${e}[0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12})$\`) : /^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$/, Zr = /^(?!\\.)(?!.*\\.\\.)([A-Za-z0-9_'+\\-\\.]*)[A-Za-z0-9_+-]@([A-Za-z0-9][A-Za-z0-9\\-]*\\.)+[A-Za-z]{2,}$/, jr = "^(\\\\p{Extended_Pictographic}|\\\\p{Emoji_Component})+$";
 	function Wr() {
 		return new RegExp(jr, "u");
 	}
-	const Vr = /^(?:(?:25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9][0-9]|[0-9])\\.){3}(?:25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9][0-9]|[0-9])$/, Hr = /^(([0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,7}:|([0-9a-fA-F]{1,4}:){1,6}:[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,5}(:[0-9a-fA-F]{1,4}){1,2}|([0-9a-fA-F]{1,4}:){1,4}(:[0-9a-fA-F]{1,4}){1,3}|([0-9a-fA-F]{1,4}:){1,3}(:[0-9a-fA-F]{1,4}){1,4}|([0-9a-fA-F]{1,4}:){1,2}(:[0-9a-fA-F]{1,4}){1,5}|[0-9a-fA-F]{1,4}:((:[0-9a-fA-F]{1,4}){1,6})|:((:[0-9a-fA-F]{1,4}){1,7}|:))$/, qr = /^((25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9][0-9]|[0-9])\\.){3}(25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9][0-9]|[0-9])\\/([0-9]|[1-2][0-9]|3[0-2])$/, Jr = /^(([0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}|::|([0-9a-fA-F]{1,4})?::([0-9a-fA-F]{1,4}:?){0,6})\\/(12[0-8]|1[01][0-9]|[1-9]?[0-9])$/, Yr = /^$|^(?:[0-9a-zA-Z+/]{4})*(?:(?:[0-9a-zA-Z+/]{2}==)|(?:[0-9a-zA-Z+/]{3}=))?$/, xn = /^[A-Za-z0-9_-]*$/, Qr = /^https?$/, Xr = /^\\+[1-9]\\d{6,14}$/, Ln = "(?:(?:\\\\d\\\\d[2468][048]|\\\\d\\\\d[13579][26]|\\\\d\\\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\\\d|30)|(?:02)-(?:0[1-9]|1\\\\d|2[0-8])))", Gr = new RegExp(\`^\${Ln}$\`);
+	const Vr = /^(?:(?:25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9][0-9]|[0-9])\\.){3}(?:25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9][0-9]|[0-9])$/, Hr = /^(([0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,7}:|([0-9a-fA-F]{1,4}:){1,6}:[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,5}(:[0-9a-fA-F]{1,4}){1,2}|([0-9a-fA-F]{1,4}:){1,4}(:[0-9a-fA-F]{1,4}){1,3}|([0-9a-fA-F]{1,4}:){1,3}(:[0-9a-fA-F]{1,4}){1,4}|([0-9a-fA-F]{1,4}:){1,2}(:[0-9a-fA-F]{1,4}){1,5}|[0-9a-fA-F]{1,4}:((:[0-9a-fA-F]{1,4}){1,6})|:((:[0-9a-fA-F]{1,4}){1,7}|:))$/, qr = /^((25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9][0-9]|[0-9])\\.){3}(25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9][0-9]|[0-9])\\/([0-9]|[1-2][0-9]|3[0-2])$/, Jr = /^(([0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}|::|([0-9a-fA-F]{1,4})?::([0-9a-fA-F]{1,4}:?){0,6})\\/(12[0-8]|1[01][0-9]|[1-9]?[0-9])$/, Yr = /^$|^(?:[0-9a-zA-Z+/]{4})*(?:(?:[0-9a-zA-Z+/]{2}==)|(?:[0-9a-zA-Z+/]{3}=))?$/, Ln = /^[A-Za-z0-9_-]*$/, Qr = /^https?$/, Xr = /^\\+[1-9]\\d{6,14}$/, Kn = "(?:(?:\\\\d\\\\d[2468][048]|\\\\d\\\\d[13579][26]|\\\\d\\\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\\\d|30)|(?:02)-(?:0[1-9]|1\\\\d|2[0-8])))", Gr = new RegExp(\`^\${Kn}$\`);
 	function Fn(e) {
 		const t = "(?:[01]\\\\d|2[0-3]):[0-5]\\\\d";
 		return typeof e.precision == "number" ? e.precision === -1 ? \`\${t}\` : e.precision === 0 ? \`\${t}:[0-5]\\\\d\` : \`\${t}:[0-5]\\\\d\\\\.\\\\d{\${e.precision}}\` : \`\${t}(?::[0-5]\\\\d(?:\\\\.\\\\d+)?)?\`;
@@ -33027,7 +32163,7 @@ var L = `(function() {
 		const t = Fn({ precision: e.precision }), n = ["Z"];
 		e.local && n.push(""), e.offset && n.push("([+-](?:[01]\\\\d|2[0-3]):[0-5]\\\\d)");
 		const i = \`\${t}(?:\${n.join("|")})\`;
-		return new RegExp(\`^\${Ln}T(?:\${i})$\`);
+		return new RegExp(\`^\${Kn}T(?:\${i})$\`);
 	}
 	const no = (e) => {
 		const t = e ? \`[\\\\s\\\\S]{\${e?.minimum ?? 0},\${e?.maximum ?? ""}}\` : "[\\\\s\\\\S]*";
@@ -33432,8 +32568,8 @@ var L = `(function() {
 				v8: 8
 			}[t.version];
 			if (n === void 0) throw new Error(\`Invalid UUID version: "\${t.version}"\`);
-			t.pattern ?? (t.pattern = Kn(n));
-		} else t.pattern ?? (t.pattern = Kn());
+			t.pattern ?? (t.pattern = xn(n));
+		} else t.pattern ?? (t.pattern = xn());
 		D.init(e, t);
 	}), Io = m("$ZodEmail", (e, t) => {
 		t.pattern ?? (t.pattern = Zr), D.init(e, t);
@@ -33484,7 +32620,7 @@ var L = `(function() {
 	}), Po = m("$ZodEmoji", (e, t) => {
 		t.pattern ?? (t.pattern = Wr()), D.init(e, t);
 	}), Co = m("$ZodNanoID", (e, t) => {
-		t.pattern ?? (t.pattern = Lr), D.init(e, t);
+		t.pattern ?? (t.pattern = Kr), D.init(e, t);
 	}), Ao = m("$ZodCUID", (e, t) => {
 		t.pattern ?? (t.pattern = Br), D.init(e, t);
 	}), No = m("$ZodCUID2", (e, t) => {
@@ -33492,9 +32628,9 @@ var L = `(function() {
 	}), zo = m("$ZodULID", (e, t) => {
 		t.pattern ?? (t.pattern = Ur), D.init(e, t);
 	}), $o = m("$ZodXID", (e, t) => {
-		t.pattern ?? (t.pattern = Kr), D.init(e, t);
-	}), Oo = m("$ZodKSUID", (e, t) => {
 		t.pattern ?? (t.pattern = xr), D.init(e, t);
+	}), Oo = m("$ZodKSUID", (e, t) => {
+		t.pattern ?? (t.pattern = Lr), D.init(e, t);
 	}), Do = m("$ZodISODateTime", (e, t) => {
 		t.pattern ?? (t.pattern = to(t)), D.init(e, t);
 	}), Bo = m("$ZodISODate", (e, t) => {
@@ -33503,9 +32639,9 @@ var L = `(function() {
 		t.pattern ?? (t.pattern = eo(t)), D.init(e, t);
 	}), Uo = m("$ZodISODuration", (e, t) => {
 		t.pattern ?? (t.pattern = Fr), D.init(e, t);
-	}), Ko = m("$ZodIPv4", (e, t) => {
+	}), xo = m("$ZodIPv4", (e, t) => {
 		t.pattern ?? (t.pattern = Vr), D.init(e, t), e._zod.bag.format = "ipv4";
-	}), xo = m("$ZodIPv6", (e, t) => {
+	}), Lo = m("$ZodIPv6", (e, t) => {
 		t.pattern ?? (t.pattern = Hr), D.init(e, t), e._zod.bag.format = "ipv6", e._zod.check = (n) => {
 			try {
 				new URL(\`http://[\${n.value}]\`);
@@ -33519,7 +32655,7 @@ var L = `(function() {
 				});
 			}
 		};
-	}), Lo = m("$ZodCIDRv4", (e, t) => {
+	}), Ko = m("$ZodCIDRv4", (e, t) => {
 		t.pattern ?? (t.pattern = qr), D.init(e, t);
 	}), Fo = m("$ZodCIDRv6", (e, t) => {
 		t.pattern ?? (t.pattern = Jr), D.init(e, t), e._zod.check = (n) => {
@@ -33564,12 +32700,12 @@ var L = `(function() {
 		};
 	});
 	function Zo(e) {
-		if (!xn.test(e)) return !1;
+		if (!Ln.test(e)) return !1;
 		const t = e.replace(/[-_]/g, (n) => n === "-" ? "+" : "/");
 		return Vn(t.padEnd(Math.ceil(t.length / 4) * 4, "="));
 	}
 	const jo = m("$ZodBase64URL", (e, t) => {
-		t.pattern ?? (t.pattern = xn), D.init(e, t), e._zod.bag.contentEncoding = "base64url", e._zod.check = (n) => {
+		t.pattern ?? (t.pattern = Ln), D.init(e, t), e._zod.bag.contentEncoding = "base64url", e._zod.check = (n) => {
 			Zo(n.value) || n.issues.push({
 				code: "invalid_format",
 				format: "base64url",
@@ -33768,7 +32904,7 @@ var L = `(function() {
 					value: c[f],
 					issues: []
 				}, s);
-				T instanceof Promise ? l.push(T.then((x) => ut(x, o, f, c, d, y))) : ut(T, o, f, c, d, y);
+				T instanceof Promise ? l.push(T.then((L) => ut(L, o, f, c, d, y))) : ut(T, o, f, c, d, y);
 			}
 			return a ? Yn(l, c, o, s, n.value, e) : l.length ? Promise.all(l).then(() => o) : o;
 		};
@@ -33784,12 +32920,12 @@ var L = `(function() {
 				return \`shape[\${O}]._zod.run({ value: input[\${O}], issues: [] }, ctx)\`;
 			};
 			d.write("const input = payload.value;");
-			const x = Object.create(null);
-			let K = 0;
-			for (const H of y.keys) x[H] = \`key_\${K++}\`;
+			const L = Object.create(null);
+			let x = 0;
+			for (const H of y.keys) L[H] = \`key_\${x++}\`;
 			d.write("const newResult = {};");
 			for (const H of y.keys) {
-				const O = x[H], U = $n(H), fe = h[H], Te = fe?._zod?.optin === "optional", et = fe?._zod?.optout === "optional";
+				const O = L[H], U = $n(H), fe = h[H], Te = fe?._zod?.optin === "optional", et = fe?._zod?.optout === "optional";
 				d.write(\`const \${O} = \${T(H)};\`), Te && et ? d.write(\`
         if (\${O}.issues.length) {
           if (\${U} in input) {
@@ -34559,7 +33695,7 @@ var L = `(function() {
 			...w(t)
 		});
 	}
-	function Ks(e, t) {
+	function xs(e, t) {
 		return new e({
 			type: "string",
 			format: "base64",
@@ -34568,7 +33704,7 @@ var L = `(function() {
 			...w(t)
 		});
 	}
-	function xs(e, t) {
+	function Ls(e, t) {
 		return new e({
 			type: "string",
 			format: "base64url",
@@ -34577,7 +33713,7 @@ var L = `(function() {
 			...w(t)
 		});
 	}
-	function Ls(e, t) {
+	function Ks(e, t) {
 		return new e({
 			type: "string",
 			format: "e164",
@@ -35248,16 +34384,16 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 		B(a.innerType, t, i);
 		const r = t.seen.get(e);
 		r.ref = a.innerType;
-	}, Kc = (e, t, n, i) => {
+	}, xc = (e, t, n, i) => {
 		const a = e._zod.innerType;
 		B(a, t, i);
 		const r = t.seen.get(e);
 		r.ref = a;
-	}, xc = m("ZodISODateTime", (e, t) => {
+	}, Lc = m("ZodISODateTime", (e, t) => {
 		Do.init(e, t), R.init(e, t);
 	});
-	function Lc(e) {
-		return Fs(xc, e);
+	function Kc(e) {
+		return Fs(Lc, e);
 	}
 	const Fc = m("ZodISODate", (e, t) => {
 		Bo.init(e, t), R.init(e, t);
@@ -35360,7 +34496,7 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 			return Ni(this);
 		},
 		exactOptional() {
-			return xl(this);
+			return Ll(this);
 		},
 		nullable() {
 			return zi(this);
@@ -35472,7 +34608,7 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 			}
 		});
 	}), rl = m("ZodString", (e, t) => {
-		Bt.init(e, t), vi.init(e, t), e.email = (n) => e.check(ks(ol, n)), e.url = (n) => e.check(Es(cl, n)), e.jwt = (n) => e.check(mi(Si, n)), e.emoji = (n) => e.check(Ps(ll, n)), e.guid = (n) => e.check(di(ki, n)), e.uuid = (n) => e.check(hi(We, n)), e.uuidv4 = (n) => e.check(Ss(We, n)), e.uuidv6 = (n) => e.check(Ts(We, n)), e.uuidv7 = (n) => e.check(Is(We, n)), e.nanoid = (n) => e.check(Cs(ul, n)), e.guid = (n) => e.check(di(ki, n)), e.cuid = (n) => e.check(As(dl, n)), e.cuid2 = (n) => e.check(Ns(hl, n)), e.ulid = (n) => e.check(zs(ml, n)), e.base64 = (n) => e.check(Ks(_l, n)), e.base64url = (n) => e.check(xs(vl, n)), e.xid = (n) => e.check($s(fl, n)), e.ksuid = (n) => e.check(Os(pl, n)), e.ipv4 = (n) => e.check(Ds(gl, n)), e.ipv6 = (n) => e.check(Bs(yl, n)), e.cidrv4 = (n) => e.check(Rs(bl, n)), e.cidrv6 = (n) => e.check(Us(wl, n)), e.e164 = (n) => e.check(Ls(kl, n)), e.datetime = (n) => e.check(Lc(n)), e.date = (n) => e.check(Mc(n)), e.time = (n) => e.check(jc(n)), e.duration = (n) => e.check(Vc(n));
+		Bt.init(e, t), vi.init(e, t), e.email = (n) => e.check(ks(ol, n)), e.url = (n) => e.check(Es(cl, n)), e.jwt = (n) => e.check(mi(Si, n)), e.emoji = (n) => e.check(Ps(ll, n)), e.guid = (n) => e.check(di(ki, n)), e.uuid = (n) => e.check(hi(We, n)), e.uuidv4 = (n) => e.check(Ss(We, n)), e.uuidv6 = (n) => e.check(Ts(We, n)), e.uuidv7 = (n) => e.check(Is(We, n)), e.nanoid = (n) => e.check(Cs(ul, n)), e.guid = (n) => e.check(di(ki, n)), e.cuid = (n) => e.check(As(dl, n)), e.cuid2 = (n) => e.check(Ns(hl, n)), e.ulid = (n) => e.check(zs(ml, n)), e.base64 = (n) => e.check(xs(_l, n)), e.base64url = (n) => e.check(Ls(vl, n)), e.xid = (n) => e.check($s(fl, n)), e.ksuid = (n) => e.check(Os(pl, n)), e.ipv4 = (n) => e.check(Ds(gl, n)), e.ipv6 = (n) => e.check(Bs(yl, n)), e.cidrv4 = (n) => e.check(Rs(bl, n)), e.cidrv6 = (n) => e.check(Us(wl, n)), e.e164 = (n) => e.check(Ks(kl, n)), e.datetime = (n) => e.check(Kc(n)), e.date = (n) => e.check(Mc(n)), e.time = (n) => e.check(jc(n)), e.duration = (n) => e.check(Vc(n));
 	});
 	function g(e) {
 		return vs(rl, e);
@@ -35506,11 +34642,11 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 	}), pl = m("ZodKSUID", (e, t) => {
 		Oo.init(e, t), R.init(e, t);
 	}), gl = m("ZodIPv4", (e, t) => {
-		Ko.init(e, t), R.init(e, t);
-	}), yl = m("ZodIPv6", (e, t) => {
 		xo.init(e, t), R.init(e, t);
-	}), bl = m("ZodCIDRv4", (e, t) => {
+	}), yl = m("ZodIPv6", (e, t) => {
 		Lo.init(e, t), R.init(e, t);
+	}), bl = m("ZodCIDRv4", (e, t) => {
+		Ko.init(e, t), R.init(e, t);
 	}), wl = m("ZodCIDRv6", (e, t) => {
 		Fo.init(e, t), R.init(e, t);
 	}), _l = m("ZodBase64", (e, t) => {
@@ -35735,7 +34871,7 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 			rest: n
 		});
 	});
-	function Kt(e, t, n) {
+	function xt(e, t, n) {
 		const i = t instanceof A;
 		return new Bl({
 			type: "tuple",
@@ -35744,16 +34880,16 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 			...w(i ? n : t)
 		});
 	}
-	const xt = m("ZodRecord", (e, t) => {
+	const Lt = m("ZodRecord", (e, t) => {
 		rs.init(e, t), z.init(e, t), e._zod.processJSONSchema = (n, i, a) => Nc(e, n, i, a), e.keyType = t.keyType, e.valueType = t.valueType;
 	});
 	function J(e, t, n) {
-		return !t || !t._zod ? new xt({
+		return !t || !t._zod ? new Lt({
 			type: "record",
 			keyType: g(),
 			valueType: e,
 			...w(t)
-		}) : new xt({
+		}) : new Lt({
 			type: "record",
 			keyType: e,
 			valueType: t,
@@ -35762,21 +34898,21 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 	}
 	function He(e, t, n) {
 		const i = le(e);
-		return i._zod.values = void 0, new xt({
+		return i._zod.values = void 0, new Lt({
 			type: "record",
 			keyType: i,
 			valueType: t,
 			...w(n)
 		});
 	}
-	const Lt = m("ZodEnum", (e, t) => {
+	const Kt = m("ZodEnum", (e, t) => {
 		os.init(e, t), z.init(e, t), e._zod.processJSONSchema = (i, a, r) => vc(e, i, a, r), e.enum = t.entries, e.options = Object.values(t.entries);
 		const n = new Set(Object.keys(t.entries));
 		e.extract = (i, a) => {
 			const r = {};
 			for (const o of i) if (n.has(o)) r[o] = t.entries[o];
 			else throw new Error(\`Key \${o} not found in enum\`);
-			return new Lt({
+			return new Kt({
 				...t,
 				checks: [],
 				...w(a),
@@ -35786,7 +34922,7 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 			const r = { ...t.entries };
 			for (const o of i) if (n.has(o)) delete r[o];
 			else throw new Error(\`Key \${o} not found in enum\`);
-			return new Lt({
+			return new Kt({
 				...t,
 				checks: [],
 				...w(a),
@@ -35795,7 +34931,7 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 		};
 	});
 	function P(e, t) {
-		return new Lt({
+		return new Kt({
 			type: "enum",
 			entries: Array.isArray(e) ? Object.fromEntries(e.map((n) => [n, n])) : e,
 			...w(t)
@@ -35843,20 +34979,20 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 			innerType: e
 		});
 	}
-	const Kl = m("ZodExactOptional", (e, t) => {
+	const xl = m("ZodExactOptional", (e, t) => {
 		ls.init(e, t), z.init(e, t), e._zod.processJSONSchema = (n, i, a) => wi(e, n, i, a), e.unwrap = () => e._zod.def.innerType;
 	});
-	function xl(e) {
-		return new Kl({
+	function Ll(e) {
+		return new xl({
 			type: "optional",
 			innerType: e
 		});
 	}
-	const Ll = m("ZodNullable", (e, t) => {
+	const Kl = m("ZodNullable", (e, t) => {
 		us.init(e, t), z.init(e, t), e._zod.processJSONSchema = (n, i, a) => zc(e, n, i, a), e.unwrap = () => e._zod.def.innerType;
 	});
 	function zi(e) {
-		return new Ll({
+		return new Kl({
 			type: "nullable",
 			innerType: e
 		});
@@ -35927,7 +35063,7 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 		});
 	}
 	const Ql = m("ZodLazy", (e, t) => {
-		ys.init(e, t), z.init(e, t), e._zod.processJSONSchema = (n, i, a) => Kc(e, n, i, a), e.unwrap = () => e._zod.def.getter();
+		ys.init(e, t), z.init(e, t), e._zod.processJSONSchema = (n, i, a) => xc(e, n, i, a), e.unwrap = () => e._zod.def.getter();
 	});
 	function Ft(e) {
 		return new Ql({
@@ -35969,7 +35105,7 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 		d: gt()
 	});
 	const Oe = () => k().int(), Zt = () => Ri((e) => e instanceof Uint32Array, "expected tiles"), Ui = () => Ri((e) => e instanceof Uint8Array, "expected bytes"), qe = 4294967295, de = -1, yt = -2;
-	var tu = class Ke {
+	var tu = class xe {
 		constructor(t) {
 			if (this.dense = new Uint32Array(16), this.denseLen = 0, this.size_ = 0, this.table = new Int32Array(32).fill(de), this.tableUsed = 0, this.iterDepth = 0, t !== void 0) for (const n of t) this.add(n);
 		}
@@ -35982,7 +35118,7 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 		}
 		has(t) {
 			const n = this.table, i = this.dense, a = n.length - 1;
-			let r = Ke.hash(t) & a;
+			let r = xe.hash(t) & a;
 			for (;;) {
 				const o = n[r];
 				if (o === de) return !1;
@@ -35993,7 +35129,7 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 		add(t) {
 			{
 				const o = this.table, s = this.dense, c = o.length - 1;
-				let l = Ke.hash(t) & c, u = -1;
+				let l = xe.hash(t) & c, u = -1;
 				for (;;) {
 					const f = o[l];
 					if (f === de) {
@@ -36018,17 +35154,17 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 			const n = this.denseLen++;
 			this.dense[n] = t, this.size_++;
 			const i = this.table, a = i.length - 1;
-			let r = Ke.hash(t) & a;
+			let r = xe.hash(t) & a;
 			for (; i[r] >= 0;) r = r + 1 & a;
 			return i[r] === de && this.tableUsed++, i[r] = n, this;
 		}
 		delete(t) {
 			const n = this.table, i = this.dense, a = n.length - 1;
-			let r = Ke.hash(t) & a;
+			let r = xe.hash(t) & a;
 			for (;;) {
 				const o = n[r];
 				if (o === de) return !1;
-				if (o !== yt && i[o] === t) return n[r] = yt, i[o] = qe, this.size_--, this.iterDepth === 0 && this.denseLen >= 64 && this.denseLen - this.size_ > this.size_ * 2 && this.compact(Ki(this.size_)), !0;
+				if (o !== yt && i[o] === t) return n[r] = yt, i[o] = qe, this.size_--, this.iterDepth === 0 && this.denseLen >= 64 && this.denseLen - this.size_ > this.size_ * 2 && this.compact(xi(this.size_)), !0;
 				r = r + 1 & a;
 			}
 		}
@@ -36067,20 +35203,20 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 				const r = this.dense[a];
 				r !== qe && (n[i++] = r);
 			}
-			this.dense = n, this.denseLen = i, this.rehash(Math.max(Ki(i * 2), 32));
+			this.dense = n, this.denseLen = i, this.rehash(Math.max(xi(i * 2), 32));
 		}
 		rehash(t) {
 			const n = new Int32Array(t).fill(de), i = t - 1, a = this.dense;
 			for (let r = 0; r < this.denseLen; r++) {
 				if (a[r] === qe) continue;
-				let o = Ke.hash(a[r]) & i;
+				let o = xe.hash(a[r]) & i;
 				for (; n[o] !== de;) o = o + 1 & i;
 				n[o] = r;
 			}
 			this.table = n, this.tableUsed = this.size_;
 		}
 	};
-	function Ki(e) {
+	function xi(e) {
 		let t = 16;
 		for (; t < e;) t *= 2;
 		return t;
@@ -36476,10 +35612,10 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 			e.map16xBin
 		].flatMap((t) => t === void 0 ? [] : [t.buffer]);
 	}
-	var xi = nt((() => {
+	var Li = nt((() => {
 		q();
 	}));
-	xi(), q();
+	Li(), q();
 	(class gn {
 		static {
 			this.POW36_8 = 2821109907456;
@@ -36547,8 +35683,8 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 			return n;
 		}
 	});
-	const Li = new Float64Array(1), ou = new Uint32Array(Li.buffer);
-	Li[0] = 1;
+	const Ki = new Float64Array(1), ou = new Uint32Array(Ki.buffer);
+	Ki[0] = 1;
 	1 - (ou[1] === 1072693248 ? 1 : 0);
 	q(), q(), q();
 	function su(e) {
@@ -36960,13 +36096,13 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 		let i = 0;
 		for (const [c, l] of Object.entries(e)) {
 			const { inner: u, optionalLike: f, nullable: h, defaultValue: d } = Vi(l), y = he(u);
-			let T = "body", x, K = null;
+			let T = "body", L, x = null;
 			const V = Je.get(u);
-			V !== void 0 ? K = V : y.type === "boolean" ? T = "bool" : y.type === "literal" && y.values.length === 1 ? (T = "const", x = y.values[0]) : K = ee(u, \`\${t}.\${c}\`), n.push({
+			V !== void 0 ? x = V : y.type === "boolean" ? T = "bool" : y.type === "literal" && y.values.length === 1 ? (T = "const", L = y.values[0]) : x = ee(u, \`\${t}.\${c}\`), n.push({
 				key: c,
 				mode: T,
-				codec: K,
-				constValue: x,
+				codec: x,
+				constValue: L,
 				optionalLike: f,
 				nullable: h,
 				defaultValue: d,
@@ -37297,7 +36433,7 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 	E.AtomBomb, E.HydrogenBomb, E.MIRV, E.MIRVWarhead;
 	const Uu = P(["trade", "trans"]);
 	E.TradeShip, E.TransportShip;
-	const Ku = P([
+	const xu = P([
 		"city",
 		"defp",
 		"port",
@@ -37308,11 +36444,11 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 	]);
 	E.City, E.DefensePost, E.MissileSilo, E.Port, E.SAMLauncher, E.Warship, E.Factory;
 	const Be = Du(Mt((e) => e === null ? 0n : typeof e == "string" && /^-?\\d+$/.test(e) ? BigInt(e) : e, Pl()), {
-		enc: (e, t) => e.bigint(xu(t)),
+		enc: (e, t) => e.bigint(Lu(t)),
 		dec: (e) => e.bigint(),
 		minBytes: 1
 	});
-	function xu(e) {
+	function Lu(e) {
 		if (typeof e == "bigint") return e;
 		if (e == null) return 0n;
 		if (typeof e == "string" && /^-?\\d+$/.test(e)) return BigInt(e);
@@ -37333,13 +36469,13 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 		boats: He(Uu, me).optional(),
 		bombs: He(Ru, me).optional(),
 		gold: me.optional(),
-		units: He(Ku, me).optional(),
+		units: He(xu, me).optional(),
 		tiles: me.optional(),
 		alliances: me.optional(),
 		peakTroops: Be.optional(),
 		donations: me.optional(),
 		spawnTile: v().optional()
-	}).optional(), Lu = Mt((e) => {
+	}).optional(), Ku = Mt((e) => {
 		if (e !== null && typeof e == "object" && !Array.isArray(e) && "conquests" in e) {
 			const { conquests: t } = e;
 			if (t !== void 0 && !Array.isArray(t)) return {
@@ -37959,12 +37095,12 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 		}).optional()
 	}), ld = p({
 		id: g().min(1).max(64),
-		siblings: Ft(() => L).array().min(1).max(64)
+		siblings: Ft(() => K).array().min(1).max(64)
 	}).refine((e) => new Set(e.siblings).size === e.siblings.length, {
 		error: "pool siblings must be unique",
 		path: ["siblings"]
 	}), Se = p({
-		gameMap: P(xe),
+		gameMap: P(Le),
 		difficulty: P(vn),
 		donateGold: _(),
 		donateTroops: _(),
@@ -38131,7 +37267,7 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 			"🐔",
 			"🐀"
 		]
-	].flat().length - 1 }), da = /^[A-Za-z0-9]{8,10}$/, L = g().regex(da), M = Ou("clientId", { regex: da }), md = J(L, nn), fd = P(Object.entries(id).flatMap(([e, t]) => t.map((n) => \`\${e}.\${n.key}\`))), pd = p({
+	].flat().length - 1 }), da = /^[A-Za-z0-9]{8,10}$/, K = g().regex(da), M = Ou("clientId", { regex: da }), md = J(K, nn), fd = P(Object.entries(id).flatMap(([e, t]) => t.map((n) => \`\${e}.\${n.key}\`))), pd = p({
 		type: b("allianceExtension"),
 		recipient: M
 	}), gd = p({
@@ -38250,19 +37386,19 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 			config: Yi(ud)
 		}),
 		p({ type: b("toggle_game_start_timer") })
-	]), Ld = Bu(ha, { clientID: M }), vt = p({
+	]), Kd = Bu(ha, { clientID: M }), vt = p({
 		turnNumber: v(),
-		intents: Ld.array(),
+		intents: Kd.array(),
 		hash: G().nullable().optional()
 	}), ma = p({
-		clientID: L,
+		clientID: K,
 		username: ua,
 		clanTag: _t,
 		isLobbyCreator: _().optional(),
-		friends: F(L).optional(),
+		friends: F(K).optional(),
 		teamIndex: v().optional()
 	}), Fd = p({ name: sn.min(1).max(64) }).loose(), fa = p({
-		gameID: L,
+		gameID: K,
 		lobbyCreatedAt: v(),
 		visibleAt: v().optional(),
 		listed: _().optional(),
@@ -38270,9 +37406,9 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 		players: ma.array(),
 		tribes: F(Yi(Fd)).max(100).optional()
 	}), pa = Ve([
-		Kt([b("player"), L]).rest(L),
-		Kt([b("team"), sn]).rest(L),
-		Kt([b("nation"), sn]).rest(L)
+		xt([b("player"), K]).rest(K),
+		xt([b("team"), sn]).rest(K),
+		xt([b("nation"), sn]).rest(K)
 	]).optional();
 	q();
 	const Re = P([
@@ -38381,7 +37517,7 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 		turn: vt
 	}), ch = p({ type: b("ping") }), lh = p({
 		type: b("prestart"),
-		gameMap: P(xe),
+		gameMap: P(Le),
 		gameMapSize: P(pe)
 	}), Sa = g().min(1).max(64);
 	en("type", [
@@ -38392,7 +37528,7 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 			turns: vt.array(),
 			gameStartInfo: ka,
 			lobbyCreatedAt: v(),
-			myClientID: L.optional(),
+			myClientID: K.optional(),
 			groupToken: Sa.optional()
 		}),
 		ch,
@@ -38413,12 +37549,12 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 		p({
 			type: b("lobby_info"),
 			lobby: Zd,
-			myClientID: L,
+			myClientID: K,
 			groupToken: Sa.optional()
 		}),
 		p({
 			type: b("new_lobby"),
-			gameID: L
+			gameID: K
 		}),
 		p({
 			type: b("pong"),
@@ -38426,7 +37562,7 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 		}),
 		p({
 			type: b("redirect"),
-			gameID: L
+			gameID: K
 		})
 	]);
 	const yh = p({
@@ -38454,12 +37590,12 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 		"inappropriate_username",
 		"griefing"
 	]), vh = p({
-		reportedBy: L,
-		reported: L,
+		reportedBy: K,
+		reported: K,
 		reason: Ta
 	}), kh = p({
 		type: b("report"),
-		reported: L,
+		reported: K,
 		reason: Ta
 	}), Sh = p({
 		type: b("hash"),
@@ -38468,7 +37604,7 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 	}), Th = p({
 		type: b("log"),
 		severity: P(Vd),
-		log: L
+		log: K
 	}), Ih = p({
 		type: b("ping"),
 		sentAt: v()
@@ -38490,7 +37626,7 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 		p({
 			type: b("join"),
 			token: _a,
-			gameID: L,
+			gameID: K,
 			username: ad,
 			clanTag: _t,
 			cosmetics: Jd.optional(),
@@ -38502,7 +37638,7 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 		}),
 		p({
 			type: b("rejoin"),
-			gameID: L,
+			gameID: K,
 			lastTurn: v(),
 			token: _a,
 			gitCommit: g().max(64).optional()
@@ -38541,7 +37677,7 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 	}), Oh = Ia.extend({
 		username: g().max(1e3),
 		clanTag: _t.catch(null).default(null),
-		stats: Lu
+		stats: Ku
 	});
 	Ca.extend({ info: Ea.extend({
 		config: Se.extend({
@@ -38634,7 +37770,7 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 					if (o < 9) break;
 					const s = e[i + 2] >>> 0, c = e[i + 3] >>> 0, l = e[i + 4] >>> 0, u = e[i + 5] >>> 0, f = e[i + 6] >>> 0, h = e[i + 7] >>> 0, d = e[i + 8] >>> 0;
 					if (9 + h + d !== o) break;
-					const y = i + 9, T = y + h, x = T, K = x + d, V = e.slice(y, T), H = e.slice(x, K);
+					const y = i + 9, T = y + h, L = T, x = L + d, V = e.slice(y, T), H = e.slice(L, x);
 					n.push({
 						kind: "train",
 						engineUnitId: s,
@@ -38684,10 +37820,10 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 			case 3: return ve.Carriage;
 			default: return;
 		}
-	}, Kh = (e) => e & 4095, xh = (e) => {
+	}, xh = (e) => e & 4095, Lh = (e) => {
 		const t = e >> 12 & 4095;
 		return t === 4095 ? void 0 : t;
-	}, Lh = (e) => Rh(e >> 24 & 31), Fh = (e) => (e & 256) !== 0, Mh = (e) => (e & 512) !== 0, Zh = (e) => (e & 1024) !== 0, jh = (e) => (e & 2048) !== 0, Wh = (e) => (e & 4096) !== 0, Vh = (e) => {
+	}, Kh = (e) => Rh(e >> 24 & 31), Fh = (e) => (e & 256) !== 0, Mh = (e) => (e & 512) !== 0, Zh = (e) => (e & 1024) !== 0, jh = (e) => (e & 2048) !== 0, Wh = (e) => (e & 4096) !== 0, Vh = (e) => {
 		const t = e >> 13 & 3;
 		if (t !== 0) return t === 2;
 	}, Hh = (e) => Uh(e >> 15 & 3), qh = (e) => (e & 1 << 17) !== 0, Jh = (e) => {
@@ -38727,13 +37863,13 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 			return Number.isNaN(e) ? !1 : e;
 		}
 		get ownerID() {
-			return Kh(this.buffer[this.offset + 18]);
-		}
-		get lastOwnerID() {
 			return xh(this.buffer[this.offset + 18]);
 		}
-		get unitType() {
+		get lastOwnerID() {
 			return Lh(this.buffer[this.offset + 18]);
+		}
+		get unitType() {
+			return Kh(this.buffer[this.offset + 18]);
 		}
 		get level() {
 			return this.buffer[this.offset + 20];
@@ -39127,12 +38263,12 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 					for (let T = 0; T < a.speed && d + T < o.length; T++) l(o[d + T]);
 					a.cursor = Math.min(s, d + a.speed);
 					for (let T = a.carUnitIds.length - 1; T >= 0; --T) {
-						const x = a.carUnitIds[T];
-						if (x === 0) continue;
-						const K = t.tileOf(x);
-						if (K === void 0) continue;
+						const L = a.carUnitIds[T];
+						if (L === 0) continue;
+						const x = t.tileOf(L);
+						if (x === void 0) continue;
 						const V = u((T + 1) * a.spacing + 2);
-						V !== null && V !== K && (t.move(x, V), f = !0);
+						V !== null && V !== x && (t.move(L, V), f = !0);
 					}
 					const y = o[a.cursor];
 					y !== t.tileOf(i) && (t.move(i, y), f = !0);
@@ -39616,7 +38752,7 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 	function St(e, t, n, i) {
 		for (const a of t) a.write(e, n, null, i);
 	}
-	function Ka(e, t, n, i, a, r) {
+	function xa(e, t, n, i, a, r) {
 		e.writeVarUint(n >>> 0);
 		for (let o = 0; o < t.length; o++) n & 1 << o && t[o].write(e, i, a, r);
 	}
@@ -39633,7 +38769,7 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 			for (const [i, a] of t.players) e.writeU16(i), St(e, Qe, a, n);
 			e.writeU32(t.activeUnits.size);
 			for (const [i, a] of t.activeUnits) e.writeU32(i), St(e, Xe, a, n);
-			this.prevNames = new Map(t.names), La(e, [...t.names.values()]), Fa(e, t.misc), xa(e, [...this.terrainOverrides.keys()], this.terrain);
+			this.prevNames = new Map(t.names), Ka(e, [...t.names.values()]), Fa(e, t.misc), La(e, [...this.terrainOverrides.keys()], this.terrain);
 		}
 		encodeDelta(e, t, n) {
 			const i = this.applyTiles(t.tiles), a = this.applyTerrain(t.tiles), r = [], o = [];
@@ -39675,21 +38811,21 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 				for (const [d, y] of r) e.writeU16(d), St(e, Qe, y, n);
 				o.sort((d, y) => d[0] - y[0]), e.writeVarUint(o.length);
 				let h = 0;
-				for (const [d, y, T, x] of o) e.writeVarUint(d - h), h = d, Ka(e, Qe, x, y, T, n);
+				for (const [d, y, T, L] of o) e.writeVarUint(d - h), h = d, xa(e, Qe, L, y, T, n);
 			}
 			if (f & 4) {
 				e.writeU32(s.length);
 				for (const d of s) e.writeU32(d.id), St(e, Xe, d, n);
 				c.sort((d, y) => d[0].id - y[0].id), e.writeVarUint(c.length);
 				let h = 0;
-				for (const [d, y, T] of c) e.writeVarUint(d.id - h), h = d.id, Ka(e, Xe, T, d, y, n);
+				for (const [d, y, T] of c) e.writeVarUint(d.id - h), h = d.id, xa(e, Xe, T, d, y, n);
 			}
-			if (f & 8 && La(e, u), f & 16 && Fa(e, t.misc), f & 32) {
+			if (f & 8 && Ka(e, u), f & 16 && Fa(e, t.misc), f & 32) {
 				l.sort((d, y) => d - y), e.writeVarUint(l.length);
 				let h = 0;
 				for (const d of l) e.writeVarUint(d - h), h = d;
 			}
-			f & 64 && xa(e, a, this.terrain);
+			f & 64 && La(e, a, this.terrain);
 		}
 		applyTerrain(e) {
 			const t = [];
@@ -39730,13 +38866,13 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 			for (const s of r) e.writeVarUint(s - o), o = s;
 		}
 	}
-	function xa(e, t, n) {
+	function La(e, t, n) {
 		t.sort((a, r) => a - r), e.writeVarUint(t.length);
 		let i = 0;
 		for (const a of t) e.writeVarUint(a - i), i = a;
 		for (const a of t) e.writeU8(n[a]);
 	}
-	function La(e, t) {
+	function Ka(e, t) {
 		e.writeU16(t.length);
 		for (const n of t) e.writeShortString(n.playerID), e.writeU16(n.x), e.writeU16(n.y), e.writeU16(n.size);
 	}
@@ -39852,15 +38988,15 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 			t.onStart?.(u.base);
 			const h = t.appendEveryMs ?? 5e3;
 			let d = performance.now(), y = 0, T = 0;
-			const x = async () => {
-				const K = u.completeFrames(T);
-				t.onAppend === void 0 || K <= y || (y = K, await t.onAppend(await u.takeAppend(K), K), d = performance.now());
+			const L = async () => {
+				const x = u.completeFrames(T);
+				t.onAppend === void 0 || x <= y || (y = x, await t.onAppend(await u.takeAppend(x), x), d = performance.now());
 			};
-			for (let K = 0; K < n.length; K += Ma) {
-				const V = n.slice(K, K + Ma), { gameUpdates: H, error: O } = await f.run(V);
+			for (let x = 0; x < n.length; x += Ma) {
+				const V = n.slice(x, x + Ma), { gameUpdates: H, error: O } = await f.run(V);
 				for (let U = 0; U < V.length; U++) {
-					const fe = K + U, Te = V[U], et = H[U];
-					if (et === void 0) throw await x(), /* @__PURE__ */ new Error(\`simulation failed at turn \${Te.turnNumber}: \` + (O !== void 0 ? \`\${O.errMsg}
+					const fe = x + U, Te = V[U], et = H[U];
+					if (et === void 0) throw await L(), /* @__PURE__ */ new Error(\`simulation failed at turn \${Te.turnNumber}: \` + (O !== void 0 ? \`\${O.errMsg}
 \${O.stack ?? ""}\` : "tick did not execute"));
 					for (const tt of et.updates[re.Hash]) {
 						s = tt.tick;
@@ -39877,12 +39013,12 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 						turn: Te.turnNumber,
 						recorded: fn,
 						computed: null
-					}), o !== null) throw await x(), new Za(o);
+					}), o !== null) throw await L(), new Za(o);
 					(fn !== void 0 || fe >= r) && (T = fe + 1), t.onProgress && ((fe + 1) % $m === 0 || fe === n.length - 1) && t.onProgress({
 						tick: fe + 1,
 						totalTicks: n.length,
 						percent: Math.floor((fe + 1) / n.length * 100)
-					}), (y === 0 || performance.now() - d >= h) && await x();
+					}), (y === 0 || performance.now() - d >= h) && await L();
 				}
 			}
 		} finally {
@@ -39947,7 +39083,7 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 		}
 	}
 	var ja, Um = nt((() => {
-		xi(), ja = 6e4;
+		Li(), ja = 6e4;
 	}));
 	const Wa = self;
 	let Va = null;
@@ -39980,7 +39116,7 @@ Set the \\\`cycles\\\` parameter to \\\`"ref"\\\` to resolve cyclical schemas wi
 	});
 })();
 `, E = typeof self < "u" && self.Blob && new Blob(["(self.URL || self.webkitURL).revokeObjectURL(self.location.href);", L], { type: "text/javascript;charset=utf-8" });
-function K(n) {
+function q(n) {
   let e;
   try {
     if (e = E && (self.URL || self.webkitURL).createObjectURL(E), !e) throw "";
@@ -40052,7 +39188,7 @@ var F = (n) => n >= 0 ? n * 2 : -n * 2 - 1, A = (n) => n % 2 === 0 ? n / 2 : -(n
   write: (n, e) => n.writeU8(e ? 1 : 0),
   read: (n) => n.readU8() === 1,
   eq: y
-}, q = {
+}, G = {
   write: (n, e) => n.writeU8(e),
   read: (n) => n.readU8(),
   eq: y
@@ -40082,7 +39218,7 @@ var F = (n) => n >= 0 ? n * 2 : -n * 2 - 1, A = (n) => n % 2 === 0 ? n / 2 : -(n
     return t === 1 ? n.readF64() : (e ?? 0) + A(t / 2);
   },
   eq: y
-}, k = {
+}, S = {
   write: (n, e) => n.writeShortString(e),
   read: (n) => n.readShortString(),
   eq: y
@@ -40139,13 +39275,13 @@ var T = P({
   attackerID: w,
   targetID: w,
   troops: v,
-  id: k,
+  id: S,
   retreating: d
 }), N = {
   write(n, e, t, i) {
     n.writeU16(e.length);
     for (const a of e) {
-      const s = t === void 0 ? -1 : G(t, a);
+      const s = t === void 0 ? -1 : K(t, a);
       s === -1 ? (n.writeVarUint(0), T.write(n, a, void 0, i)) : (n.writeVarUint(s + 1), f.write(n, a.troops, t[s].troops, i));
     }
   },
@@ -40167,7 +39303,7 @@ var T = P({
   },
   eq: _(T).eq
 };
-function G(n, e) {
+function K(n, e) {
   for (let t = 0; t < n.length; t++) {
     const i = n[t];
     if (i.id === e.id && i.attackerID === e.attackerID && i.targetID === e.targetID && i.retreating === e.retreating) return t;
@@ -40176,12 +39312,12 @@ function G(n, e) {
 }
 var V = P({
   id: g,
-  other: k,
+  other: S,
   createdAt: g,
   expiresAt: g,
   hasExtensionRequest: d
 }), R = 65535, H = P({
-  message: k,
+  message: S,
   senderID: w,
   recipientID: {
     write: (n, e) => n.writeU16(e === "AllPlayers" ? R : e),
@@ -40235,10 +39371,10 @@ var Y = {
     e.pos = t ? i + A(Math.floor(a / 2)) : a, e.lastPos = t && a % 2 === 0 ? i : e.pos + n.readVarInt();
   },
   changed: (n, e) => n.pos !== e.pos || n.lastPos !== e.lastPos
-}, S = [
+}, k = [
   r(["isAlive", d]),
   r(["isDisconnected", d]),
-  r(["killedBy", m(k, null)]),
+  r(["killedBy", m(S, null)]),
   r(["deathPosition", m(g, null)]),
   r(["tilesOwned", f]),
   r(["gold", f]),
@@ -40261,10 +39397,10 @@ var Y = {
   r(["targets", _(w)]),
   r(["outgoingAttacks", N]),
   r(["incomingAttacks", N]),
-  r(["outgoingAllianceRequests", _(k)]),
+  r(["outgoingAllianceRequests", _(S)]),
   r(["alliances", _(V)]),
   r(["outgoingEmojis", _(H)])
-], I = [
+], C = [
   r(["unitType", Z]),
   r(["ownerID", w]),
   r(["lastOwnerID", m(w, null)]),
@@ -40284,11 +39420,11 @@ var Y = {
   r(["level", w]),
   r(["veterancy", f]),
   r(["hasTrainStation", d]),
-  r(["trainType", m(q, null)], ["loaded", m(d, null)]),
+  r(["trainType", m(G, null)], ["loaded", m(d, null)]),
   r(["samUpgradeStartTick", m(v, null)], ["samUpgradeStartRange", m(v, null)], ["samUpgradeTargetLevel", m(v, null)], ["samUpgradeDuration", m(v, null)])
 ];
-for (const [n, e] of [["PLAYER_FIELDS", S], ["UNIT_FIELDS", I]]) if (e.length > 32) throw new Error(`${n} has ${e.length} fields; the mask is u32`);
-function C(n, e, t, i) {
+for (const [n, e] of [["PLAYER_FIELDS", k], ["UNIT_FIELDS", C]]) if (e.length > 32) throw new Error(`${n} has ${e.length} fields; the mask is u32`);
+function I(n, e, t, i) {
   for (const a of e) a.read(n, t, !1, i);
   return t;
 }
@@ -40426,7 +39562,7 @@ var J = [
     const a = t.readU16();
     for (let l = 0; l < a; l++) {
       const u = t.readU16(), h = { smallID: u };
-      this.players.set(u, C(t, S, h, this.ctx));
+      this.players.set(u, I(t, k, h, this.ctx));
     }
     this.units = /* @__PURE__ */ new Map();
     const s = t.readU32();
@@ -40453,7 +39589,7 @@ var J = [
       const l = t.readU16();
       for (let c = 0; c < l; c++) {
         const p = t.readU16(), b = { smallID: p };
-        this.players.set(p, C(t, S, b, this.ctx));
+        this.players.set(p, I(t, k, b, this.ctx));
       }
       const u = t.readVarUint();
       let h = 0;
@@ -40461,7 +39597,7 @@ var J = [
         h += t.readVarUint();
         const p = this.players.get(h);
         if (p === void 0) throw new Error(`delta for unknown player ${h} at ${this.tick}`);
-        this.players.set(h, B(t, S, { ...p }, this.ctx));
+        this.players.set(h, B(t, k, { ...p }, this.ctx));
       }
     }
     if (a & 4) {
@@ -40473,7 +39609,7 @@ var J = [
         h += t.readVarUint();
         const p = this.units.get(h);
         if (p === void 0) throw new Error(`delta for unknown unit ${h} at ${this.tick}`);
-        const b = B(t, I, { ...p }, this.ctx);
+        const b = B(t, C, { ...p }, this.ctx);
         b.constructionStartTick = this.constructionStartOf(b), this.units.set(h, b);
       }
     }
@@ -40501,7 +39637,7 @@ var J = [
   }
   readNewUnit(n) {
     const e = n.readU32(), t = { id: e };
-    C(n, I, t, this.ctx), t.constructionStartTick = this.constructionStartOf(t), this.units.set(e, t);
+    I(n, C, t, this.ctx), t.constructionStartTick = this.constructionStartOf(t), this.units.set(e, t);
   }
   constructionStartOf(n) {
     return n.underConstruction ? this.constructionStart.get(n.id) ?? null : null;
@@ -40555,7 +39691,7 @@ function an(n) {
 function sn() {
   return {
     engine: new W(),
-    processor: new K()
+    processor: new q()
   };
 }
 export {

@@ -62,6 +62,7 @@ assert.match(releaseWorkflow, /A version bump must be reviewed and merged throug
 assert.match(releaseWorkflow, /Package version .* is older than the latest release/,
   "A package version older than the latest tag must fail closed.");
 assert.match(releaseWorkflow, /No repository files are modified or pushed/,
+  "Release selection must not mutate repository files.");
 
 assert.match(branchCleanupWorkflow, /types: \[closed\]/);
 assert.match(branchCleanupWorkflow, /pr\.merged/);
@@ -73,7 +74,6 @@ assert.match(branchCleanupWorkflow, /integration\/replay-coaching-ux/);
 assert.match(branchCleanupWorkflow, /integration\/engine-modernization/);
 assert.doesNotMatch(branchCleanupWorkflow, /archive\/branch-history-consolidation/,
   "The preserved branch-history archive must never be deleted by automatic cleanup.");
-  "Release selection must not mutate repository files.");
 
 assert.match(updater, /child\.once\('spawn', resolve\)/);
 assert.match(updater, /child\.once\('error', reject\)/);

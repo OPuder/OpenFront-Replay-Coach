@@ -49,6 +49,7 @@ jobs:
 
       - name: Prepare every exact replay engine revision
         if: steps.discovery.outputs.changed == 'true'
+        timeout-minutes: 40
         run: npm run prepare:engines
 
       - name: Install Coach dependencies

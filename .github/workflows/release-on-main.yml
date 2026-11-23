@@ -12,7 +12,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: openfront-replay-coach-release-main-v2
@@ -33,14 +33,14 @@ jobs:
         with:
           ref: main
           fetch-depth: 0
-          persist-credentials: true
+          persist-credentials: false
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
           node-version: "24.15.0"
 
-      - name: Choose a unique version for this main commit
+      - name: Require a reviewed package version newer than the latest release
         id: version
         shell: bash
         env:
@@ -48,7 +48,7 @@ jobs:
         run: |
           set -Eeuo pipefail
           git fetch origin main --tags --force
-          git checkout -B release-main origin/main
+          git checkout --detach origin/main
 
           if ! git merge-base --is-ancestor "$EVENT_SHA" HEAD; then
             echo "skip=true" >> "$GITHUB_OUTPUT"
@@ -56,58 +56,49 @@ jobs:
             exit 0
           fi
 
-          latest_tag="$(git tag --list 'v[0-9]*' | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | sort -V | tail -n 1 || true)"
+          latest_tag="$(git tag --list 'v[0-9]*' | grep -E '^v[0-9]+\\.[0-9]+\\.[0-9]+$' | sort -V | tail -n 1 || true)"
+          base_version="$(node -p "require('./package.json').version")"
+          lock_version="$(node -p "require('./package-lock.json').version")"
+          if [[ ! "$base_version" =~ ^[0-9]+\\.[0-9]+\\.[0-9]+$ ]]; then
+            echo "::error::package.json must contain a stable x.y.z version (found: $base_version)"
+            exit 1
+          fi
+          if [[ "$lock_version" != "$base_version" ]]; then
+            echo "::error::package-lock.json version ($lock_version) does not match package.json ($base_version)."
+            exit 1
+          fi
+
           if [[ -n "$latest_tag" ]]; then
+            latest_version="${latest_tag#v}"
             latest_tag_sha="$(git rev-list -n 1 "$latest_tag")"
             if git merge-base --is-ancestor "$EVENT_SHA" "$latest_tag_sha"; then
               echo "skip=true" >> "$GITHUB_OUTPUT"
               echo "::notice::This commit is already included in $latest_tag. Skipping duplicate release."
               exit 0
             fi
-          fi
-
-          base_version="$(node -p "require('./package.json').version")"
-          if [[ ! "$base_version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-            echo "::error::package.json must contain a stable x.y.z version (found: $base_version)"
-            exit 1
-          fi
-
-          if [[ -z "$latest_tag" ]]; then
-            next_version="$base_version"
-          else
-            latest_version="${latest_tag#v}"
             if [[ "$base_version" == "$latest_version" ]]; then
-              IFS='.' read -r major minor patch <<< "$latest_version"
-              next_version="$major.$minor.$((patch + 1))"
-            elif [[ "$(printf '%s\n%s\n' "$latest_version" "$base_version" | sort -V | head -n 1)" == "$latest_version" ]]; then
-              next_version="$base_version"
-            else
-              IFS='.' read -r major minor patch <<< "$latest_version"
-              next_version="$major.$minor.$((patch + 1))"
+              echo "skip=true" >> "$GITHUB_OUTPUT"
+              echo "::notice::Package version $base_version is already released. A version bump must be reviewed and merged through a pull request before another release."
+              exit 0
+            fi
+            if [[ "$(printf '%s\\n%s\\n' "$latest_version" "$base_version" | sort -V | head -n 1)" != "$latest_version" ]]; then
+              echo "::error::Package version $base_version is older than the latest release $latest_tag."
+              exit 1
             fi
           fi
 
-          while git rev-parse -q --verify "refs/tags/v$next_version" >/dev/null; do
-            IFS='.' read -r major minor patch <<< "$next_version"
-            next_version="$major.$minor.$((patch + 1))"
-          done
-
-          node scripts/set-release-version.mjs "$next_version"
-
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          if ! git diff --quiet; then
-            git add package.json package-lock.json START_HERE.txt src/renderer/main.tsx
-            git commit -m "chore(release): prepare v$next_version [skip ci]"
-            git push origin HEAD:main
+          tag="v$base_version"
+          if git rev-parse -q --verify "refs/tags/$tag" >/dev/null; then
+            echo "::error::Release tag $tag already exists but is not the latest release tag."
+            exit 1
           fi
 
           release_sha="$(git rev-parse HEAD)"
           echo "skip=false" >> "$GITHUB_OUTPUT"
-          echo "version=$next_version" >> "$GITHUB_OUTPUT"
-          echo "tag=v$next_version" >> "$GITHUB_OUTPUT"
+          echo "version=$base_version" >> "$GITHUB_OUTPUT"
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
           echo "release_sha=$release_sha" >> "$GITHUB_OUTPUT"
-          echo "Selected v$next_version at $release_sha"
+          echo "Selected reviewed version $tag at $release_sha. No repository files are modified or pushed."
 
   validate-replay:
     name: Validate real replay fixtures and mixed-engine analysis

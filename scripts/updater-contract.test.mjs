@@ -140,7 +140,7 @@ assert.match(updateValidationWorkflow, /Test genuine published-APK in-place upgr
 assert.match(updateValidationWorkflow, /Build separate non-debuggable production APK without test inspector/);
 assert.match(updateValidationWorkflow, /Download uploaded APK for byte-for-byte verification/);
 assert.match(updateValidationWorkflow, /Verify uploaded production APK hash and signature/);
-assert.match(updateValidationWorkflow, /Verify permanent Android release signing key and continuity[\\s\\S]*?if: always\\(\\) && steps\\.release_candidate\\.outcome == 'success' && \\(github\\.event_name != 'pull_request' \\|\\| github\\.event\\.pull_request\\.head\\.repo\\.full_name == github\\.repository\\)/,
+assert.match(updateValidationWorkflow, /Verify permanent Android release signing key and continuity[\s\S]*?if: always\(\) && steps\.release_candidate\.outcome == 'success' && \(github\.event_name != 'pull_request' \|\| github\.event\.pull_request\.head\.repo\.full_name == github\.repository\)/,
   "Signing continuity must run only after a candidate APK has been built successfully.");
 assert.match(androidSigningGate, /ANDROID_UPGRADE_TEST_BUILD/);
 assert.match(androidSigningGate, /assembleDebug/);

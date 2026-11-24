@@ -35,9 +35,6 @@ jobs:
             if (pr.merged && pr.number === 166) {
               branches.push("fix/engine-preparation-workflow-timeouts");
             }
-            if (!pr.merged && pr.number === 165 && pr.head.ref === "integration/engine-modernization") {
-              branches.push(pr.head.ref);
-            }
 
             for (const branch of new Set(branches)) {
               try {

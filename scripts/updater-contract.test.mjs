@@ -67,7 +67,8 @@ assert.match(releaseWorkflow, /No repository files are modified or pushed/,
 assert.match(branchCleanupWorkflow, /types: \[closed\]/);
 assert.match(branchCleanupWorkflow, /pr\.merged/);
 assert.match(branchCleanupWorkflow, /pr\.number === 166/);
-assert.match(branchCleanupWorkflow, /pr\.number === 165/);
+assert.doesNotMatch(branchCleanupWorkflow, /pr\.number === 165/,
+  "An unmerged modernization branch must be preserved until its remaining changes are reviewed and transferred.");
 assert.match(branchCleanupWorkflow, /fix\/current-workflow-contracts/);
 assert.match(branchCleanupWorkflow, /fix\/engine-preparation-workflow-timeouts/);
 assert.match(branchCleanupWorkflow, /integration\/replay-coaching-ux/);

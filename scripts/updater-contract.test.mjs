@@ -8,6 +8,7 @@ const installer = read("scripts/install-android-updater-plugin.mjs");
 const renderer = read("src/renderer/UpdateCenter.tsx");
 const versionScript = read("scripts/set-release-version.mjs");
 const releaseWorkflow = read(".github/workflows/release-on-main.yml");
+const branchCleanupWorkflow = read(".github/workflows/cleanup-merged-branches.yml");
 assert.match(updater, /releases\/latest/);
 assert.match(updater, /createHash\('sha256'\)/);
 assert.match(updater, /autoUpdateOnStartup/);
@@ -28,6 +29,10 @@ assert.match(android, /MessageDigest\.getInstance\("SHA-256"\)/);
 assert.match(android, /releases\/download/);
 assert.match(installer, /registerPlugin\(ApkUpdaterPlugin\.class\)/);
 assert.match(installer, /updater-fileprovider/);
+assert.match(installer, /ApplicationInfo\.FLAG_DEBUGGABLE/);
+assert.match(installer, /WebView\.setWebContentsDebuggingEnabled\(true\)/);
+assert.match(installer, /if \(\(getApplicationInfo\(\)\.flags & android\.content\.pm\.ApplicationInfo\.FLAG_DEBUGGABLE\) != 0\)/,
+  "WebView storage inspection must be enabled only for debuggable Android test builds.");
 assert.match(renderer, /installDesktopUpdate/);
 assert.match(renderer, /installAndroidUpdate/);
 assert.doesNotMatch(renderer, /androidAutoUpdateAttempted/);
@@ -37,10 +42,42 @@ assert.match(renderer, /keine Android-APK veröffentlicht/);
 assert.doesNotMatch(renderer, /Web\/PWA|serviceWorker|isBrowserPwa/);
 assert.doesNotMatch(releaseWorkflow, /assembleDebug/);
 assert.match(releaseWorkflow, /push:\s*branches: \[main\]/);
+assert.match(releaseWorkflow, /paths-ignore:[\s\S]*scripts\/prepare-engines\.mjs[\s\S]*scripts\/install-android-updater-plugin\.mjs[\s\S]*scripts\/updater-contract\.test\.mjs/,
+  "Tooling-only integration commits must not publish an application release.");
+
 assert.match(releaseWorkflow, /permanent Android release signing key is required/);
 assert.ok(releaseWorkflow.includes("grep -Eo '[[:xdigit:]]{64}'"), "Release workflow must extract SHA-256 certificate fingerprints robustly.");
 assert.match(releaseWorkflow, /Android signing certificate changed/);
 assert.match(releaseWorkflow, /needs\.build-android\.outputs\.signing_mode == 'permanent release key'/);
+assert.match(releaseWorkflow, /^permissions:\s*\n\s+contents: read/m,
+  "Release preparation must be read-only; only the publishing job may write release assets.");
+assert.doesNotMatch(releaseWorkflow, /git push origin HEAD:main|git push origin main/,
+  "Release automation must never push commits directly to main.");
+assert.doesNotMatch(releaseWorkflow, /git commit -m "chore\(release\): prepare/,
+  "Release automation must not create unreviewed version commits.");
+assert.match(releaseWorkflow, /package-lock\.json version/,
+  "The release gate must verify package.json and package-lock.json versions match.");
+assert.match(releaseWorkflow, /A version bump must be reviewed and merged through a pull request/,
+  "A new release must require a reviewed version bump.");
+assert.match(releaseWorkflow, /Package version .* is older than the latest release/,
+  "A package version older than the latest tag must fail closed.");
+assert.match(releaseWorkflow, /No repository files are modified or pushed/,
+  "Release selection must not mutate repository files.");
+
+assert.match(branchCleanupWorkflow, /types: \[closed\]/);
+assert.match(branchCleanupWorkflow, /pr\.merged/);
+assert.match(branchCleanupWorkflow, /if \(pr\.merged && allowlisted\.has\(pr\.head\.ref\)\)/,
+  "Branch deletion must require a merged PR; closing PR #165 unmerged must not delete its source branch.");
+assert.match(branchCleanupWorkflow, /pr\.number === 166/);
+assert.doesNotMatch(branchCleanupWorkflow, /pr\.number === 165/,
+  "An unmerged modernization branch must be preserved until its remaining changes are reviewed and transferred.");
+assert.match(branchCleanupWorkflow, /fix\/current-workflow-contracts/);
+assert.match(branchCleanupWorkflow, /fix\/engine-preparation-workflow-timeouts/);
+assert.match(branchCleanupWorkflow, /integration\/replay-coaching-ux/);
+assert.match(branchCleanupWorkflow, /integration\/engine-modernization/);
+assert.doesNotMatch(branchCleanupWorkflow, /archive\/branch-history-consolidation/,
+  "The preserved branch-history archive must never be deleted by automatic cleanup.");
+
 assert.match(updater, /child\.once\('spawn', resolve\)/);
 assert.match(updater, /child\.once\('error', reject\)/);
 assert.match(updater, /Add-Content -LiteralPath \$Log/);
@@ -105,7 +142,8 @@ assert.match(updateValidationWorkflow, /Test genuine published-APK in-place upgr
 assert.match(updateValidationWorkflow, /Build separate non-debuggable production APK without test inspector/);
 assert.match(updateValidationWorkflow, /Download uploaded APK for byte-for-byte verification/);
 assert.match(updateValidationWorkflow, /Verify uploaded production APK hash and signature/);
-assert.match(updateValidationWorkflow, /Verify permanent Android release signing key and continuity[\s\S]*?if: always\(\) && \(github\.event_name != 'pull_request' \|\| github\.event\.pull_request\.head\.repo\.full_name == github\.repository\)/);
+assert.match(updateValidationWorkflow, /Verify permanent Android release signing key and continuity[\s\S]*?if: always\(\) && steps\.release_candidate\.outcome == 'success' && \(github\.event_name != 'pull_request' \|\| github\.event\.pull_request\.head\.repo\.full_name == github\.repository\)/,
+  "Signing continuity must run only after a candidate APK has been built successfully.");
 assert.match(androidSigningGate, /ANDROID_UPGRADE_TEST_BUILD/);
 assert.match(androidSigningGate, /assembleDebug/);
 assert.match(androidSigningGate, /assembleRelease/);
@@ -145,6 +183,14 @@ assert.match(androidBaselineUiSeed, /OpenFront-Profillink/);
 assert.match(androidBaselineUiSeed, /OCR text:/);
 assert.match(androidBaselineUiSeed, /search_query=.*tr '\[:upper:\]' '\[:lower:\]'/);
 assert.match(androidBaselineUiSeed, /ADB input did not populate the library search field/);
+assert.match(androidBaselineUiSeed, /navigate_to_library/);
+assert.match(androidBaselineUiSeed, /Using verified bottom-navigation fallback/);
+assert.match(androidBaselineUiSeed, /wait_for_library_page\(\)\s*\{/,
+  "Library page verification helper must be declared before it is called.");
+assert.match(androidBaselineUiSeed, /Retrying the visible Partien navigation label/);
+assert.match(androidBaselineUiSeed, /wait_for_library_page 12/);
+assert.match(androidBaselineUiSeed, /screenshot OCR/);
+
 assert.match(androidBaselineUiSeed, /grep -Fi "\$game_id" "\$ui_xml"/);
 assert.match(androidReleaseUpgrade, /snapshot-android-web-storage\.sh after/);
 assert.match(androidReleaseUpgrade, /after-negative-test-storage\.json/);
@@ -223,17 +269,36 @@ assert.ok(androidValidationWorkflow.includes("bash -n scripts/test-android-relea
 assert.ok(androidValidationWorkflow.includes("bash -n scripts/android-emulator-diagnostics.sh"));
 
 
+// Validate the engine-object cache in the workflows that actually exist on main.
+// The CI workflow deliberately shares one cache between its core and live-replay jobs;
+// release and update validation may scope caches by job. Do not hard-code retired
+// workflow filenames or require one cache-key strategy for every workflow.
+// Every engine-preparation workflow shares the same exact-object cache key.
+// This avoids repeated historical submodule fetches across jobs and workflows.
 const engineCacheWorkflows = [
-  read(".github/workflows/build-windows.yml"),
-  read(".github/workflows/replay-compatibility.yml"),
-  read(".github/workflows/validate-engine.yml"),
+  read(".github/workflows/ci.yml"),
+  read(".github/workflows/discover-openfront-engine.yml"),
   read(".github/workflows/update-validation.yml"),
   read(".github/workflows/release-on-main.yml"),
 ];
 for (const workflow of engineCacheWorkflows) {
-  assert.match(workflow, /Restore exact historical engine Git objects[\s\S]*?actions\/cache@v4[\s\S]*?path: \.git\/modules[\s\S]*?github\.job/);
+  assert.match(workflow, /actions\/cache@v4[\s\S]*?path: \.git\/modules[\s\S]*?key: openfront-engine-git-\$\{\{ runner\.os \}\}-\$\{\{ hashFiles\('\.gitmodules', 'engine-build\/engines\.json'\) \}\}/,
+    "Engine cache must be keyed by runner OS, .gitmodules and the exact engine catalog.");
+  assert.doesNotMatch(workflow, /openfront-engine-git-\$\{\{ runner\.os \}\}-\$\{\{ github\.job \}\}/,
+    "Engine Git objects must be shared across jobs.");
 }
 
+const enginePreparation = read("scripts/prepare-engines.mjs");
+assert.match(enginePreparation, /http\.lowSpeedLimit=0/);
+assert.match(enginePreparation, /http\.lowSpeedTime=0/);
+assert.match(enginePreparation, /http\.version=HTTP\/1\.1/);
+assert.match(enginePreparation, /attempt <= 4/);
+assert.match(enginePreparation, /12 \* 60_000/);
+assert.match(enginePreparation, /Initialize exact OpenFront engine submodules/);
+assert.match(androidValidationWorkflow, /-gpu software/,
+  "Android emulator validation must use stable software rendering instead of flaky GPU color buffers.");
+assert.match(read("scripts/seed-android-baseline-ui.sh"), /reset to the top first/i);
+assert.match(read("scripts/seed-android-baseline-ui.sh"), /scanning 18 viewports/);
 const androidEmulatorDiagnostics = read("scripts/android-emulator-diagnostics.sh");
 assert.match(androidEmulatorDiagnostics, /adb kill-server/);
 assert.match(androidEmulatorDiagnostics, /adb start-server/);
@@ -276,8 +341,8 @@ function validateAndroidKvmWorkflow(workflow) {
   ]) assert.match(preflight, pattern, message);
   const emulator = workflow.slice(emulatorStart);
   assert.match(emulator, /arch: x86_64/, "Emulator architecture must be x86_64.");
-  assert.match(emulator, /cores: 4/);
-  assert.match(emulator, /-memory 4096/);
+  assert.match(emulator, /cores: 2/);
+  assert.match(emulator, /-memory 3072/);
   assert.match(emulator, /disable-linux-hw-accel: false/,
     "Hardware acceleration must be mandatory; software fallback is forbidden.");
 }
@@ -352,6 +417,7 @@ assert.match(androidReleaseUpgrade, /android_prepare_emulator/);
 assert.match(androidReleaseUpgrade, /android_launch_package/);
 assert.doesNotMatch(androidReleaseUpgrade, /sleep 300/);
 assert.match(androidBaselineUiSeed, /android_launch_package/);
+assert.match(androidBaselineUiSeed, /^navigate_to_library$/m, "The baseline UI seed must invoke the library navigation helper.");
 assert.match(androidBaselineUiSeed, /timeout 20s adb -s emulator-5554 shell uiautomator dump/);
 assert.ok(!androidBaselineUiSeed.includes("dump_ui || true"));
 assert.match(androidReleaseUpgrade, /install_apk "\$current_apk" true[\s\S]*?am force-stop "\$package_id"[\s\S]*?android_launch_package/);

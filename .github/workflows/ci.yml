@@ -28,7 +28,7 @@ jobs:
     if: github.event_name != 'schedule'
     name: Core tests, engine validation and production build
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 70
     steps:
       - name: Check out source without recursive upstream submodules
         uses: actions/checkout@v4
@@ -59,6 +59,7 @@ jobs:
         run: npm ci
 
       - name: Prepare exact historical OpenFront engines
+        timeout-minutes: 55
         run: npm run prepare:engines
 
       - name: Validate exact engine pins and runtime mappings
@@ -80,7 +81,7 @@ jobs:
     if: github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.include_live_replay)
     name: Live replay simulation, coaching and IndexedDB regression
     runs-on: ubuntu-latest
-    timeout-minutes: 35
+    timeout-minutes: 60
     steps:
       - name: Check out source without recursive upstream submodules
         uses: actions/checkout@v4
@@ -111,6 +112,7 @@ jobs:
         run: npm ci
 
       - name: Prepare exact historical OpenFront engines
+        timeout-minutes: 55
         run: npm run prepare:engines
 
       - name: Build production renderer and replay workers

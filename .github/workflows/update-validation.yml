@@ -1,6 +1,20 @@
 name: Update system validation
 
 on:
+  pull_request:
+    branches: [main]
+    paths:
+      - ".github/workflows/**"
+      - "scripts/prepare-engines.mjs"
+      - "scripts/updater-contract.test.mjs"
+      - "engine-build/engines.json"
+      - "package.json"
+      - "package-lock.json"
+      - "src/main/**"
+      - "android-updater-template/**"
+      - "scripts/test-android-*.sh"
+      - "scripts/seed-android-baseline-ui.sh"
+      - "scripts/android-emulator-diagnostics.sh"
   workflow_dispatch:
   schedule:
     # The emulator-based upgrade test is intentionally expensive; run it monthly.
@@ -17,7 +31,7 @@ jobs:
   updater-contract-and-build:
     name: Updater contracts, typecheck and Windows packaging
     runs-on: windows-latest
-    timeout-minutes: 60
+    timeout-minutes: 70
     steps:
       - name: Check out source
         uses: actions/checkout@v4
@@ -26,7 +40,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: .git/modules
-          key: openfront-engine-git-${{ runner.os }}-${{ github.job }}-${{ hashFiles('.gitmodules', 'engine-build/engines.json') }}
+          key: openfront-engine-git-${{ runner.os }}-${{ hashFiles('.gitmodules', 'engine-build/engines.json') }}
           restore-keys: |
             openfront-engine-git-${{ runner.os }}-
 
@@ -81,6 +95,7 @@ jobs:
           exit "$npm_status"
 
       - name: Prepare all exact historical OpenFront engines
+        timeout-minutes: 55
         run: npm run prepare:engines
 
       - name: Verify updater contract tests
@@ -139,7 +154,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: .git/modules
-          key: openfront-engine-git-${{ runner.os }}-${{ github.job }}-${{ hashFiles('.gitmodules', 'engine-build/engines.json') }}
+          key: openfront-engine-git-${{ runner.os }}-${{ hashFiles('.gitmodules', 'engine-build/engines.json') }}
           restore-keys: |
             openfront-engine-git-${{ runner.os }}-
 
@@ -153,6 +168,7 @@ jobs:
         run: npm install --global npm@12.1.0
 
       - name: Prepare all exact historical OpenFront engines
+        timeout-minutes: 55
         run: npm run prepare:engines
 
       - name: Install Coach dependencies once
@@ -182,6 +198,11 @@ jobs:
           distribution: temurin
           java-version: "21"
 
+      - name: Restore Gradle dependency and wrapper cache
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          cache-read-only: false
+
       - name: Set up Android SDK
         uses: android-actions/setup-android@v4
         with:
@@ -192,8 +213,10 @@ jobs:
         run: |
           set -Eeuo pipefail
           sudo apt-get update
-          sudo apt-get install --no-install-recommends -y coreutils
+          sudo apt-get install --no-install-recommends -y coreutils tesseract-ocr tesseract-ocr-deu tesseract-ocr-eng
           command -v timeout
+          command -v tesseract
+          tesseract --list-langs
           command -v sha256sum
           timeout --version | head -n 1
           sha256sum --version | head -n 1
@@ -291,7 +314,7 @@ jobs:
             echo "emulator_acceleration_configuration:"
             echo "requested_arch=x86_64"
             echo "disable_linux_hw_accel=false"
-            echo "emulator_options=-no-window -no-audio -no-boot-anim -no-snapshot -no-metrics -gpu swiftshader_indirect -memory 4096 -partition-size 4096"
+            echo "emulator_options=-no-window -no-audio -no-boot-anim -no-snapshot -no-metrics -gpu software -memory 3072 -partition-size 4096"
           } | tee "$diag/kvm-preflight.log"
           vendor="$(awk -F: '/vendor_id[[:space:]]*:/ {gsub(/[[:space:]]/,"",$2); print $2; exit}' /proc/cpuinfo)"
           sudo modprobe kvm
@@ -336,9 +359,9 @@ jobs:
           target: default
           arch: x86_64
           profile: pixel_2
-          cores: 4
+          cores: 2
           emulator-boot-timeout: 600
-          emulator-options: -no-window -no-audio -no-boot-anim -no-snapshot -no-metrics -gpu swiftshader_indirect -memory 4096 -partition-size 4096
+          emulator-options: -no-window -no-audio -no-boot-anim -no-snapshot -no-metrics -gpu swiftshader -memory 3072 -partition-size 4096
           disable-linux-hw-accel: false
           disable-animations: true
           script: bash scripts/test-android-release-upgrade.sh
@@ -420,7 +443,7 @@ jobs:
           echo "OPENFRONT_PRODUCTION_SHA256=$production_sha256" >> "$GITHUB_ENV"
 
       - name: Verify permanent Android release signing key and continuity
-        if: always() && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
+        if: always() && steps.release_candidate.outcome == 'success' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
         env:
           ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}

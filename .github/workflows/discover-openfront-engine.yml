@@ -16,7 +16,7 @@ concurrency:
 jobs:
   discover:
     runs-on: ubuntu-latest
-    timeout-minutes: 90
+    timeout-minutes: 100
     steps:
       - name: Check out main
         uses: actions/checkout@v4
@@ -43,12 +43,22 @@ jobs:
             echo "before=$before" >> "$GITHUB_OUTPUT"
           fi
 
+      - name: Restore exact historical engine Git objects
+        if: steps.discovery.outputs.changed == 'true'
+        uses: actions/cache@v4
+        with:
+          path: .git/modules
+          key: openfront-engine-git-${{ runner.os }}-${{ hashFiles('.gitmodules', 'engine-build/engines.json') }}
+          restore-keys: |
+            openfront-engine-git-${{ runner.os }}-
+
       - name: Set up pinned npm
         if: steps.discovery.outputs.changed == 'true'
         run: npm install --global npm@12.1.0
 
       - name: Prepare every exact replay engine revision
         if: steps.discovery.outputs.changed == 'true'
+        timeout-minutes: 55
         run: npm run prepare:engines
 
       - name: Install Coach dependencies

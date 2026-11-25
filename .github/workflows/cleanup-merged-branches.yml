@@ -1,0 +1,50 @@
+name: Cleanup integrated branches
+
+on:
+  pull_request:
+    types: [closed]
+
+permissions:
+  contents: write
+
+jobs:
+  cleanup:
+    name: Delete only verified obsolete integration branches
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Delete allowlisted branches after integration
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const pr = context.payload.pull_request;
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const allowlisted = new Set([
+              "fix/current-workflow-contracts",
+              "fix/engine-preparation-workflow-timeouts",
+              "integration/replay-coaching-ux",
+              "integration/engine-modernization",
+            ]);
+
+            const branches = [];
+            if (pr.merged && allowlisted.has(pr.head.ref)) {
+              branches.push(pr.head.ref);
+            }
+            if (pr.merged && pr.number === 166) {
+              branches.push("fix/engine-preparation-workflow-timeouts");
+            }
+
+            for (const branch of new Set(branches)) {
+              try {
+                await github.rest.git.deleteRef({ owner, repo, ref: `heads/${branch}` });
+                core.info(`Deleted verified obsolete branch: ${branch}`);
+              } catch (error) {
+                if (error.status === 404) {
+                  core.info(`Branch already absent: ${branch}`);
+                  continue;
+                }
+                throw error;
+              }
+            }

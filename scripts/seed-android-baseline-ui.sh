@@ -3,6 +3,7 @@ set -Eeuo pipefail
 
 package_id="de.openfront.replaycoach"
 player_id="5SVg4WbI"
+current_search_query=""
 
 log() { echo "::notice::[Android baseline UI seed] $*"; }
 fail() { echo "::error::[Android baseline UI seed] $*"; exit 1; }
@@ -169,17 +170,55 @@ PY
 }
 
 tap_edit_field() {
-  local occurrence="${1:-1}"
-  local coords=""
-  if dump_ui; then
-    coords="$(find_bounds "" edit "$occurrence" 2>/dev/null || true)"
-  fi
-  [[ -n "$coords" ]] || fail "Could not locate an enabled Android WebView EditText field in the current UI hierarchy."
-  read -r x y <<< "$coords"
-  log "Tapping the visible WebView EditText at $x,$y (UIAutomator class/bounds, no placeholder-text dependency)."
-  timeout 10s adb -s emulator-5554 shell input tap "$x" "$y" || fail "ADB tap failed for the visible EditText field."
+  local occurrence="${1:-1}" current_query="${2:-$current_search_query}" coords=""
+  # The library field can be above the viewport or expose invalid WebView bounds.
+  # Bring the toolbar into view, then prefer its current query text in OCR.
+  for attempt in $(seq 1 8); do
+    if dump_ui; then
+      coords="$(find_bounds "" edit "$occurrence" 2>/dev/null || true)"
+    fi
+    if [[ -z "$coords" ]]; then
+      if [[ -n "$current_query" ]]; then
+        coords="$(ocr_find_bounds "$current_query" 1 || true)"
+      else
+        coords="$(ocr_find_bounds "Match-ID suchen" 1 || true)"
+        if [[ -z "$coords" ]]; then coords="$(ocr_find_bounds "Karte oder" 1 || true)"; fi
+        # Some published WebView builds do not expose the empty search
+        # placeholder to OCR. On the narrow layout the search field spans
+        # the row directly below the third filter; use it as a visual anchor,
+        # then require typed-query and exact-result verification below.
+        if [[ -z "$coords" ]]; then
+          anchor="$(ocr_find_bounds "Alle Spieltypen" 1 || true)"
+          if [[ -z "$anchor" ]]; then anchor="$(ocr_find_bounds "Spieltypen" 1 || true)"; fi
+          if [[ -n "$anchor" ]]; then
+            read -r anchor_x anchor_y <<< "$anchor"
+            candidate_y=$((anchor_y + 70))
+            if (( anchor_x >= 100 && anchor_x <= 1000 && candidate_y >= 150 && candidate_y <= 1400 )); then
+              coords="540 $candidate_y"
+              log "Search placeholder not OCR-readable; using filter-row anchor $anchor_x,$anchor_y."
+            fi
+          fi
+        fi
+      fi
+    fi
+    if [[ -n "$coords" ]]; then
+      read -r x y <<< "$coords"
+      # OCR occasionally associates the placeholder with keyboard suggestion
+      # text and returns coordinates inside the IME. The search input is in the central library filter card; never tap the
+      # keyboard or lower cards.
+      if (( x >= 100 && x <= 1000 && y >= 850 && y <= 1400 )); then
+        log "Tapping the visible library search field at $x,$y (UI hierarchy/OCR, attempt $attempt/8)."
+        timeout 10s adb -s emulator-5554 shell input tap "$x" "$y" || fail "ADB tap failed for the library search field."
+        return 0
+      fi
+      coords=""
+    fi
+    log "Library search field not safely visible (attempt $attempt/8); scrolling toward the toolbar."
+    timeout 10s adb -s emulator-5554 shell input swipe 500 350 500 1500 550 >/dev/null 2>&1 || true
+    sleep 1
+  done
+  fail "Could not locate a safely visible library search field after scrolling to the toolbar. OCR: $(ocr_text 2>/dev/null | tr '\n' ' ' | head -c 800); UI: $(cat "$ui_xml" 2>/dev/null | head -c 2500)"
 }
-
 tap_text() {
   local needle="$1"
   local occurrence="${2:-1}"
@@ -222,18 +261,33 @@ android_prepare_emulator || fail "Baseline emulator preparation failed; inspect 
 log "Launching the genuine published v2.2.51 APK and classifying ADB, ActivityManager and crash failures."
 android_launch_package "$package_id" "the published v2.2.51 baseline APK" || fail "Published baseline app launch failed; see classified emulator diagnostics."
 sleep 20
-if ! dump_ui; then
-  log "Published baseline exposes no readable UIAutomator hierarchy; locating the profile field through OCR."
-fi
-coords="$(find_bounds "" edit 2>/dev/null || true)"
+# A non-debuggable WebView can initially expose only its container to
+# UIAutomator. The same screen may expose its DOM-backed EditText nodes a few
+# seconds later, so do not treat the first valid-but-shallow hierarchy as a
+# missing field or fall back to OCR immediately.
+coords=""
+for attempt in $(seq 1 15); do
+  if dump_ui; then
+    coords="$(find_bounds "" edit 1 2>/dev/null || true)"
+    if [[ -n "$coords" ]]; then
+      log "Located the profile input through the expanded WebView accessibility hierarchy (attempt $attempt/15)."
+      break
+    fi
+  fi
+  if (( attempt % 3 == 0 )); then
+    log "Waiting for the WebView profile EditText to appear in UIAutomator (attempt $attempt/15)."
+  fi
+  sleep 2
+done
 if [[ -z "$coords" ]]; then
+  log "The WebView accessibility tree did not expose an editable field after bounded retries; trying screenshot OCR as a fallback."
   coords="$(ocr_find_bounds "OpenFront-Profillink" 1 || true)"
   if [[ -z "$coords" ]]; then coords="$(ocr_find_bounds "Profillink" 1 || true)"; fi
   if [[ -z "$coords" ]]; then coords="$(ocr_find_bounds "Spieler-ID" 1 || true)"; fi
 fi
 if [[ -z "$coords" ]]; then
   ocr_dump="$(ocr_text 2>/dev/null | tr '\n' ' ' || true)"
-  fail "Could not locate the profile input field in the WebView via UIAutomator or OCR. OCR text: ${ocr_dump:0:1200}"
+  fail "Could not locate the profile input field in the WebView after waiting for accessibility nodes and trying OCR. OCR text: ${ocr_dump:0:1200}"
 fi
 read -r input_x input_y <<< "$coords"
 log "Entering the archived player ID through the real published app UI at $input_x,$input_y."
@@ -246,19 +300,68 @@ tap_text "Konto laden"
 # only the WebView container to UIAutomator. OCR follows the visible UI, and
 # the post-upgrade inspector verifies the imported records in real IndexedDB.
 sleep 20
-tap_text "Partien" last exact
 wait_for_library_page() {
-  local started=$SECONDS
-  while (( SECONDS - started < 45 )); do
+  local wait_seconds="${1:-12}"
+  local started=$SECONDS ocr_dump=""
+  while (( SECONDS - started < wait_seconds )); do
     if dump_ui && grep -q 'text="Spielbibliothek"' "$ui_xml"; then
-      log "Verified that the published app is on the Spielbibliothek page."
+      log "Verified that the published app is on the Spielbibliothek page through UIAutomator."
+      return 0
+    fi
+    # Published WebView accessibility sometimes omits page headings. Verify the
+    # actual visible screen with OCR as a second independent signal.
+    ocr_dump="$(ocr_text 2>/dev/null | tr '\n' ' ' || true)"
+    if grep -qi "Spielbibliothek" <<< "$ocr_dump"; then
+      log "Verified that the published app is on the Spielbibliothek page through screenshot OCR."
       return 0
     fi
     sleep 2
   done
-  fail "The Partien navigation did not reach the Spielbibliothek page within 45 seconds. Current UI: $(cat "$ui_xml" 2>/dev/null | head -c 3500)"
+  return 1
 }
-wait_for_library_page
+
+navigate_to_library() {
+  log "Navigating to the published app's match library with verified UI retries."
+  for attempt in 1 2 3; do
+    if (( attempt == 1 )); then
+      tap_text "Partien" last exact
+    elif (( attempt == 2 )); then
+      # UIAutomator can report the nav node as clickable while the WebView's
+      # event handler misses the tap. Re-target the visible label via OCR.
+      coords="$(ocr_find_bounds "Partien" last || true)"
+      if [[ -n "$coords" ]]; then
+        read -r x y <<< "$coords"
+        if (( x >= 350 && x <= 730 && y >= 1600 && y <= 1800 )); then
+          log "Retrying the visible Partien navigation label at $x,$y using OCR."
+          timeout 10s adb -s emulator-5554 shell input tap "$x" "$y" || fail "ADB retry tap failed for Partien navigation."
+        else
+          tap_text "Partien" last exact
+        fi
+      else
+        tap_text "Partien" last exact
+      fi
+    else
+      # Accessibility and OCR can both fail for a published WebView. The
+      # emulator is configured with a bottom navigation bar; calculate its
+      # center tap from the reported screen dimensions instead of guessing
+      # text coordinates. The tap remains guarded by a supported viewport.
+      screen_size="$(adb -s emulator-5554 shell wm size | sed -n 's/.*: \\([0-9]*\\)x\\([0-9]*\\).*/\\1 \\2/p' | tail -n 1)"
+      read -r screen_width screen_height <<< "$screen_size"
+      if [[ "$screen_width" =~ ^[0-9]+$ && "$screen_height" =~ ^[0-9]+$ ]] && (( screen_width >= 800 && screen_height >= 1400 )); then
+        nav_x=$((screen_width / 2))
+        nav_y=$((screen_height * 89 / 100))
+        log "Using verified bottom-navigation fallback at $nav_x,$nav_y for $screen_width x $screen_height viewport."
+        timeout 10s adb -s emulator-5554 shell input tap "$nav_x" "$nav_y" || fail "ADB fallback tap failed for Partien navigation."
+      else
+        fail "Cannot safely calculate bottom-navigation fallback from Android screen size: $screen_size"
+      fi
+    fi
+    if wait_for_library_page 12; then return 0; fi
+    log "Partien navigation did not verify after attempt $attempt/3; retrying."
+  done
+  fail "The Partien navigation did not reach the Spielbibliothek after three verified attempts. OCR: $(ocr_text 2>/dev/null | tr '\n' ' ' | head -c 1200); UI: $(cat "$ui_xml" 2>/dev/null | head -c 3500)"
+}
+navigate_to_library
 read_imported_match_count() {
   # Read the rendered app text from Android's actual WebView accessibility
   # hierarchy. The published app exposes the import total as e.g.
@@ -335,7 +438,7 @@ seed_verified_match() {
   # The published WebView exposes this input as an unnamed EditText node
   # (NAF=true); its placeholder is visible in pixels but absent from the
   # accessibility text, so OCR is both slower and less reliable than bounds.
-  tap_edit_field 1
+  tap_edit_field 1 "$current_search_query"
   if [[ "$clear_search" == "true" ]]; then
     timeout 10s adb -s emulator-5554 shell input keycombination 113 29 >/dev/null 2>&1 || fail "Could not select the previous library search query."
   fi
@@ -358,6 +461,7 @@ seed_verified_match() {
     sleep 1
   done
   [[ "$typed" == true ]] || fail "ADB input did not populate the library search field for $game_id; refusing to treat an empty search as a match."
+  current_search_query="$search_query"
   # Commit the verified query with ENTER before hiding the keyboard.
   timeout 10s adb -s emulator-5554 shell input keyevent 66 || fail "Could not commit archived match ID $game_id in the library search."
   sleep 2
@@ -382,21 +486,38 @@ seed_verified_match() {
   done
   [[ "$filtered" == true ]] || fail "The library search did not reduce the results to exactly one match for $game_id after committing the Android input. Last screen: ${search_screen_text:0:1200}; UI: $(cat "$ui_xml" 2>/dev/null | head -c 2500)"
 
-  # The library summary and engine coverage precede replay cards. Once the
-  # unique result is proven, scroll the card into the viewport and require
-  # non-zero screen bounds before tapping its action.
-  for attempt in $(seq 1 8); do
+  # Android's UIAutomator often reports WebView DOM nodes with [0,0][0,0]
+  # bounds even when the text is visible. Use screenshot OCR as a fallback
+  # and tap the visible label rather than rejecting an actionable card.
+  local coach_button_source="UI hierarchy"
+  for attempt in $(seq 1 12); do
     if dump_ui; then
       visible_coach_button="$(find_bounds "Coach öffnen" exact 1 2>/dev/null || true)"
-      if [[ -n "$visible_coach_button" ]]; then break; fi
+    else
+      visible_coach_button=""
     fi
-    timeout 10s adb -s emulator-5554 shell input swipe 500 780 500 350 500 >/dev/null 2>&1 || true
+    if [[ -z "$visible_coach_button" ]]; then
+      visible_coach_button="$(ocr_find_bounds "Coach öffnen" 1 || true)"
+      if [[ -n "$visible_coach_button" ]]; then coach_button_source="screenshot OCR"; fi
+    fi
+    if [[ -n "$visible_coach_button" ]]; then
+      read -r candidate_x candidate_y <<< "$visible_coach_button"
+      # The fixed bottom navigation overlays the WebView. Do not clamp a tap
+      # into the nav bar: scroll the library until the CTA is safely exposed.
+      if (( candidate_y <= 1500 )); then
+        break
+      fi
+      log "Coach action is too close to the bottom navigation (y=$candidate_y); scrolling it into the safe viewport (attempt $attempt/12)."
+      visible_coach_button=""
+    fi
+    timeout 10s adb -s emulator-5554 shell input swipe 500 1450 500 450 500 >/dev/null 2>&1 || true
     sleep 1
   done
-  [[ -n "$visible_coach_button" ]] || fail "The unique archived match $game_id was filtered correctly, but its Coach action has no visible screen bounds after scrolling. UI: $(cat "$ui_xml" 2>/dev/null | head -c 3000)"
+  [[ -n "$visible_coach_button" ]] || fail "The unique archived match $game_id was filtered correctly, but its Coach action could not be located in the safe viewport by UIAutomator or OCR after scrolling. UI: $(cat "$ui_xml" 2>/dev/null | head -c 3000)"
 
   read -r coach_x coach_y <<< "$visible_coach_button"
-  log "Tapping the visible Coach action for $game_id at $coach_x,$coach_y."
+  (( coach_y <= 1500 )) || fail "Refusing to tap Coach action for $game_id outside the safe WebView viewport (y=$coach_y)."
+  log "Tapping the visible Coach action for $game_id at $coach_x,$coach_y ($coach_button_source)."
   timeout 10s adb -s emulator-5554 shell input tap "$coach_x" "$coach_y" || fail "ADB tap failed for the visible Coach action on $game_id."
   log "Opened archived match $game_id. Waiting for its actual Original-Engine result."
 
@@ -423,37 +544,44 @@ seed_verified_match() {
 }
 
 create_verified_training_goal() {
-  # The published baseline is a non-debuggable WebView: DOM nodes may exist in
-  # UIAutomator with zero screen bounds. Search the visible screenshot while
-  # scrolling in both directions instead of assuming the training card's
-  # position. The previous fixed upward swipe sequence could overscroll past it.
-  local coords=""
-  for attempt in $(seq 1 10); do
+  # The baseline app is a non-debuggable WebView, so its DOM accessibility
+  # nodes can have zero bounds. The CTA lives in the training section above
+  # the technical accordions. Previous attempts only swiped upward through the
+  # page (toward its bottom), then OCR scanned the footer and never returned.
+  # Reset to the top first, then walk the page downward one viewport at a time.
+  local coords="" ocr_dump=""
+  for reset in $(seq 1 8); do
+    timeout 10s adb -s emulator-5554 shell input swipe 500 430 500 1450 550 >/dev/null 2>&1 || true
+    sleep 1
+  done
+  for attempt in $(seq 1 18); do
     if dump_ui; then
       coords="$(find_bounds "Als Trainingsziel übernehmen" text 1 2>/dev/null || true)"
     fi
     if [[ -z "$coords" ]]; then
       coords="$(ocr_find_bounds "Als Trainingsziel übernehmen" 1 || true)"
+      if [[ -z "$coords" ]]; then coords="$(ocr_find_bounds "übernehmen" 1 || true)"; fi
     fi
     if [[ -n "$coords" ]]; then
       read -r x y <<< "$coords"
-      log "Tapping the visible evidence-backed training action at $x,$y (attempt $attempt/10)."
-      timeout 10s adb -s emulator-5554 shell input tap "$x" "$y" || fail "ADB tap failed for the visible training action."
-      log "Created a training goal from a verified, evidence-backed Coach finding."
-      return 0
+      if (( y >= 150 && y <= 1500 )); then
+        log "Tapping the visible evidence-backed training action at $x,$y (scan $attempt/18)."
+        timeout 10s adb -s emulator-5554 shell input tap "$x" "$y" || fail "ADB tap failed for the visible training action."
+        log "Created a training goal from a verified, evidence-backed Coach finding."
+        return 0
+      fi
+      log "Training CTA detected outside the safe viewport (y=$y); continuing scan."
+      coords=""
     fi
-    if (( attempt <= 6 )); then
-      # Finger moves down: scroll the document toward its earlier sections.
-      timeout 10s adb -s emulator-5554 shell input swipe 500 430 500 1450 550 >/dev/null 2>&1 || true
-    else
-      # Then scan back toward later sections, still with a bounded number of swipes.
-      timeout 10s adb -s emulator-5554 shell input swipe 500 1450 500 430 550 >/dev/null 2>&1 || true
-    fi
+    ocr_dump="$(ocr_text 2>/dev/null | tr '\n' ' ' || true)"
+    log "Training CTA not visible yet (scan $attempt/18); current visible text: ${ocr_dump:0:450}"
+    # Swipe upward to move the content down the page. This now follows the
+    # explicit top-to-bottom scan direction, rather than repeating a gesture
+    # that leaves the viewport pinned at the footer.
+    timeout 10s adb -s emulator-5554 shell input swipe 500 1450 500 430 550 >/dev/null 2>&1 || true
     sleep 1
   done
-  local ocr_dump
-  ocr_dump="$(ocr_text 2>/dev/null | tr '\\n' ' ' || true)"
-  fail "The verified training action was present in the WebView hierarchy but never became visible in the bounded scroll search. OCR text: ${ocr_dump:0:1200}; UI: $(cat "$ui_xml" 2>/dev/null | head -c 3500)"
+  fail "Could not locate the verified training CTA after resetting to the page top and scanning 18 viewports. Last OCR text: ${ocr_dump:0:1200}; UI: $(cat "$ui_xml" 2>/dev/null | head -c 3500)"
 }
 
 # The baseline must contain two genuine, engine-verified matches and a real
@@ -462,8 +590,7 @@ create_verified_training_goal() {
 seed_verified_match "cRVdxGEG5j" "9f4a28f16fae951df0daf727e5e64b34ce8b77d1" false
 create_verified_training_goal
 
-tap_text "Partien" last exact
-wait_for_library_page
+navigate_to_library
 seed_verified_match "c4CW3VJWQ9" "9f4a28f16fae951df0daf727e5e64b34ce8b77d1" true
 log "Stopping the published app before the baseline storage snapshot."
 adb -s emulator-5554 shell am force-stop "$package_id"

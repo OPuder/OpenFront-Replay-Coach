@@ -199,7 +199,7 @@ tap_edit_field() {
     timeout 10s adb -s emulator-5554 shell input swipe 500 350 500 1500 550 >/dev/null 2>&1 || true
     sleep 1
   done
-  fail "Could not locate a safely visible library search field after scrolling to the toolbar. OCR: $(ocr_text 2>/dev/null | tr '\\n' ' ' | head -c 800); UI: $(cat "$ui_xml" 2>/dev/null | head -c 2500)"
+  fail "Could not locate a safely visible library search field after scrolling to the toolbar. OCR: $(ocr_text 2>/dev/null | tr '\n' ' ' | head -c 800); UI: $(cat "$ui_xml" 2>/dev/null | head -c 2500)"
 }
 
 tap_text() {
@@ -507,7 +507,7 @@ create_verified_training_goal() {
     sleep 1
   done
   local ocr_dump
-  ocr_dump="$(ocr_text 2>/dev/null | tr '\\n' ' ' || true)"
+  ocr_dump="$(ocr_text 2>/dev/null | tr '\n' ' ' || true)"
   fail "The verified training action was present in the WebView hierarchy but never became visible in the bounded scroll search. OCR text: ${ocr_dump:0:1200}; UI: $(cat "$ui_xml" 2>/dev/null | head -c 3500)"
 }
 

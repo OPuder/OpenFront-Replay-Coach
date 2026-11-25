@@ -300,7 +300,7 @@ tap_text "Konto laden"
 # only the WebView container to UIAutomator. OCR follows the visible UI, and
 # the post-upgrade inspector verifies the imported records in real IndexedDB.
 sleep 20
-navigate_to_library() {
+wait_for_library_page() {
   local wait_seconds="${1:-12}"
   local started=$SECONDS ocr_dump=""
   while (( SECONDS - started < wait_seconds )); do

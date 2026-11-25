@@ -108,7 +108,7 @@ jobs:
     needs: prepare-release
     if: needs.prepare-release.outputs.skip != 'true'
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 75
     steps:
       - name: Check out the exact release source
         uses: actions/checkout@v4
@@ -136,7 +136,7 @@ jobs:
         run: npm ci
 
       - name: Prepare all exact historical OpenFront engines
-        timeout-minutes: 40
+        timeout-minutes: 55
         run: npm run prepare:engines
 
       - name: Build all exact replay engine worker bundles
@@ -170,7 +170,7 @@ jobs:
     needs: prepare-release
     if: needs.prepare-release.outputs.skip != 'true'
     runs-on: windows-latest
-    timeout-minutes: 60
+    timeout-minutes: 75
     steps:
       - name: Check out the versioned release source
         uses: actions/checkout@v4
@@ -194,7 +194,7 @@ jobs:
         run: npm install --global npm@12.1.0
 
       - name: Prepare all exact historical OpenFront engines
-        timeout-minutes: 40
+        timeout-minutes: 55
         run: npm run prepare:engines
 
       - name: Install Coach dependencies
@@ -252,7 +252,7 @@ jobs:
         run: npm install --global npm@12.1.0
 
       - name: Prepare all exact historical OpenFront engines
-        timeout-minutes: 40
+        timeout-minutes: 55
         run: npm run prepare:engines
 
       - name: Install Coach and Capacitor dependencies
@@ -364,7 +364,7 @@ jobs:
         run: bash -n scripts/test-android-release-upgrade.sh
 
       - name: Install previous published APK and upgrade to exact signed release APK
-        timeout-minutes: 60
+        timeout-minutes: 75
         uses: reactivecircus/android-emulator-runner@v2
         env:
           RELEASE_VERSION: ${{ needs.prepare-release.outputs.version }}

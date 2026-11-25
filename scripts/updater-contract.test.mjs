@@ -281,16 +281,16 @@ for (const workflow of engineCacheWorkflows) {
 }
 
 const enginePreparation = read("scripts/prepare-engines.mjs");
-assert.match(enginePreparation, /http\\.lowSpeedLimit=0/);
-assert.match(enginePreparation, /http\\.lowSpeedTime=0/);
-assert.match(enginePreparation, /http\\.version=HTTP\\/1\\.1/);
+assert.match(enginePreparation, /http\.lowSpeedLimit=0/);
+assert.match(enginePreparation, /http\.lowSpeedTime=0/);
+assert.match(enginePreparation, /http\.version=HTTP\/1\.1/);
 assert.match(enginePreparation, /attempt <= 4/);
 assert.match(enginePreparation, /12 \\* 60_000/);
 assert.match(enginePreparation, /Initialize exact OpenFront engine submodules \\(attempt \\${attempt}\\/4\\)/);
 assert.match(androidValidationWorkflow, /-gpu software/,
   "Android emulator validation must use stable software rendering instead of flaky GPU color buffers.");
 assert.match(read("scripts/seed-android-baseline-ui.sh"), /reset to the top first/i);
-assert.match(read("scripts/seed-android-baseline-ui.sh"), /scan 18 viewports/);
+assert.match(read("scripts/seed-android-baseline-ui.sh"), /scanning 18 viewports/);
 const androidEmulatorDiagnostics = read("scripts/android-emulator-diagnostics.sh");
 assert.match(androidEmulatorDiagnostics, /adb kill-server/);
 assert.match(androidEmulatorDiagnostics, /adb start-server/);

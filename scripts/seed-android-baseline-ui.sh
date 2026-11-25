@@ -300,17 +300,56 @@ tap_text "Konto laden"
 # only the WebView container to UIAutomator. OCR follows the visible UI, and
 # the post-upgrade inspector verifies the imported records in real IndexedDB.
 sleep 20
-tap_text "Partien" last exact
-wait_for_library_page() {
-  local started=$SECONDS
-  while (( SECONDS - started < 45 )); do
+navigate_to_library() {
+  local wait_seconds="${1:-12}"
+  local started=$SECONDS ocr_dump=""
+  while (( SECONDS - started < wait_seconds )); do
     if dump_ui && grep -q 'text="Spielbibliothek"' "$ui_xml"; then
-      log "Verified that the published app is on the Spielbibliothek page."
+      log "Verified that the published app is on the Spielbibliothek page through UIAutomator."
+      return 0
+    fi
+    # Published WebView accessibility sometimes omits page headings. Verify the
+    # actual visible screen with OCR as a second independent signal.
+    ocr_dump="$(ocr_text 2>/dev/null | tr '\n' ' ' || true)"
+    if grep -qi "Spielbibliothek" <<< "$ocr_dump"; then
+      log "Verified that the published app is on the Spielbibliothek page through screenshot OCR."
       return 0
     fi
     sleep 2
   done
-  fail "The Partien navigation did not reach the Spielbibliothek page within 45 seconds. Current UI: $(cat "$ui_xml" 2>/dev/null | head -c 3500)"
+  return 1
+}
+
+navigate_to_library() {
+  log "Navigating to the published app's match library with verified UI retries."
+  for attempt in 1 2 3; do
+    if (( attempt == 1 )); then
+      tap_text "Partien" last exact
+    elif (( attempt == 2 )); then
+      # UIAutomator can report the nav node as clickable while the WebView's
+      # event handler misses the tap. Re-target the visible label via OCR.
+      coords="$(ocr_find_bounds "Partien" last || true)"
+      if [[ -n "$coords" ]]; then
+        read -r x y <<< "$coords"
+        if (( x >= 350 && x <= 730 && y >= 1600 && y <= 1800 )); then
+          log "Retrying the visible Partien navigation label at $x,$y using OCR."
+          timeout 10s adb -s emulator-5554 shell input tap "$x" "$y" || fail "ADB retry tap failed for Partien navigation."
+        else
+          tap_text "Partien" last exact
+        fi
+      else
+        tap_text "Partien" last exact
+      fi
+    else
+      # Reset navigation state before the final attempt: Dashboard then Partien.
+      tap_text "Dashboard" last exact
+      sleep 2
+      tap_text "Partien" last exact
+    fi
+    if wait_for_library_page 12; then return 0; fi
+    log "Partien navigation did not verify after attempt $attempt/3; retrying."
+  done
+  fail "The Partien navigation did not reach the Spielbibliothek after three verified attempts. OCR: $(ocr_text 2>/dev/null | tr '\n' ' ' | head -c 1200); UI: $(cat "$ui_xml" 2>/dev/null | head -c 3500)"
 }
 wait_for_library_page
 read_imported_match_count() {
@@ -541,8 +580,7 @@ create_verified_training_goal() {
 seed_verified_match "cRVdxGEG5j" "9f4a28f16fae951df0daf727e5e64b34ce8b77d1" false
 create_verified_training_goal
 
-tap_text "Partien" last exact
-wait_for_library_page
+navigate_to_library
 seed_verified_match "c4CW3VJWQ9" "9f4a28f16fae951df0daf727e5e64b34ce8b77d1" true
 log "Stopping the published app before the baseline storage snapshot."
 adb -s emulator-5554 shell am force-stop "$package_id"

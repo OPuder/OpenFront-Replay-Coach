@@ -428,7 +428,7 @@ log "The published profile reports $replay_count imported match(es). Verifying t
 # Both carry the exact 9f4a28f16fae engine commit bundled in the published baseline.
 # Fixed IDs avoid selecting a newer profile match whose engine is not in v2.2.51.
 wait_for_search_ime() {
-  local ime_state=""
+  local ime_state="" attempt
   for attempt in $(seq 1 8); do
     ime_state="$(timeout 8s adb -s emulator-5554 shell dumpsys input_method 2>&1 || true)"
     if grep -Eiq 'mInputShown=true|mInputViewShown=true|isInputViewShown=true|mShowRequested=true' <<< "$ime_state"; then
@@ -449,7 +449,7 @@ search_query_visible() {
 }
 
 send_search_query_by_keyevents() {
-  local query="$1" char ascii keycode
+  local query="$1" char ascii keycode index
   local -a keycodes=()
   [[ "$query" =~ ^[a-z0-9]+$ ]] || fail "Refusing key-event fallback for non-alphanumeric search query."
   for ((index=0; index<${#query}; index++)); do

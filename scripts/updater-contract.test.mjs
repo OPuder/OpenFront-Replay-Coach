@@ -212,15 +212,12 @@ assert.match(androidBaselineUiSeed, /wait_for_library_page 12/);
 assert.match(androidBaselineUiSeed, /screenshot OCR/);
 
 assert.match(androidBaselineUiSeed, /grep -Fi "\$game_id" "\$ui_xml"/);
-const rendererMain = read("src/renderer/main.tsx");
-assert.match(rendererMain, /Allgemeinen Trainingsfokus übernehmen/,
-  "A verified replay without a prioritized finding must still offer a clearly generic, evidence-safe training focus.");
-assert.match(rendererMain, /simulationResult\?\.status==='verified'[\s\S]*?Allgemeinen Trainingsfokus übernehmen/,
-  "The general training focus must only be saved from a verified replay.");
-assert.match(androidBaselineUiSeed, /Allgemeinen Trainingsfokus übernehmen/,
-  "The Android baseline fixture must recognize the generic focus CTA as well as specific findings.");
-assert.match(androidBaselineUiSeed, /AKTUELLES TRAININGSZIEL/,
-  "The baseline UI must verify that tapping a training action actually saved the goal.");
+assert.doesNotMatch(androidBaselineUiSeed, /create_verified_training_goal/,
+  "The published v2.2.51 baseline must not be forced to expose a training CTA when its verified replay has no actionable finding.");
+assert.match(androidStorageInspector, /if \(trainingGoal && !matchIds\.has/,
+  "A baseline training goal is optional, but any existing goal must reference a persisted match.");
+assert.match(androidStorageInspector, /trainingGoalPresent: Boolean\(trainingGoal\)/,
+  "Storage validation must report whether a goal was preserved without requiring one to exist.");
 assert.match(androidReleaseUpgrade, /snapshot-android-web-storage\.sh after/);
 assert.match(androidReleaseUpgrade, /after-negative-test-storage\.json/);
 assert.match(androidReleaseUpgrade, /compare-android-upgrade-snapshots\.mjs/);

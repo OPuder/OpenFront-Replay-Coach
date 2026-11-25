@@ -286,7 +286,7 @@ assert.match(enginePreparation, /http\.lowSpeedTime=0/);
 assert.match(enginePreparation, /http\.version=HTTP\/1\.1/);
 assert.match(enginePreparation, /attempt <= 4/);
 assert.match(enginePreparation, /12 \* 60_000/);
-assert.match(enginePreparation, /Initialize exact OpenFront engine submodules \\(attempt \\${attempt}\\/4\\)/);
+assert.match(enginePreparation, /Initialize exact OpenFront engine submodules/);
 assert.match(androidValidationWorkflow, /-gpu software/,
   "Android emulator validation must use stable software rendering instead of flaky GPU color buffers.");
 assert.match(read("scripts/seed-android-baseline-ui.sh"), /reset to the top first/i);

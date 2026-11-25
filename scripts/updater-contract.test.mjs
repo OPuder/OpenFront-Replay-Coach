@@ -183,6 +183,11 @@ assert.match(androidBaselineUiSeed, /OpenFront-Profillink/);
 assert.match(androidBaselineUiSeed, /OCR text:/);
 assert.match(androidBaselineUiSeed, /search_query=.*tr '\[:upper:\]' '\[:lower:\]'/);
 assert.match(androidBaselineUiSeed, /ADB input did not populate the library search field/);
+assert.match(androidBaselineUiSeed, /navigate_to_library/);
+assert.match(androidBaselineUiSeed, /Retrying the visible Partien navigation label/);
+assert.match(androidBaselineUiSeed, /wait_for_library_page 12/);
+assert.match(androidBaselineUiSeed, /screenshot OCR/);
+
 assert.match(androidBaselineUiSeed, /grep -Fi "\$game_id" "\$ui_xml"/);
 assert.match(androidReleaseUpgrade, /snapshot-android-web-storage\.sh after/);
 assert.match(androidReleaseUpgrade, /after-negative-test-storage\.json/);

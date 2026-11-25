@@ -93,3 +93,9 @@ Installing GitHub Apps, enabling Copilot features, granting organization permiss
 - If a tool call fails to parse, inspect/correct the call format and try an appropriate alternate available tool. If a shell command fails, distinguish tool-call parsing, shell syntax, command exit failure and environment failure; inspect the actual result before retrying.
 - Verify every consequential operation afterward: file existence/content, Git status/diff, command exit code, and test output. Never assume a failed call partially succeeded or a successful call proves the intended result.
 - Do not repeatedly retry an unchanged failing command. Diagnose, make a minimal correction, retry, and continue unless a genuine blocker remains.
+
+## OpenCode configuration
+- Native OpenCode project configuration is in `opencode.json`, `.opencode/agents/` and `.opencode/commands/`.
+- Read [docs/development/opencode-agents.md](docs/development/opencode-agents.md) before changing the agent setup.
+- Codex TOML agents under `.codex/agents/` are a separate format; do not assume OpenCode discovers them.
+- Do not claim specialist agents are working until their discovery and invocation are verified in the local OpenCode runtime.

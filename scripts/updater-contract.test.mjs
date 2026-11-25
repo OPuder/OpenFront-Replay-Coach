@@ -188,8 +188,10 @@ assert.match(androidBaselineUiSeed, /Neither IME text injection nor Android key-
   "Android search must fail closed after both text and key-event input paths fail.");
 assert.match(androidBaselineUiSeed, /local keycodes=\(\) char code/,
   "The fallback must collect validated Android keycodes.");
-assert.match(androidBaselineUiSeed, /input keyevent "\$\{keycodes\[@\]\}"/,
-  "The fallback must submit the mapped keycodes to Android.");
+assert.ok(androidBaselineUiSeed.includes('for code in "${keycodes[@]}"; do'),
+  "The fallback must inject mapped keycodes sequentially.");
+assert.ok(androidBaselineUiSeed.includes('shell input keyevent "$code"'),
+  "Each fallback character must be sent as a single Android key event.");
 assert.match(androidBaselineUiSeed, /navigate_to_library/);
 assert.match(androidBaselineUiSeed, /Using verified bottom-navigation fallback/);
 assert.match(androidBaselineUiSeed, /wait_for_library_page\(\)\s*\{/,

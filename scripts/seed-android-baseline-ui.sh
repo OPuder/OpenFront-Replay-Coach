@@ -469,7 +469,7 @@ seed_verified_match() {
     # Reset the focused field before sending the query one key at a time.
     timeout 10s adb -s emulator-5554 shell input keyevent 113 29 || true # Ctrl+A
     timeout 10s adb -s emulator-5554 shell input keyevent 67 || true # Delete
-    local keycodes=() char code
+    local keycodes=() char code i
     for ((i=0; i<${#search_query}; i++)); do
       char="${search_query:i:1}"
       case "$char" in
@@ -484,7 +484,9 @@ seed_verified_match() {
       esac
       keycodes+=("$code")
     done
-    timeout 15s adb -s emulator-5554 shell input keyevent "${keycodes[@]}" || fail "Android key-event fallback failed for archived match ID $game_id."
+    for code in "${keycodes[@]}"; do
+      timeout 5s adb -s emulator-5554 shell input keyevent "$code" || fail "Android key-event fallback failed for archived match ID $game_id."
+    done
     for attempt in $(seq 1 8); do
       if dump_ui && grep -Fi "text=\"$search_query\"" "$ui_xml" >/dev/null; then
         typed=true

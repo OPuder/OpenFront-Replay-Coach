@@ -183,6 +183,19 @@ assert.match(androidBaselineUiSeed, /OpenFront-Profillink/);
 assert.match(androidBaselineUiSeed, /OCR text:/);
 assert.match(androidBaselineUiSeed, /search_query=.*tr '\[:upper:\]' '\[:lower:\]'/);
 assert.match(androidBaselineUiSeed, /ADB input did not populate the library search field/);
+assert.match(androidBaselineUiSeed, /dump_ui\(\)\s*\{\s*local dump_output="" pull_output="" attempt/,
+  "UI dump retries must keep their counter local so outer viewport scans can advance.");
+assert.match(androidBaselineUiSeed, /wait_for_search_ime\(\)/,
+  "Android search typing must wait for the IME/focus transition before injecting text.");
+assert.match(androidBaselineUiSeed, /send_search_query_by_keyevents/,
+  "Search IDs must have a key-event fallback when adb shell input text is dropped.");
+assert.match(androidBaselineUiSeed, /keycode=\$\(\(ascii - 68\)\)/,
+  "The fallback must map lowercase letters to Android KEYCODE_A-Z.");
+assert.match(androidBaselineUiSeed, /keycode=\$\(\(ascii - 41\)\)/,
+  "The fallback must map digits to Android keycodes.");
+assert.match(androidBaselineUiSeed, /Android text input and key-event fallback both failed/,
+  "The test must fail closed when neither input method produces a verified query.");
+
 assert.match(androidBaselineUiSeed, /navigate_to_library/);
 assert.match(androidBaselineUiSeed, /Using verified bottom-navigation fallback/);
 assert.match(androidBaselineUiSeed, /wait_for_library_page\(\)\s*\{/,

@@ -9,6 +9,11 @@ const renderer = read("src/renderer/UpdateCenter.tsx");
 const versionScript = read("scripts/set-release-version.mjs");
 const releaseWorkflow = read(".github/workflows/release-on-main.yml");
 const branchCleanupWorkflow = read(".github/workflows/cleanup-merged-branches.yml");
+const packageJson = JSON.parse(read("package.json"));
+const ciWorkflow = read(".github/workflows/ci.yml");
+assert.equal(packageJson.scripts["test:opencode-config"], "node --test scripts/opencode-config.test.mjs");
+assert.match(ciWorkflow, /Validate OpenCode specialist configuration[\s\S]*?run: npm run test:opencode-config/,
+  "The OpenCode agent configuration regression must remain in the PR CI suite.");
 assert.match(updater, /releases\/latest/);
 assert.match(updater, /createHash\('sha256'\)/);
 assert.match(updater, /autoUpdateOnStartup/);

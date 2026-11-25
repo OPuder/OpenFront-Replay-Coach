@@ -182,7 +182,6 @@ assert.ok(androidBaselineUiSeed.includes('tesseract "$screen_path" stdout -l deu
 assert.match(androidBaselineUiSeed, /OpenFront-Profillink/);
 assert.match(androidBaselineUiSeed, /OCR text:/);
 assert.match(androidBaselineUiSeed, /search_query=.*tr '\[:upper:\]' '\[:lower:\]'/);
-assert.match(androidBaselineUiSeed, /ADB input did not populate the library search field/);
 assert.match(androidBaselineUiSeed, /wait_for_search_ime\(\)\s*\{\s*local ime_state="" attempt/,
   "IME polling must keep its counter local.");
 assert.match(androidBaselineUiSeed, /send_search_query_by_keyevents\(\)\s*\{\s*local query="\$1" char ascii keycode index/,

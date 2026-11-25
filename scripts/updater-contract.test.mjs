@@ -192,6 +192,10 @@ assert.match(androidBaselineUiSeed, /wait_for_search_ime\(\)/,
   "Android search typing must wait for the IME/focus transition before injecting text.");
 assert.match(androidBaselineUiSeed, /send_search_query_by_keyevents/,
   "Search IDs must have a key-event fallback when adb shell input text is dropped.");
+assert.match(androidBaselineUiSeed, /for keycode in "\$\{keycodes\[@\]\}"; do/,
+  "Key-event fallback must send the keycodes sequentially rather than pass an unsupported multi-key command.");
+assert.match(androidBaselineUiSeed, /shell input keyevent "\$keycode"/,
+  "The key-event fallback must inject each mapped Android keycode individually.");
 assert.match(androidBaselineUiSeed, /keycode=\$\(\(ascii - 68\)\)/,
   "The fallback must map lowercase letters to Android KEYCODE_A-Z.");
 assert.match(androidBaselineUiSeed, /keycode=\$\(\(ascii - 41\)\)/,

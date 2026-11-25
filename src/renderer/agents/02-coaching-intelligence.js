@@ -1,1 +1,0 @@
-module.exports = require('./02-coaching-intelligence.ts');

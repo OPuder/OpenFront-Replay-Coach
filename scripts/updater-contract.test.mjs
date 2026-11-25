@@ -184,6 +184,7 @@ assert.match(androidBaselineUiSeed, /OCR text:/);
 assert.match(androidBaselineUiSeed, /search_query=.*tr '\[:upper:\]' '\[:lower:\]'/);
 assert.match(androidBaselineUiSeed, /ADB input did not populate the library search field/);
 assert.match(androidBaselineUiSeed, /navigate_to_library/);
+assert.match(androidBaselineUiSeed, /Using verified bottom-navigation fallback/);
 assert.match(androidBaselineUiSeed, /wait_for_library_page\(\)\s*\{/,
   "Library page verification helper must be declared before it is called.");
 assert.match(androidBaselineUiSeed, /Retrying the visible Partien navigation label/);

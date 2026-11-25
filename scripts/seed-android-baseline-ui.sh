@@ -465,7 +465,9 @@ send_search_query_by_keyevents() {
     keycodes+=("$keycode")
   done
   log "Typing the verified alphanumeric search query with Android key events as an IME fallback."
-  timeout 20s adb -s emulator-5554 shell "for code in ${keycodes[*]}; do input keyevent \\$code || exit; done" || fail "Android key-event fallback failed for the library search query."
+  for keycode in "${keycodes[@]}"; do
+    timeout 5s adb -s emulator-5554 shell input keyevent "$keycode" || fail "Android key-event fallback failed for the library search query."
+  done
 }
 
 seed_verified_match() {

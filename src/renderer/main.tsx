@@ -1204,7 +1204,8 @@ function CoachPanel({apiResult,preferredPlayerPublicId,decodedActions,simulation
           <div><b>{leadEngineInsight?.title ?? proCoachReport?.findings[0]?.title ?? 'Dein nächster Trainingsfokus'}</b><p>{leadEngineInsight?.nextStep ?? proCoachReport?.trainingRule ?? coachTrainingFocus}</p></div>
           <button type="button" className="studio-button primary" onClick={()=>setTrainingGoal({title:leadEngineInsight?.title ?? proCoachReport?.findings[0]?.title ?? 'Trainingsfokus',instruction:leadEngineInsight?.nextStep ?? proCoachReport?.trainingRule ?? coachTrainingFocus,gameId:apiResult.gameId,mapName:apiResult.mapName,createdAt:new Date().toISOString(),completed:false})}>Als Trainingsziel übernehmen <ArrowRight size={15}/></button>
         </div> : <div className="coach-training-goal-empty">
-          <div><b>Noch kein belegtes Trainingsziel</b><p>Sobald die Original-Engine eine konkrete Situation ausreichend belegt, kannst du daraus ein Ziel für die nächste Partie übernehmen. Wir erfinden vorher keine Taktikempfehlung.</p></div>
+          <div><b>Noch kein einzelnes Trainingsziel belastbar belegt</b><p>Du kannst trotzdem einen allgemeinen Replay-Review-Fokus speichern. Er ist keine konkrete Taktikbewertung und behauptet keinen Fehler, der nicht belegt ist.</p></div>
+          {simulationResult?.status==='verified' && <button type="button" className="studio-button primary" onClick={()=>setTrainingGoal({title:'Replay-Review',instruction:coachTrainingFocus,gameId:apiResult.gameId,mapName:apiResult.mapName,createdAt:new Date().toISOString(),completed:false})}>Allgemeinen Trainingsfokus übernehmen <ArrowRight size={15}/></button>}
         </div>}
       </section>
       {selectedPlayerReview && <details className="coach-mobile-details">

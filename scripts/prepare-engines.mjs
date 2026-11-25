@@ -34,8 +34,8 @@ console.log(`Preparing ${engines.length} exact engine revisions from ${sources.l
 const initializeSubmodules = [
   "-c", "http.lowSpeedLimit=1000",
   "-c", "http.lowSpeedTime=30",
-  "-c", "fetch.parallel=2",
-  "submodule", "update", "--init", "--depth", "1", "--jobs=2", "--progress", "--",
+  "-c", "fetch.parallel=1",
+  "submodule", "update", "--init", "--depth", "1", "--jobs=1", "--progress", "--",
   ...sources,
 ];
 let initialized = false;
@@ -43,13 +43,19 @@ for (let attempt = 1; attempt <= 3; attempt++) {
   try {
     run("git", initializeSubmodules, {
       env: { ...process.env, GIT_TERMINAL_PROMPT: "0" },
-    }, `Initialize exact OpenFront engine submodules (attempt ${attempt}/3)`, 15 * 60_000);
+    }, `Initialize exact OpenFront engine submodules (attempt ${attempt}/3)`, 10 * 60_000);
     initialized = true;
     break;
   } catch (error) {
     if (attempt === 3) throw error;
-    console.warn(`Submodule initialization attempt ${attempt} failed; retrying in ${attempt * 10}s.`);
-    run("sleep", [String(attempt * 10)], {}, "Wait before submodule retry", 30_000);
+    const delaySeconds = attempt * 10;
+    console.warn(`Submodule initialization attempt ${attempt} failed; retrying in ${delaySeconds}s.`);
+    // Use Node's portable synchronous wait so the retry works on both Windows
+    // runners and Linux without relying on an external sleep executable.
+    run(process.execPath, [
+      "-e", "Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, Number(process.argv[1]) * 1000);",
+      String(delaySeconds),
+    ], {}, "Wait before submodule retry", 30_000);
   }
 }
 if (!initialized) throw new Error("Could not initialize exact OpenFront engine submodules after three attempts.");

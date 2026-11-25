@@ -1,0 +1,32 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "default_agent": "build",
+  "instructions": [
+    "AGENTS.md",
+    "PROJECT_RULES.md",
+    "PROJECT_CONTEXT.md",
+    "docs/development/agent-coordination.md",
+    "docs/development/quality-gates.md"
+  ],
+  "permissions": [
+    { "action": "shell", "resource": "*", "effect": "ask" },
+    { "action": "shell", "resource": "git status *", "effect": "allow" },
+    { "action": "shell", "resource": "git diff *", "effect": "allow" },
+    { "action": "shell", "resource": "git log *", "effect": "allow" },
+    { "action": "shell", "resource": "git branch *", "effect": "allow" },
+    { "action": "shell", "resource": "git fetch *", "effect": "allow" },
+    { "action": "shell", "resource": "git push *", "effect": "deny" },
+    { "action": "subagent", "resource": "replay-engine", "effect": "allow" },
+    { "action": "subagent", "resource": "coaching-intelligence", "effect": "allow" },
+    { "action": "subagent", "resource": "ux-visualization", "effect": "allow" },
+    { "action": "subagent", "resource": "platform-updates", "effect": "allow" },
+    { "action": "subagent", "resource": "qa-release", "effect": "allow" }
+  ],
+  "agents": {
+    "replay-engine": { "mode": "subagent" },
+    "coaching-intelligence": { "mode": "subagent" },
+    "ux-visualization": { "mode": "subagent" },
+    "platform-updates": { "mode": "subagent" },
+    "qa-release": { "mode": "subagent" }
+  }
+}

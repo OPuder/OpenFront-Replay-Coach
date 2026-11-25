@@ -12,7 +12,7 @@ const branchCleanupWorkflow = read(".github/workflows/cleanup-merged-branches.ym
 const packageJson = JSON.parse(read("package.json"));
 const ciWorkflow = read(".github/workflows/ci.yml");
 assert.equal(packageJson.scripts["test:opencode-config"], "node --test scripts/opencode-config.test.mjs");
-assert.match(ciWorkflow, /Validate OpenCode specialist configuration[\s\S]*?run: npm run test:opencode-config/,
+assert.match(ciWorkflow, /Run responsive replay visualization UI tests[\s\S]*?run: xvfb-run -a npm run test:ux-ui/,\n  "The new responsive replay visualization UI suite must run in CI.");\nassert.match(ciWorkflow, /Validate OpenCode specialist configuration[\s\S]*?run: npm run test:opencode-config/,
   "The OpenCode agent configuration regression must remain in the PR CI suite.");
 assert.match(updater, /releases\/latest/);
 assert.match(updater, /createHash\('sha256'\)/);

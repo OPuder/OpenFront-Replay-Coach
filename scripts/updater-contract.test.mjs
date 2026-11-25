@@ -73,6 +73,8 @@ assert.match(branchCleanupWorkflow, /types: \[closed\]/);
 assert.match(branchCleanupWorkflow, /pr\.merged/);
 assert.match(branchCleanupWorkflow, /if \(pr\.merged && allowlisted\.has\(pr\.head\.ref\)\)/,
   "Branch deletion must require a merged PR; closing PR #165 unmerged must not delete its source branch.");
+assert.match(branchCleanupWorkflow, /error\.status === 404 \|\| \(error\.status === 422 && error\.message\?\.includes\("Reference does not exist"\)\)/,
+  "Cleanup must tolerate an already-missing ref but fail on unrelated API errors.");
 assert.match(branchCleanupWorkflow, /pr\.number === 166/);
 assert.doesNotMatch(branchCleanupWorkflow, /pr\.number === 165/,
   "An unmerged modernization branch must be preserved until its remaining changes are reviewed and transferred.");

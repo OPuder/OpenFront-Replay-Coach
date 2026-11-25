@@ -314,6 +314,8 @@ assert.match(enginePreparation, /http\.lowSpeedTime=0/);
 assert.match(enginePreparation, /http\.version=HTTP\/1\.1/);
 assert.match(enginePreparation, /attempt <= 4/);
 assert.match(enginePreparation, /12 \* 60_000/);
+assert.match(enginePreparation, /Wait before submodule retry", 60_000\)/,
+  "The retry wait timeout must exceed the longest bounded retry delay.");
 assert.match(enginePreparation, /Initialize exact OpenFront engine submodules/);
 assert.match(androidValidationWorkflow, /-gpu software/,
   "Android emulator validation must use stable software rendering instead of flaky GPU color buffers.");

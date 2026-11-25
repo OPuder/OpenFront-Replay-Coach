@@ -478,37 +478,44 @@ seed_verified_match() {
 }
 
 create_verified_training_goal() {
-  # The published baseline is a non-debuggable WebView: DOM nodes may exist in
-  # UIAutomator with zero screen bounds. Search the visible screenshot while
-  # scrolling in both directions instead of assuming the training card's
-  # position. The previous fixed upward swipe sequence could overscroll past it.
-  local coords=""
-  for attempt in $(seq 1 10); do
+  # The baseline app is a non-debuggable WebView, so its DOM accessibility
+  # nodes can have zero bounds. The CTA lives in the training section above
+  # the technical accordions. Previous attempts only swiped upward through the
+  # page (toward its bottom), then OCR scanned the footer and never returned.
+  # Reset to the top first, then walk the page downward one viewport at a time.
+  local coords="" ocr_dump=""
+  for reset in $(seq 1 8); do
+    timeout 10s adb -s emulator-5554 shell input swipe 500 430 500 1450 550 >/dev/null 2>&1 || true
+    sleep 1
+  done
+  for attempt in $(seq 1 18); do
     if dump_ui; then
       coords="$(find_bounds "Als Trainingsziel übernehmen" text 1 2>/dev/null || true)"
     fi
     if [[ -z "$coords" ]]; then
       coords="$(ocr_find_bounds "Als Trainingsziel übernehmen" 1 || true)"
+      if [[ -z "$coords" ]]; then coords="$(ocr_find_bounds "übernehmen" 1 || true)"; fi
     fi
     if [[ -n "$coords" ]]; then
       read -r x y <<< "$coords"
-      log "Tapping the visible evidence-backed training action at $x,$y (attempt $attempt/10)."
-      timeout 10s adb -s emulator-5554 shell input tap "$x" "$y" || fail "ADB tap failed for the visible training action."
-      log "Created a training goal from a verified, evidence-backed Coach finding."
-      return 0
+      if (( y >= 150 && y <= 1500 )); then
+        log "Tapping the visible evidence-backed training action at $x,$y (scan $attempt/18)."
+        timeout 10s adb -s emulator-5554 shell input tap "$x" "$y" || fail "ADB tap failed for the visible training action."
+        log "Created a training goal from a verified, evidence-backed Coach finding."
+        return 0
+      fi
+      log "Training CTA detected outside the safe viewport (y=$y); continuing scan."
+      coords=""
     fi
-    if (( attempt <= 6 )); then
-      # Finger moves down: scroll the document toward its earlier sections.
-      timeout 10s adb -s emulator-5554 shell input swipe 500 430 500 1450 550 >/dev/null 2>&1 || true
-    else
-      # Then scan back toward later sections, still with a bounded number of swipes.
-      timeout 10s adb -s emulator-5554 shell input swipe 500 1450 500 430 550 >/dev/null 2>&1 || true
-    fi
+    ocr_dump="$(ocr_text 2>/dev/null | tr '\\n' ' ' || true)"
+    log "Training CTA not visible yet (scan $attempt/18); current visible text: ${ocr_dump:0:450}"
+    # Swipe upward to move the content down the page. This now follows the
+    # explicit top-to-bottom scan direction, rather than repeating a gesture
+    # that leaves the viewport pinned at the footer.
+    timeout 10s adb -s emulator-5554 shell input swipe 500 1450 500 430 550 >/dev/null 2>&1 || true
     sleep 1
   done
-  local ocr_dump
-  ocr_dump="$(ocr_text 2>/dev/null | tr '\n' ' ' || true)"
-  fail "The verified training action was present in the WebView hierarchy but never became visible in the bounded scroll search. OCR text: ${ocr_dump:0:1200}; UI: $(cat "$ui_xml" 2>/dev/null | head -c 3500)"
+  fail "Could not locate the verified training CTA after resetting to the page top and scanning 18 viewports. Last OCR text: ${ocr_dump:0:1200}; UI: $(cat "$ui_xml" 2>/dev/null | head -c 3500)"
 }
 
 # The baseline must contain two genuine, engine-verified matches and a real

@@ -447,7 +447,10 @@ seed_verified_match() {
   # so send lowercase and verify it reached the focused EditText before submit.
   local search_query
   search_query="$(printf '%s' "$game_id" | tr '[:upper:]' '[:lower:]')"
-  timeout 10s adb -s emulator-5554 shell input text "$search_query" || fail "Could not enter archived match ID $game_id in the library search."
+  # Give the Android IME time to attach to the WebView input. Some emulator
+  # images accept the tap and display the keyboard but silently drop input text.
+  sleep 2
+  timeout 10s adb -s emulator-5554 shell input text "$search_query" || true
   local typed=false
   for attempt in $(seq 1 6); do
     if dump_ui && grep -Fi "text=\"$search_query\"" "$ui_xml" >/dev/null; then
@@ -460,7 +463,41 @@ seed_verified_match() {
     fi
     sleep 1
   done
-  [[ "$typed" == true ]] || fail "ADB input did not populate the library search field for $game_id; refusing to treat an empty search as a match."
+
+  if [[ "$typed" != true ]]; then
+    log "IME text injection did not appear in the focused search field; retrying with Android key events."
+    # Reset the focused field before sending the query one key at a time.
+    timeout 10s adb -s emulator-5554 shell input keyevent 113 29 || true # Ctrl+A
+    timeout 10s adb -s emulator-5554 shell input keyevent 67 || true # Delete
+    local keycodes=() char code
+    for ((i=0; i<${#search_query}; i++)); do
+      char="${search_query:i:1}"
+      case "$char" in
+        a) code=29;; b) code=30;; c) code=31;; d) code=32;; e) code=33;;
+        f) code=34;; g) code=35;; h) code=36;; i) code=37;; j) code=38;;
+        k) code=39;; l) code=40;; m) code=41;; n) code=42;; o) code=43;;
+        p) code=44;; q) code=45;; r) code=46;; s) code=47;; t) code=48;;
+        u) code=49;; v) code=50;; w) code=51;; x) code=52;; y) code=53;; z) code=54;;
+        0) code=7;; 1) code=8;; 2) code=9;; 3) code=10;; 4) code=11;;
+        5) code=12;; 6) code=13;; 7) code=14;; 8) code=15;; 9) code=16;;
+        *) fail "Unsupported character '$char' in archived match ID; cannot use key-event fallback.";;
+      esac
+      keycodes+=("$code")
+    done
+    timeout 15s adb -s emulator-5554 shell input keyevent "${keycodes[@]}" || fail "Android key-event fallback failed for archived match ID $game_id."
+    for attempt in $(seq 1 8); do
+      if dump_ui && grep -Fi "text=\"$search_query\"" "$ui_xml" >/dev/null; then
+        typed=true
+        break
+      fi
+      if ocr_text 2>/dev/null | grep -Fi "$search_query" >/dev/null; then
+        typed=true
+        break
+      fi
+      sleep 1
+    done
+  fi
+  [[ "$typed" == true ]] || fail "Neither IME text injection nor Android key-event fallback populated the library search for $game_id; refusing to treat an empty search as a match."
   current_search_query="$search_query"
   # Commit the verified query with ENTER before hiding the keyboard.
   timeout 10s adb -s emulator-5554 shell input keyevent 66 || fail "Could not commit archived match ID $game_id in the library search."

@@ -183,6 +183,22 @@ tap_edit_field() {
       else
         coords="$(ocr_find_bounds "Match-ID suchen" 1 || true)"
         if [[ -z "$coords" ]]; then coords="$(ocr_find_bounds "Karte oder" 1 || true)"; fi
+        # Some published WebView builds do not expose the empty search
+        # placeholder to OCR. On the narrow layout the search field spans
+        # the row directly below the third filter; use it as a visual anchor,
+        # then require typed-query and exact-result verification below.
+        if [[ -z "$coords" ]]; then
+          anchor="$(ocr_find_bounds "Alle Spieltypen" 1 || true)"
+          if [[ -z "$anchor" ]]; then anchor="$(ocr_find_bounds "Spieltypen" 1 || true)"; fi
+          if [[ -n "$anchor" ]]; then
+            read -r anchor_x anchor_y <<< "$anchor"
+            candidate_y=$((anchor_y + 70))
+            if (( anchor_x >= 100 && anchor_x <= 1000 && candidate_y >= 150 && candidate_y <= 1400 )); then
+              coords="540 $candidate_y"
+              log "Search placeholder not OCR-readable; using filter-row anchor $anchor_x,$anchor_y."
+            fi
+          fi
+        fi
       fi
     fi
     if [[ -n "$coords" ]]; then

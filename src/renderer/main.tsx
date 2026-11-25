@@ -1205,7 +1205,7 @@ function CoachPanel({apiResult,preferredPlayerPublicId,decodedActions,simulation
           <button type="button" className="studio-button primary" onClick={()=>setTrainingGoal({title:leadEngineInsight?.title ?? proCoachReport?.findings[0]?.title ?? 'Trainingsfokus',instruction:leadEngineInsight?.nextStep ?? proCoachReport?.trainingRule ?? coachTrainingFocus,gameId:apiResult.gameId,mapName:apiResult.mapName,createdAt:new Date().toISOString(),completed:false})}>Als Trainingsziel übernehmen <ArrowRight size={15}/></button>
         </div> : <div className="coach-training-goal-empty">
           <div><b>Noch kein belegtes Trainingsziel</b><p>Sobald die Original-Engine eine konkrete Situation ausreichend belegt, kannst du daraus ein Ziel für die nächste Partie übernehmen. Wir erfinden vorher keine Taktikempfehlung.</p></div>
-        </div>
+        </div>}
       </section>
       {selectedPlayerReview && <details className="coach-mobile-details">
         <summary>Spielstand und Folgen der Befehle anzeigen</summary>

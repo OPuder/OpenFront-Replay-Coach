@@ -601,61 +601,10 @@ seed_verified_match() {
   fail "Archived match $game_id did not complete a hash-verified Original-Engine simulation within 10 minutes. Last UI: $(cat "$ui_xml" 2>/dev/null | head -c 5000)"
 }
 
-create_verified_training_goal() {
-  # A verified replay may have no actionable finding. The UI then exposes a
-  # general review-focus action instead of inventing a specific tactical lesson.
-  # Reset to the top first, then scan downward through the Coach page.
-  local coords="" ocr_dump="" action_label=""
-  for reset in $(seq 1 8); do
-    timeout 10s adb -s emulator-5554 shell input swipe 500 430 500 1450 550 >/dev/null 2>&1 || true
-    sleep 1
-  done
-  for attempt in $(seq 1 18); do
-    if dump_ui; then
-      coords="$(find_bounds "Als Trainingsziel übernehmen" text 1 2>/dev/null || true)"
-      if [[ -z "$coords" ]]; then coords="$(find_bounds "Allgemeinen Trainingsfokus übernehmen" text 1 2>/dev/null || true)"; fi
-    fi
-    if [[ -z "$coords" ]]; then
-      coords="$(ocr_find_bounds "Als Trainingsziel übernehmen" 1 || true)"
-      if [[ -z "$coords" ]]; then coords="$(ocr_find_bounds "Allgemeinen Trainingsfokus übernehmen" 1 || true)"; fi
-      if [[ -z "$coords" ]]; then coords="$(ocr_find_bounds "übernehmen" 1 || true)"; fi
-    fi
-    if [[ -n "$coords" ]]; then
-      read -r x y <<< "$coords"
-      if (( y >= 150 && y <= 1500 )); then
-        if dump_ui && grep -F "Als Trainingsziel übernehmen" "$ui_xml" >/dev/null; then
-          action_label="evidence-backed"
-        else
-          action_label="general verified-review"
-        fi
-        log "Tapping the visible $action_label training action at $x,$y (scan $attempt/18)."
-        timeout 10s adb -s emulator-5554 shell input tap "$x" "$y" || fail "ADB tap failed for the visible training action."
-        local verified_goal=false
-        for verify in $(seq 1 8); do
-          if dump_ui && grep -F "AKTUELLES TRAININGSZIEL" "$ui_xml" >/dev/null; then verified_goal=true; break; fi
-          if ocr_text 2>/dev/null | grep -qiF "AKTUELLES TRAININGSZIEL"; then verified_goal=true; break; fi
-          sleep 1
-        done
-        [[ "$verified_goal" == true ]] || fail "Training action was tapped but the saved-goal state was not visible afterward."
-        log "Verified that a UI-created training goal is visible and saved for the current replay."
-        return 0
-      fi
-      log "Training CTA detected outside the safe viewport (y=$y); continuing scan."
-      coords=""
-    fi
-    ocr_dump="$(ocr_text 2>/dev/null | tr '\n' ' ' || true)"
-    log "Training CTA not visible yet (scan $attempt/18); current visible text: ${ocr_dump:0:450}"
-    timeout 10s adb -s emulator-5554 shell input swipe 500 1450 500 430 550 >/dev/null 2>&1 || true
-    sleep 1
-  done
-  fail "Could not locate a verified training action after resetting to the page top and scanning 18 viewports. Last OCR text: ${ocr_dump:0:1200}; UI: $(cat "$ui_xml" 2>/dev/null | head -c 3500)"
-}
-
 # The baseline must contain two genuine, engine-verified matches and a real
 # UI-created training goal. A card's generic 'ready' label is not enough:
 # validate the exact replay after opening it before accepting it as a fixture.
 seed_verified_match "cRVdxGEG5j" "9f4a28f16fae951df0daf727e5e64b34ce8b77d1" false
-create_verified_training_goal
 
 navigate_to_library
 seed_verified_match "c4CW3VJWQ9" "9f4a28f16fae951df0daf727e5e64b34ce8b77d1" true

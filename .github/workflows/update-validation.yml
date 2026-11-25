@@ -13,6 +13,7 @@ on:
       - "src/main/**"
       - "android-updater-template/**"
       - "scripts/test-android-*.sh"
+      - "scripts/seed-android-baseline-ui.sh"
       - "scripts/android-emulator-diagnostics.sh"
   workflow_dispatch:
   schedule:

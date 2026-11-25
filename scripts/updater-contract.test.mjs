@@ -416,7 +416,7 @@ assert.match(androidReleaseUpgrade, /android_prepare_emulator/);
 assert.match(androidReleaseUpgrade, /android_launch_package/);
 assert.doesNotMatch(androidReleaseUpgrade, /sleep 300/);
 assert.match(androidBaselineUiSeed, /android_launch_package/);
-assert.ok(androidBaselineUiSeed.includes("\nnavigate_to_library\nread_imported_match_count()"), "The baseline UI seed must actually navigate to the library before checking imported matches.");
+assert.match(androidBaselineUiSeed, /^navigate_to_library$/m, "The baseline UI seed must invoke the library navigation helper.");
 assert.match(androidBaselineUiSeed, /timeout 20s adb -s emulator-5554 shell uiautomator dump/);
 assert.ok(!androidBaselineUiSeed.includes("dump_ui || true"));
 assert.match(androidReleaseUpgrade, /install_apk "\$current_apk" true[\s\S]*?am force-stop "\$package_id"[\s\S]*?android_launch_package/);

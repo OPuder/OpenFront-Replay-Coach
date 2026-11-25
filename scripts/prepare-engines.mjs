@@ -32,23 +32,29 @@ console.log(`Preparing ${engines.length} exact engine revisions from ${sources.l
 // update lets Git reuse successfully fetched objects instead of failing the
 // whole validation on a transient network interruption.
 const initializeSubmodules = [
-  "-c", "http.lowSpeedLimit=1000",
-  "-c", "http.lowSpeedTime=120",
+  // GitHub-hosted runners sometimes throttle large historical OpenFront packs.
+  // The default low-speed cutoff aborts healthy but temporarily slow transfers
+  // (curl 28 / early EOF). Disable that cutoff, force HTTP/1.1, and serialize
+  // requests; the outer retry remains bounded by the per-attempt timeout.
+  "-c", "http.lowSpeedLimit=0",
+  "-c", "http.lowSpeedTime=0",
+  "-c", "http.version=HTTP/1.1",
+  "-c", "http.maxRequests=1",
   "-c", "fetch.parallel=1",
   "submodule", "update", "--init", "--depth", "1", "--jobs=1", "--progress", "--",
   ...sources,
 ];
 let initialized = false;
-for (let attempt = 1; attempt <= 3; attempt++) {
+for (let attempt = 1; attempt <= 4; attempt++) {
   try {
     run("git", initializeSubmodules, {
       env: { ...process.env, GIT_TERMINAL_PROMPT: "0" },
-    }, `Initialize exact OpenFront engine submodules (attempt ${attempt}/3)`, 10 * 60_000);
+    }, `Initialize exact OpenFront engine submodules (attempt ${attempt}/4)`, 12 * 60_000);
     initialized = true;
     break;
   } catch (error) {
-    if (attempt === 3) throw error;
-    const delaySeconds = attempt * 10;
+    if (attempt === 4) throw error;
+    const delaySeconds = attempt * 15;
     console.warn(`Submodule initialization attempt ${attempt} failed; retrying in ${delaySeconds}s.`);
     // Use Node's portable synchronous wait so the retry works on both Windows
     // runners and Linux without relying on an external sleep executable.
@@ -58,7 +64,7 @@ for (let attempt = 1; attempt <= 3; attempt++) {
     ], {}, "Wait before submodule retry", 30_000);
   }
 }
-if (!initialized) throw new Error("Could not initialize exact OpenFront engine submodules after three attempts.");
+if (!initialized) throw new Error("Could not initialize exact OpenFront engine submodules after four attempts.");
 
 // Historical revisions share immutable dependency lockfiles. Install each
 // lockfile once and link the identical node_modules tree into its engine group.

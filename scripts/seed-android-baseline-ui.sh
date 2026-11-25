@@ -187,7 +187,7 @@ tap_edit_field() {
     fi
     if [[ -n "$coords" ]]; then
       read -r x y <<< "$coords"
-      if (( y >= 150 && y <= 1500 )); then
+      if (( y >= 70 && y <= 1500 )); then
         log "Tapping the visible library search field at $x,$y (UI hierarchy/OCR, attempt $attempt/8)."
         timeout 10s adb -s emulator-5554 shell input tap "$x,$y" || fail "ADB tap failed for the library search field."
         return 0

@@ -25,7 +25,7 @@ test("every configured specialist has a matching read-only agent file", async ()
     const file = await readFile(new URL(`../.opencode/agents/${id}.md`, import.meta.url), "utf8");
     const frontmatter = file.split(/^---$/m)[1];
     assert.ok(frontmatter, `${id}: frontmatter missing`);
-    assert.match(frontmatter, /^\\s*mode: subagent\\s*$/m, `${id}: must be subagent`);
+    assert.match(frontmatter, /^\s*mode: subagent\s*$/m, `${id}: must be subagent`);
     for (const action of ["edit", "shell", "subagent"]) {
       assert.match(
         frontmatter,

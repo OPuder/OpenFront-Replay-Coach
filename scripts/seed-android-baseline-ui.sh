@@ -21,7 +21,7 @@ trap on_android_seed_exit EXIT
 
 
 dump_ui() {
-  local dump_output="" pull_output=""
+  local dump_output="" pull_output="" attempt
   for attempt in 1 2; do
     rm -f "$ui_xml"
     timeout 20s adb -s emulator-5554 shell uiautomator dump --compressed /sdcard/ofrc-window.xml >"$RUNNER_TEMP/ofrc-uiautomator-dump.log" 2>&1 || {

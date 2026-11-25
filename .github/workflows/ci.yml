@@ -70,6 +70,9 @@ jobs:
       - name: Run coaching, replay, storage and updater regressions
         run: npm run test:coach
 
+      - name: Validate OpenCode specialist configuration
+        run: npm run test:opencode-config
+
       - name: Run integration contracts
         run: npm run test:integration-e2e
 

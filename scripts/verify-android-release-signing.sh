@@ -54,24 +54,29 @@ current_apk="${OPENFRONT_CURRENT_APK:-$default_candidate_apk}"
 if [[ "${ANDROID_SIGNING_VERIFY_ONLY:-0}" != "1" ]]; then
   node scripts/configure-android-signing.mjs
   build_succeeded=0
-  for attempt in 1 2 3; do
-    echo "::notice::Android Gradle build attempt ${attempt}/3 (bounded workers, cached dependencies)."
+  build_log="${RUNNER_TEMP:-/tmp}/ofrc-android-gradle-build.log"
+  for attempt in 1 2 3 4 5; do
+    echo "::notice::Android Gradle build attempt ${attempt}/5 (bounded workers, cached dependencies)."
     set +e
-    (cd android && timeout 900s ./gradlew --no-daemon --max-workers=2 --no-parallel "$build_task")
-    build_status=$?
+    (cd android && timeout 900s ./gradlew --no-daemon --max-workers=2 --no-parallel "$build_task") 2>&1 | tee "$build_log"
+    build_status=${PIPESTATUS[0]}
     set -e
     if (( build_status == 0 )); then
       build_succeeded=1
       break
     fi
-    if (( attempt < 3 )); then
-      delay=$(( attempt * 30 ))
-      echo "::warning::Android Gradle build failed with exit ${build_status}; retrying after ${delay}s. The job will still fail if the underlying build error persists."
+    if ! grep -Eqi 'HTTP (429|5[0-9][0-9])|status code (429|5[0-9][0-9])|Could not GET|Connection reset|Connection timed out|Temporary failure|Read timed out|UnknownHostException|SocketTimeoutException' "$build_log"; then
+      echo "::error::Android Gradle build failed with a non-transient error (exit ${build_status}); retries stopped to avoid repeating a permanent failure."
+      exit "$build_status"
+    fi
+    if (( attempt < 5 )); then
+      delay=$(( attempt * 60 ))
+      echo "::warning::Android Gradle build hit a transient dependency/network failure (exit ${build_status}); retrying after ${delay}s. The job will still fail if the underlying failure persists."
       sleep "$delay"
     fi
   done
   if (( build_succeeded != 1 )); then
-    echo "::error::Android candidate APK could not be built with the permanent signing key after three bounded attempts."
+    echo "::error::Android candidate APK could not be built with the permanent signing key after five bounded attempts; see $build_log."
     exit 1
   fi
 fi

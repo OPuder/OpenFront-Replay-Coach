@@ -33,7 +33,7 @@ console.log(`Preparing ${engines.length} exact engine revisions from ${sources.l
 // whole validation on a transient network interruption.
 const initializeSubmodules = [
   "-c", "http.lowSpeedLimit=1000",
-  "-c", "http.lowSpeedTime=30",
+  "-c", "http.lowSpeedTime=120",
   "-c", "fetch.parallel=1",
   "submodule", "update", "--init", "--depth", "1", "--jobs=1", "--progress", "--",
   ...sources,

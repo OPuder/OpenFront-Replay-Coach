@@ -507,7 +507,7 @@ create_verified_training_goal() {
       log "Training CTA detected outside the safe viewport (y=$y); continuing scan."
       coords=""
     fi
-    ocr_dump="$(ocr_text 2>/dev/null | tr '\\n' ' ' || true)"
+    ocr_dump="$(ocr_text 2>/dev/null | tr '\n' ' ' || true)"
     log "Training CTA not visible yet (scan $attempt/18); current visible text: ${ocr_dump:0:450}"
     # Swipe upward to move the content down the page. This now follows the
     # explicit top-to-bottom scan direction, rather than repeating a gesture

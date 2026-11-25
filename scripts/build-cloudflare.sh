@@ -18,6 +18,6 @@ echo "==> Building shared browser app and replay workers"
 npm run build:web
 
 echo "==> Validating PWA and same-origin proxy output"
-node scripts/smoke-test-web.mjs
+node scripts/smoke-test-pages-functions.mjs
 
 echo "==> Cloudflare Pages build is ready in dist/"

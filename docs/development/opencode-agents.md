@@ -27,7 +27,7 @@ All specialist agents are configured as subagents and read-only: they may invest
 
 ## Model
 
-Agent files currently specify `ollama/gpt-oss:20b`, matching the project's documented local-model setup. OpenCode must have that Ollama model/provider configured locally. If the model ID is unavailable in the current environment, update the agent model setting to a verified available model rather than claiming the agents work.
+**Current configuration:** the five Markdown agent files do not pin a model. OpenCode subagents inherit the parent session's model unless a model is configured in the agent frontmatter. If local Ollama is intended, explicitly configure a verified model/provider and confirm it is available in the local OpenCode runtime; do not assume the agents are using `ollama/gpt-oss:20b`.
 
 ## Permissions
 
@@ -46,4 +46,4 @@ Start OpenCode from the repository root so it discovers project configuration.
 
 ## Verification
 
-Configuration files were committed to the GitHub `main` branch, but runtime discovery and real agent calls still require verification in the local OpenCode installation. Do not report agents as operational until OpenCode lists them and each specialist has been invoked successfully.
+Static review confirms the project config references the five discovered Markdown agent IDs and each file declares `mode: subagent` with read-only restrictions. The merge commit's GitHub Actions checks were still running when reviewed. Runtime discovery, model/provider availability, and real invocation of each agent still require verification in the local OpenCode installation. Do not report agents as operational until OpenCode lists them and each specialist has been invoked successfully.

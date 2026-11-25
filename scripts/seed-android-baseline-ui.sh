@@ -204,9 +204,9 @@ tap_edit_field() {
     if [[ -n "$coords" ]]; then
       read -r x y <<< "$coords"
       # OCR occasionally associates the placeholder with keyboard suggestion
-      # text and returns coordinates inside the IME. The search input itself
-      # is in the upper library toolbar; never tap the keyboard or lower cards.
-      if (( x >= 100 && x <= 1000 && y >= 150 && y <= 850 )); then
+      # text and returns coordinates inside the IME. The search input is in the central library filter card; never tap the
+      # keyboard or lower cards.
+      if (( x >= 100 && x <= 1000 && y >= 850 && y <= 1400 )); then
         log "Tapping the visible library search field at $x,$y (UI hierarchy/OCR, attempt $attempt/8)."
         timeout 10s adb -s emulator-5554 shell input tap "$x" "$y" || fail "ADB tap failed for the library search field."
         return 0

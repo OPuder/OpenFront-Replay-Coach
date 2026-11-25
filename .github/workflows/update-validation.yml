@@ -168,7 +168,7 @@ jobs:
         run: npm install --global npm@12.1.0
 
       - name: Prepare all exact historical OpenFront engines
-        timeout-minutes: 40
+        timeout-minutes: 55
         run: npm run prepare:engines
 
       - name: Install Coach dependencies once

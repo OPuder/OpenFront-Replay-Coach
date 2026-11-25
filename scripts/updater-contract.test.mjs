@@ -183,6 +183,10 @@ assert.match(androidBaselineUiSeed, /OpenFront-Profillink/);
 assert.match(androidBaselineUiSeed, /OCR text:/);
 assert.match(androidBaselineUiSeed, /search_query=.*tr '\[:upper:\]' '\[:lower:\]'/);
 assert.match(androidBaselineUiSeed, /ADB input did not populate the library search field/);
+assert.match(androidBaselineUiSeed, /wait_for_search_ime\(\)\s*\{\s*local ime_state="" attempt/,
+  "IME polling must keep its counter local.");
+assert.match(androidBaselineUiSeed, /send_search_query_by_keyevents\(\)\s*\{\s*local query="\$1" char ascii keycode index/,
+  "Key-event fallback must keep its character index local.");
 assert.match(androidBaselineUiSeed, /dump_ui\(\)\s*\{\s*local dump_output="" pull_output="" attempt/,
   "UI dump retries must keep their counter local so outer viewport scans can advance.");
 assert.match(androidBaselineUiSeed, /wait_for_search_ime\(\)/,

@@ -53,7 +53,7 @@ fi
 current_apk="${OPENFRONT_CURRENT_APK:-$default_candidate_apk}"
 if [[ "${ANDROID_SIGNING_VERIFY_ONLY:-0}" != "1" ]]; then
   node scripts/configure-android-signing.mjs
-  build_succeeded=0
+build_succeeded=0
   for attempt in 1 2 3; do
     echo "::notice::Android Gradle build attempt ${attempt}/3 (bounded workers, cached dependencies)."
     set +e
@@ -74,6 +74,7 @@ if [[ "${ANDROID_SIGNING_VERIFY_ONLY:-0}" != "1" ]]; then
     echo "::error::Android candidate APK could not be built with the permanent signing key after three bounded attempts."
     exit 1
   fi
+fi
 fi
 test -s "$current_apk" || { echo "::error::Signed Android candidate APK is missing: $current_apk"; exit 1; }
 build_tools="$(find "$ANDROID_HOME/build-tools" -mindepth 1 -maxdepth 1 -type d | sort -V | tail -n 1)"

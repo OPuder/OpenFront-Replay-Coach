@@ -84,3 +84,12 @@ These roles are coordination conventions, not claims that autonomous agents are 
 
 ## Account authorization
 Installing GitHub Apps, enabling Copilot features, granting organization permissions, authorizing Codex or supplying external API credentials must be done through the relevant account UI by an authorized user. Do not create workflows that pretend these permissions exist.
+
+## Tool, shell and file-operation safety
+- Before executing shell commands, identify the actual shell/runtime and use syntax native to it. Never mix Bash, CMD and PowerShell syntax without verifying compatibility.
+- For PowerShell, prefer readable multiline scripts and arrays over long nested command strings; use `-LiteralPath` for file paths and close/validate every quote, bracket and parenthesis before execution.
+- Before destructive or bulk operations, confirm the repository root, current working directory, exact target list and whether local changes are at risk. Preview targets first when practical.
+- Use only tool names and parameter schemas actually exposed by the runtime. Do not invent parameters or serialize shell commands into malformed nested JSON/tool calls.
+- If a tool call fails to parse, inspect/correct the call format and try an appropriate alternate available tool. If a shell command fails, distinguish tool-call parsing, shell syntax, command exit failure and environment failure; inspect the actual result before retrying.
+- Verify every consequential operation afterward: file existence/content, Git status/diff, command exit code, and test output. Never assume a failed call partially succeeded or a successful call proves the intended result.
+- Do not repeatedly retry an unchanged failing command. Diagnose, make a minimal correction, retry, and continue unless a genuine blocker remains.

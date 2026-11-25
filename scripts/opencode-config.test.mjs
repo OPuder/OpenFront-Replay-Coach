@@ -2,7 +2,6 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 
-const root = process.cwd();
 const config = JSON.parse(await readFile(new URL("../opencode.json", import.meta.url), "utf8"));
 const expectedAgents = [
   "replay-engine",
@@ -24,12 +23,12 @@ test("OpenCode config declares all project specialists as subagents", () => {
 test("every configured specialist has a matching read-only agent file", async () => {
   for (const id of expectedAgents) {
     const file = await readFile(new URL(`../.opencode/agents/${id}.md`, import.meta.url), "utf8");
-    const frontmatter = file.match(/^---\\r?\\n([\\s\\S]*?)\\r?\\n---/);
+    const frontmatter = file.split(/^---$/m)[1];
     assert.ok(frontmatter, `${id}: frontmatter missing`);
-    assert.match(frontmatter[1], /^mode: subagent$/m, `${id}: must be subagent`);
+    assert.match(frontmatter, /^\\s*mode: subagent\\s*$/m, `${id}: must be subagent`);
     for (const action of ["edit", "shell", "subagent"]) {
       assert.match(
-        frontmatter[1],
+        frontmatter,
         new RegExp(`action: ${action}\\n\\s+resource: ["']?\\*["']?\\n\\s+effect: deny`),
         `${id}: must deny ${action}`
       );

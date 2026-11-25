@@ -173,6 +173,13 @@ interface ProcessorResponse {
 }
 export interface EngineAssets { manifest: Record<string,string>; cdnBase: string }
 
+function replayPlayerName(player: any, fallback: string): string {
+  for (const value of [player?.displayName, player?.name, player?.username]) {
+    if (typeof value === "string" && value.trim()) return value.trim();
+  }
+  return fallback;
+}
+
 /**
  * Loads the terrain binary matching the replay's exact map dimensions from the
  * pinned engine commit. The manifest is used to distinguish normal, compact
@@ -276,14 +283,15 @@ export async function simulateReplay(
   let lastSampledFrame = -1;
   const turns: any[] = Array.isArray(record.turns) ? record.turns : [];
   const recordedHashCount = turns.reduce((count: number, turn: any) => count + (turn?.hash !== null && turn?.hash !== undefined ? 1 : 0), 0);
-  // Keep the regular overview cadence, but also capture the frames immediately
-  // before and after every action by the selected player. The action frame
-  // itself is not read by the outcome evaluator, so omit that redundant sample.
+  // Keep the regular overview cadence and capture each selected-player action
+  // frame plus its immediate before/after and delayed outcome observations.
+  // A Set deduplicates overlaps with the cadence and between nearby actions,
+  // so the extra cost is bounded by the number of distinct requested frames.
   const sampleFrames = new Set<number>();
   const replayPlayers = Array.isArray(record?.info?.players) ? record.info.players : [];
   const selectedPlayerMeta = preferredClientId
     ? replayPlayers.find((player: any) => String(player?.clientID ?? "") === preferredClientId)
-    : replayPlayers.find((player: any) => /oligenole/i.test(String(player?.displayName ?? player?.name ?? player?.username ?? "")));
+    : replayPlayers.find((player: any) => /oligenole/i.test(replayPlayerName(player, "")));
   const selectedClientId = selectedPlayerMeta?.clientID == null ? null : String(selectedPlayerMeta.clientID);
   const cadence = Math.max(1, Math.floor(sampleEvery));
   // OpenFront turnNumber is the one-based simulation tick. ReplayReader frame
@@ -505,7 +513,7 @@ export async function simulateReplay(
               return {
                 id,
                 clientID: meta.clientID == null ? null : String(meta.clientID),
-                name: String(meta.displayName ?? meta.name ?? meta.username ?? `Spieler ${id}`),
+                name: replayPlayerName(meta, `Spieler ${id}`),
                 spawnTile: Number.isInteger(player.spawnTile) ? Number(player.spawnTile) : null,
               };
             });
@@ -547,7 +555,7 @@ export async function simulateReplay(
           const staticPlayers = reader?.header.players ?? [];
           const target = selectedClientId
             ? staticPlayers.find((p: any) => String(p.clientID ?? "") === selectedClientId)
-            : staticPlayers.find((p: any) => /oligenole/i.test(String(p.displayName ?? p.name ?? p.username ?? "")));
+            : staticPlayers.find((p: any) => /oligenole/i.test(replayPlayerName(p, "")));
           const playerObservations = target ? samples.map(sample => ({tick:sample.tick, player:sample.players.find(p => p.id === target.smallID)})).filter((x): x is {tick:number;player:NonNullable<typeof x.player>} => Boolean(x.player)) : [];
           const playerSeries = playerObservations.map(x => x.player);
           let longestNoExpansionTicks = 0;
@@ -563,7 +571,7 @@ export async function simulateReplay(
           const lastPlayer = playerSeries[playerSeries.length - 1];
           if (playerObservations.length > 1) longestNoExpansionTicks = Math.max(longestNoExpansionTicks, playerObservations[playerObservations.length-1].tick - flatStartTick);
           const playerReview = firstPlayer && lastPlayer ? {
-            playerName: target.displayName ?? target.name ?? target.username ?? "Dein Spieler",
+            playerName: replayPlayerName(target, "Dein Spieler"),
             clientID: target.clientID == null ? null : String(target.clientID),
             startTiles: firstPlayer.tiles,
             endTiles: lastPlayer.tiles,
@@ -590,7 +598,7 @@ export async function simulateReplay(
             if (!player) return null;
             const activeTargets = new Set(player.outgoingAttackDetails.map(attack => attack.targetID));
             const incomingAttackerIDs = new Set(player.incomingAttackDetails.map(attack => attack.attackerID));
-            const nameBySmallID = new Map<number, string>(replayPlayerMetadata.map((meta: any): [number, string] => [Number(meta.smallID), String(meta.displayName ?? meta.name ?? `Spieler ${meta.smallID}`)]));
+            const nameBySmallID = new Map<number, string>(replayPlayerMetadata.map((meta: any): [number, string] => [Number(meta.smallID), replayPlayerName(meta, `Spieler ${meta.smallID}`)]));
             return {
               activeTargetCount: activeTargets.size,
               outgoingTargetIds: [...activeTargets],
@@ -609,7 +617,7 @@ export async function simulateReplay(
             const attacks = targetPlayer.incomingAttackDetails;
             const otherAttacks = attacks.filter(attack => attack.attackerID !== selectedSmallID);
             const otherAttackerIDs = new Set(otherAttacks.map(attack => attack.attackerID));
-            const nameBySmallID = new Map<number, string>(replayPlayerMetadata.map((meta: any): [number, string] => [Number(meta.smallID), String(meta.displayName ?? meta.name ?? `Spieler ${meta.smallID}`)]));
+            const nameBySmallID = new Map<number, string>(replayPlayerMetadata.map((meta: any): [number, string] => [Number(meta.smallID), replayPlayerName(meta, `Spieler ${meta.smallID}`)]));
             return {
               incomingAttackCount: attacks.length,
               incomingAttackTroops: attacks.reduce((sum, attack) => sum + attack.troops, 0),
@@ -657,7 +665,7 @@ export async function simulateReplay(
                 const targetId = intent?.type === "attack" && intent?.targetID != null ? String(intent.targetID) : null;
                 const targetMeta: any = targetId === null ? null : replayPlayerMetadata.find((player: any) => String(player.id) === targetId);
                 const targetSmallID = targetMeta?.smallID == null ? null : Number(targetMeta.smallID);
-                const targetName = targetMeta?.displayName ?? targetMeta?.name ?? null;
+                const targetName = targetMeta ? replayPlayerName(targetMeta, "") || null : null;
                 const targetBeforePlayer = targetSmallID === null ? null : beforeSample?.players.find(p => p.id === targetSmallID) ?? null;
                 const targetDeltaToFrame = (offset: number) => {
                   if (!targetBeforePlayer || frame + offset >= totalTicks) return null;

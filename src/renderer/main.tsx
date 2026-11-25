@@ -568,10 +568,8 @@ function App() {
             </div>
             {longitudinalReport.status==='ready' ? <div className="coach-spotlight-grid">
               <article className="coach-spotlight-item focus">
-                <span><Brain size={14}/> TRAININGSFOKUS</span>
-                <b>{longitudinalReport.recurringFindings[0]?.title ?? (longitudinalReport.weakestPhase? `Phase: ${longitudinalReport.weakestPhase.label}` : 'Noch kein wiederkehrender Fehler bestätigt')}</b>
-                <p>{longitudinalReport.recurringFindings[0]?.trainingRule ?? (longitudinalReport.weakestPhase? `Vergleiche in ${longitudinalReport.weakestPhase.label} die Entscheidungen und belegten Zustandswechsel in deinen Replays.` : 'Der Coach erfindet keine Schwäche. Verifiziere weitere Partien, damit wiederkehrende Muster sichtbar werden.')}</p>
-                {longitudinalReport.recurringFindings[0] && <small>{longitudinalReport.recurringFindings[0].occurrences} von {longitudinalReport.recurringFindings[0].comparableMatches} vergleichbaren Partien</small>}
+                <span><Brain size={14}/> DEINE 3 WICHTIGSTEN TRAININGSFOKUSSE</span>
+                {longitudinalReport.trainingGoals.length>0 ? <ol className="coach-focus-list">{longitudinalReport.trainingGoals.slice(0,3).map((goal,index)=><li key={goal.id}><span>{index+1}</span><div><b>{goal.title}</b><small>{goal.occurrences}/{goal.comparableMatches} vergleichbare Partien · {goal.status==='regressing'?'Rückschritt':goal.status==='improving'?'Verbessert':goal.status==='active'?'Wiederkehrend':'Vorläufig'}</small><p>{goal.trainingRule}</p></div></li>)}</ol> : longitudinalReport.recurringFindings.length>0 ? <ol className="coach-focus-list">{longitudinalReport.recurringFindings.slice(0,3).map((finding,index)=><li key={finding.id}><span>{index+1}</span><div><b>{finding.title}</b><small>{finding.occurrences}/{finding.comparableMatches} vergleichbare Partien</small><p>{finding.trainingRule}</p></div></li>)}</ol> : <p>{longitudinalReport.weakestPhase? `Vergleiche in ${longitudinalReport.weakestPhase.label} die Entscheidungen und belegten Zustandswechsel in deinen Replays.` : 'Der Coach erfindet keine Schwäche. Verifiziere weitere Partien, damit wiederkehrende Muster sichtbar werden.'}</p>}
               </article>
               <article className="coach-spotlight-item strength">
                 <span><ShieldCheck size={14}/> DAS MACHST DU GUT</span>

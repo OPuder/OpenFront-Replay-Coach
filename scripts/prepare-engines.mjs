@@ -27,18 +27,32 @@ const run = (command, args, options, label, timeoutMs) => {
 
 console.log(`Preparing ${engines.length} exact engine revisions from ${sources.length} submodule paths.`);
 
-// Initialize independent pinned worktrees in parallel. The explicit network
-// low-speed limits prevent a stalled GitHub transfer from occupying a runner
-// indefinitely; the timeout provides a second hard upper bound.
-run("git", [
+// Initialize pinned submodules with bounded retries. GitHub occasionally
+// terminates large pack transfers (early EOF/index-pack errors); repeating the
+// update lets Git reuse successfully fetched objects instead of failing the
+// whole validation on a transient network interruption.
+const initializeSubmodules = [
   "-c", "http.lowSpeedLimit=1000",
   "-c", "http.lowSpeedTime=30",
-  "-c", "fetch.parallel=4",
-  "submodule", "update", "--init", "--depth", "1", "--jobs=4", "--progress", "--",
+  "-c", "fetch.parallel=2",
+  "submodule", "update", "--init", "--depth", "1", "--jobs=2", "--progress", "--",
   ...sources,
-], {
-  env: { ...process.env, GIT_TERMINAL_PROMPT: "0" },
-}, "Initialize exact OpenFront engine submodules", 15 * 60_000);
+];
+let initialized = false;
+for (let attempt = 1; attempt <= 3; attempt++) {
+  try {
+    run("git", initializeSubmodules, {
+      env: { ...process.env, GIT_TERMINAL_PROMPT: "0" },
+    }, `Initialize exact OpenFront engine submodules (attempt ${attempt}/3)`, 15 * 60_000);
+    initialized = true;
+    break;
+  } catch (error) {
+    if (attempt === 3) throw error;
+    console.warn(`Submodule initialization attempt ${attempt} failed; retrying in ${attempt * 10}s.`);
+    run("sleep", [String(attempt * 10)], {}, "Wait before submodule retry", 30_000);
+  }
+}
+if (!initialized) throw new Error("Could not initialize exact OpenFront engine submodules after three attempts.");
 
 // Historical revisions share immutable dependency lockfiles. Install each
 // lockfile once and link the identical node_modules tree into its engine group.

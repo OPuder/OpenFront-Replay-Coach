@@ -171,9 +171,8 @@ PY
 
 tap_edit_field() {
   local occurrence="${1:-1}" current_query="${2:-$current_search_query}" coords=""
-  # The library search field can remain above the viewport after returning from
-  # the Coach. Bring the toolbar into view before trusting its accessibility
-  # bounds; WebView EditText bounds are sometimes inverted or zero-sized.
+  # The library field can be above the viewport or expose invalid WebView bounds.
+  # Bring the toolbar into view, then prefer its current query text in OCR.
   for attempt in $(seq 1 8); do
     if dump_ui; then
       coords="$(find_bounds "" edit "$occurrence" 2>/dev/null || true)"
@@ -190,7 +189,7 @@ tap_edit_field() {
       read -r x y <<< "$coords"
       if (( y >= 150 && y <= 1500 )); then
         log "Tapping the visible library search field at $x,$y (UI hierarchy/OCR, attempt $attempt/8)."
-        timeout 10s adb -s emulator-5554 shell input tap "$x" "$y" || fail "ADB tap failed for the library search field."
+        timeout 10s adb -s emulator-5554 shell input tap "$x,$y" || fail "ADB tap failed for the library search field."
         return 0
       fi
       coords=""
@@ -201,7 +200,6 @@ tap_edit_field() {
   done
   fail "Could not locate a safely visible library search field after scrolling to the toolbar. OCR: $(ocr_text 2>/dev/null | tr '\n' ' ' | head -c 800); UI: $(cat "$ui_xml" 2>/dev/null | head -c 2500)"
 }
-
 tap_text() {
   local needle="$1"
   local occurrence="${2:-1}"

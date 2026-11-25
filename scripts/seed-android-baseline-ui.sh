@@ -341,10 +341,20 @@ navigate_to_library() {
         tap_text "Partien" last exact
       fi
     else
-      # Reset navigation state before the final attempt: Dashboard then Partien.
-      tap_text "Dashboard" last exact
-      sleep 2
-      tap_text "Partien" last exact
+      # Accessibility and OCR can both fail for a published WebView. The
+      # emulator is configured with a bottom navigation bar; calculate its
+      # center tap from the reported screen dimensions instead of guessing
+      # text coordinates. The tap remains guarded by a supported viewport.
+      screen_size="$(adb -s emulator-5554 shell wm size | sed -n 's/.*: \\([0-9]*\\)x\\([0-9]*\\).*/\\1 \\2/p' | tail -n 1)"
+      read -r screen_width screen_height <<< "$screen_size"
+      if [[ "$screen_width" =~ ^[0-9]+$ && "$screen_height" =~ ^[0-9]+$ ]] && (( screen_width >= 800 && screen_height >= 1400 )); then
+        nav_x=$((screen_width / 2))
+        nav_y=$((screen_height * 89 / 100))
+        log "Using verified bottom-navigation fallback at $nav_x,$nav_y for $screen_width x $screen_height viewport."
+        timeout 10s adb -s emulator-5554 shell input tap "$nav_x" "$nav_y" || fail "ADB fallback tap failed for Partien navigation."
+      else
+        fail "Cannot safely calculate bottom-navigation fallback from Android screen size: $screen_size"
+      fi
     fi
     if wait_for_library_page 12; then return 0; fi
     log "Partien navigation did not verify after attempt $attempt/3; retrying."

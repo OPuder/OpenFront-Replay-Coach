@@ -401,7 +401,7 @@ seed_verified_match() {
   # bounds even when the text is visible. Use screenshot OCR as a fallback
   # and tap the visible label rather than rejecting an actionable card.
   local coach_button_source="UI hierarchy"
-  for attempt in $(seq 1 8); do
+  for attempt in $(seq 1 12); do
     if dump_ui; then
       visible_coach_button="$(find_bounds "Coach öffnen" exact 1 2>/dev/null || true)"
     else
@@ -411,16 +411,23 @@ seed_verified_match() {
       visible_coach_button="$(ocr_find_bounds "Coach öffnen" 1 || true)"
       if [[ -n "$visible_coach_button" ]]; then coach_button_source="screenshot OCR"; fi
     fi
-    if [[ -n "$visible_coach_button" ]]; then break; fi
-    timeout 10s adb -s emulator-5554 shell input swipe 500 780 500 350 500 >/dev/null 2>&1 || true
+    if [[ -n "$visible_coach_button" ]]; then
+      read -r candidate_x candidate_y <<< "$visible_coach_button"
+      # The fixed bottom navigation overlays the WebView. Do not clamp a tap
+      # into the nav bar: scroll the library until the CTA is safely exposed.
+      if (( candidate_y <= 1500 )); then
+        break
+      fi
+      log "Coach action is too close to the bottom navigation (y=$candidate_y); scrolling it into the safe viewport (attempt $attempt/12)."
+      visible_coach_button=""
+    fi
+    timeout 10s adb -s emulator-5554 shell input swipe 500 1450 500 450 500 >/dev/null 2>&1 || true
     sleep 1
   done
-  [[ -n "$visible_coach_button" ]] || fail "The unique archived match $game_id was filtered correctly, but its Coach action could not be located by UIAutomator or OCR after scrolling. UI: $(cat "$ui_xml" 2>/dev/null | head -c 3000)"
+  [[ -n "$visible_coach_button" ]] || fail "The unique archived match $game_id was filtered correctly, but its Coach action could not be located in the safe viewport by UIAutomator or OCR after scrolling. UI: $(cat "$ui_xml" 2>/dev/null | head -c 3000)"
 
   read -r coach_x coach_y <<< "$visible_coach_button"
-  # The fixed bottom navigation overlays the WebView near the bottom of the
-  # screen. Keep the tap inside the exposed viewport if bounds extend below it.
-  if (( coach_y > 1600 )); then coach_y=1600; fi
+  (( coach_y <= 1500 )) || fail "Refusing to tap Coach action for $game_id outside the safe WebView viewport (y=$coach_y)."
   log "Tapping the visible Coach action for $game_id at $coach_x,$coach_y ($coach_button_source)."
   timeout 10s adb -s emulator-5554 shell input tap "$coach_x" "$coach_y" || fail "ADB tap failed for the visible Coach action on $game_id."
   log "Opened archived match $game_id. Waiting for its actual Original-Engine result."

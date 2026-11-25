@@ -184,7 +184,12 @@ assert.ok(androidBaselineUiSeed.includes('tesseract "$screen_path" stdout -l deu
 assert.match(androidBaselineUiSeed, /OpenFront-Profillink/);
 assert.match(androidBaselineUiSeed, /OCR text:/);
 assert.match(androidBaselineUiSeed, /search_query=.*tr '\[:upper:\]' '\[:lower:\]'/);
-assert.match(androidBaselineUiSeed, /ADB input did not populate the library search field/);
+assert.match(androidBaselineUiSeed, /Neither IME text injection nor Android key-event fallback populated the library search/,
+  "Android search must fail closed after both text and key-event input paths fail.");
+assert.match(androidBaselineUiSeed, /local keycodes=\(\) char code/,
+  "The fallback must collect validated Android keycodes.");
+assert.match(androidBaselineUiSeed, /input keyevent "\$\{keycodes\[@\]\}"/,
+  "The fallback must submit the mapped keycodes to Android.");
 assert.match(androidBaselineUiSeed, /navigate_to_library/);
 assert.match(androidBaselineUiSeed, /Using verified bottom-navigation fallback/);
 assert.match(androidBaselineUiSeed, /wait_for_library_page\(\)\s*\{/,

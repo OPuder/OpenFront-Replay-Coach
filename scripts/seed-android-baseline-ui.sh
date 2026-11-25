@@ -351,7 +351,7 @@ navigate_to_library() {
   done
   fail "The Partien navigation did not reach the Spielbibliothek after three verified attempts. OCR: $(ocr_text 2>/dev/null | tr '\n' ' ' | head -c 1200); UI: $(cat "$ui_xml" 2>/dev/null | head -c 3500)"
 }
-wait_for_library_page
+navigate_to_library
 read_imported_match_count() {
   # Read the rendered app text from Android's actual WebView accessibility
   # hierarchy. The published app exposes the import total as e.g.

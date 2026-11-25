@@ -16,7 +16,7 @@ concurrency:
 jobs:
   discover:
     runs-on: ubuntu-latest
-    timeout-minutes: 90
+    timeout-minutes: 100
     steps:
       - name: Check out main
         uses: actions/checkout@v4
@@ -58,7 +58,7 @@ jobs:
 
       - name: Prepare every exact replay engine revision
         if: steps.discovery.outputs.changed == 'true'
-        timeout-minutes: 40
+        timeout-minutes: 55
         run: npm run prepare:engines
 
       - name: Install Coach dependencies

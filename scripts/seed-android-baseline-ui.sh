@@ -3,6 +3,7 @@ set -Eeuo pipefail
 
 package_id="de.openfront.replaycoach"
 player_id="5SVg4WbI"
+current_search_query=""
 
 log() { echo "::notice::[Android baseline UI seed] $*"; }
 fail() { echo "::error::[Android baseline UI seed] $*"; exit 1; }
@@ -169,15 +170,36 @@ PY
 }
 
 tap_edit_field() {
-  local occurrence="${1:-1}"
-  local coords=""
-  if dump_ui; then
-    coords="$(find_bounds "" edit "$occurrence" 2>/dev/null || true)"
-  fi
-  [[ -n "$coords" ]] || fail "Could not locate an enabled Android WebView EditText field in the current UI hierarchy."
-  read -r x y <<< "$coords"
-  log "Tapping the visible WebView EditText at $x,$y (UIAutomator class/bounds, no placeholder-text dependency)."
-  timeout 10s adb -s emulator-5554 shell input tap "$x" "$y" || fail "ADB tap failed for the visible EditText field."
+  local occurrence="${1:-1}" current_query="${2:-$current_search_query}" coords=""
+  # The library search field can remain above the viewport after returning from
+  # the Coach. Bring the toolbar into view before trusting its accessibility
+  # bounds; WebView EditText bounds are sometimes inverted or zero-sized.
+  for attempt in $(seq 1 8); do
+    if dump_ui; then
+      coords="$(find_bounds "" edit "$occurrence" 2>/dev/null || true)"
+    fi
+    if [[ -z "$coords" ]]; then
+      if [[ -n "$current_query" ]]; then
+        coords="$(ocr_find_bounds "$current_query" 1 || true)"
+      else
+        coords="$(ocr_find_bounds "Match-ID suchen" 1 || true)"
+        if [[ -z "$coords" ]]; then coords="$(ocr_find_bounds "Karte oder" 1 || true)"; fi
+      fi
+    fi
+    if [[ -n "$coords" ]]; then
+      read -r x y <<< "$coords"
+      if (( y >= 150 && y <= 1500 )); then
+        log "Tapping the visible library search field at $x,$y (UI hierarchy/OCR, attempt $attempt/8)."
+        timeout 10s adb -s emulator-5554 shell input tap "$x" "$y" || fail "ADB tap failed for the library search field."
+        return 0
+      fi
+      coords=""
+    fi
+    log "Library search field not safely visible (attempt $attempt/8); scrolling toward the toolbar."
+    timeout 10s adb -s emulator-5554 shell input swipe 500 350 500 1500 550 >/dev/null 2>&1 || true
+    sleep 1
+  done
+  fail "Could not locate a safely visible library search field after scrolling to the toolbar. OCR: $(ocr_text 2>/dev/null | tr '\\n' ' ' | head -c 800); UI: $(cat "$ui_xml" 2>/dev/null | head -c 2500)"
 }
 
 tap_text() {
@@ -350,7 +372,7 @@ seed_verified_match() {
   # The published WebView exposes this input as an unnamed EditText node
   # (NAF=true); its placeholder is visible in pixels but absent from the
   # accessibility text, so OCR is both slower and less reliable than bounds.
-  tap_edit_field 1
+  tap_edit_field 1 "$current_search_query"
   if [[ "$clear_search" == "true" ]]; then
     timeout 10s adb -s emulator-5554 shell input keycombination 113 29 >/dev/null 2>&1 || fail "Could not select the previous library search query."
   fi
@@ -373,6 +395,7 @@ seed_verified_match() {
     sleep 1
   done
   [[ "$typed" == true ]] || fail "ADB input did not populate the library search field for $game_id; refusing to treat an empty search as a match."
+  current_search_query="$search_query"
   # Commit the verified query with ENTER before hiding the keyboard.
   timeout 10s adb -s emulator-5554 shell input keyevent 66 || fail "Could not commit archived match ID $game_id in the library search."
   sleep 2

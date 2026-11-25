@@ -325,8 +325,13 @@ assert.match(enginePreparation, /Wait before submodule retry", 60_000\)/,
 assert.match(enginePreparation, /Initialize exact OpenFront engine submodules/);
 assert.match(androidValidationWorkflow, /-gpu software/,
   "Android emulator validation must use stable software rendering instead of flaky GPU color buffers.");
-assert.match(read("scripts/seed-android-baseline-ui.sh"), /reset to the top first/i);
-assert.match(read("scripts/seed-android-baseline-ui.sh"), /scanning 18 viewports/);
+const androidBaselineSeed = read("scripts/seed-android-baseline-ui.sh");
+assert.match(androidBaselineSeed, /seed_verified_match "cRVdxGEG5j"/,
+  "The baseline fixture must seed its first real replay through the published app UI.");
+assert.match(androidBaselineSeed, /seed_verified_match "c4CW3VJWQ9"/,
+  "The baseline fixture must seed its second real replay through the published app UI.");
+assert.doesNotMatch(androidBaselineSeed, /create_verified_training_goal/,
+  "Baseline seeding must not require a training-goal CTA that may not exist in the published app.");
 const androidEmulatorDiagnostics = read("scripts/android-emulator-diagnostics.sh");
 assert.match(androidEmulatorDiagnostics, /adb kill-server/);
 assert.match(androidEmulatorDiagnostics, /adb start-server/);

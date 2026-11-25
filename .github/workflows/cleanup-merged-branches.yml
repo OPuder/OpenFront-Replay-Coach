@@ -41,7 +41,7 @@ jobs:
                 await github.rest.git.deleteRef({ owner, repo, ref: `heads/${branch}` });
                 core.info(`Deleted verified obsolete branch: ${branch}`);
               } catch (error) {
-                if (error.status === 404) {
+                if (error.status === 404 || (error.status === 422 && error.message?.includes("Reference does not exist"))) {
                   core.info(`Branch already absent: ${branch}`);
                   continue;
                 }

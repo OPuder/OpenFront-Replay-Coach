@@ -16,13 +16,28 @@ const fingerprint = computeEngineBundleFingerprint(
   path.resolve('engine-build/engines.json'),
   path.resolve('engine-build'),
   engines,
+  [path.resolve('scripts/build-engines.mjs'), path.resolve('scripts/engine-bundle-cache.mjs')],
 );
+function existingSourceCheckoutsAreSafeForCache() {
+  return engines.every(engine => {
+    const source = path.resolve(engine.source);
+    if (!readFileSync(path.resolve('engine-build/engines.json'), 'utf8') && !path.existsSync(source)) return true;
+    if (!path.existsSync(path.join(source, '.git'))) return true;
+    try {
+      const revision = execFileSync('git', ['-C', source, 'rev-parse', 'HEAD'], { encoding: 'utf8' }).trim();
+      const status = execFileSync('git', ['-C', source, 'status', '--porcelain', '--untracked-files=normal'], { encoding: 'utf8' }).trim();
+      return revision === engine.commit && status === '';
+    } catch {
+      return false;
+    }
+  });
+}
 const cachedBundlesVerified = verifyEngineBundleCache(
   path.resolve('.openfront-engine-build.json'),
   path.resolve('src/renderer/engine'),
   fingerprint,
   engines,
-);
+) && existingSourceCheckoutsAreSafeForCache;
 
 
 for (const engine of engines) {

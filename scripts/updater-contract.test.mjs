@@ -144,13 +144,18 @@ assert.match(androidStorageInspector, /AbortSignal\.timeout\(15_000\)/,
   "The WebView inspector must bound its DevTools discovery request.");
 assert.match(androidStorageInspector, /function send\(method, params = \{\}, timeoutMs = 30_000\)/,
   "The WebView inspector must bound every DevTools command.");
-assert.match(androidStorageInspector, /\}, 60_000\);/,
+assert.match(androidStorageInspector, /\}, 90_000\);/,
   "The storage snapshot command must have a bounded longer timeout.");
 const androidReplayMetadataGuard = androidStorageInspector.match(/const malformedReplayRecords[\s\S]*?if \(malformedReplayRecords\.length\)/)?.[0] ?? "";
 assert.match(androidReplayMetadataGuard, /!metadata\.gameId[\s\S]*?recordGameId[\s\S]*?engineCommit[\s\S]*?Number\.isInteger\(turnCount\)/,
   "Every stored replay record must retain valid identity, engine metadata and a nonnegative integer turn count.");
 assert.doesNotMatch(androidReplayMetadataGuard, /turnCount < 1/,
   "Empty imported records must not be confused with failed persistence of selected full replays.");
+assert.match(androidStorageInspector, /const expectedReplayIds = \["cRVdxGEG5j", "c4CW3VJWQ9"\]/,
+  "The post-upgrade inspector must require rehydration of both replay IDs seeded through the published baseline UI.");
+assert.match(androidStorageInspector, /selectedFullReplayRecords\.length !== expectedReplayIds\.length/,
+  "Both exact UI-seeded replay records must remain complete after the upgrade.");
+
 assert.match(androidStorageInspector, /fullReplayRecords\.length < 2/,
   "The upgrade inspector must still require at least two complete replay records.");
 assert.match(androidStorageInspector, /emptyReplayRecordCount: emptyReplayRecords\.length/,
@@ -587,7 +592,14 @@ assert.match(androidEmulatorDiagnostics, /am start -W -n/);
 const androidUpgradeBridge = read("src/renderer/androidUpgradeTestBridge.ts");
 assert.match(androidUpgradeBridge, /import \{ loadImportedMatch \} from "\.\/matchStore"/);
 assert.match(androidUpgradeBridge, /loadImportedMatch\(playerId, gameId\)/);
-assert.match(androidUpgradeBridge, /slice\(0, 2\)/);
+assert.match(androidUpgradeBridge, /const requiredGameIds = \["cRVdxGEG5j", "c4CW3VJWQ9"\]/);
+assert.doesNotMatch(androidUpgradeBridge, /slice\(0, 2\)/,
+  "The inspector must rehydrate the exact UI-seeded replay IDs, not arbitrary first records.");
+assert.match(androidUpgradeBridge, /openCursor\(\)/,
+  "Storage inspection must use bounded cursor summaries instead of materializing full replay payloads.");
+assert.match(androidUpgradeBridge, /summarySha256/);
+assert.doesNotMatch(androidUpgradeBridge, /sha256\(value\)/,
+  "The semantic bridge must not hash every large replay payload; exact LevelDB file hashes cover storage integrity.");
 assert.match(androidUpgradeBridge, /replayRestored/);
 assert.match(androidUpgradeBridge, /recordGameId/);
 assert.match(androidUpgradeBridge, /engineCommit/);

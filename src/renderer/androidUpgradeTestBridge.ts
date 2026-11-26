@@ -102,6 +102,21 @@ async function readStoreSummary(db: IDBDatabase, name: string): Promise<{ record
         };
         fields = ["playerId", "profile.username", "profile.displayName", "games[]"];
         summary.playerId = item.playerId ?? null;
+      } else if (name === "analysis-results") {
+        const simulation = item.simulation as Record<string, any> | undefined;
+        metadata = {
+          playerId: item.playerId ?? null,
+          gameId: item.gameId ?? null,
+          analysisStatus: item.analysisStatus ?? null,
+          simulationStatus: simulation?.status ?? null,
+          sampleCount: Array.isArray(simulation?.samples) ? simulation.samples.length : 0,
+          actionReviewCount: Array.isArray(simulation?.actionReviews) ? simulation.actionReviews.length : 0,
+          analysisError: item.analysisError ?? null,
+        };
+        fields = ["playerId", "gameId", "analysisStatus", "simulation.status", "simulation.samples[]", "simulation.actionReviews[]", "analysisError"];
+        summary.playerId = item.playerId ?? null;
+        summary.gameId = item.gameId ?? null;
+        summary.hasResult = Boolean(simulation);
       } else if (name === "replay-records") {
         const record = item.record as Record<string, any> | undefined;
         metadata = {

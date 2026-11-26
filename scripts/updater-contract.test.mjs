@@ -285,7 +285,7 @@ assert.match(androidStorageSnapshot, /immutableTables/);
 assert.match(androidStorageSnapshot, /Local Storage/);
 const androidStorageComparison = read("scripts/compare-android-web-storage.mjs");
 assert.match(androidStorageComparison, /const localStorageDataFiles = manifest => manifest\.files\.filter/);
-assert.ok(androidStorageComparison.includes(String.raw`/(?:^|\\/)\\d+\\.log$/i`),
+assert.ok(androidStorageComparison.includes(String.raw`/(?:^|\/)\d+\.log$/i`),
   "The Android storage comparison must recognize numbered LevelDB write-ahead logs as persistent Local Storage data.");
 assert.match(androidStorageComparison, /Persistent Local Storage data changed across the APK upgrade/,
   "Local Storage WALs and immutable tables must be hash-compared across the in-place update.");

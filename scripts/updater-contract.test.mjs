@@ -47,7 +47,8 @@ assert.doesNotMatch(renderer, /Web\/PWA|serviceWorker|isBrowserPwa/);
 assert.doesNotMatch(releaseWorkflow, /assembleDebug/);
 const ciWorkflow = read(".github/workflows/ci.yml");
 assert.ok(ciWorkflow.includes("github.event_name == 'push'") && ciWorkflow.includes("needs.detect-replay-changes.outputs.replay_changed == 'true'"), "Replay-sensitive commits pushed to main must trigger the live replay regression job.");
-assert.match(ciWorkflow, /live-replay:\\s*needs: \\[detect-replay-changes, validate\\][\\s\\S]*?needs\\.validate\\.result == 'success'/,
+const liveReplayJob = ciWorkflow.slice(ciWorkflow.indexOf("  live-replay:"), ciWorkflow.indexOf("\n  ", ciWorkflow.indexOf("  live-replay:") + 3));
+assert.ok(liveReplayJob.includes("needs: [detect-replay-changes, validate]") && liveReplayJob.includes("needs.validate.result == 'success'"),
   "Live replay CI must reuse the successful core engine preparation cache instead of building historical engines in parallel a second time.");
 assert.match(ciWorkflow, /github\.event_name == 'schedule'/,
   "Scheduled live replay validation must still run when core validation is intentionally skipped.");

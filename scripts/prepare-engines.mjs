@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { spawnSync } from "node:child_process";
-import { existsSync, readFileSync, rmSync, symlinkSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync, rmSync, symlinkSync } from "node:fs";
 import path from "node:path";
 
 const engines = JSON.parse(readFileSync("engine-build/engines.json", "utf8"));

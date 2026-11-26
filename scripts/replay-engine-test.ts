@@ -36,7 +36,7 @@ declare global {
     __verifyPlayerIndexTest?: () => Promise<{ indexPresent: boolean; playerAMatches: string[]; playerBMatches: string[]; legacyMatches: string[] }>;
     __testAbortBatchReplay?: (gameId: string) => Promise<{ aborted: boolean }>;
     __testAbort?: (record: unknown) => Promise<{ aborted: boolean }>;
-    __verifyStoreTest?: (gameId: string) => Promise<{ analysisStatus?: string; simulationStatus?: string; sampleCount: number }>;
+    __verifyStoreTest?: (gameId: string) => Promise<{ analysisStatus?: string; simulationStatus?: string; sampleCount: number; actionReviewCount: number }>;
     __runReplayTest?: (record: unknown, gameId: string) => Promise<{
       status: string;
       verifiedHashes: number;

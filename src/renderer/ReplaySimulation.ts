@@ -374,6 +374,10 @@ export async function simulateReplay(
   const orderedSampleFrames = [...sampleFrames].filter(frame => frame >= 0 && frame < totalRecordedFrames).sort((a,b) => a-b);
   let nextSampleIndex = 0;
   let appendQueue = Promise.resolve();
+  // Header metadata is invariant across reconstructed frames. Cache it once
+  // instead of rebuilding a Map for every sample in long replays.
+  let playerMetaCache: Map<number, any> | null = null;
+  const validPlayerColor = /^#[0-9a-f]{6}$/i;
 
   const captureSample = async (
     reader: InstanceType<typeof ReplayReader>,
@@ -387,15 +391,28 @@ export async function simulateReplay(
       collectUnitSnapshotMetrics(state.units.values() as Iterable<any>, mapWidth * mapHeight);
     const tileState = state.tileState as Uint16Array | undefined;
     const territory = tileState ? encodeTileOwners(tileState, mapWidth, mapHeight) : null;
-    const playerMeta = new Map(reader.header.players.map((p: any) => [p.smallID, p]));
+    const playerMeta = playerMetaCache ?? (playerMetaCache = new Map(reader.header.players.map((p: any) => [p.smallID, p])));
     const players = [...state.players.entries()].map(([id, p]: [number, any]) => {
       const meta: any = playerMeta.get(id) ?? {};
       const outgoingAttacks = Array.isArray(p.outgoingAttacks) ? p.outgoingAttacks : [];
       const incomingAttacks = Array.isArray(p.incomingAttacks) ? p.incomingAttacks : [];
+      const unitCounts = unitCountsByOwner.get(id) ?? {};
+      let units = 0;
+      for (const count of Object.values(unitCounts)) units += count;
+      const outgoingAttackDetails = outgoingAttacks.map((attack: any) => ({
+        id: String(attack.id ?? ""), targetID: Number(attack.targetID),
+        troops: Number(attack.troops ?? 0), retreating: Boolean(attack.retreating),
+      }));
+      const incomingAttackDetails = incomingAttacks.map((attack: any) => ({
+        id: String(attack.id ?? ""), attackerID: Number(attack.attackerID),
+        troops: Number(attack.troops ?? 0), retreating: Boolean(attack.retreating),
+      }));
+      let attackTroops = 0;
+      for (const attack of outgoingAttacks) attackTroops += Number(attack.troops ?? 0);
       return {
         id,
         name: String(meta.displayName ?? meta.name ?? meta.username ?? `Spieler ${id}`),
-        color: typeof meta.color === "string" && /^#[0-9a-f]{6}$/i.test(meta.color) ? meta.color : null,
+        color: typeof meta.color === "string" && validPlayerColor.test(meta.color) ? meta.color : null,
         clientID: meta.clientID == null ? null : String(meta.clientID),
         spawnTile: Number.isInteger(p.spawnTile) ? Number(p.spawnTile) : null,
         alive: Boolean(p.isAlive),
@@ -406,25 +423,15 @@ export async function simulateReplay(
         piracyGold: Number(p.piracyGold ?? 0),
         troops: Number(p.troops ?? 0),
         tiles: Number(p.tilesOwned ?? 0),
-        units: Object.values(unitCountsByOwner.get(id) ?? {}).reduce((sum, value) => sum + value, 0),
-        unitCounts: unitCountsByOwner.get(id) ?? {},
+        units,
+        unitCounts,
         unitTroops: unitTroopsByOwner.get(id) ?? {},
         unitsUnderConstruction: unitsUnderConstructionByOwner.get(id) ?? 0,
         outgoingAttacks: outgoingAttacks.length,
         incomingAttacks: incomingAttacks.length,
-        outgoingAttackDetails: outgoingAttacks.map((attack: any) => ({
-          id: String(attack.id ?? ""),
-          targetID: Number(attack.targetID),
-          troops: Number(attack.troops ?? 0),
-          retreating: Boolean(attack.retreating),
-        })),
-        incomingAttackDetails: incomingAttacks.map((attack: any) => ({
-          id: String(attack.id ?? ""),
-          attackerID: Number(attack.attackerID),
-          troops: Number(attack.troops ?? 0),
-          retreating: Boolean(attack.retreating),
-        })),
-        attackTroops: outgoingAttacks.reduce((sum: number, attack: any) => sum + Number(attack.troops ?? 0), 0),
+        outgoingAttackDetails,
+        incomingAttackDetails,
+        attackTroops,
         allies: Array.isArray(p.allies) ? p.allies.length : 0,
         alliances: Array.isArray(p.alliances) ? p.alliances.length : 0,
         targets: Array.isArray(p.targets) ? p.targets.length : 0,

@@ -147,10 +147,9 @@ export async function saveImportedMatch(playerId: string, item: StoredMatchEntry
     const updatedAt = Date.now();
     const stored: StoredMatch = { ...item, simulation: undefined, result: summary as StoredMatch["result"], playerId, updatedAt };
     tx.objectStore(MATCH_STORE).put(stored);
-    if (result) {
-      if (replayPayload) tx.objectStore(REPLAY_STORE).put({ playerId, gameId: item.game.gameId, ...replayPayload });
-      else tx.objectStore(REPLAY_STORE).delete([playerId, item.game.gameId]);
-    }
+    // Status-only updates often receive a compact library entry. Preserve the
+    // previously stored replay payload unless a replacement payload is supplied.
+    if (replayPayload) tx.objectStore(REPLAY_STORE).put({ playerId, gameId: item.game.gameId, ...replayPayload });
     if (item.simulation) {
       tx.objectStore(ANALYSIS_STORE).put({
         playerId, gameId: item.game.gameId, simulation: item.simulation,

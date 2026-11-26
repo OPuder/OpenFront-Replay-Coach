@@ -50,10 +50,10 @@ assert.ok(ciWorkflow.includes("github.event_name == 'push'") && ciWorkflow.inclu
 const packageJson = JSON.parse(read("package.json"));
 assert.equal(packageJson.scripts["test:opencode-config"], "node --test scripts/opencode-config.test.mjs",
   "The OpenCode specialist configuration test script must remain available.");
-assert.match(ciWorkflow, /Validate OpenCode specialist configuration[\s\S]*?run: npm run test:opencode-config/,
-  "CI must keep running the OpenCode specialist configuration contract.");
-assert.match(ciWorkflow, /Run responsive replay visualization UI tests[\s\S]*?run: xvfb-run -a npm run test:ux-ui/,
-  "The new responsive UI regression suite must also remain in CI.");
+assert.match(ciWorkflow, /npm run test:opencode-config/,
+  "CI must keep running the OpenCode specialist configuration contract, including when suites execute concurrently.");
+assert.match(ciWorkflow, /xvfb-run -a npm run test:ux-ui/,
+  "The responsive UI regression suite must remain in CI, including when suites execute concurrently.");
 assert.match(releaseWorkflow, /push:\s*branches: \[main\]/);
 assert.match(releaseWorkflow, /paths-ignore:[\s\S]*scripts\/prepare-engines\.mjs[\s\S]*scripts\/install-android-updater-plugin\.mjs[\s\S]*scripts\/updater-contract\.test\.mjs/,
   "Tooling-only integration commits must not publish an application release.");

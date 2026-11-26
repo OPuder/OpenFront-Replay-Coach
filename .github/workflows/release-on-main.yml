@@ -4,11 +4,12 @@ on:
   # Main merges enter the fully gated release pipeline; manual dispatch remains available for retries.
   push:
     branches: [main]
-    # A release is created only when the reviewed application version changes.
-    # Ordinary source/docs/workflow commits must not rebuild and republish the same version.
+    # Re-run a pending release after a workflow correction; the version gate skips versions already published.
+    # Application version changes still require a reviewed package.json/package-lock.json bump.
     paths:
       - "package.json"
       - "package-lock.json"
+      - ".github/workflows/release-on-main.yml"
   workflow_dispatch:
 
 permissions:
@@ -171,7 +172,7 @@ jobs:
           OPENFRONT_REPLAY_ID: dLNCLHCvMK
           OPENFRONT_REPLAY_EXPECTED_COMMIT: bc3e3334c573c4959ec6a6745df6826d07233b4d
           OPENFRONT_REPLAY_EXPECTED_MAP: Levant
-        run: node --import ./vendor/OpenFrontIO/node_modules/tsx/dist/loader.mjs --test scripts/public-replay-compatibility.test.mjs
+        run: node --import ./node_modules/tsx/dist/loader.mjs --test scripts/public-replay-compatibility.test.mjs
 
       - name: Verify mixed-engine batch, hashes, cancellation and IndexedDB persistence
         run: xvfb-run -a ./node_modules/.bin/electron --no-sandbox scripts/replay-engine-batch-browser-test.mjs

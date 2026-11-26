@@ -83,7 +83,50 @@ for (const engine of engines) {
   dependencyGroups.set(lockHash, group);
 }
 
-for (const [lockHash, group] of dependencyGroups) {
+// A verified bundle-cache hit means the exact engines are already built. In that
+// case only the pinned source checkouts are required; installing eleven historical
+// dependency trees again would add minutes without contributing to the build.
+function cachedEngineBundlesAreCurrent() {
+  const manifestPath = ".openfront-engine-build.json";
+  if (!existsSync(manifestPath)) return false;
+  try {
+    const manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
+    if (manifest.schema !== 1 || !Array.isArray(manifest.engines)) return false;
+    const hash = createHash("sha256");
+    hash.update(readFileSync("engine-build/engines.json"));
+    const visit = (directory, relative = "") => {
+      for (const entry of readdirSync(path.join(directory, relative), { withFileTypes: true }).sort((a, b) => a.name.localeCompare(b.name))) {
+        const file = path.posix.join(relative.split(path.sep).join("/"), entry.name);
+        if (entry.isDirectory()) visit(directory, file);
+        else if (entry.isFile()) {
+          hash.update(file);
+          hash.update(readFileSync(path.join(directory, file)));
+        }
+      }
+    };
+    visit("engine-build");
+    for (const engine of engines) {
+      hash.update(engine.commit);
+      hash.update(engine.bundleId);
+      hash.update(readFileSync(path.join(engine.source, "package-lock.json")));
+    }
+    const fingerprint = hash.digest("hex");
+    const expected = engines.map(({ commit, bundleId }) => ({ commit, bundleId }));
+    const actual = manifest.engines.map(({ commit, bundleId }) => ({ commit, bundleId }));
+    return manifest.fingerprint === fingerprint
+      && JSON.stringify(actual) === JSON.stringify(expected)
+      && engines.every(engine => {
+        const bundle = path.join("src/renderer/engine", `replay-engine-${engine.bundleId}.js`);
+        return existsSync(bundle) && readFileSync(bundle).length > 0;
+      });
+  } catch {
+    return false;
+  }
+}
+
+if (cachedEngineBundlesAreCurrent()) {
+  console.log(`Verified cached bundles cover all ${engines.length} pinned engines; skipping historical npm installs.`);
+} else for (const [lockHash, group] of dependencyGroups) {
   const representative = group[0];
   const representativePath = path.resolve(representative.source);
   console.log(`Installing shared dependencies for ${group.length} exact engines (lock ${lockHash.slice(0, 12)}).`);

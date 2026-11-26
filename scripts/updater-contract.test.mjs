@@ -650,6 +650,11 @@ assert.match(androidStorageInspector, /const analyses = stores\["analysis-result
 assert.match(androidStorageInspector, /analysisMetadata\.filter[\s\S]*?item\.playerId === playerId[\s\S]*?matchIds\.has/,
   "Verified analysis results must be linked to the UI-seeded player and existing match IDs.");
 assert.match(androidUpgradeBridge, /loadImportedMatch\(playerId, gameId\)/);
+const replayPersistenceHarness = read("scripts/replay-engine-test.ts");
+assert.match(replayPersistenceHarness, /const saved = await loadImportedMatch\("ci-persistence-player", gameId\)/,
+  "Refresh persistence tests must hydrate the full analysis payload from analysis-results, not the lightweight library index.");
+assert.match(replayPersistenceHarness, /actionReviewCount: saved\?\.simulation\?\.actionReviews\?\.length \?\? 0/,
+  "Refresh persistence tests must confirm the stored action-review evidence survives hydration.");
 assert.match(androidUpgradeBridge, /const requiredGameIds = \["cRVdxGEG5j", "c4CW3VJWQ9"\]/);
 assert.doesNotMatch(androidUpgradeBridge, /slice\(0, 2\)/,
   "The inspector must rehydrate the exact UI-seeded replay IDs, not arbitrary first records.");

@@ -4,14 +4,11 @@ on:
   # Main merges enter the fully gated release pipeline; manual dispatch remains available for retries.
   push:
     branches: [main]
-    # Workflow-only maintenance must not publish a new application release.
-    paths-ignore:
-      - ".github/workflows/**"
-      - "scripts/prepare-engines.mjs"
-      - "scripts/install-android-updater-plugin.mjs"
-      - "scripts/updater-contract.test.mjs"
-      - "src/renderer/**/*.d.ts"
-      - "src/renderer/*.d.ts"
+    # A release is created only when the reviewed application version changes.
+    # Ordinary source/docs/workflow commits must not rebuild and republish the same version.
+    paths:
+      - "package.json"
+      - "package-lock.json"
   workflow_dispatch:
 
 permissions:
@@ -19,7 +16,7 @@ permissions:
 
 concurrency:
   group: openfront-replay-coach-release-main-v2
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   prepare-release:
@@ -38,10 +35,14 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
 
-      - name: Set up Node.js
+      - name: Set up Node.js and restore npm package cache
         uses: actions/setup-node@v4
         with:
           node-version: "24.15.0"
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            vendor/**/package-lock.json
 
       - name: Require a reviewed package version newer than the latest release
         id: version

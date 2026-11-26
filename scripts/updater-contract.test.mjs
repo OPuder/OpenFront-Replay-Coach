@@ -55,10 +55,17 @@ assert.match(ciWorkflow, /npm run test:opencode-config/,
   "CI must keep running the OpenCode specialist configuration contract, including when suites execute concurrently.");
 assert.match(ciWorkflow, /xvfb-run -a npm run test:ux-ui/,
   "The responsive UI regression suite must remain in CI, including when suites execute concurrently.");
-assert.match(releaseWorkflow, /paths:\s*[\s\S]*package\.json[\s\S]*package-lock\.json/,
-  "Application releases must be triggered only by reviewed package-version changes.");
+assert.match(releaseWorkflow, /paths:\s*[\s\S]*package\.json[\s\S]*package-lock\.json[\s\S]*\.github\/workflows\/release-on-main\.yml/,
+  "A reviewed version bump or release-workflow correction must trigger the release gate.");
 assert.doesNotMatch(releaseWorkflow, /paths-ignore:/,
   "Release triggers must use an explicit allowlist, not a broad paths-ignore list.");
+assert.match(releaseWorkflow, /node --import \.\/node_modules\/tsx\/dist\/loader\.mjs/,
+  "Release replay metadata tests must use the root tsx dependency, not cache-omitted engine dependencies.");
+assert.doesNotMatch(releaseWorkflow, /vendor\/OpenFrontIO\/node_modules\/tsx/,
+  "Release validation must not depend on vendor node_modules when verified engine bundles are cached.");
+assert.match(packageJson.scripts["test:coach"], /--import \.\/node_modules\/tsx\/dist\/loader\.mjs/);
+assert.match(packageJson.scripts["test:integration-e2e"], /--import \.\/node_modules\/tsx\/dist\/loader\.mjs/);
+assert.doesNotMatch(packageJson.scripts["test:coach"] + packageJson.scripts["test:integration-e2e"], /vendor\/OpenFrontIO\/node_modules\/tsx/);
 
 assert.match(releaseWorkflow, /permanent Android release signing key is required/);
 assert.ok(releaseWorkflow.includes("grep -Eo '[[:xdigit:]]{64}'"), "Release workflow must extract SHA-256 certificate fingerprints robustly.");

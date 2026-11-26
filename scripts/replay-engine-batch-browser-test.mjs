@@ -84,6 +84,8 @@ async function main() {
     hasUpdatedAtIndex: true,
     legacyMatchHasSimulation: false,
     legacyMatchHasRawReplay: false,
+    legacyMatchHasDecodedActions: false,
+    libraryHasDecodedActions: false,
     libraryHasSimulation: false,
     legacyMatchHasRawReplay: false,
     profileName: "OligenOle",
@@ -91,6 +93,8 @@ async function main() {
     analysisStatus: "verified",
     migratedSimulationStatus: "verified",
     migratedSampleCount: 1,
+    migratedDecodedActionCount: 1,
+    migratedActionAnalysisMarker: "preserved",
     replayId: "legacy-replay",
     replayHash: "legacy-hash",
   }, "IndexedDB v2 → v4 upgrade must preserve profile, match metadata, raw replay and migrate analysis payload");

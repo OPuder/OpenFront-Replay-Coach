@@ -75,10 +75,18 @@ window.__prepareLegacyMatchStore = async () => {
           game: { gameId: "legacy-replay", map: "Europe", mode: "Free For All", type: "Private" },
           result: { record: { info: { gameID: "legacy-replay" }, turns: [{ turnNumber: 0, hash: "legacy-hash" }] } },
           status: "loaded",
-          analysisStatus: "pending",
+          analysisStatus: "verified",
+          simulation: {
+            status: "verified",
+            totalTicks: 10,
+            verifiedHashes: 1,
+            samples: [{ tick: 10, players: [] }],
+            playerReview: null,
+            actionReviews: [],
+          },
           updatedAt: 1,
         });
-        // Seed a second v2-era profile so the v2 → v3 migration must index
+        // Seed a second v2-era profile so the v2 → v4 migration must index
         // legacy records for players other than the migration-profile fixture.
         tx.objectStore("matches").put({
           playerId: "legacy-index-player",
@@ -114,6 +122,8 @@ window.__verifyLegacyMigration = async () => {
     profileName: profile?.profile?.displayName ?? null,
     matchStatus: match?.status ?? null,
     analysisStatus: match?.analysisStatus ?? null,
+    migratedSimulationStatus: match?.simulation?.status ?? null,
+    migratedSampleCount: match?.simulation?.samples?.length ?? 0,
     replayId: (match?.result?.record as any)?.info?.gameID ?? null,
     replayHash: (match?.result?.record as any)?.turns?.[0]?.hash ?? null,
   };

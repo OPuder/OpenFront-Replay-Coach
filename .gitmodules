@@ -41,3 +41,6 @@
 [submodule "vendor/OpenFrontIO-445721718207"]
 	path = vendor/OpenFrontIO-445721718207
 	url = https://github.com/openfrontio/OpenFrontIO.git
+[submodule "vendor/OpenFrontIO-6628efbd65f8"]
+	path = vendor/OpenFrontIO-6628efbd65f8
+	url = https://github.com/openfrontio/OpenFrontIO.git

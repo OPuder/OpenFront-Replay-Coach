@@ -48,6 +48,7 @@ export const REPLAY_ENGINE_CATALOG = [
   },
   { commit: "7f34e15908286d490715c6e4af8c47df5b1b3fcc", source: "vendor/OpenFrontIO-7f34e1590828", bundleId: "7f34e1590828" },
   { commit: "445721718207b6e0f068258cd8ff2eccd13d198e", source: "vendor/OpenFrontIO-445721718207", bundleId: "445721718207" },
+  { commit: "6628efbd65f8579fc60d54640510492e90666c2c", source: "vendor/OpenFrontIO-6628efbd65f8", bundleId: "6628efbd65f8" },
 ] as const;
 
 export const SUPPORTED_OPENFRONT_COMMITS = REPLAY_ENGINE_CATALOG.map((engine) => engine.commit);

@@ -45,6 +45,14 @@ assert.match(renderer, /version: latestVersion/);
 assert.match(renderer, /keine Android-APK veröffentlicht/);
 assert.doesNotMatch(renderer, /Web\/PWA|serviceWorker|isBrowserPwa/);
 assert.doesNotMatch(releaseWorkflow, /assembleDebug/);
+const ciWorkflow = read(".github/workflows/ci.yml");
+const packageJson = JSON.parse(read("package.json"));
+assert.equal(packageJson.scripts["test:opencode-config"], "node --test scripts/opencode-config.test.mjs",
+  "The OpenCode specialist configuration test script must remain available.");
+assert.match(ciWorkflow, /Validate OpenCode specialist configuration[\s\S]*?run: npm run test:opencode-config/,
+  "CI must keep running the OpenCode specialist configuration contract.");
+assert.match(ciWorkflow, /Run responsive replay visualization UI tests[\s\S]*?run: xvfb-run -a npm run test:ux-ui/,
+  "The new responsive UI regression suite must also remain in CI.");
 assert.match(releaseWorkflow, /push:\s*branches: \[main\]/);
 assert.match(releaseWorkflow, /paths-ignore:[\s\S]*scripts\/prepare-engines\.mjs[\s\S]*scripts\/install-android-updater-plugin\.mjs[\s\S]*scripts\/updater-contract\.test\.mjs/,
   "Tooling-only integration commits must not publish an application release.");
@@ -420,6 +428,12 @@ assert.match("OpenFront.Replay.Coach.Setup.2.2.44.exe", installerAssetMatcher, "
 
 const matchStore = read("src/renderer/matchStore.ts");
 const appRenderer = read("src/renderer/main.tsx");
+assert.match(appRenderer, /spotlightFindingIds/);
+assert.match(appRenderer, /additionalRecurringFindings/);
+assert.match(appRenderer, /additionalRecurringStrengths/);
+assert.match(appRenderer, /coach-focus-target/);
+assert.doesNotMatch(appRenderer, /className="adaptive-training-goals"/,
+  "The three featured training goals must not be duplicated in the old adaptive-goals section.");
 assert.match(matchStore, /const DB_VERSION = 3/);
 assert.match(matchStore, /const REPLAY_STORE = "replay-records"/);
 assert.match(matchStore, /event\.oldVersion < 2[\s\S]*?replays\.put[\s\S]*?cursor\.update/);

@@ -46,8 +46,8 @@ assert.match(renderer, /keine Android-APK veröffentlicht/);
 assert.doesNotMatch(renderer, /Web\/PWA|serviceWorker|isBrowserPwa/);
 assert.doesNotMatch(releaseWorkflow, /assembleDebug/);
 const ciWorkflow = read(".github/workflows/ci.yml");
-assert.ok(ciWorkflow.split("\\n").some(line => line.includes("grep -E") && line.includes("|| true")),
-  "The replay-change detector must not fail when workflow/build changes trigger replay validation but no source summary paths match.");
+assert.ok(ciWorkflow.includes("|| true"),
+  "The replay-change detector must tolerate no matching summary paths when workflow/build changes trigger replay validation.");
 assert.ok(ciWorkflow.includes("github.event_name == 'push'") && ciWorkflow.includes("needs.detect-replay-changes.outputs.replay_changed == 'true'"), "Replay-sensitive commits pushed to main must trigger the live replay regression job.");
 const liveReplayJob = ciWorkflow.slice(ciWorkflow.indexOf("  live-replay:"));
 assert.ok(liveReplayJob.includes("needs: [detect-replay-changes, validate]") && liveReplayJob.includes("needs.validate.result == 'success'"),

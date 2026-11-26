@@ -100,17 +100,30 @@ jobs:
       - name: Typecheck and build production application
         run: npm run build
 
-      - name: Run responsive replay visualization UI tests
-        run: xvfb-run -a npm run test:ux-ui
+      # These suites use isolated test runners and independent fixtures. Run
+      # them concurrently after the shared production build to shorten CI time.
+      - name: Run independent regression suites in parallel
+        timeout-minutes: 30
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          logs=("$RUNNER_TEMP/test-ux.log" "$RUNNER_TEMP/test-coach.log" "$RUNNER_TEMP/test-opencode.log" "$RUNNER_TEMP/test-integration.log")
+          xvfb-run -a npm run test:ux-ui > "${logs[0]}" 2>&1 & ux_pid=$!
+          npm run test:coach > "${logs[1]}" 2>&1 & coach_pid=$!
+          npm run test:opencode-config > "${logs[2]}" 2>&1 & opencode_pid=$!
+          npm run test:integration-e2e > "${logs[3]}" 2>&1 & integration_pid=$!
 
-      - name: Run coaching, replay, storage and updater regressions
-        run: npm run test:coach
+          status=0
+          for pid in "$ux_pid" "$coach_pid" "$opencode_pid" "$integration_pid"; do
+            wait "$pid" || status=1
+          done
 
-      - name: Validate OpenCode specialist configuration
-        run: npm run test:opencode-config
-
-      - name: Run integration contracts
-        run: npm run test:integration-e2e
+          for log in "${logs[@]}"; do
+            echo "::group::$(basename "$log")"
+            cat "$log"
+            echo "::endgroup::"
+          done
+          exit "$status"
 
   live-replay:
     needs: detect-replay-changes

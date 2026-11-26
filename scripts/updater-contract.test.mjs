@@ -223,7 +223,7 @@ assert.match(androidImeDismissHelper, /minputviewshown=true|isinputviewshown=tru
   "Secondary view flags may be stale and must be logged rather than trigger Back.");
 assert.match(androidImeDismissHelper, /require_baseline_app_window[\s\S]*?input keyevent 4/,
   "Back must be guarded by a verified foreground baseline app.");
-assert.match(androidImeDismissHelper, /mInputShown=false[\s\S]*?avoiding Back/,
+assert.match(androidImeDismissHelper, /mInputShown=false[\\s\\S]*?never sending Back/,
   "A hidden keyboard must never trigger Back and close the app.");
 assert.doesNotMatch(androidImeDismissHelper, /mShowRequested=true/,
   "A stale IME show request must not trigger Android Back after the keyboard is already hidden.");

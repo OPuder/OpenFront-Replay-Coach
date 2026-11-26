@@ -9,7 +9,7 @@ const pid = adb("shell", "pidof", packageId).split(/\s+/)[0];
 if (!/^\d+$/.test(pid ?? "")) throw new Error("The upgraded Android app is not running; cannot inspect its WebView.");
 adb("forward", "tcp:9222", `localabstract:webview_devtools_remote_${pid}`);
 
-const targets = await fetch("http://127.0.0.1:9222/json/list").then(response => {
+const targets = await fetch("http://127.0.0.1:9222/json/list", { signal: AbortSignal.timeout(15_000) }).then(response => {
   if (!response.ok) throw new Error(`WebView DevTools endpoint returned HTTP ${response.status}.`);
   return response.json();
 });
@@ -18,25 +18,33 @@ if (!target) throw new Error("No inspectable WebView page was exposed by the tes
 
 const socket = new WebSocket(target.webSocketDebuggerUrl);
 await new Promise((resolve, reject) => {
-  socket.addEventListener("open", resolve, { once: true });
-  socket.addEventListener("error", () => reject(new Error("Could not connect to the test APK WebView DevTools socket.")), { once: true });
+  const timer = setTimeout(() => reject(new Error("Timed out after 15s connecting to the test APK WebView DevTools socket.")), 15_000);
+  socket.addEventListener("open", () => { clearTimeout(timer); resolve(); }, { once: true });
+  socket.addEventListener("error", () => { clearTimeout(timer); reject(new Error("Could not connect to the test APK WebView DevTools socket.")); }, { once: true });
+  socket.addEventListener("close", () => { clearTimeout(timer); reject(new Error("WebView DevTools socket closed before connecting.")); }, { once: true });
 });
 
 let nextId = 1;
-function send(method, params = {}) {
+function send(method, params = {}, timeoutMs = 30_000) {
   const id = nextId++;
   return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => {
+      socket.removeEventListener("message", onMessage);
+      reject(new Error(`CDP command ${method} timed out after ${timeoutMs}ms.`));
+    }, timeoutMs);
     const onMessage = event => {
       let message;
       try { message = JSON.parse(typeof event.data === "string" ? event.data : Buffer.from(event.data).toString("utf8")); }
       catch { return; }
       if (message.id !== id) return;
       socket.removeEventListener("message", onMessage);
+      clearTimeout(timer);
       if (message.error) reject(new Error(message.error.message ?? `CDP command ${method} failed.`));
       else resolve(message.result);
     };
     socket.addEventListener("message", onMessage);
-    socket.send(JSON.stringify({ id, method, params }));
+    try { socket.send(JSON.stringify({ id, method, params })); }
+    catch (error) { clearTimeout(timer); socket.removeEventListener("message", onMessage); reject(error); }
   });
 }
 
@@ -47,7 +55,7 @@ try {
     awaitPromise: true,
     returnByValue: true,
     userGesture: true,
-  });
+  }, 60_000);
   if (evaluated.exceptionDetails) throw new Error(evaluated.exceptionDetails.text ?? "Storage snapshot threw an exception.");
   const snapshot = evaluated.result?.value;
   if (!snapshot || snapshot.schema !== "ofrc-android-upgrade-snapshot-v1") {
@@ -84,12 +92,19 @@ try {
       || String(item.recordGameId) !== String(item.gameId) || !item.engineCommit || Number(item.turnCount) < 1)) {
     throw new Error(`Production matchStore rehydration failed after update: ${JSON.stringify(rehydration)}`);
   }
-  const invalidReplayRecords = replays.filter(record => {
+  const malformedReplayRecords = replays.filter(record => {
     const metadata = record.metadata ?? {};
+    const turnCount = Number(metadata.turnCount);
     return !metadata.gameId || String(metadata.recordGameId) !== String(metadata.gameId)
-      || !metadata.engineCommit || Number(metadata.turnCount) < 1;
+      || !metadata.engineCommit || !Number.isInteger(turnCount) || turnCount < 0;
   });
-  if (invalidReplayRecords.length) {
+  const fullReplayRecords = replays.filter(record => {
+    const metadata = record.metadata ?? {};
+    return Number(metadata.turnCount) > 0 && Boolean(metadata.gameId)
+      && String(metadata.recordGameId) === String(metadata.gameId) && Boolean(metadata.engineCommit);
+  });
+  const emptyReplayRecords = replays.filter(record => Number(record.metadata?.turnCount) === 0);
+  if (malformedReplayRecords.length) {
     const describe = record => ({
       recordKeys: Object.keys(record ?? {}),
       metadataKeys: Object.keys(record?.metadata ?? {}),
@@ -101,8 +116,9 @@ try {
       },
       nestedReplayKeys: Object.fromEntries(Object.entries(record ?? {}).filter(([, value]) => value && typeof value === "object" && !Array.isArray(value)).map(([key, value]) => [key, Object.keys(value)])),
     });
-    throw new Error(`Replay identity/engine metadata validation failed for ${invalidReplayRecords.length}/${replays.length} records. Record shape diagnostics: ${JSON.stringify(invalidReplayRecords.map(describe))}`);
+    throw new Error(`Replay identity/engine metadata validation failed for ${malformedReplayRecords.length}/${replays.length} records. Record shape diagnostics: ${JSON.stringify(malformedReplayRecords.map(describe))}`);
   }
+  if (fullReplayRecords.length < 2) throw new Error(`Expected at least two complete replay records; found ${fullReplayRecords.length} full and ${emptyReplayRecords.length} empty records.`);
   if (trainingGoal && !matchIds.has(String(trainingGoal.gameId ?? ""))) {
     throw new Error("The saved training goal does not reference a persisted match.");
   }
@@ -117,6 +133,8 @@ try {
     localStorageKeys: localEntries.map(entry => entry.key),
     verifiedAnalyses: verifiedAnalyses.length,
     fullReplayIdentityCount: replayMetadata.length,
+    fullReplayRecordCount: fullReplayRecords.length,
+    emptyReplayRecordCount: emptyReplayRecords.length,
     productionStoreRehydration: {
       attempted: rehydration.attempted,
       loaded: rehydration.loaded,

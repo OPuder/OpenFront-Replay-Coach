@@ -34,6 +34,9 @@ export function computeEngineBundleFingerprint(catalogPath, engineBuildDirectory
 }
 
 export function verifyEngineBundleCache(manifestPath, outputDirectory, fingerprint, engines) {
+  if (!Array.isArray(engines) || engines.some(engine =>
+    !/^[0-9a-f]{40}$/.test(engine.commit) || !/^[0-9a-f]{12}$/.test(engine.bundleId)
+  )) return false;
   if (!existsSync(manifestPath)) return false;
   try {
     const manifest = JSON.parse(readFileSync(manifestPath, "utf8"));

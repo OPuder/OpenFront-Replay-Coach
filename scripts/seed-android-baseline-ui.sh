@@ -171,6 +171,8 @@ PY
 
 tap_edit_field() {
   local occurrence="${1:-1}" current_query="${2:-$current_search_query}" coords=""
+  # The IME can resize the WebView and leave the search input clipped. Dismiss it before locating or tapping the field.
+  dismiss_search_ime
   # The library field can be above the viewport or expose invalid WebView bounds.
   # Bring the toolbar into view, then prefer its current query text in OCR.
   for attempt in $(seq 1 8); do
@@ -441,6 +443,23 @@ wait_for_search_ime() {
   log "IME visibility is not exposed by dumpsys input_method; waiting briefly before verified typing."
   sleep 2
 }
+dismiss_search_ime() {
+  local ime_state="" attempt
+  ime_state="$(timeout 8s adb -s emulator-5554 shell dumpsys input_method 2>&1 || true)"
+  if grep -Eiq 'mInputShown=true|mInputViewShown=true|isInputViewShown=true|mShowRequested=true' <<< "$ime_state"; then
+    log "Dismissing the visible Android keyboard before re-locating the WebView search field."
+    timeout 10s adb -s emulator-5554 shell input keyevent 4 || fail "Could not dismiss Android keyboard before re-focusing the library search field."
+  fi
+  for attempt in $(seq 1 8); do
+    ime_state="$(timeout 8s adb -s emulator-5554 shell dumpsys input_method 2>&1 || true)"
+    if ! grep -Eiq 'mInputShown=true|mInputViewShown=true|isInputViewShown=true|mShowRequested=true' <<< "$ime_state"; then
+      log "Android keyboard is dismissed; the WebView search field can be re-located with full viewport bounds."
+      return 0
+    fi
+    sleep 1
+  done
+  fail "Android keyboard remained visible after the bounded dismissal attempts; refusing to tap coordinates clipped by the IME."
+}
 
 search_query_visible() {
   local query="$1"
@@ -482,14 +501,14 @@ seed_verified_match() {
   # (NAF=true); its placeholder is visible in pixels but absent from the
   # accessibility text, so OCR is both slower and less reliable than bounds.
   tap_edit_field 1 "$current_search_query"
-  if [[ "$clear_search" == "true" ]]; then
-    timeout 10s adb -s emulator-5554 shell input keycombination 113 29 >/dev/null 2>&1 || fail "Could not select the previous library search query."
-  fi
-  # Wait for Android's IME to become ready after tapping the WebView input.
-  # Shell input can be sent before the keyboard/focus transition completes.
+  # Wait for Android's IME before any edit/select command; the published WebView
+  # may ignore Ctrl+A while the keyboard/focus transition is still settling.
   local search_query typed=false
   search_query="$(printf '%s' "$game_id" | tr '[:upper:]' '[:lower:]')"
   wait_for_search_ime
+  if [[ "$clear_search" == "true" ]]; then
+    timeout 10s adb -s emulator-5554 shell input keycombination 113 29 >/dev/null 2>&1 || fail "Could not select the previous library search query."
+  fi
   log "Entering archived match ID $game_id with the Android text-input command."
   timeout 10s adb -s emulator-5554 shell input text "$search_query" || log "Android text-input command returned nonzero; will verify and use key-event fallback if needed."
   sleep 1
@@ -502,7 +521,8 @@ seed_verified_match() {
     sleep 1
   done
   if [[ "$typed" != true ]]; then
-    log "Text input did not appear in the focused search field; re-tapping and retrying with individual Android key events."
+    log "Text input did not appear in the focused search field; dismissing the IME, re-locating the visible input, and retrying with individual Android key events."
+    dismiss_search_ime
     tap_edit_field 1 "$current_search_query"
     wait_for_search_ime
     timeout 10s adb -s emulator-5554 shell input keycombination 113 29 >/dev/null 2>&1 || true

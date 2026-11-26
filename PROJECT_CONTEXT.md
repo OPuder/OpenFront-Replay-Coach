@@ -58,14 +58,14 @@ Coaching hat Vorrang vor Rohstatistiken. Die wichtigsten Erkenntnisse sollen sch
 
 ## CI und Qualitätssicherung
 
-Die relevanten Workflow-Dateien liegen unter `.github/workflows/`, aktuell unter anderem:
-- `build-windows.yml`
-- `validate-android.yml`
-- `replay-compatibility.yml`
-- `validate-engine.yml`
-- `update-validation.yml`
-- `integration-e2e.yml`
-- `release-on-main.yml`
+Die aktuell integrierten Workflows liegen unter `.github/workflows/`:
+- `ci.yml` — zentrale CI mit Änderungserkennung, Core-/Coaching-Tests, Engine-Prüfung, Build und bedarfsabhängiger Live-Replay-Regression.
+- `cleanup-merged-branches.yml` — bereinigt integrierte Feature-Branches.
+- `discover-openfront-engine.yml` — überwacht neue OpenFront-Engine-Revisionen und bereitet Kandidaten vor.
+- `release-on-main.yml` — erstellt und validiert die Windows- und Android-Release-Artefakte.
+- `update-validation.yml` — prüft Update-Verträge, Plattform- und Paketkompatibilität.
+
+Die tatsächlichen Trigger, Bedingungen und Pflichtprüfungen sind stets direkt in diesen Workflow-Dateien zu prüfen. Workflow-Namen allein beweisen keinen erfolgreichen Lauf.
 
 Welche Workflows für eine Änderung verpflichtend sind, ist anhand der aktuellen Workflow-Konfiguration, Branch-/PR-Checks und Änderungsauswirkung zu bestimmen. Dateinamen allein beweisen keinen erfolgreichen Lauf.
 

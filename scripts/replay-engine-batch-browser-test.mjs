@@ -79,13 +79,15 @@ async function main() {
   await window.webContents.executeJavaScript("window.__prepareLegacyMatchStore()", true);
   const migrated = await window.webContents.executeJavaScript("window.__verifyLegacyMigration()", true);
   assert.deepEqual(migrated, {
-    version: 3,
+    version: 4,
     profileName: "OligenOle",
     matchStatus: "loaded",
-    analysisStatus: "pending",
+    analysisStatus: "verified",
+    migratedSimulationStatus: "verified",
+    migratedSampleCount: 1,
     replayId: "legacy-replay",
     replayHash: "legacy-hash",
-  }, "IndexedDB v2 → v3 upgrade must preserve profile, match metadata and raw replay payload");
+  }, "IndexedDB v2 → v4 upgrade must preserve profile, match metadata, raw replay and migrate analysis payload");
 
   const fixtures = [
     ["Europe", europe],

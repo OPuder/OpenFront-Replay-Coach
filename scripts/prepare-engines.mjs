@@ -26,7 +26,6 @@ const run = (command, args, options, label, timeoutMs) => {
   if (result.status !== 0) throw new Error(`${label} failed with exit code ${result.status ?? "unknown"}.`);
 };
 
-const root = process.cwd();
 const catalogPath = path.resolve("engine-build/engines.json");
 const engineBuildDirectory = path.resolve("engine-build");
 const outputDirectory = path.resolve("src/renderer/engine");

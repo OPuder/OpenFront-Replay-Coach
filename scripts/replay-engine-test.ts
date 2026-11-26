@@ -203,12 +203,14 @@ window.__runReplayTest = async (record, gameId) => {
 document.getElementById("status")!.textContent = "Replay engine test harness ready";
 
 window.__verifyStoreTest = async (gameId) => {
-  const matches = await loadImportedMatches("ci-persistence-player");
-  const saved = matches.find(item => item.game.gameId === gameId);
+  // The v4 library index intentionally omits large simulation payloads.
+  // Verify persistence through the per-match hydrator, which reads analysis-results.
+  const saved = await loadImportedMatch("ci-persistence-player", gameId);
   return {
     analysisStatus: saved?.analysisStatus,
     simulationStatus: saved?.simulation?.status,
     sampleCount: saved?.simulation?.samples?.length ?? 0,
+    actionReviewCount: saved?.simulation?.actionReviews?.length ?? 0,
   };
 };
 

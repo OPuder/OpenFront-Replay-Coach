@@ -30,8 +30,22 @@ const catalogPath = path.resolve("engine-build/engines.json");
 const engineBuildDirectory = path.resolve("engine-build");
 const outputDirectory = path.resolve("src/renderer/engine");
 const manifestPath = path.resolve(".openfront-engine-build.json");
-const fingerprint = computeEngineBundleFingerprint(catalogPath, engineBuildDirectory, engines);
-if (verifyEngineBundleCache(manifestPath, outputDirectory, fingerprint, engines)) {
+const fingerprint = computeEngineBundleFingerprint(catalogPath, engineBuildDirectory, engines, [
+  path.resolve("scripts/build-engines.mjs"),
+  path.resolve("scripts/engine-bundle-cache.mjs"),
+]);
+function existingSourceCheckoutsAreSafeForCache() {
+  return engines.every(engine => {
+    const source = path.resolve(engine.source);
+    if (!existsSync(path.join(source, ".git"))) return true;
+    const revision = spawnSync("git", ["-C", source, "rev-parse", "HEAD"], { encoding: "utf8" });
+    if (revision.status !== 0 || revision.stdout.trim() !== engine.commit) return false;
+    const status = spawnSync("git", ["-C", source, "status", "--porcelain", "--untracked-files=normal"], { encoding: "utf8" });
+    return status.status === 0 && status.stdout.trim() === "";
+  });
+}
+if (verifyEngineBundleCache(manifestPath, outputDirectory, fingerprint, engines)
+  && existingSourceCheckoutsAreSafeForCache()) {
   console.log(`Verified cache contains all ${engines.length} exact engine bundles; skipping historical submodule checkout and dependency installs.`);
   process.exit(0);
 }

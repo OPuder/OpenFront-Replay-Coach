@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { getTotalRecordedFrames, loadReplayTerrainData } from '../src/renderer/ReplaySimulation.ts';
+import { chooseReplaySampleCadence, getTotalRecordedFrames, loadReplayTerrainData } from '../src/renderer/ReplaySimulation.ts';
 
 test('loads the exact terrain binary whose manifest dimensions match the replay', async () => {
   const originalFetch = globalThis.fetch;
@@ -75,4 +75,15 @@ test('uses declared frame count and ignores malformed one-based turn numbers', (
   assert.equal(getTotalRecordedFrames({ info: { num_turns: true }, turns: [{ turnNumber: true }, { turnNumber: '8' }, { turnNumber: 4 }] }), 4);
   assert.equal(getTotalRecordedFrames({ info: { num_turns: -4 }, turns: [{ turnNumber: -1 }, { turnNumber: 3 }] }), 3);
   assert.equal(getTotalRecordedFrames(null), 0);
+});
+
+
+test('keeps normal replay sampling unchanged and bounds baseline map snapshots for long matches', () => {
+  assert.equal(chooseReplaySampleCadence(1_334, 50), 50);
+  assert.equal(chooseReplaySampleCadence(39_623, 50), 110);
+  assert.equal(chooseReplaySampleCadence(100, 50), 50);
+  assert.equal(chooseReplaySampleCadence(39_623, 50, 200), 199);
+  assert.equal(chooseReplaySampleCadence(0, 50), 50);
+  assert.equal(chooseReplaySampleCadence(39_623, 0), 110);
+  assert.ok(Math.ceil(39_623 / chooseReplaySampleCadence(39_623, 50)) <= 360);
 });

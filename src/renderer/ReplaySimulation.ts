@@ -20,6 +20,22 @@ export function getTotalRecordedFrames(record: unknown): number {
   }
   return total;
 }
+
+/**
+ * Bound expensive full-map snapshots on very long replays while retaining the
+ * requested cadence for ordinary matches. Exact action frames and their
+ * before/after/outcome windows are added separately and are never coarsened.
+ */
+export function chooseReplaySampleCadence(
+  totalFrames: number,
+  requestedCadence = 50,
+  maxBaselineSamples = 360,
+): number {
+  const frameCount = Number.isFinite(totalFrames) ? Math.max(0, Math.floor(totalFrames)) : 0;
+  const requested = Number.isFinite(requestedCadence) ? Math.max(1, Math.floor(requestedCadence)) : 50;
+  const budget = Number.isFinite(maxBaselineSamples) ? Math.max(1, Math.floor(maxBaselineSamples)) : 360;
+  return frameCount > 0 ? Math.max(requested, Math.ceil(frameCount / budget)) : requested;
+}
 import { encodeTileOwners, type EncodedTerritory } from "./ReplayTerritory";
 import {
   analyzeAlternativeSpawnPositions,
@@ -293,13 +309,13 @@ export async function simulateReplay(
     ? replayPlayers.find((player: any) => String(player?.clientID ?? "") === preferredClientId)
     : replayPlayers.find((player: any) => /oligenole/i.test(replayPlayerName(player, "")));
   const selectedClientId = selectedPlayerMeta?.clientID == null ? null : String(selectedPlayerMeta.clientID);
-  const cadence = Math.max(1, Math.floor(sampleEvery));
   // OpenFront turnNumber is the one-based simulation tick. ReplayReader frame
   // indices are zero-based: its first decoded frame is index 0 / tick 1.
   // Convert the recorded tick to a reader frame exactly once at this boundary.
   // Do not spread a potentially huge turn array into Math.max: long replays
   // can exceed the engine's argument limit and allocate another large array.
   const totalRecordedFrames = getTotalRecordedFrames(record);
+  const cadence = chooseReplaySampleCadence(totalRecordedFrames, sampleEvery);
   for (let frame = 0; frame < totalRecordedFrames; frame += cadence) sampleFrames.add(frame);
   if (selectedClientId) {
     turns.forEach((turn: any) => {

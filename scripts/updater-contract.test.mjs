@@ -192,8 +192,17 @@ assert.match(androidBaselineUiSeed, /dump_ui\(\)\s*\{\s*local dump_output="" pul
   "UI dump retries must keep their counter local so outer viewport scans can advance.");
 assert.match(androidBaselineUiSeed, /wait_for_search_ime\(\)/,
   "Android search typing must wait for the IME/focus transition before injecting text.");
-assert.match(androidBaselineUiSeed, /dismiss_search_ime\(\)\s*\{\s*local ime_state="" attempt/,
-  "The Android fallback must have a bounded helper to dismiss the keyboard.");
+assert.match(androidBaselineUiSeed, /dismiss_search_ime\(\)\s*\{\s*local ime_state="" attempt visibility_flags=""/,
+  "The Android fallback must have a bounded helper to dismiss the keyboard and log its state.");
+const androidImeDismissHelper = androidBaselineUiSeed.match(/dismiss_search_ime\(\)\s*\{[\s\S]*?\n\}/)?.[0] ?? "";
+assert.match(androidImeDismissHelper, /mInputShown=true|mInputViewShown=true|isInputViewShown=true/,
+  "IME dismissal must detect actual shown-state flags.");
+assert.match(androidImeDismissHelper, /mInputShown=false|mInputViewShown=false|isInputViewShown=false/,
+  "IME dismissal must confirm a hidden-state flag before tapping the WebView again.");
+assert.doesNotMatch(androidImeDismissHelper, /mShowRequested=true/,
+  "A stale IME show request must not trigger Android Back after the keyboard is already hidden.");
+assert.match(androidImeDismissHelper, /IME visibility is unknown; refusing to send Back/,
+  "Unknown IME state must fail closed instead of potentially exiting the app.");
 assert.match(androidBaselineUiSeed, /tap_edit_field\(\)\s*\{[\s\S]*?dismiss_search_ime[\s\S]*?for attempt in \$\(seq 1 8\)/,
   "The search field must be located after the IME is dismissed, so clipped coordinates are not reused.");
 assert.match(androidBaselineUiSeed, /Text input did not appear in the focused search field[\s\S]*?dismiss_search_ime[\s\S]*?tap_edit_field/,

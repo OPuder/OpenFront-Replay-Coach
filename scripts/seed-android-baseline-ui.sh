@@ -176,6 +176,7 @@ tap_edit_field() {
   # The library field can be above the viewport or expose invalid WebView bounds.
   # Bring the toolbar into view, then prefer its current query text in OCR.
   for attempt in $(seq 1 8); do
+    require_baseline_app_window
     if dump_ui; then
       coords="$(find_bounds "" edit "$occurrence" 2>/dev/null || true)"
     fi
@@ -216,7 +217,10 @@ tap_edit_field() {
       coords=""
     fi
     log "Library search field not safely visible (attempt $attempt/8); scrolling toward the toolbar."
-    timeout 10s adb -s emulator-5554 shell input swipe 500 350 500 1500 550 >/dev/null 2>&1 || true
+    require_baseline_app_window
+    # Start well below the status-bar/notification gesture region. Drag down
+    # inside the app to reveal its toolbar; never swipe from the upper edge.
+    timeout 10s adb -s emulator-5554 shell input swipe 500 700 500 1250 550 >/dev/null 2>&1 || true
     sleep 1
   done
   fail "Could not locate a safely visible library search field after scrolling to the toolbar. OCR: $(ocr_text 2>/dev/null | tr '\n' ' ' | head -c 800); UI: $(cat "$ui_xml" 2>/dev/null | head -c 2500)"
@@ -443,33 +447,59 @@ wait_for_search_ime() {
   log "IME visibility is not exposed by dumpsys input_method; waiting briefly before verified typing."
   sleep 2
 }
+baseline_app_window_is_focused() {
+  local window_state="" current_focus="" focused_app=""
+  window_state="$(timeout 10s adb -s emulator-5554 shell dumpsys window 2>&1)" || return 1
+  current_focus="$(grep -E 'mCurrentFocus=' <<< "$window_state" | tail -n 1 || true)"
+  focused_app="$(grep -E 'mFocusedApp=' <<< "$window_state" | tail -n 1 || true)"
+  # A notification shade or launcher focus is never a safe target for WebView
+  # coordinates, even when ActivityManager still reports the app as resumed.
+  if [[ "$current_focus" =~ NotificationShade|com\.android\.systemui|QuickstepLauncher ]]; then return 1; fi
+  if [[ "$current_focus" == *"$package_id"* ]] && { [[ -z "$focused_app" ]] || [[ "$focused_app" == *"$package_id"* ]]; }; then return 0; fi
+  if [[ "$current_focus" =~ InputMethod|input_method ]] && [[ "$focused_app" == *"$package_id"* ]]; then return 0; fi
+  return 1
+}
+require_baseline_app_window() {
+  local focus_state=""
+  focus_state="$(timeout 10s adb -s emulator-5554 shell dumpsys window 2>&1 | grep -E 'mCurrentFocus=|mFocusedApp=' | tail -n 2 || true)"
+  baseline_app_window_is_focused || fail "The published baseline app is not safely foregrounded; refusing Back or coordinate gestures. Window focus: ${focus_state:-unavailable}"
+}
 dismiss_search_ime() {
   local ime_state="" attempt visibility_flags=""
-  local visible_pattern='mInputShown=true|mInputViewShown=true|isInputViewShown=true'
-  local hidden_pattern='mInputShown=false|mInputViewShown=false|isInputViewShown=false'
+  local visible_pattern='mInputShown=true'
+  local hidden_pattern='mInputShown=false'
+  local inconsistent_pattern='mInputViewShown=true|isInputViewShown=true'
   ime_state="$(timeout 8s adb -s emulator-5554 shell dumpsys input_method 2>&1)" || fail "Could not read Android IME state before re-focusing the library search field."
   [[ -n "$ime_state" ]] || fail "Android IME state was empty; refusing to guess whether the keyboard covers the WebView."
   visibility_flags="$(grep -Eo 'mInputShown=(true|false)|mInputViewShown=(true|false)|isInputViewShown=(true|false)' <<< "$ime_state" | tr '\n' ' ' || true)"
   log "Android IME visibility flags: ${visibility_flags:-not exposed}."
   if grep -Eiq "$visible_pattern" <<< "$ime_state"; then
-    log "Dismissing the visibly open Android keyboard before re-locating the WebView search field."
+    require_baseline_app_window
+    log "Android reports mInputShown=true; dismissing the keyboard while the baseline app remains foregrounded."
     timeout 10s adb -s emulator-5554 shell input keyevent 4 || fail "Could not dismiss Android keyboard before re-focusing the library search field."
   elif grep -Eiq "$hidden_pattern" <<< "$ime_state"; then
-    log "Android IME reports the keyboard hidden; avoiding an unsafe Back key that could exit the app."
+    if grep -Eiq "$inconsistent_pattern" <<< "$ime_state"; then
+      fail "Android IME visibility flags contradict mInputShown=false (${visibility_flags}); refusing to send Back or tap clipped coordinates."
+    fi
+    require_baseline_app_window
+    log "Android mInputShown=false and secondary visibility flags are hidden; avoiding Back so the app cannot be exited."
+    return 0
   else
-    fail "Android IME visibility is unknown; refusing to send Back or tap coordinates that may be covered by the keyboard."
+    fail "Android IME visibility is unknown (${visibility_flags:-no visibility flags}); refusing to send Back or tap coordinates that may be covered by the keyboard."
   fi
   for attempt in $(seq 1 8); do
     ime_state="$(timeout 8s adb -s emulator-5554 shell dumpsys input_method 2>&1)" || fail "Could not re-check Android IME visibility after dismissal."
     [[ -n "$ime_state" ]] || fail "Android IME state became empty after dismissal; refusing to guess keyboard visibility."
     visibility_flags="$(grep -Eo 'mInputShown=(true|false)|mInputViewShown=(true|false)|isInputViewShown=(true|false)' <<< "$ime_state" | tr '\n' ' ' || true)"
-    if grep -Eiq "$hidden_pattern" <<< "$ime_state"; then
+    if grep -Eiq "$hidden_pattern" <<< "$ime_state" && ! grep -Eiq "$inconsistent_pattern" <<< "$ime_state"; then
+      require_baseline_app_window
       log "Android keyboard is confirmed hidden (${visibility_flags:-visibility flag}); the WebView search field can be re-located with full viewport bounds."
       return 0
     fi
     if ! grep -Eiq "$visible_pattern" <<< "$ime_state"; then
-      fail "Android IME visibility became unknown after dismissal (${visibility_flags:-no visibility flags}); refusing to tap clipped coordinates."
+      fail "Android IME visibility became unknown or contradictory after dismissal (${visibility_flags:-no visibility flags}); refusing to tap clipped coordinates."
     fi
+    require_baseline_app_window
     sleep 1
   done
   fail "Android keyboard remained visible after the bounded dismissal attempts; refusing to tap coordinates clipped by the IME."

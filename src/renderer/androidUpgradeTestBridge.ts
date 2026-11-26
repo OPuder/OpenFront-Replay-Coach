@@ -125,8 +125,14 @@ async function readStoreSummary(db: IDBDatabase, name: string): Promise<{ record
           recordGameId: record?.info?.gameID ?? record?.game?.info?.gameID ?? null,
           engineCommit: record?.gitCommit ?? null,
           turnCount: Array.isArray(record?.turns) ? record.turns.length : 0,
+          replayEntryKeys: Object.keys(item).sort(),
+          replayEntryTypes: Object.fromEntries(Object.keys(item).sort().map(key => [key, typeof item[key]])),
+          nestedEntryKeys: Object.fromEntries(Object.entries(item)
+            .filter(([, value]) => value && typeof value === "object" && !Array.isArray(value))
+            .map(([key, value]) => [key, Object.keys(value).sort()])),
+          recordKeys: record ? Object.keys(record).sort() : null,
         };
-        fields = ["playerId", "gameId", "record.info.gameID", "record.gitCommit", "record.turns[]"];
+        fields = Object.keys(item).sort();
         summary.playerId = item.playerId ?? null;
         summary.gameId = item.gameId ?? null;
       } else {

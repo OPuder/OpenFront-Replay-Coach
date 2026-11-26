@@ -154,9 +154,19 @@ export async function saveImportedMatch(playerId: string, item: StoredMatchEntry
     })() : undefined;
     const updatedAt = Date.now();
     const stored: StoredMatch = { ...item, simulation: undefined, result: summary as StoredMatch["result"], playerId, updatedAt };
-    tx.objectStore(MATCH_STORE).put(stored);
-    // Status-only updates often receive a compact library entry. Preserve the
-    // previously stored replay payload unless a replacement payload is supplied.
+    const matchStore = tx.objectStore(MATCH_STORE);
+    if (result) {
+      matchStore.put(stored);
+    } else {
+      // Status-only library updates must not erase the result summary that
+      // keeps the independently stored replay payload discoverable.
+      const existingRequest = matchStore.get([playerId, item.game.gameId]);
+      existingRequest.onsuccess = () => {
+        const existing = existingRequest.result as StoredMatch | undefined;
+        matchStore.put({ ...stored, result: existing?.result ?? stored.result });
+      };
+    }
+    // Preserve the previously stored replay payload unless a replacement payload is supplied.
     if (replayPayload) tx.objectStore(REPLAY_STORE).put({ playerId, gameId: item.game.gameId, ...replayPayload });
     if (item.simulation) {
       tx.objectStore(ANALYSIS_STORE).put({
@@ -241,8 +251,10 @@ export async function loadImportedMatch(playerId: string, gameId: string): Promi
   });
   db.close();
   if (!value.match) return null;
-  const result = value.match.result
-    ? { ...value.match.result, ...(value.replayPayload ?? {}) }
+  const hasReplayPayload = Boolean(value.replayPayload
+    && (value.replayPayload.record || value.replayPayload.decodedActions || value.replayPayload.actionAnalysis));
+  const result = value.match.result || hasReplayPayload
+    ? { ...(value.match.result ?? {}), ...(value.replayPayload ?? {}) }
     : undefined;
   const { game, status, error, simulation, analysisStatus, analysisError } = value.match;
   return { game, result, status, error, simulation: value.analysis?.simulation ?? simulation, analysisStatus: value.analysis?.analysisStatus ?? analysisStatus, analysisError: value.analysis?.analysisError ?? analysisError };

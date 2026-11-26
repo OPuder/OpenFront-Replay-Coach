@@ -88,7 +88,7 @@ for (const [lockHash, group] of dependencyGroups) {
   const representativePath = path.resolve(representative.source);
   console.log(`Installing shared dependencies for ${group.length} exact engines (lock ${lockHash.slice(0, 12)}).`);
   run(process.platform === "win32" ? "npm.cmd" : "npm", [
-    "ci", "--ignore-scripts", "--no-audit", "--no-fund",
+    "ci", "--ignore-scripts", "--no-audit", "--no-fund", "--prefer-offline",
     "--fetch-retries=2", "--fetch-timeout=120000",
   ], {
     cwd: representativePath,

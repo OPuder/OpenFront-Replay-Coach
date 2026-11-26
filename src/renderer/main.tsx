@@ -16,7 +16,7 @@ import { assessReplayCompatibility, isReplayCompatibilityCurrent } from '../main
 import type { ReplaySimulationResult } from './ReplaySimulation';
 import { selectPlayerSurvivalWindow } from './phaseSurvival';
 import { installBrowserReplayAPI } from './platform/BrowserReplayAPI';
-import { loadImportedMatch, loadImportedMatches, loadPlayerLibrary, saveImportedMatch, savePlayerLibrary, type StoredAnalysisStatus, type StoredMatchEntry } from './matchStore';
+import { loadImportedMatch, loadImportedMatches, loadImportedReplayRecord, loadPlayerLibrary, saveImportedMatch, savePlayerLibrary, type StoredAnalysisStatus, type StoredMatchEntry } from './matchStore';
 import { UpdateCenter } from './UpdateCenter';
 import { StrategyPlaybook } from './StrategyPlaybook';
 import { compactBatchMatchForUi, mergeReplayPlayerCounts, preferReplayPlayerCount, selectGamesToAnalyze, selectGamesToImport } from './AutoLibrarySync';
@@ -279,13 +279,12 @@ function App() {
         getId:item=>item.game.gameId,
         isCompatible:item=>Boolean(item.result&&item.result.engineCompatibility?.engineVersionCompatible===true),
         analyze:async(item,onProgress,signal)=>{
-          const hydrated=await loadImportedMatch(playerPage.playerId,item.game.gameId);
-          const result=hydrated?.result;
-          if(!result?.record) throw new Error('Die gespeicherten Replay-Daten fehlen. Bitte importiere diese Partie erneut.');
-          const preferredClientId=resolveProfileClientId(result);
+          const record=await loadImportedReplayRecord(playerPage.playerId,item.game.gameId);
+          if(!record) throw new Error('Die gespeicherten Replay-Daten fehlen. Bitte importiere diese Partie erneut.');
+          const preferredClientId=resolveProfileClientId({record} as ApiImportSummary);
           if(!preferredClientId) throw new Error('Das OpenFront-Profil konnte keinem Spieler dieser Partie eindeutig zugeordnet werden.');
-          const assets=buildReplayEngineAssets(result.record);
-          return simulateReplay(result.record,assets,onProgress,50,preferredClientId,signal);
+          const assets=buildReplayEngineAssets(record);
+          return simulateReplay(record,assets,onProgress,50,preferredClientId,signal);
         },
         onStatus:async(item,status,simulation,error)=>{
           const analysisError=status==='unsupported'

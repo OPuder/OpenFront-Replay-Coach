@@ -463,6 +463,8 @@ assert.match(androidUpgradeBridge, /replayRestored/);
 assert.match(androidUpgradeBridge, /recordGameId/);
 assert.match(androidUpgradeBridge, /engineCommit/);
 assert.match(androidStorageInspector, /Production matchStore rehydration failed after update/);
+assert.match(androidStorageInspector, /Number\(metadata\.turnCount\) < 0/, "Legacy replay records with zero turns must remain valid during update-integrity checks.");
+assert.match(androidStorageInspector, /Number\.isInteger\(Number\(metadata\.turnCount\)\)/, "Replay turn counts must be non-negative integers.");
 assert.match(androidStorageInspector, /productionStoreRehydration/);
 assert.match(androidEmulatorDiagnostics, /mResumedActivity|topResumedActivity/);
 assert.match(updateValidationWorkflow, /ofrc-android-diagnostics/);

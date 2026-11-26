@@ -118,10 +118,13 @@ window.__verifyLegacyMigration = async () => {
   const version = db.version;
   const hasAnalysisStore = db.objectStoreNames.contains("analysis-results");
   const hasUpdatedAtIndex = db.transaction("matches", "readonly").objectStore("matches").indexNames.contains("by-player-updated-at");
-  const legacyMatchHasSimulation = await new Promise<boolean>((resolve, reject) => {
+  const legacyPayloadFlags = await new Promise<{ simulation: boolean; rawReplay: boolean }>((resolve, reject) => {
     const tx = db.transaction("matches", "readonly");
     const request = tx.objectStore("matches").get(["migration-player", "legacy-replay"]);
-    request.onsuccess = () => resolve(Boolean(request.result?.simulation));
+    request.onsuccess = () => resolve({
+      simulation: Boolean(request.result?.simulation),
+      rawReplay: Boolean(request.result?.result?.record),
+    });
     request.onerror = () => reject(request.error ?? new Error("Could not verify migrated match payload"));
   });
   db.close();

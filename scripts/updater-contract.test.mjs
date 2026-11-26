@@ -56,7 +56,9 @@ assert.match(ciWorkflow, /npm run test:opencode-config/,
 assert.match(ciWorkflow, /xvfb-run -a npm run test:ux-ui/,
   "The responsive UI regression suite must remain in CI, including when suites execute concurrently.");
 assert.match(releaseWorkflow, /paths:\s*[\s\S]*package\.json[\s\S]*package-lock\.json/,
-assert.match(releaseWorkflow, /paths:\\s*[\\s\\S]*package\\.json[\\s\\S]*package-lock\\.json/,\n  "Application releases must be triggered only by reviewed package-version changes.");\nassert.doesNotMatch(releaseWorkflow, /paths-ignore:/,\n  "Release triggers must use an explicit allowlist, not a broad paths-ignore list.");
+  "Application releases must be triggered only by reviewed package-version changes.");
+assert.doesNotMatch(releaseWorkflow, /paths-ignore:/,
+  "Release triggers must use an explicit allowlist, not a broad paths-ignore list.");
 
 assert.match(releaseWorkflow, /permanent Android release signing key is required/);
 assert.ok(releaseWorkflow.includes("grep -Eo '[[:xdigit:]]{64}'"), "Release workflow must extract SHA-256 certificate fingerprints robustly.");

@@ -525,6 +525,11 @@ function App() {
     analysisStatus:item.analysisStatus??(item.status==='engine-mismatch'?'unsupported':'pending'),
     simulation:item.simulation??null,
   })),selectedLongitudinalCohortKey),[batchMatches,selectedLongitudinalCohortKey]);
+  const spotlightFindingIds=longitudinalReport.trainingGoals.length>0
+    ? longitudinalReport.trainingGoals.map(goal=>goal.id)
+    : longitudinalReport.recurringFindings.slice(0,3).map(finding=>finding.id);
+  const additionalRecurringFindings=longitudinalReport.recurringFindings.filter(finding=>!spotlightFindingIds.includes(finding.id));
+  const additionalRecurringStrengths=longitudinalReport.recurringStrengths.slice(1);
   const selectedImportedMatches=batchMatches.filter(item=>selectedGameIds.includes(item.game.gameId)&&Boolean(item.result));
   const selectedPendingAnalysisCount=selectedImportedMatches.filter(item=>item.analysisStatus!=='verified'||item.simulation?.status!=='verified').length;
   const recentGames = [...loadedGames].filter(g=>g.start).sort((a,b)=>new Date(b.start!).getTime()-new Date(a.start!).getTime()).slice(0,10);
@@ -568,10 +573,8 @@ function App() {
             </div>
             {longitudinalReport.status==='ready' ? <div className="coach-spotlight-grid">
               <article className="coach-spotlight-item focus">
-                <span><Brain size={14}/> TRAININGSFOKUS</span>
-                <b>{longitudinalReport.recurringFindings[0]?.title ?? (longitudinalReport.weakestPhase? `Phase: ${longitudinalReport.weakestPhase.label}` : 'Noch kein wiederkehrender Fehler bestätigt')}</b>
-                <p>{longitudinalReport.recurringFindings[0]?.trainingRule ?? (longitudinalReport.weakestPhase? `Vergleiche in ${longitudinalReport.weakestPhase.label} die Entscheidungen und belegten Zustandswechsel in deinen Replays.` : 'Der Coach erfindet keine Schwäche. Verifiziere weitere Partien, damit wiederkehrende Muster sichtbar werden.')}</p>
-                {longitudinalReport.recurringFindings[0] && <small>{longitudinalReport.recurringFindings[0].occurrences} von {longitudinalReport.recurringFindings[0].comparableMatches} vergleichbaren Partien</small>}
+                <span><Brain size={14}/> DEINE 3 WICHTIGSTEN TRAININGSFOKUSSE</span>
+                {longitudinalReport.trainingGoals.length>0 ? <ol className="coach-focus-list">{longitudinalReport.trainingGoals.slice(0,3).map((goal,index)=><li key={goal.id}><span>{index+1}</span><div><b>{goal.title}</b><small>{goal.occurrences}/{goal.comparableMatches} Partien · {Math.round(goal.frequency*100)} % · {goal.status==='regressing'?'Rückschritt':goal.status==='improving'?'Verbessert':goal.status==='active'?'Wiederkehrend':'Vorläufig'}</small><p>{goal.trainingRule}</p><small className="coach-focus-target">{goal.target}</small></div></li>)}</ol> : longitudinalReport.recurringFindings.length>0 ? <ol className="coach-focus-list">{longitudinalReport.recurringFindings.slice(0,3).map((finding,index)=><li key={finding.id}><span>{index+1}</span><div><b>{finding.title}</b><small>{finding.occurrences}/{finding.comparableMatches} vergleichbare Partien</small><p>{finding.trainingRule}</p></div></li>)}</ol> : <p>{longitudinalReport.weakestPhase? `Vergleiche in ${longitudinalReport.weakestPhase.label} die Entscheidungen und belegten Zustandswechsel in deinen Replays.` : 'Der Coach erfindet keine Schwäche. Verifiziere weitere Partien, damit wiederkehrende Muster sichtbar werden.'}</p>}
               </article>
               <article className="coach-spotlight-item strength">
                 <span><ShieldCheck size={14}/> DAS MACHST DU GUT</span>
@@ -613,17 +616,9 @@ function App() {
                 <div className="progression-matches">{longitudinalReport.matchProgress.slice(-8).map((match,index)=><article key={match.gameId}><span>PARTIE {index+1}</span><b>{match.mapName}</b><small>{match.playedAt?new Date(match.playedAt).toLocaleDateString('de-DE'):'Datum unbekannt'}</small><div>{(['early','mid','late'] as const).map(phase=><i key={phase} title={phase==='early'?'Early':phase==='mid'?'Mid':'Late'} className={match.phaseMomentum[phase]===null?'missing':match.phaseMomentum[phase]!>=70?'strong':match.phaseMomentum[phase]!>=35?'medium':'weak'} style={{height:`${Math.max(5,match.phaseMomentum[phase]??5)}%`}} />)}</div><small>{match.territoryPerMinute===null?'Keine Gebietsrate':`${match.territoryPerMinute.toFixed(1).replace('.',',')} Gebiete/min`}</small>{match.attackFollowThroughSamples>0&&<small>{match.attackFollowThroughSamples} auswertbare Angriffe · {match.attackFollowThroughPercent?.toFixed(0)} % mit Gebietsreaktion</small>}</article>)}</div>
                 <small className="progression-footnote">Die Raten beschreiben beobachtete Entwicklung pro Minute. Sie sind keine automatische Bewertung deiner Spielstärke: Karte, Lobby, Überlebenszeit und Datenabdeckung beeinflussen den Vergleich.</small>
               </div>
-              {longitudinalReport.recurringFindings.length>0 ? <div className="longitudinal-findings"><span className="studio-eyebrow">WIEDERKEHRENDE MUSTER</span>{longitudinalReport.recurringFindings.map(finding=><article key={finding.id}><div><b>{finding.title}</b><small>{finding.occurrences}/{finding.comparableMatches} vergleichbare Partien · {Math.round(finding.frequency*100)} %</small></div><span className={`finding-priority ${finding.priority}`}>{finding.priority.toUpperCase()}</span><p>{finding.trainingRule}</p></article>)}</div> : <p className="longitudinal-coverage">Noch kein identisches Fehlermuster in mehreren Partien bestätigt.</p>}
-              {longitudinalReport.recurringStrengths.length>0 && <div className="longitudinal-findings longitudinal-strengths"><span className="studio-eyebrow">WIEDERKEHRENDE STÄRKEN · DAS MACHST DU GUT</span>{longitudinalReport.recurringStrengths.map(finding=><article key={finding.id}><div><b>{finding.title}</b><small>{finding.occurrences}/{finding.comparableMatches} vergleichbare Partien · {Math.round(finding.frequency*100)} %</small></div><span className="finding-priority medium">STÄRKE</span><p>{finding.trainingRule}</p></article>)}</div>}
-              {longitudinalReport.trainingGoals.length>0 && <div className="adaptive-training-goals">
-                <div className="adaptive-training-heading"><span className="studio-eyebrow">ADAPTIVE TRAININGSZIELE</span><small>Aus wiederkehrenden, verifizierten Mustern</small></div>
-                {longitudinalReport.trainingGoals.map(goal=><article className={`adaptive-training-goal ${goal.status}`} key={goal.id}>
-                  <div className="adaptive-training-goal-top"><b>{goal.title}</b><span>{goal.status==='improving'?'Verbessert':goal.status==='regressing'?'Erneut aufgetreten':goal.status==='active'?'Aktives Ziel':'Vorläufig'}</span></div>
-                  <p>{goal.trainingRule}</p>
-                  <div className="adaptive-training-evidence"><small>{goal.occurrences}/{goal.comparableMatches} vergleichbare Partien · {Math.round(goal.frequency*100)} %</small><small>{goal.reviewWindow}</small></div>
-                  <small className="adaptive-training-target">{goal.target}</small>
-                </article>)}
-              </div>}
+              {additionalRecurringFindings.length>0 && <div className="longitudinal-findings"><span className="studio-eyebrow">WEITERE WIEDERKEHRENDE MUSTER</span>{additionalRecurringFindings.map(finding=><article key={finding.id}><div><b>{finding.title}</b><small>{finding.occurrences}/{finding.comparableMatches} vergleichbare Partien · {Math.round(finding.frequency*100)} %</small></div><span className={`finding-priority ${finding.priority}`}>{finding.priority.toUpperCase()}</span><p>{finding.trainingRule}</p></article>)}</div>}
+              {additionalRecurringStrengths.length>0 && <div className="longitudinal-findings longitudinal-strengths"><span className="studio-eyebrow">WEITERE WIEDERKEHRENDE STÄRKEN</span>{additionalRecurringStrengths.map(finding=><article key={finding.id}><div><b>{finding.title}</b><small>{finding.occurrences}/{finding.comparableMatches} vergleichbare Partien · {Math.round(finding.frequency*100)} %</small></div><span className="finding-priority medium">STÄRKE</span><p>{finding.trainingRule}</p></article>)}</div>}
+              
               <div className="longitudinal-training"><Brain size={18}/><div><span>NÄCHSTER TRAININGSFOKUS</span><b>{longitudinalReport.trainingFocus}</b></div></div>
             </> : <div className="longitudinal-empty"><Brain size={22}/><div><b>Langzeit-Coaching wartet auf verifizierte Partien</b><small>Importiere und analysiere mindestens zwei Partien desselben Modus und Spieltyps. Nicht verifizierte Daten werden nicht zusammengerechnet.</small></div><button className="studio-button primary" onClick={()=>navigateTo('games')}>Partien analysieren <ArrowRight size={15}/></button></div>}
           </section>

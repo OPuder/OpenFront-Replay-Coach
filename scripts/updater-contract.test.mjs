@@ -1,6 +1,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { readFileSync } from "node:fs";
+import { execFileSync } from "node:child_process";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
+import { tmpdir } from "node:os";
+import { fileURLToPath } from "node:url";
 const read = path => readFileSync(new URL("../" + path, import.meta.url), "utf8");
 const updater = read("src/main/updater.ts");
 const android = read("android-updater-template/ApkUpdaterPlugin.java");
@@ -277,6 +281,53 @@ assert.match(androidStorageSnapshot, /adb root/);
 assert.match(androidStorageSnapshot, /IndexedDB/);
 assert.match(androidStorageSnapshot, /Local Storage/);
 assert.match(androidStorageSnapshot, /immutableTables/);
+
+assert.match(androidStorageSnapshot, /Local Storage/);
+const androidStorageComparison = read("scripts/compare-android-web-storage.mjs");
+assert.match(androidStorageComparison, /const localStorageDataFiles = manifest => manifest\.files\.filter/);
+assert.match(androidStorageComparison, /(?:^|\\/)\\d+\\.log\$/i,
+  "The Android storage comparison must recognize numbered LevelDB write-ahead logs as persistent Local Storage data.");
+assert.match(androidStorageComparison, /Persistent Local Storage data changed across the APK upgrade/,
+  "Local Storage WALs and immutable tables must be hash-compared across the in-place update.");
+assert.doesNotMatch(androidStorageComparison, /if \(!beforeIndexedTables\.length \|\| !beforeLocalStorageTables\.length\)/,
+  "Local Storage persistence must not require compaction into an immutable table when the baseline contains a data-bearing WAL.");
+test("Android storage comparison preserves Local Storage WAL-only data", () => {
+  const fixtureRoot = mkdtempSync(join(tmpdir(), "ofrc-android-storage-contract-"));
+  const beforeDir = join(fixtureRoot, "ofrc-android-storage-before");
+  const afterDir = join(fixtureRoot, "ofrc-android-storage-after");
+  mkdirSync(beforeDir, { recursive: true });
+  mkdirSync(afterDir, { recursive: true });
+  const indexedDbTable = { path: "IndexedDB/https_localhost_0.indexeddb.leveldb/000005.ldb", sha256: "idb-table-hash" };
+  const localStorageWal = { path: "Local Storage/leveldb/000003.log", sha256: "local-storage-wal-hash" };
+  const manifest = { files: [indexedDbTable, localStorageWal], immutableTables: [indexedDbTable] };
+  const writeManifest = (dir, value) => writeFileSync(join(dir, "manifest.json"), JSON.stringify(value), "utf8");
+  writeManifest(beforeDir, manifest);
+  writeManifest(afterDir, manifest);
+  const compareScript = fileURLToPath(new URL("../scripts/compare-android-web-storage.mjs", import.meta.url));
+  const runCompare = () => {
+    try {
+      return execFileSync(process.execPath, [compareScript], {
+        env: { ...process.env, RUNNER_TEMP: fixtureRoot },
+        encoding: "utf8",
+        stdio: "pipe",
+      });
+    } catch (error) {
+      throw new Error(`${error.stdout ?? ""}${error.stderr ?? ""}`);
+    }
+  };
+  try {
+    assert.match(runCompare(), /"result": "PASS"/,
+      "A Local Storage WAL-only baseline must pass when the numbered log is preserved byte-for-byte.");
+    writeManifest(afterDir, { ...manifest, files: [indexedDbTable, { ...localStorageWal, sha256: "changed-wal-hash" }] });
+    assert.throws(runCompare, /modified data files/,
+      "Changing the Local Storage WAL must still fail the upgrade persistence comparison.");
+    writeManifest(afterDir, { ...manifest, files: [indexedDbTable] });
+    assert.throws(runCompare, /missing data files/,
+      "Removing the Local Storage WAL must still fail the upgrade persistence comparison.");
+  } finally {
+    rmSync(fixtureRoot, { recursive: true, force: true });
+  }
+});
 assert.match(androidUnsignedNegative, /META-INF/);
 assert.match(androidUnsignedNegative, /No signing key was generated or used/);
 assert.match(androidUpdateRegression, /OPENFRONT_UPDATE_APK/);

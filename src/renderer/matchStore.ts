@@ -66,14 +66,12 @@ function openStore(): Promise<IDBDatabase> {
           const stored = cursor.value as StoredMatch;
           let changed = false;
 
-          if (event.oldVersion < 2) {
-            const record = stored.result?.record;
-            if (record && stored.result) {
-              replays.put({ playerId: stored.playerId, gameId: stored.game.gameId, record });
-              const { record: _record, ...summary } = stored.result;
-              stored.result = summary as StoredMatch["result"];
-              changed = true;
-            }
+          const record = stored.result?.record;
+          if (record && stored.result) {
+            replays.put({ playerId: stored.playerId, gameId: stored.game.gameId, record });
+            const { record: _record, ...summary } = stored.result;
+            stored.result = summary as StoredMatch["result"];
+            changed = true;
           }
 
           if (stored.simulation) {

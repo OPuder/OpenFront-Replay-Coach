@@ -47,6 +47,7 @@ assert.doesNotMatch(renderer, /Web\/PWA|serviceWorker|isBrowserPwa/);
 assert.doesNotMatch(releaseWorkflow, /assembleDebug/);
 const ciWorkflow = read(".github/workflows/ci.yml");
 assert.ok(ciWorkflow.includes("github.event_name == 'push'") && ciWorkflow.includes("needs.detect-replay-changes.outputs.replay_changed == 'true'"), "Replay-sensitive commits pushed to main must trigger the live replay regression job.");
+assert.ok(ciWorkflow.includes("engine-build/") && ciWorkflow.includes(".gitmodules") && ciWorkflow.includes("vendor/") && ciWorkflow.includes("scripts/(build-engines|prepare-engines|validate-engine-pin"), "Engine source, catalog and pin changes must trigger the real replay regression job.");
 const packageJson = JSON.parse(read("package.json"));
 assert.equal(packageJson.scripts["test:opencode-config"], "node --test scripts/opencode-config.test.mjs",
   "The OpenCode specialist configuration test script must remain available.");

@@ -146,6 +146,14 @@ assert.match(androidStorageInspector, /function send\(method, params = \{\}, tim
   "The WebView inspector must bound every DevTools command.");
 assert.match(androidStorageInspector, /\}, 90_000\);/,
   "The storage snapshot command must have a bounded longer timeout.");
+assert.match(androidStorageInspector, /const bridgeReadyDeadline = Date\.now\(\) \+ 30_000;/,
+  "The inspector must allow a bounded startup window for the asynchronous test bridge.");
+assert.match(androidStorageInspector, /for \(let attempt = 1; attempt <= 30; attempt\+\+\)/,
+  "Bridge readiness polling must be bounded by a fixed retry count.");
+assert.match(androidStorageInspector, /typeof window\.__OFRC_ANDROID_UPGRADE_TEST__\?\.snapshot === 'function'/,
+  "The inspector must verify that the bridge snapshot function exists before invoking it.");
+assert.match(androidStorageInspector, /Android upgrade-test storage bridge did not initialize within 30 seconds/,
+  "A missing bridge must remain a hard failure after bounded readiness polling.");
 const androidReplayMetadataGuard = androidStorageInspector.match(/const malformedReplayRecords[\s\S]*?if \(malformedReplayRecords\.length\)/)?.[0] ?? "";
 assert.match(androidReplayMetadataGuard, /!metadata\.gameId[\s\S]*?recordGameId[\s\S]*?engineCommit[\s\S]*?Number\.isInteger\(turnCount\)/,
   "Every stored replay record must retain valid identity, engine metadata and a nonnegative integer turn count.");

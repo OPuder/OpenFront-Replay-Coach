@@ -75,33 +75,50 @@ function openStore(): Promise<IDBDatabase> {
           }
 
           const replayPayload = stored.result;
+          const continueMigrationCursor = () => {
+            if (stored.simulation) {
+              analyses.put({
+                playerId: stored.playerId,
+                gameId: stored.game.gameId,
+                simulation: stored.simulation,
+                analysisStatus: stored.analysisStatus,
+                analysisError: stored.analysisError,
+                updatedAt: stored.updatedAt,
+              });
+              delete stored.simulation;
+              changed = true;
+            }
+            if (changed) cursor.update(stored);
+            cursor.continue();
+          };
+
           if (replayPayload && (replayPayload.record || replayPayload.decodedActions || replayPayload.actionAnalysis)) {
-            replays.put({
-              playerId: stored.playerId,
-              gameId: stored.game.gameId,
-              record: replayPayload.record,
-              decodedActions: replayPayload.decodedActions,
-              actionAnalysis: replayPayload.actionAnalysis,
-            });
-            const { record: _record, decodedActions: _decodedActions, actionAnalysis: _actionAnalysis, ...summary } = replayPayload;
-            stored.result = summary as StoredMatch["result"];
-            changed = true;
+            // v3 already stored the raw GameRecord separately. Compact match rows
+            // can still contain decoded actions/coaching payloads, so merging
+            // those fields must never overwrite an existing replay record with
+            // undefined during the v3 -> v4 migration.
+            const replayRequest = replays.get([stored.playerId, stored.game.gameId]);
+            replayRequest.onsuccess = () => {
+              const existingReplayRecord = replayRequest.result as Record<string, unknown> | undefined;
+              const mergedReplayRecord: Record<string, unknown> = {
+                ...(existingReplayRecord ?? {}),
+                playerId: stored.playerId,
+                gameId: stored.game.gameId,
+              };
+              if (replayPayload.record != null) mergedReplayRecord.record = replayPayload.record;
+              if (replayPayload.decodedActions != null) mergedReplayRecord.decodedActions = replayPayload.decodedActions;
+              if (replayPayload.actionAnalysis != null) mergedReplayRecord.actionAnalysis = replayPayload.actionAnalysis;
+              replays.put(mergedReplayRecord);
+
+              const { record: _record, decodedActions: _decodedActions, actionAnalysis: _actionAnalysis, ...summary } = replayPayload;
+              stored.result = summary as StoredMatch["result"];
+              changed = true;
+              continueMigrationCursor();
+            };
+            return;
           }
 
-          if (stored.simulation) {
-            analyses.put({
-              playerId: stored.playerId,
-              gameId: stored.game.gameId,
-              simulation: stored.simulation,
-              analysisStatus: stored.analysisStatus,
-              analysisError: stored.analysisError,
-              updatedAt: stored.updatedAt,
-            });
-            delete stored.simulation;
-            changed = true;
-          }
-          if (changed) cursor.update(stored);
-          cursor.continue();
+          continueMigrationCursor();
         };
       }
     };

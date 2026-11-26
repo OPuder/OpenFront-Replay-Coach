@@ -177,6 +177,8 @@ node scripts/inspect-android-upgrade-data.mjs "$RUNNER_TEMP/after-signature-mism
 adb_cmd shell am force-stop "$package_id" >/dev/null 2>&1 || true
 bash scripts/snapshot-android-web-storage.sh after
 node scripts/compare-android-web-storage.mjs
+log "Cold-starting the valid signed app after the final exact storage comparison."
+android_launch_package "$package_id" "the original signed app after final persistent-file comparison" || fail "The original signed app could not be cold-started after the final persistent-file comparison."
 rm -f "$test_keystore" "$test_signed_apk"
 unset test_password
 

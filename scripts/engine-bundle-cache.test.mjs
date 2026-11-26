@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
@@ -73,7 +73,10 @@ test("verified cache rejects missing engine entries or bundle files", () => {
     const fingerprint = computeEngineBundleFingerprint(catalogPath, buildDir, engines);
     writeFileSync(manifestPath, JSON.stringify({ schema: 2, fingerprint, engines: [] }));
     assert.equal(verifyEngineBundleCache(manifestPath, outputDir, fingerprint, engines), false);
+    const bundlePath = path.join(outputDir, "replay-engine-" + engines[0].bundleId + ".js");
+    writeFileSync(bundlePath, "/* cached */");
     writeFileSync(manifestPath, JSON.stringify(createEngineBundleManifest(fingerprint, engines, outputDir)));
+    rmSync(bundlePath);
     assert.equal(verifyEngineBundleCache(manifestPath, outputDir, fingerprint, engines), false);
   } finally {
     rmSync(root, { recursive: true, force: true });

@@ -528,6 +528,15 @@ assert.match(enginePreparation, /12 \* 60_000/);
 assert.match(enginePreparation, /Wait before submodule retry", 60_000\)/,
   "The retry wait timeout must exceed the longest bounded retry delay.");
 assert.match(enginePreparation, /Initialize exact OpenFront engine submodules/);
+assert.match(enginePreparation, /verifyEngineBundleCache[\\s\\S]*?skipping historical submodule checkout/,
+  "A verified engine-bundle cache hit must skip historical submodule checkout and dependency installation.");
+assert.match(read("scripts/build-engines.mjs"), /verifyEngineBundleCache[\\s\\S]*?skipping source checkout validation and rebuild/,
+  "Engine build must validate cached bundle hashes and fast-path without source checkout.");
+assert.match(read("scripts/engine-bundle-cache.mjs"), /manifest\\.schema !== 2[\\s\\S]*?entry\\?\\.sha256 === digest/,
+  "Verified engine cache must reject stale schema, missing entries and modified bundle bytes.");
+assert.match(read("scripts/validate-engine-pin.mjs"), /cachedBundlesVerified[\\s\\S]*?against source checkouts/,
+  "Engine pin validation must use verified cache provenance when source submodules are intentionally absent.");
+
 assert.match(androidValidationWorkflow, /-gpu software/,
   "Android emulator validation must use stable software rendering instead of flaky GPU color buffers.");
 const androidBaselineSeed = read("scripts/seed-android-baseline-ui.sh");

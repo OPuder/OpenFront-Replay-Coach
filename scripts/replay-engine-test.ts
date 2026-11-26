@@ -633,7 +633,8 @@ window.__verifyPersistedProfileTest = async () => {
     profilePresent: stored?.playerId === "ci-batch-player",
     profileName: stored?.profile?.displayName ?? stored?.profile?.name ?? null,
     gameIds: realMatches.map(item => item.game.gameId).sort(),
-    verifiedGames: realMatches.filter(item => item.analysisStatus === "verified" && item.simulation?.status === "verified").map(item => item.game.gameId).sort(),
+    // loadImportedMatches is intentionally lightweight; simulations live in analysis-results and are hydrated/verified by the per-match assertions above.
+    verifiedGames: realMatches.filter(item => item.analysisStatus === "verified").map(item => item.game.gameId).sort(),
   };
 };
 

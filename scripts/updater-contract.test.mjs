@@ -201,6 +201,10 @@ assert.match(androidReleaseUpgrade, /snapshot-android-web-storage\.sh after-unsi
 assert.match(androidReleaseUpgrade, /after-unsigned-rejection[\s\S]*?--exact/);
 assert.match(androidReleaseUpgrade, /snapshot-android-web-storage\.sh after-signer-rejection/);
 assert.match(androidReleaseUpgrade, /after-signer-rejection[\s\S]*?--exact/);
+assert.ok(androidReleaseUpgrade.includes('node scripts/compare-android-web-storage.mjs "$RUNNER_TEMP/ofrc-android-storage-after/manifest.json" "$RUNNER_TEMP/ofrc-android-storage-after-signer-rejection/manifest.json" --exact'),
+  "Wrong-signer rejection must compare against the pre-rejection snapshot captured after restart.");
+assert.doesNotMatch(androidReleaseUpgrade, /ofrc-android-storage-after-negative-test\\/manifest\\.json/,
+  "The exact comparison must not reference the JSON inspector output as a directory manifest.");
 assert.doesNotMatch(androidReleaseUpgrade, /compare-android-upgrade-snapshots\.mjs/,
   "Negative-install data integrity must be checked before app relaunch, not against mutable analysis metadata after startup.");
 

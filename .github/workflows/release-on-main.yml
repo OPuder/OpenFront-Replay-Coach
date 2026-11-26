@@ -9,7 +9,6 @@ on:
     paths:
       - "package.json"
       - "package-lock.json"
-      - ".github/workflows/release-on-main.yml"
   workflow_dispatch:
 
 permissions:

@@ -73,7 +73,11 @@ window.__prepareLegacyMatchStore = async () => {
         tx.objectStore("matches").put({
           playerId: "migration-player",
           game: { gameId: "legacy-replay", map: "Europe", mode: "Free For All", type: "Private" },
-          result: { record: { info: { gameID: "legacy-replay" }, turns: [{ turnNumber: 0, hash: "legacy-hash" }] } },
+          result: {
+            record: { info: { gameID: "legacy-replay" }, turns: [{ turnNumber: 0, hash: "legacy-hash" }] },
+            decodedActions: [{ type: "attack", turn: 1 }],
+            actionAnalysis: { actionCount: 1, legacyMarker: "preserved" },
+          },
           status: "loaded",
           analysisStatus: "verified",
           simulation: {
@@ -119,12 +123,13 @@ window.__verifyLegacyMigration = async () => {
   const version = db.version;
   const hasAnalysisStore = db.objectStoreNames.contains("analysis-results");
   const hasUpdatedAtIndex = db.transaction("matches", "readonly").objectStore("matches").indexNames.contains("by-player-updated-at");
-  const legacyPayloadFlags = await new Promise<{ simulation: boolean; rawReplay: boolean }>((resolve, reject) => {
+  const legacyPayloadFlags = await new Promise<{ simulation: boolean; rawReplay: boolean; decodedActions: boolean }>((resolve, reject) => {
     const tx = db.transaction("matches", "readonly");
     const request = tx.objectStore("matches").get(["migration-player", "legacy-replay"]);
     request.onsuccess = () => resolve({
       simulation: Boolean(request.result?.simulation),
       rawReplay: Boolean(request.result?.result?.record),
+      decodedActions: Boolean(request.result?.result?.decodedActions),
     });
     request.onerror = () => reject(request.error ?? new Error("Could not verify migrated match payload"));
   });
@@ -135,12 +140,16 @@ window.__verifyLegacyMigration = async () => {
     hasUpdatedAtIndex,
     legacyMatchHasSimulation: legacyPayloadFlags.simulation,
     legacyMatchHasRawReplay: legacyPayloadFlags.rawReplay,
+    legacyMatchHasDecodedActions: legacyPayloadFlags.decodedActions,
+    libraryHasDecodedActions: Boolean(libraryEntries.find(entry => entry.game.gameId === "legacy-replay")?.result?.decodedActions),
     libraryHasSimulation: Boolean(libraryEntries.find(entry => entry.game.gameId === "legacy-replay")?.simulation),
     profileName: profile?.profile?.displayName ?? null,
     matchStatus: match?.status ?? null,
     analysisStatus: match?.analysisStatus ?? null,
     migratedSimulationStatus: match?.simulation?.status ?? null,
     migratedSampleCount: match?.simulation?.samples?.length ?? 0,
+    migratedDecodedActionCount: match?.result?.decodedActions?.length ?? 0,
+    migratedActionAnalysisMarker: match?.result?.actionAnalysis?.legacyMarker ?? null,
     replayId: (match?.result?.record as any)?.info?.gameID ?? null,
     replayHash: (match?.result?.record as any)?.turns?.[0]?.hash ?? null,
   };

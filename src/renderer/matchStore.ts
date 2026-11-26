@@ -66,6 +66,14 @@ function openStore(): Promise<IDBDatabase> {
           const stored = cursor.value as StoredMatch;
           let changed = false;
 
+          // v4 adds an indexed update timestamp. Legacy rows must be backfilled
+          // during the same migration cursor or they become invisible to the
+          // player+updatedAt range query after the upgrade.
+          if (!Number.isFinite(stored.updatedAt)) {
+            stored.updatedAt = Date.now();
+            changed = true;
+          }
+
           const replayPayload = stored.result;
           if (replayPayload && (replayPayload.record || replayPayload.decodedActions || replayPayload.actionAnalysis)) {
             replays.put({

@@ -127,12 +127,14 @@ fi
 installed_after_negative="$(adb_cmd shell dumpsys package "$package_id")" || fail "Could not inspect the valid package after the negative test."
 grep -F "versionCode=$current_version_code" <<< "$installed_after_negative" >/dev/null || fail "The failed negative install replaced or damaged the valid package."
 adb_cmd shell am force-stop "$package_id" >/dev/null 2>&1 || true
+bash scripts/snapshot-android-web-storage.sh after-unsigned-rejection
+node scripts/compare-android-web-storage.mjs "$RUNNER_TEMP/ofrc-android-storage-after/manifest.json" "$RUNNER_TEMP/ofrc-android-storage-after-unsigned-rejection/manifest.json" --exact
+log "Raw WebView persistent files remained byte-identical while the app was stopped after unsigned-APK rejection."
 android_launch_package "$package_id" "the valid signed app after unsigned-APK rejection" || fail "The valid signed app could not be cold-started after Android rejected the unsigned APK."
 node scripts/inspect-android-upgrade-data.mjs "$RUNNER_TEMP/after-negative-test-storage.json"
 adb_cmd shell am force-stop "$package_id" >/dev/null 2>&1 || true
 bash scripts/snapshot-android-web-storage.sh after
 node scripts/compare-android-web-storage.mjs
-node scripts/compare-android-upgrade-snapshots.mjs "$RUNNER_TEMP/after-valid-upgrade-storage.json" "$RUNNER_TEMP/after-negative-test-storage.json"
 
 log "Creating an isolated CI-only signing identity for the valid signer-mismatch negative test."
 test_keystore="$RUNNER_TEMP/ofrc-android-negative-test.p12"
@@ -167,10 +169,16 @@ grep -F "INSTALL_FAILED_UPDATE_INCOMPATIBLE" <<<"$mismatch_output" >/dev/null ||
 installed_after_mismatch="$(adb_cmd shell dumpsys package "$package_id")" || fail "Could not inspect the installed app after signer-mismatch rejection."
 grep -F "versionCode=$current_version_code" <<<"$installed_after_mismatch" >/dev/null || fail "The failed signer-mismatch update replaced or damaged the installed app."
 adb_cmd shell am force-stop "$package_id" >/dev/null 2>&1 || true
+bash scripts/snapshot-android-web-storage.sh after-signer-rejection
+node scripts/compare-android-web-storage.mjs "$RUNNER_TEMP/ofrc-android-storage-after/manifest.json" "$RUNNER_TEMP/ofrc-android-storage-after-signer-rejection/manifest.json" --exact
+log "Raw WebView persistent files remained byte-identical while the app was stopped after wrong-signer rejection."
 android_launch_package "$package_id" "the original signed app after wrong-signer rejection" || fail "The original signed app could not be cold-started after Android rejected the valid wrong-signer APK."
 node scripts/inspect-android-upgrade-data.mjs "$RUNNER_TEMP/after-signature-mismatch-storage.json"
-node scripts/compare-android-upgrade-snapshots.mjs "$RUNNER_TEMP/after-negative-test-storage.json" "$RUNNER_TEMP/after-signature-mismatch-storage.json"
 adb_cmd shell am force-stop "$package_id" >/dev/null 2>&1 || true
+bash scripts/snapshot-android-web-storage.sh after
+node scripts/compare-android-web-storage.mjs
+log "Cold-starting the valid signed app after the final exact storage comparison."
+android_launch_package "$package_id" "the original signed app after final persistent-file comparison" || fail "The original signed app could not be cold-started after the final persistent-file comparison."
 rm -f "$test_keystore" "$test_signed_apk"
 unset test_password
 

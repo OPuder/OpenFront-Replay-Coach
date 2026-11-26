@@ -9,7 +9,7 @@ const pid = adb("shell", "pidof", packageId).split(/\s+/)[0];
 if (!/^\d+$/.test(pid ?? "")) throw new Error("The upgraded Android app is not running; cannot inspect its WebView.");
 adb("forward", "tcp:9222", `localabstract:webview_devtools_remote_${pid}`);
 
-const targets = await fetch("http://127.0.0.1:9222/json/list").then(response => {
+const targets = await fetch("http://127.0.0.1:9222/json/list", { signal: AbortSignal.timeout(15_000) }).then(response => {
   if (!response.ok) throw new Error(`WebView DevTools endpoint returned HTTP ${response.status}.`);
   return response.json();
 });
@@ -18,36 +18,68 @@ if (!target) throw new Error("No inspectable WebView page was exposed by the tes
 
 const socket = new WebSocket(target.webSocketDebuggerUrl);
 await new Promise((resolve, reject) => {
-  socket.addEventListener("open", resolve, { once: true });
-  socket.addEventListener("error", () => reject(new Error("Could not connect to the test APK WebView DevTools socket.")), { once: true });
+  const timer = setTimeout(() => reject(new Error("Timed out after 15s connecting to the test APK WebView DevTools socket.")), 15_000);
+  socket.addEventListener("open", () => { clearTimeout(timer); resolve(); }, { once: true });
+  socket.addEventListener("error", () => { clearTimeout(timer); reject(new Error("Could not connect to the test APK WebView DevTools socket.")); }, { once: true });
+  socket.addEventListener("close", () => { clearTimeout(timer); reject(new Error("WebView DevTools socket closed before connecting.")); }, { once: true });
 });
 
 let nextId = 1;
-function send(method, params = {}) {
+function send(method, params = {}, timeoutMs = 30_000) {
   const id = nextId++;
   return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => {
+      socket.removeEventListener("message", onMessage);
+      reject(new Error(`CDP command ${method} timed out after ${timeoutMs}ms.`));
+    }, timeoutMs);
     const onMessage = event => {
       let message;
       try { message = JSON.parse(typeof event.data === "string" ? event.data : Buffer.from(event.data).toString("utf8")); }
       catch { return; }
       if (message.id !== id) return;
       socket.removeEventListener("message", onMessage);
+      clearTimeout(timer);
       if (message.error) reject(new Error(message.error.message ?? `CDP command ${method} failed.`));
       else resolve(message.result);
     };
     socket.addEventListener("message", onMessage);
-    socket.send(JSON.stringify({ id, method, params }));
+    try { socket.send(JSON.stringify({ id, method, params })); }
+    catch (error) { clearTimeout(timer); socket.removeEventListener("message", onMessage); reject(error); }
   });
 }
 
 try {
   await send("Runtime.enable");
+
+  // The Android app's main entry asynchronously imports the test-only bridge.
+  // A cold-started Activity can be resumed before that import installs the
+  // window hook; poll readiness instead of mistaking this startup race for a
+  // production APK or missing persisted data.
+  const bridgeReadyDeadline = Date.now() + 30_000;
+  let bridgeReady = false;
+  for (let attempt = 1; attempt <= 30; attempt++) {
+    const remaining = bridgeReadyDeadline - Date.now();
+    if (remaining <= 0) break;
+    const readiness = await send("Runtime.evaluate", {
+      expression: "typeof window.__OFRC_ANDROID_UPGRADE_TEST__?.snapshot === 'function'",
+      returnByValue: true,
+      userGesture: true,
+    }, Math.min(5_000, remaining));
+    if (readiness.exceptionDetails) throw new Error(readiness.exceptionDetails.text ?? "Storage inspector readiness check threw an exception.");
+    if (readiness.result?.value === true) {
+      bridgeReady = true;
+      break;
+    }
+    if (attempt < 30) await new Promise(resolve => setTimeout(resolve, 1_000));
+  }
+  if (!bridgeReady) throw new Error("Android upgrade-test storage bridge did not initialize within 30 seconds after cold start.");
+
   const evaluated = await send("Runtime.evaluate", {
-    expression: "window.__OFRC_ANDROID_UPGRADE_TEST__ ? window.__OFRC_ANDROID_UPGRADE_TEST__.snapshot() : null",
+    expression: "window.__OFRC_ANDROID_UPGRADE_TEST__.snapshot()",
     awaitPromise: true,
     returnByValue: true,
     userGesture: true,
-  });
+  }, 90_000);
   if (evaluated.exceptionDetails) throw new Error(evaluated.exceptionDetails.text ?? "Storage snapshot threw an exception.");
   const snapshot = evaluated.result?.value;
   if (!snapshot || snapshot.schema !== "ofrc-android-upgrade-snapshot-v1") {
@@ -78,18 +110,31 @@ try {
   }
   if (!verifiedAnalyses.length) throw new Error("No verified replay analysis result survived in the match records.");
   const rehydration = snapshot.rehydration;
-  if (!rehydration || rehydration.attempted < 2 || rehydration.loaded !== rehydration.attempted
+  const expectedReplayIds = ["cRVdxGEG5j", "c4CW3VJWQ9"];
+  const rehydratedGameIds = new Set((rehydration?.matches ?? []).map(item => String(item.gameId ?? "")));
+  if (!rehydration || rehydration.attempted < expectedReplayIds.length
+    || expectedReplayIds.some(gameId => !rehydratedGameIds.has(gameId))
+    || rehydration.loaded !== rehydration.attempted
     || rehydration.replayRestored !== rehydration.attempted
     || rehydration.matches.some(item => !item.loaded || !item.replayRestored
       || String(item.recordGameId) !== String(item.gameId) || !item.engineCommit || Number(item.turnCount) < 1)) {
-    throw new Error(`Production matchStore rehydration failed after update: ${JSON.stringify(rehydration)}`);
+    throw new Error(`Production matchStore rehydration failed after update; required replay IDs ${expectedReplayIds.join(", ")}: ${JSON.stringify(rehydration)}`);
   }
-  const invalidReplayRecords = replays.filter(record => {
+  const malformedReplayRecords = replays.filter(record => {
     const metadata = record.metadata ?? {};
+    const turnCount = Number(metadata.turnCount);
     return !metadata.gameId || String(metadata.recordGameId) !== String(metadata.gameId)
-      || !metadata.engineCommit || Number(metadata.turnCount) < 1;
+      || !metadata.engineCommit || !Number.isInteger(turnCount) || turnCount < 0;
   });
-  if (invalidReplayRecords.length) {
+  const fullReplayRecords = replays.filter(record => {
+    const metadata = record.metadata ?? {};
+    return Number(metadata.turnCount) > 0 && Boolean(metadata.gameId)
+      && String(metadata.recordGameId) === String(metadata.gameId) && Boolean(metadata.engineCommit);
+  });
+  const emptyReplayRecords = replays.filter(record => Number(record.metadata?.turnCount) === 0);
+  const selectedFullReplayRecords = fullReplayRecords.filter(record => record.metadata?.playerId === playerId
+    && expectedReplayIds.includes(String(record.metadata?.gameId ?? "")));
+  if (malformedReplayRecords.length) {
     const describe = record => ({
       recordKeys: Object.keys(record ?? {}),
       metadataKeys: Object.keys(record?.metadata ?? {}),
@@ -101,7 +146,11 @@ try {
       },
       nestedReplayKeys: Object.fromEntries(Object.entries(record ?? {}).filter(([, value]) => value && typeof value === "object" && !Array.isArray(value)).map(([key, value]) => [key, Object.keys(value)])),
     });
-    throw new Error(`Replay identity/engine metadata validation failed for ${invalidReplayRecords.length}/${replays.length} records. Record shape diagnostics: ${JSON.stringify(invalidReplayRecords.map(describe))}`);
+    throw new Error(`Replay identity/engine metadata validation failed for ${malformedReplayRecords.length}/${replays.length} records. Record shape diagnostics: ${JSON.stringify(malformedReplayRecords.map(describe))}`);
+  }
+  if (fullReplayRecords.length < 2) throw new Error(`Expected at least two complete replay records; found ${fullReplayRecords.length} full and ${emptyReplayRecords.length} empty records.`);
+  if (selectedFullReplayRecords.length !== expectedReplayIds.length) {
+    throw new Error(`The two UI-seeded replay records are not complete in the selected profile: expected ${expectedReplayIds.length}, found ${selectedFullReplayRecords.length}.`);
   }
   if (trainingGoal && !matchIds.has(String(trainingGoal.gameId ?? ""))) {
     throw new Error("The saved training goal does not reference a persisted match.");
@@ -117,6 +166,9 @@ try {
     localStorageKeys: localEntries.map(entry => entry.key),
     verifiedAnalyses: verifiedAnalyses.length,
     fullReplayIdentityCount: replayMetadata.length,
+    fullReplayRecordCount: fullReplayRecords.length,
+    selectedFullReplayRecordCount: selectedFullReplayRecords.length,
+    emptyReplayRecordCount: emptyReplayRecords.length,
     productionStoreRehydration: {
       attempted: rehydration.attempted,
       loaded: rehydration.loaded,

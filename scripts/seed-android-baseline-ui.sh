@@ -171,9 +171,12 @@ PY
 
 tap_edit_field() {
   local occurrence="${1:-1}" current_query="${2:-$current_search_query}" coords=""
+  # The IME can resize the WebView and leave the search input clipped. Dismiss it before locating or tapping the field.
+  dismiss_search_ime
   # The library field can be above the viewport or expose invalid WebView bounds.
   # Bring the toolbar into view, then prefer its current query text in OCR.
   for attempt in $(seq 1 8); do
+    require_baseline_app_window
     if dump_ui; then
       coords="$(find_bounds "" edit "$occurrence" 2>/dev/null || true)"
     fi
@@ -214,7 +217,10 @@ tap_edit_field() {
       coords=""
     fi
     log "Library search field not safely visible (attempt $attempt/8); scrolling toward the toolbar."
-    timeout 10s adb -s emulator-5554 shell input swipe 500 350 500 1500 550 >/dev/null 2>&1 || true
+    require_baseline_app_window
+    # Start well below the status-bar/notification gesture region. Drag down
+    # inside the app to reveal its toolbar; never swipe from the upper edge.
+    timeout 10s adb -s emulator-5554 shell input swipe 500 700 500 1250 550 >/dev/null 2>&1 || true
     sleep 1
   done
   fail "Could not locate a safely visible library search field after scrolling to the toolbar. OCR: $(ocr_text 2>/dev/null | tr '\n' ' ' | head -c 800); UI: $(cat "$ui_xml" 2>/dev/null | head -c 2500)"
@@ -441,6 +447,68 @@ wait_for_search_ime() {
   log "IME visibility is not exposed by dumpsys input_method; waiting briefly before verified typing."
   sleep 2
 }
+baseline_app_window_is_focused() {
+  local window_state="" current_focus="" focused_app=""
+  window_state="$(timeout 10s adb -s emulator-5554 shell dumpsys window 2>&1)" || return 1
+  current_focus="$(grep -E 'mCurrentFocus=' <<< "$window_state" | tail -n 1 || true)"
+  focused_app="$(grep -E 'mFocusedApp=' <<< "$window_state" | tail -n 1 || true)"
+  # A notification shade or launcher focus is never a safe target for WebView
+  # coordinates, even when ActivityManager still reports the app as resumed.
+  if [[ "$current_focus" =~ NotificationShade|com\.android\.systemui|QuickstepLauncher ]]; then return 1; fi
+  if [[ "$current_focus" == *"$package_id"* ]] && { [[ -z "$focused_app" ]] || [[ "$focused_app" == *"$package_id"* ]]; }; then return 0; fi
+  if [[ "$current_focus" =~ InputMethod|input_method ]] && [[ "$focused_app" == *"$package_id"* ]]; then return 0; fi
+  return 1
+}
+require_baseline_app_window() {
+  local focus_state=""
+  focus_state="$(timeout 10s adb -s emulator-5554 shell dumpsys window 2>&1 | grep -E 'mCurrentFocus=|mFocusedApp=' | tail -n 2 || true)"
+  baseline_app_window_is_focused || fail "The published baseline app is not safely foregrounded; refusing Back or coordinate gestures. Window focus: ${focus_state:-unavailable}"
+}
+dismiss_search_ime() {
+  local ime_state="" ime_state_lc="" attempt visibility_flags="" hidden_streak=0
+  local visible_pattern='minputshown=true'
+  local hidden_pattern='minputshown=false'
+  ime_state="$(timeout 8s adb -s emulator-5554 shell dumpsys input_method 2>&1)" || fail "Could not read Android IME state before re-focusing the library search field."
+  [[ -n "$ime_state" ]] || fail "Android IME state was empty; refusing to guess whether the keyboard covers the WebView."
+  ime_state_lc="${ime_state,,}"
+  visibility_flags="$(grep -Eo 'minputshown=(true|false)|minputviewshown=(true|false)|isinputviewshown=(true|false)' <<< "$ime_state_lc" | tr '\n' ' ' || true)"
+  log "Android IME visibility flags: ${visibility_flags:-not exposed}."
+  if grep -Eq "$visible_pattern" <<< "$ime_state_lc"; then
+    require_baseline_app_window
+    log "Android reports mInputShown=true; dismissing the keyboard while the baseline app remains foregrounded."
+    timeout 10s adb -s emulator-5554 shell input keyevent 4 || fail "Could not dismiss Android keyboard before re-focusing the library search field."
+  elif grep -Eq "$hidden_pattern" <<< "$ime_state_lc"; then
+    log "Android reports mInputShown=false; treating secondary IME view flags as diagnostic only and never sending Back."
+  else
+    fail "Android IME visibility is unknown (${visibility_flags:-no visibility flags}); refusing to send Back or tap coordinates that may be covered by the keyboard."
+  fi
+  for attempt in $(seq 1 8); do
+    ime_state="$(timeout 8s adb -s emulator-5554 shell dumpsys input_method 2>&1)" || fail "Could not re-check Android IME visibility after dismissal."
+    [[ -n "$ime_state" ]] || fail "Android IME state became empty after dismissal; refusing to guess keyboard visibility."
+    ime_state_lc="${ime_state,,}"
+    visibility_flags="$(grep -Eo 'minputshown=(true|false)|minputviewshown=(true|false)|isinputviewshown=(true|false)' <<< "$ime_state_lc" | tr '\n' ' ' || true)"
+    if grep -Eq "$hidden_pattern" <<< "$ime_state_lc"; then
+      hidden_streak=$((hidden_streak + 1))
+      if (( hidden_streak >= 2 )); then
+        require_baseline_app_window
+        if grep -Eq 'minputviewshown=true|isinputviewshown=true' <<< "$ime_state_lc"; then
+          log "Secondary IME view flags remain stale while mInputShown=false; primary window visibility is stable, so no Back is sent."
+        else
+          log "Android keyboard is confirmed hidden (${visibility_flags:-primary visibility flag}); no Back is sent."
+        fi
+        log "The WebView search field will be re-located from fresh UI/OCR bounds after the IME dismissal."
+        return 0
+      fi
+    elif grep -Eq "$visible_pattern" <<< "$ime_state_lc"; then
+      hidden_streak=0
+      require_baseline_app_window
+    else
+      fail "Android IME visibility became unknown after dismissal (${visibility_flags:-no visibility flags}); refusing to tap clipped coordinates."
+    fi
+    sleep 1
+  done
+  fail "Android keyboard did not remain hidden for two consecutive checks; refusing to tap coordinates clipped by the IME."
+}
 
 search_query_visible() {
   local query="$1"
@@ -482,14 +550,14 @@ seed_verified_match() {
   # (NAF=true); its placeholder is visible in pixels but absent from the
   # accessibility text, so OCR is both slower and less reliable than bounds.
   tap_edit_field 1 "$current_search_query"
-  if [[ "$clear_search" == "true" ]]; then
-    timeout 10s adb -s emulator-5554 shell input keycombination 113 29 >/dev/null 2>&1 || fail "Could not select the previous library search query."
-  fi
-  # Wait for Android's IME to become ready after tapping the WebView input.
-  # Shell input can be sent before the keyboard/focus transition completes.
+  # Wait for Android's IME before any edit/select command; the published WebView
+  # may ignore Ctrl+A while the keyboard/focus transition is still settling.
   local search_query typed=false
   search_query="$(printf '%s' "$game_id" | tr '[:upper:]' '[:lower:]')"
   wait_for_search_ime
+  if [[ "$clear_search" == "true" ]]; then
+    timeout 10s adb -s emulator-5554 shell input keycombination 113 29 >/dev/null 2>&1 || fail "Could not select the previous library search query."
+  fi
   log "Entering archived match ID $game_id with the Android text-input command."
   timeout 10s adb -s emulator-5554 shell input text "$search_query" || log "Android text-input command returned nonzero; will verify and use key-event fallback if needed."
   sleep 1
@@ -502,7 +570,8 @@ seed_verified_match() {
     sleep 1
   done
   if [[ "$typed" != true ]]; then
-    log "Text input did not appear in the focused search field; re-tapping and retrying with individual Android key events."
+    log "Text input did not appear in the focused search field; dismissing the IME, re-locating the visible input, and retrying with individual Android key events."
+    dismiss_search_ime
     tap_edit_field 1 "$current_search_query"
     wait_for_search_ime
     timeout 10s adb -s emulator-5554 shell input keycombination 113 29 >/dev/null 2>&1 || true
@@ -601,8 +670,9 @@ seed_verified_match() {
   fail "Archived match $game_id did not complete a hash-verified Original-Engine simulation within 10 minutes. Last UI: $(cat "$ui_xml" 2>/dev/null | head -c 5000)"
 }
 
-# The baseline must contain two genuine, engine-verified matches and a real
-# UI-created training goal. A card's generic 'ready' label is not enough:
+# The baseline must contain two genuine, engine-verified matches. A training
+# goal is optional in the published baseline; if one exists, the inspector must
+# prove it references persisted data. A generic card "ready" label is not enough:
 # validate the exact replay after opening it before accepting it as a fixture.
 seed_verified_match "cRVdxGEG5j" "9f4a28f16fae951df0daf727e5e64b34ce8b77d1" false
 

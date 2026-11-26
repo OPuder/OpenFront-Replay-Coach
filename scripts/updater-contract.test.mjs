@@ -1,6 +1,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { readFileSync } from "node:fs";
+import { execFileSync } from "node:child_process";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
+import { tmpdir } from "node:os";
+import { fileURLToPath } from "node:url";
 const read = path => readFileSync(new URL("../" + path, import.meta.url), "utf8");
 const updater = read("src/main/updater.ts");
 const android = read("android-updater-template/ApkUpdaterPlugin.java");
@@ -135,6 +139,35 @@ const androidSigningConfigurator = read("scripts/configure-android-signing.mjs")
 const androidReleaseUpgrade = read("scripts/test-android-release-upgrade.sh");
 const androidBaselineDownload = read("scripts/download-android-release-baseline.sh");
 const androidStorageInspector = read("scripts/inspect-android-upgrade-data.mjs");
+
+assert.match(androidStorageInspector, /AbortSignal\.timeout\(15_000\)/,
+  "The WebView inspector must bound its DevTools discovery request.");
+assert.match(androidStorageInspector, /function send\(method, params = \{\}, timeoutMs = 30_000\)/,
+  "The WebView inspector must bound every DevTools command.");
+assert.match(androidStorageInspector, /\}, 90_000\);/,
+  "The storage snapshot command must have a bounded longer timeout.");
+assert.match(androidStorageInspector, /const bridgeReadyDeadline = Date\.now\(\) \+ 30_000;/,
+  "The inspector must allow a bounded startup window for the asynchronous test bridge.");
+assert.match(androidStorageInspector, /for \(let attempt = 1; attempt <= 30; attempt\+\+\)/,
+  "Bridge readiness polling must be bounded by a fixed retry count.");
+assert.match(androidStorageInspector, /typeof window\.__OFRC_ANDROID_UPGRADE_TEST__\?\.snapshot === 'function'/,
+  "The inspector must verify that the bridge snapshot function exists before invoking it.");
+assert.match(androidStorageInspector, /Android upgrade-test storage bridge did not initialize within 30 seconds/,
+  "A missing bridge must remain a hard failure after bounded readiness polling.");
+const androidReplayMetadataGuard = androidStorageInspector.match(/const malformedReplayRecords[\s\S]*?if \(malformedReplayRecords\.length\)/)?.[0] ?? "";
+assert.match(androidReplayMetadataGuard, /!metadata\.gameId[\s\S]*?recordGameId[\s\S]*?engineCommit[\s\S]*?Number\.isInteger\(turnCount\)/,
+  "Every stored replay record must retain valid identity, engine metadata and a nonnegative integer turn count.");
+assert.doesNotMatch(androidReplayMetadataGuard, /turnCount < 1/,
+  "Empty imported records must not be confused with failed persistence of selected full replays.");
+assert.match(androidStorageInspector, /const expectedReplayIds = \["cRVdxGEG5j", "c4CW3VJWQ9"\]/,
+  "The post-upgrade inspector must require rehydration of both replay IDs seeded through the published baseline UI.");
+assert.match(androidStorageInspector, /selectedFullReplayRecords\.length !== expectedReplayIds\.length/,
+  "Both exact UI-seeded replay records must remain complete after the upgrade.");
+
+assert.match(androidStorageInspector, /fullReplayRecords\.length < 2/,
+  "The upgrade inspector must still require at least two complete replay records.");
+assert.match(androidStorageInspector, /emptyReplayRecordCount: emptyReplayRecords\.length/,
+  "The inspector must report empty imported records separately for diagnosis.");
 const androidStorageSnapshot = read("scripts/snapshot-android-web-storage.sh");
 const androidUnsignedNegative = read("scripts/create-android-unsigned-negative-apk.py");
 
@@ -172,7 +205,17 @@ assert.match(androidReleaseUpgrade, /openssl rand -hex 24/);
 assert.match(androidReleaseUpgrade, /apksigner" sign --ks/);
 assert.match(androidReleaseUpgrade, /INSTALL_FAILED_UPDATE_INCOMPATIBLE/);
 assert.match(androidReleaseUpgrade, /after-signature-mismatch-storage\.json/);
-assert.match(androidReleaseUpgrade, /compare-android-upgrade-snapshots\.mjs.*after-negative-test-storage\.json.*after-signature-mismatch-storage\.json/);
+assert.match(androidReleaseUpgrade, /snapshot-android-web-storage\.sh after-unsigned-rejection/);
+assert.match(androidReleaseUpgrade, /after-unsigned-rejection[\s\S]*?--exact/);
+assert.match(androidReleaseUpgrade, /snapshot-android-web-storage\.sh after-signer-rejection/);
+assert.match(androidReleaseUpgrade, /after-signer-rejection[\s\S]*?--exact/);
+assert.ok(androidReleaseUpgrade.includes('node scripts/compare-android-web-storage.mjs "$RUNNER_TEMP/ofrc-android-storage-after/manifest.json" "$RUNNER_TEMP/ofrc-android-storage-after-signer-rejection/manifest.json" --exact'),
+  "Wrong-signer rejection must compare against the pre-rejection snapshot captured after restart.");
+assert.ok(!androidReleaseUpgrade.includes('ofrc-android-storage-after-negative-test/manifest.json'),
+  "The exact comparison must not reference the JSON inspector output as a directory manifest.");
+assert.doesNotMatch(androidReleaseUpgrade, /compare-android-upgrade-snapshots\.mjs/,
+  "Negative-install data integrity must be checked before app relaunch, not against mutable analysis metadata after startup.");
+
 assert.match(androidReleaseUpgrade, /rm -f "\$test_keystore" "\$test_signed_apk"/);
 assert.doesNotMatch(androidReleaseUpgrade, /echo "\$test_password"|cat "\$test_keystore"|upload-artifact.*test_keystore/);
 const androidBaselineUiSeed = read("scripts/seed-android-baseline-ui.sh");
@@ -192,6 +235,37 @@ assert.match(androidBaselineUiSeed, /dump_ui\(\)\s*\{\s*local dump_output="" pul
   "UI dump retries must keep their counter local so outer viewport scans can advance.");
 assert.match(androidBaselineUiSeed, /wait_for_search_ime\(\)/,
   "Android search typing must wait for the IME/focus transition before injecting text.");
+assert.match(androidBaselineUiSeed, /dismiss_search_ime\(\)\s*\{\s*local ime_state="" ime_state_lc="" attempt visibility_flags="" hidden_streak=0/,
+  "The Android fallback must have a bounded helper to dismiss the keyboard and log its state.");
+const androidImeDismissHelper = androidBaselineUiSeed.match(/dismiss_search_ime\(\)\s*\{[\s\S]*?\n\}/)?.[0] ?? "";
+assert.match(androidImeDismissHelper, /visible_pattern='minputshown=true'/,
+  "Only the authoritative mInputShown=true flag may trigger Back.");
+assert.match(androidImeDismissHelper, /hidden_pattern='minputshown=false'/,
+  "The authoritative hidden IME flag must be checked before coordinate taps.");
+assert.match(androidImeDismissHelper, /mInputShown=false[\s\S]*?secondary IME view flags as diagnostic only[\s\S]*?never sending Back/,
+  "Secondary IME view flags must not override a stable hidden primary input-window flag.");
+assert.match(androidImeDismissHelper, /hidden_streak >= 2[\s\S]*?require_baseline_app_window[\s\S]*?return 0/,
+  "The hidden primary IME state must remain stable for two checks while the baseline app is foregrounded before tapping.");
+assert.match(androidImeDismissHelper, /(?:minputviewshown=true|isinputviewshown=true)[\s\S]*?stale/,
+  "Secondary view flags may be stale and must be logged rather than trigger Back.");
+assert.match(androidImeDismissHelper, /require_baseline_app_window[\s\S]*?input keyevent 4/,
+  "Back must be guarded by a verified foreground baseline app.");
+assert.match(androidImeDismissHelper, /mInputShown=false[\s\S]*?never sending Back/,
+  "A hidden keyboard must never trigger Back and close the app.");
+assert.doesNotMatch(androidImeDismissHelper, /mShowRequested=true/,
+  "A stale IME show request must not trigger Android Back after the keyboard is already hidden.");
+assert.match(androidBaselineUiSeed, /baseline_app_window_is_focused\(\)\s*\{[\s\S]*?mCurrentFocus=[\s\S]*?NotificationShade/,
+  "The baseline seed must distinguish the app window from notification shade or launcher focus.");
+assert.match(androidBaselineUiSeed, /require_baseline_app_window[\s\S]*?input swipe 500 700 500 1250/,
+  "Scroll gestures must be guarded by app focus and start away from the status-bar gesture region.");
+assert.doesNotMatch(androidBaselineUiSeed, /input swipe 500 350 500 1500/,
+  "The old down-swipe starting near the system shade must not return.");
+assert.match(androidBaselineUiSeed, /tap_edit_field\(\)\s*\{[\s\S]*?dismiss_search_ime[\s\S]*?for attempt in \$\(seq 1 8\)/,
+  "The search field must be located after the IME is dismissed, so clipped coordinates are not reused.");
+assert.match(androidBaselineUiSeed, /Text input did not appear in the focused search field[\s\S]*?dismiss_search_ime[\s\S]*?tap_edit_field/,
+  "The key-event fallback must dismiss the keyboard before re-focusing the search field.");
+assert.match(androidBaselineUiSeed, /tap_edit_field 1 "\$current_search_query"[\s\S]*?wait_for_search_ime[\s\S]*?if \[\[ "\$clear_search" == "true" \]\]/,
+  "Clear/select commands must run only after the input method is ready.");
 assert.match(androidBaselineUiSeed, /send_search_query_by_keyevents/,
   "Search IDs must have a key-event fallback when adb shell input text is dropped.");
 assert.match(androidBaselineUiSeed, /for keycode in "\$\{keycodes\[@\]\}"; do/,
@@ -222,7 +296,7 @@ assert.match(androidStorageInspector, /trainingGoalPresent: Boolean\(trainingGoa
   "Storage validation must report whether a goal was preserved without requiring one to exist.");
 assert.match(androidReleaseUpgrade, /snapshot-android-web-storage\.sh after/);
 assert.match(androidReleaseUpgrade, /after-negative-test-storage\.json/);
-assert.match(androidReleaseUpgrade, /compare-android-upgrade-snapshots\.mjs/);
+
 assert.match(androidStorageInspector, /ofrc-android-upgrade-snapshot-v1/);
 assert.match(androidStorageInspector, /missingReplayRecords/);
 assert.match(androidStorageInspector, /orphanReplayRecords/);
@@ -230,6 +304,87 @@ assert.match(androidStorageSnapshot, /adb root/);
 assert.match(androidStorageSnapshot, /IndexedDB/);
 assert.match(androidStorageSnapshot, /Local Storage/);
 assert.match(androidStorageSnapshot, /immutableTables/);
+
+assert.match(androidStorageSnapshot, /Local Storage/);
+const androidStorageComparison = read("scripts/compare-android-web-storage.mjs");
+assert.match(androidStorageComparison, /const localStorageDataFiles = manifest => manifest\.files\.filter/);
+assert.ok(androidStorageComparison.includes(String.raw`/(?:^|\/)\d+\.log$/i`),
+  "The Android storage comparison must recognize numbered LevelDB write-ahead logs as persistent Local Storage data.");
+assert.match(androidStorageComparison, /Persistent Local Storage data changed across the APK upgrade/,
+  "Local Storage WALs and immutable tables must be hash-compared across the in-place update.");
+assert.doesNotMatch(androidStorageComparison, /if \(!beforeIndexedTables\.length \|\| !beforeLocalStorageTables\.length\)/,
+  "Local Storage persistence must not require compaction into an immutable table when the baseline contains a data-bearing WAL.");
+test("Android storage comparison preserves Local Storage WAL-only data", () => {
+  const fixtureRoot = mkdtempSync(join(tmpdir(), "ofrc-android-storage-contract-"));
+  const beforeDir = join(fixtureRoot, "ofrc-android-storage-before");
+  const afterDir = join(fixtureRoot, "ofrc-android-storage-after");
+  mkdirSync(beforeDir, { recursive: true });
+  mkdirSync(afterDir, { recursive: true });
+  const indexedDbTable = { path: "IndexedDB/https_localhost_0.indexeddb.leveldb/000005.ldb", sha256: "idb-table-hash" };
+  const localStorageWal = { path: "Local Storage/leveldb/000003.log", sha256: "local-storage-wal-hash" };
+  const manifest = { files: [indexedDbTable, localStorageWal], immutableTables: [indexedDbTable] };
+  const writeManifest = (dir, value) => writeFileSync(join(dir, "manifest.json"), JSON.stringify(value), "utf8");
+  writeManifest(beforeDir, manifest);
+  writeManifest(afterDir, manifest);
+  const compareScript = fileURLToPath(new URL("../scripts/compare-android-web-storage.mjs", import.meta.url));
+  const runCompare = () => {
+    try {
+      return execFileSync(process.execPath, [compareScript], {
+        env: { ...process.env, RUNNER_TEMP: fixtureRoot },
+        encoding: "utf8",
+        stdio: "pipe",
+      });
+    } catch (error) {
+      throw new Error(`${error.stdout ?? ""}${error.stderr ?? ""}`);
+    }
+  };
+  try {
+    assert.match(runCompare(), /"result": "PASS"/,
+      "A Local Storage WAL-only baseline must pass when the numbered log is preserved byte-for-byte.");
+    writeManifest(afterDir, { ...manifest, files: [indexedDbTable, { ...localStorageWal, sha256: "changed-wal-hash" }] });
+    assert.throws(runCompare, /modified data files/,
+      "Changing the Local Storage WAL must still fail the upgrade persistence comparison.");
+    writeManifest(afterDir, { ...manifest, files: [indexedDbTable] });
+    assert.throws(runCompare, /Missing data files/i,
+      "Removing the Local Storage WAL must still fail the upgrade persistence comparison.");
+  } finally {
+    rmSync(fixtureRoot, { recursive: true, force: true });
+  }
+});
+test("Android negative-install check compares exact physical WebView files", () => {
+  const fixtureRoot = mkdtempSync(join(tmpdir(), "ofrc-android-negative-install-contract-"));
+  const beforePath = join(fixtureRoot, "before.json");
+  const afterPath = join(fixtureRoot, "after.json");
+  const indexedDbTable = { path: "IndexedDB/https_localhost_0.indexeddb.leveldb/000005.ldb", sha256: "idb-table-hash", size: 10 };
+  const localStorageWal = { path: "Local Storage/leveldb/000003.log", sha256: "local-storage-wal-hash", size: 12 };
+  const manifest = { files: [indexedDbTable, localStorageWal], immutableTables: [indexedDbTable] };
+  const writeManifest = value => writeFileSync(afterPath, JSON.stringify(value), "utf8");
+  writeFileSync(beforePath, JSON.stringify(manifest), "utf8");
+  writeManifest(manifest);
+  const compareScript = fileURLToPath(new URL("../scripts/compare-android-web-storage.mjs", import.meta.url));
+  const runExact = () => {
+    try {
+      return execFileSync(process.execPath, [compareScript, beforePath, afterPath, "--exact"], { encoding: "utf8", stdio: "pipe" });
+    } catch (error) {
+      throw new Error(`${error.stdout ?? ""}${error.stderr ?? ""}`);
+    }
+  };
+  try {
+    assert.match(runExact(), /exact-persistent-files/,
+      "Identical persistent IndexedDB and Local Storage files must pass the negative-install comparison.");
+    writeManifest({ ...manifest, files: [indexedDbTable, { ...localStorageWal, sha256: "changed-wal-hash" }] });
+    assert.throws(runExact, /modified/,
+      "A changed persistent file must fail the negative-install comparison.");
+    writeManifest({ ...manifest, files: [indexedDbTable, localStorageWal, { path: "IndexedDB/new-table.ldb", sha256: "new-table", size: 4 }] });
+    assert.throws(runExact, /added/,
+      "A newly added persistent file must fail the negative-install comparison.");
+    writeManifest({ ...manifest, files: [indexedDbTable] });
+    assert.throws(runExact, /Missing/,
+      "A missing persistent file must fail the negative-install comparison.");
+  } finally {
+    rmSync(fixtureRoot, { recursive: true, force: true });
+  }
+});
 assert.match(androidUnsignedNegative, /META-INF/);
 assert.match(androidUnsignedNegative, /No signing key was generated or used/);
 assert.match(androidUpdateRegression, /OPENFRONT_UPDATE_APK/);
@@ -240,6 +395,11 @@ assert.ok(
     updateValidationWorkflow.indexOf("Verify permanent Android release signing key and continuity"),
   "The permanent signing continuity gate must run after the published-APK emulator upgrade test."
 );
+assert.match(androidStorageComparison, /const exact = process\.argv\[4\] === "--exact"/,
+  "Negative-install integrity checks must compare physical persistent files before app relaunch.");
+assert.match(androidStorageComparison, /Persistent WebView files changed after failed APK install/,
+  "The exact negative-install mode must fail on missing, changed or added persistent files.");
+
 
 assert.ok(releaseWorkflow.includes(String.raw`names.some(name => /-win\.zip$/i.test(name))`), "Release verification must match the actual Windows portable ZIP filename.");
 const portableAssetMatcher = /^OpenFront\.Replay\.Coach-[0-9]+\.[0-9]+\.[0-9]+-win\.zip$/i;
@@ -444,7 +604,14 @@ assert.match(androidEmulatorDiagnostics, /am start -W -n/);
 const androidUpgradeBridge = read("src/renderer/androidUpgradeTestBridge.ts");
 assert.match(androidUpgradeBridge, /import \{ loadImportedMatch \} from "\.\/matchStore"/);
 assert.match(androidUpgradeBridge, /loadImportedMatch\(playerId, gameId\)/);
-assert.match(androidUpgradeBridge, /slice\(0, 2\)/);
+assert.match(androidUpgradeBridge, /const requiredGameIds = \["cRVdxGEG5j", "c4CW3VJWQ9"\]/);
+assert.doesNotMatch(androidUpgradeBridge, /slice\(0, 2\)/,
+  "The inspector must rehydrate the exact UI-seeded replay IDs, not arbitrary first records.");
+assert.match(androidUpgradeBridge, /openCursor\(\)/,
+  "Storage inspection must use bounded cursor summaries instead of materializing full replay payloads.");
+assert.match(androidUpgradeBridge, /summarySha256/);
+assert.doesNotMatch(androidUpgradeBridge, /sha256\(value\)/,
+  "The semantic bridge must not hash every large replay payload; exact LevelDB file hashes cover storage integrity.");
 assert.match(androidUpgradeBridge, /replayRestored/);
 assert.match(androidUpgradeBridge, /recordGameId/);
 assert.match(androidUpgradeBridge, /engineCommit/);
@@ -464,5 +631,12 @@ assert.match(androidReleaseUpgrade, /install_apk "\$current_apk" true[\s\S]*?am 
 assert.ok(androidReleaseUpgrade.includes('android_launch_package "$package_id" "the valid signed app after unsigned-APK rejection"'));
 assert.ok(androidReleaseUpgrade.includes('android_launch_package "$package_id" "the original signed app after wrong-signer rejection"'));
 assert.match(androidReleaseUpgrade, /pre-update app process remained alive/);
+const finalStorageComparison = androidReleaseUpgrade.lastIndexOf("node scripts/compare-android-web-storage.mjs");
+const finalColdStart = androidReleaseUpgrade.lastIndexOf('android_launch_package "$package_id" "the original signed app after final persistent-file comparison"');
+const finalRunningCheck = androidReleaseUpgrade.indexOf("if ! adb_cmd shell pidof", finalStorageComparison);
+assert.ok(finalStorageComparison >= 0 && finalColdStart > finalStorageComparison && finalRunningCheck > finalColdStart,
+  "The final app-running assertion must follow a cold-start after the final exact storage snapshot comparison.");
+assert.doesNotMatch(androidReleaseUpgrade.slice(finalColdStart, finalRunningCheck), /am force-stop/,
+  "The release-upgrade test must not force-stop the app after the final cold-start and before asserting it remains running.");
 
 console.log("Android emulator diagnostics contract tests passed: bounded ADB restart/reconnect, separate boot/transport checks, early-failure log/screenshot capture, and classified launch outcomes.");

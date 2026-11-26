@@ -84,6 +84,8 @@ async function main() {
     hasUpdatedAtIndex: true,
     legacyMatchHasSimulation: false,
     legacyMatchHasRawReplay: false,
+    libraryHasSimulation: false,
+    legacyMatchHasRawReplay: false,
     profileName: "OligenOle",
     matchStatus: "loaded",
     analysisStatus: "verified",

@@ -3,22 +3,32 @@ name: Cleanup integrated branches
 on:
   pull_request:
     types: [closed]
+  # Run one verified cleanup pass when this policy is updated on main.
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/cleanup-merged-branches.yml"
+  workflow_dispatch:
 
 permissions:
   contents: write
+  pull-requests: read
+
+concurrency:
+  group: cleanup-integrated-branches
+  cancel-in-progress: false
 
 jobs:
   cleanup:
-    name: Delete only verified obsolete integration branches
-    if: github.event.pull_request.head.repo.full_name == github.repository
+    name: Delete only branches whose exact head was merged
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 10
     steps:
-      - name: Delete allowlisted branches after integration
+      - name: Delete allowlisted branches only after exact merged-head verification
         uses: actions/github-script@v7
         with:
           script: |
-            const pr = context.payload.pull_request;
             const owner = context.repo.owner;
             const repo = context.repo.repo;
             const allowlisted = new Set([
@@ -26,22 +36,46 @@ jobs:
               "fix/engine-preparation-workflow-timeouts",
               "integration/replay-coaching-ux",
               "integration/engine-modernization",
+              "fix/android-baseline-ime-dismiss-before-refocus",
+              "integration/replay-coaching-ux-main-179",
+              "chore/opencode-specialist-agent-prompts",
+              "fix/opencode-model-documentation",
+              "test/opencode-config-contract",
             ]);
 
-            const branches = [];
-            if (pr.merged && allowlisted.has(pr.head.ref)) {
-              branches.push(pr.head.ref);
-            }
-            if (pr.merged && pr.number === 166) {
-              branches.push("fix/engine-preparation-workflow-timeouts");
+            // Never infer that a branch is disposable from its name or age.
+            // It must belong to this repository, have a merged PR, be explicitly
+            // allowlisted, and still point to the exact merged PR head commit.
+            const closedPulls = await github.paginate(github.rest.pulls.list, {
+              owner,
+              repo,
+              state: "closed",
+              per_page: 100,
+            });
+
+            const mergedHeads = new Map();
+            for (const pr of closedPulls) {
+              if (
+                pr.merged_at &&
+                pr.head.repo?.full_name === `${owner}/${repo}` &&
+                allowlisted.has(pr.head.ref)
+              ) {
+                mergedHeads.set(pr.head.ref, pr.head.sha);
+              }
             }
 
-            for (const branch of new Set(branches)) {
+            for (const [branch, mergedSha] of mergedHeads) {
               try {
+                const current = await github.rest.repos.getBranch({ owner, repo, branch });
+                if (current.data.commit.sha !== mergedSha) {
+                  core.warning(`Preserving ${branch}: its head moved after the merged PR (${current.data.commit.sha} != ${mergedSha}).`);
+                  continue;
+                }
+
                 await github.rest.git.deleteRef({ owner, repo, ref: `heads/${branch}` });
-                core.info(`Deleted verified obsolete branch: ${branch}`);
+                core.info(`Deleted ${branch}; exact head ${mergedSha} was merged.`);
               } catch (error) {
-                if (error.status === 404 || (error.status === 422 && error.message?.includes("Reference does not exist"))) {
+                if (error.status === 404) {
                   core.info(`Branch already absent: ${branch}`);
                   continue;
                 }

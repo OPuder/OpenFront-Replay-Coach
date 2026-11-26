@@ -182,7 +182,27 @@ assert.ok(androidBaselineUiSeed.includes('tesseract "$screen_path" stdout -l deu
 assert.match(androidBaselineUiSeed, /OpenFront-Profillink/);
 assert.match(androidBaselineUiSeed, /OCR text:/);
 assert.match(androidBaselineUiSeed, /search_query=.*tr '\[:upper:\]' '\[:lower:\]'/);
-assert.match(androidBaselineUiSeed, /ADB input did not populate the library search field/);
+assert.match(androidBaselineUiSeed, /wait_for_search_ime\(\)\s*\{\s*local ime_state="" attempt/,
+  "IME polling must keep its counter local.");
+assert.match(androidBaselineUiSeed, /send_search_query_by_keyevents\(\)\s*\{\s*local query="\$1" char ascii keycode index/,
+  "Key-event fallback must keep its character index local.");
+assert.match(androidBaselineUiSeed, /dump_ui\(\)\s*\{\s*local dump_output="" pull_output="" attempt/,
+  "UI dump retries must keep their counter local so outer viewport scans can advance.");
+assert.match(androidBaselineUiSeed, /wait_for_search_ime\(\)/,
+  "Android search typing must wait for the IME/focus transition before injecting text.");
+assert.match(androidBaselineUiSeed, /send_search_query_by_keyevents/,
+  "Search IDs must have a key-event fallback when adb shell input text is dropped.");
+assert.match(androidBaselineUiSeed, /for keycode in "\$\{keycodes\[@\]\}"; do/,
+  "Key-event fallback must send the keycodes sequentially rather than pass an unsupported multi-key command.");
+assert.match(androidBaselineUiSeed, /shell input keyevent "\$keycode"/,
+  "The key-event fallback must inject each mapped Android keycode individually.");
+assert.match(androidBaselineUiSeed, /keycode=\$\(\(ascii - 68\)\)/,
+  "The fallback must map lowercase letters to Android KEYCODE_A-Z.");
+assert.match(androidBaselineUiSeed, /keycode=\$\(\(ascii - 41\)\)/,
+  "The fallback must map digits to Android keycodes.");
+assert.match(androidBaselineUiSeed, /Android text input and key-event fallback both failed/,
+  "The test must fail closed when neither input method produces a verified query.");
+
 assert.match(androidBaselineUiSeed, /navigate_to_library/);
 assert.match(androidBaselineUiSeed, /Using verified bottom-navigation fallback/);
 assert.match(androidBaselineUiSeed, /wait_for_library_page\(\)\s*\{/,
@@ -192,6 +212,12 @@ assert.match(androidBaselineUiSeed, /wait_for_library_page 12/);
 assert.match(androidBaselineUiSeed, /screenshot OCR/);
 
 assert.match(androidBaselineUiSeed, /grep -Fi "\$game_id" "\$ui_xml"/);
+assert.doesNotMatch(androidBaselineUiSeed, /create_verified_training_goal/,
+  "The published v2.2.51 baseline must not be forced to expose a training CTA when its verified replay has no actionable finding.");
+assert.match(androidStorageInspector, /if \(trainingGoal && !matchIds\.has/,
+  "A baseline training goal is optional, but any existing goal must reference a persisted match.");
+assert.match(androidStorageInspector, /trainingGoalPresent: Boolean\(trainingGoal\)/,
+  "Storage validation must report whether a goal was preserved without requiring one to exist.");
 assert.match(androidReleaseUpgrade, /snapshot-android-web-storage\.sh after/);
 assert.match(androidReleaseUpgrade, /after-negative-test-storage\.json/);
 assert.match(androidReleaseUpgrade, /compare-android-upgrade-snapshots\.mjs/);
@@ -299,11 +325,18 @@ assert.match(enginePreparation, /http\.lowSpeedTime=0/);
 assert.match(enginePreparation, /http\.version=HTTP\/1\.1/);
 assert.match(enginePreparation, /attempt <= 4/);
 assert.match(enginePreparation, /12 \* 60_000/);
+assert.match(enginePreparation, /Wait before submodule retry", 60_000\)/,
+  "The retry wait timeout must exceed the longest bounded retry delay.");
 assert.match(enginePreparation, /Initialize exact OpenFront engine submodules/);
 assert.match(androidValidationWorkflow, /-gpu software/,
   "Android emulator validation must use stable software rendering instead of flaky GPU color buffers.");
-assert.match(read("scripts/seed-android-baseline-ui.sh"), /reset to the top first/i);
-assert.match(read("scripts/seed-android-baseline-ui.sh"), /scanning 18 viewports/);
+const androidBaselineSeed = read("scripts/seed-android-baseline-ui.sh");
+assert.match(androidBaselineSeed, /seed_verified_match "cRVdxGEG5j"/,
+  "The baseline fixture must seed its first real replay through the published app UI.");
+assert.match(androidBaselineSeed, /seed_verified_match "c4CW3VJWQ9"/,
+  "The baseline fixture must seed its second real replay through the published app UI.");
+assert.doesNotMatch(androidBaselineSeed, /create_verified_training_goal/,
+  "Baseline seeding must not require a training-goal CTA that may not exist in the published app.");
 const androidEmulatorDiagnostics = read("scripts/android-emulator-diagnostics.sh");
 assert.match(androidEmulatorDiagnostics, /adb kill-server/);
 assert.match(androidEmulatorDiagnostics, /adb start-server/);

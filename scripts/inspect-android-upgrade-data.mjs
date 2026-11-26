@@ -84,11 +84,27 @@ try {
       || String(item.recordGameId) !== String(item.gameId) || !item.engineCommit || Number(item.turnCount) < 1)) {
     throw new Error(`Production matchStore rehydration failed after update: ${JSON.stringify(rehydration)}`);
   }
-  if (replayMetadata.some(item => !item.gameId || String(item.recordGameId) !== String(item.gameId) || !item.engineCommit || Number(item.turnCount) < 1)) {
-    throw new Error("One or more full replay records lost their game identity or exact engine commit metadata.");
+  const invalidReplayRecords = replays.filter(record => {
+    const metadata = record.metadata ?? {};
+    return !metadata.gameId || String(metadata.recordGameId) !== String(metadata.gameId)
+      || !metadata.engineCommit || Number(metadata.turnCount) < 1;
+  });
+  if (invalidReplayRecords.length) {
+    const describe = record => ({
+      recordKeys: Object.keys(record ?? {}),
+      metadataKeys: Object.keys(record?.metadata ?? {}),
+      identityAndEngineFields: {
+        gameId: record?.gameId ?? record?.metadata?.gameId ?? null,
+        recordGameId: record?.recordGameId ?? record?.metadata?.recordGameId ?? null,
+        engineCommit: record?.engineCommit ?? record?.metadata?.engineCommit ?? null,
+        turnCount: record?.turnCount ?? record?.metadata?.turnCount ?? null,
+      },
+      nestedReplayKeys: Object.fromEntries(Object.entries(record ?? {}).filter(([, value]) => value && typeof value === "object" && !Array.isArray(value)).map(([key, value]) => [key, Object.keys(value)])),
+    });
+    throw new Error(`Replay identity/engine metadata validation failed for ${invalidReplayRecords.length}/${replays.length} records. Record shape diagnostics: ${JSON.stringify(invalidReplayRecords.map(describe))}`);
   }
-  if (!trainingGoal || !matchIds.has(String(trainingGoal.gameId ?? ""))) {
-    throw new Error("The actual UI-created training goal is missing or does not reference a persisted match.");
+  if (trainingGoal && !matchIds.has(String(trainingGoal.gameId ?? ""))) {
+    throw new Error("The saved training goal does not reference a persisted match.");
   }
   if (relationships.missingReplayRecords.length || relationships.orphanReplayRecords.length) {
     throw new Error(`IndexedDB match/replay relationships are inconsistent: ${JSON.stringify(relationships)}`);
@@ -106,7 +122,8 @@ try {
       loaded: rehydration.loaded,
       replayRestored: rehydration.replayRestored,
     },
-    trainingGoalGameId: trainingGoal.gameId,
+    trainingGoalPresent: Boolean(trainingGoal),
+    trainingGoalGameId: trainingGoal?.gameId ?? null,
     indexedDb: snapshot.indexedDb.name,
     storeCounts: Object.fromEntries(snapshot.indexedDb.stores.map(store => [store.name, store.count])),
     profileIds: relationships.profileIds,

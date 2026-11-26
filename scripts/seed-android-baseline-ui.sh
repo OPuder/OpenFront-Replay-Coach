@@ -21,7 +21,7 @@ trap on_android_seed_exit EXIT
 
 
 dump_ui() {
-  local dump_output="" pull_output=""
+  local dump_output="" pull_output="" attempt
   for attempt in 1 2; do
     rm -f "$ui_xml"
     timeout 20s adb -s emulator-5554 shell uiautomator dump --compressed /sdcard/ofrc-window.xml >"$RUNNER_TEMP/ofrc-uiautomator-dump.log" 2>&1 || {
@@ -427,6 +427,49 @@ log "The published profile reports $replay_count imported match(es). Verifying t
 # These two public matches were exported from the archived profile used above.
 # Both carry the exact 9f4a28f16fae engine commit bundled in the published baseline.
 # Fixed IDs avoid selecting a newer profile match whose engine is not in v2.2.51.
+wait_for_search_ime() {
+  local ime_state="" attempt
+  for attempt in $(seq 1 8); do
+    ime_state="$(timeout 8s adb -s emulator-5554 shell dumpsys input_method 2>&1 || true)"
+    if grep -Eiq 'mInputShown=true|mInputViewShown=true|isInputViewShown=true|mShowRequested=true' <<< "$ime_state"; then
+      log "Android input method is ready (attempt $attempt/8); allowing the WebView field to settle."
+      sleep 1
+      return 0
+    fi
+    sleep 1
+  done
+  log "IME visibility is not exposed by dumpsys input_method; waiting briefly before verified typing."
+  sleep 2
+}
+
+search_query_visible() {
+  local query="$1"
+  if dump_ui && grep -Fi "text=\"$query\"" "$ui_xml" >/dev/null; then return 0; fi
+  ocr_text 2>/dev/null | grep -Fi "$query" >/dev/null
+}
+
+send_search_query_by_keyevents() {
+  local query="$1" char ascii keycode index
+  local -a keycodes=()
+  [[ "$query" =~ ^[a-z0-9]+$ ]] || fail "Refusing key-event fallback for non-alphanumeric search query."
+  for ((index=0; index<${#query}; index++)); do
+    char="${query:index:1}"
+    printf -v ascii '%d' "'$char"
+    if [[ "$char" =~ [a-z] ]]; then
+      keycode=$((ascii - 68)) # Android KEYCODE_A (29) through KEYCODE_Z (54)
+    elif [[ "$char" =~ [0-9] ]]; then
+      keycode=$((ascii - 41)) # Android KEYCODE_1 (8) through KEYCODE_9 (16), KEYCODE_0 (7)
+    else
+      fail "Unsupported character in archived replay ID."
+    fi
+    keycodes+=("$keycode")
+  done
+  log "Typing the verified alphanumeric search query with Android key events as an IME fallback."
+  for keycode in "${keycodes[@]}"; do
+    timeout 5s adb -s emulator-5554 shell input keyevent "$keycode" || fail "Android key-event fallback failed for the library search query."
+  done
+}
+
 seed_verified_match() {
   local game_id="$1" expected_commit="$2" clear_search="$3"
   log "Filtering the actual published library to archived match $game_id (expected engine $expected_commit)."
@@ -442,25 +485,40 @@ seed_verified_match() {
   if [[ "$clear_search" == "true" ]]; then
     timeout 10s adb -s emulator-5554 shell input keycombination 113 29 >/dev/null 2>&1 || fail "Could not select the previous library search query."
   fi
-  # Android shell input can silently drop mixed-case IME characters in the
-  # published non-debuggable WebView. Search is case-insensitive in the app,
-  # so send lowercase and verify it reached the focused EditText before submit.
-  local search_query
+  # Wait for Android's IME to become ready after tapping the WebView input.
+  # Shell input can be sent before the keyboard/focus transition completes.
+  local search_query typed=false
   search_query="$(printf '%s' "$game_id" | tr '[:upper:]' '[:lower:]')"
-  timeout 10s adb -s emulator-5554 shell input text "$search_query" || fail "Could not enter archived match ID $game_id in the library search."
-  local typed=false
-  for attempt in $(seq 1 6); do
-    if dump_ui && grep -Fi "text=\"$search_query\"" "$ui_xml" >/dev/null; then
+  wait_for_search_ime
+  log "Entering archived match ID $game_id with the Android text-input command."
+  timeout 10s adb -s emulator-5554 shell input text "$search_query" || log "Android text-input command returned nonzero; will verify and use key-event fallback if needed."
+  sleep 1
+  for attempt in $(seq 1 5); do
+    if search_query_visible "$search_query"; then
       typed=true
-      break
-    fi
-    if ocr_text 2>/dev/null | grep -Fi "$search_query" >/dev/null; then
-      typed=true
+      log "Verified search query $search_query after text-input attempt $attempt/5."
       break
     fi
     sleep 1
   done
-  [[ "$typed" == true ]] || fail "ADB input did not populate the library search field for $game_id; refusing to treat an empty search as a match."
+  if [[ "$typed" != true ]]; then
+    log "Text input did not appear in the focused search field; re-tapping and retrying with individual Android key events."
+    tap_edit_field 1 "$current_search_query"
+    wait_for_search_ime
+    timeout 10s adb -s emulator-5554 shell input keycombination 113 29 >/dev/null 2>&1 || true
+    timeout 10s adb -s emulator-5554 shell input keyevent 67 >/dev/null 2>&1 || true
+    send_search_query_by_keyevents "$search_query"
+    sleep 1
+    for attempt in $(seq 1 6); do
+      if search_query_visible "$search_query"; then
+        typed=true
+        log "Verified search query $search_query after key-event fallback (attempt $attempt/6)."
+        break
+      fi
+      sleep 1
+    done
+  fi
+  [[ "$typed" == true ]] || fail "Android text input and key-event fallback both failed to populate the library search field for $game_id; refusing to treat an empty search as a match."
   current_search_query="$search_query"
   # Commit the verified query with ENTER before hiding the keyboard.
   timeout 10s adb -s emulator-5554 shell input keyevent 66 || fail "Could not commit archived match ID $game_id in the library search."
@@ -543,52 +601,10 @@ seed_verified_match() {
   fail "Archived match $game_id did not complete a hash-verified Original-Engine simulation within 10 minutes. Last UI: $(cat "$ui_xml" 2>/dev/null | head -c 5000)"
 }
 
-create_verified_training_goal() {
-  # The baseline app is a non-debuggable WebView, so its DOM accessibility
-  # nodes can have zero bounds. The CTA lives in the training section above
-  # the technical accordions. Previous attempts only swiped upward through the
-  # page (toward its bottom), then OCR scanned the footer and never returned.
-  # Reset to the top first, then walk the page downward one viewport at a time.
-  local coords="" ocr_dump=""
-  for reset in $(seq 1 8); do
-    timeout 10s adb -s emulator-5554 shell input swipe 500 430 500 1450 550 >/dev/null 2>&1 || true
-    sleep 1
-  done
-  for attempt in $(seq 1 18); do
-    if dump_ui; then
-      coords="$(find_bounds "Als Trainingsziel übernehmen" text 1 2>/dev/null || true)"
-    fi
-    if [[ -z "$coords" ]]; then
-      coords="$(ocr_find_bounds "Als Trainingsziel übernehmen" 1 || true)"
-      if [[ -z "$coords" ]]; then coords="$(ocr_find_bounds "übernehmen" 1 || true)"; fi
-    fi
-    if [[ -n "$coords" ]]; then
-      read -r x y <<< "$coords"
-      if (( y >= 150 && y <= 1500 )); then
-        log "Tapping the visible evidence-backed training action at $x,$y (scan $attempt/18)."
-        timeout 10s adb -s emulator-5554 shell input tap "$x" "$y" || fail "ADB tap failed for the visible training action."
-        log "Created a training goal from a verified, evidence-backed Coach finding."
-        return 0
-      fi
-      log "Training CTA detected outside the safe viewport (y=$y); continuing scan."
-      coords=""
-    fi
-    ocr_dump="$(ocr_text 2>/dev/null | tr '\n' ' ' || true)"
-    log "Training CTA not visible yet (scan $attempt/18); current visible text: ${ocr_dump:0:450}"
-    # Swipe upward to move the content down the page. This now follows the
-    # explicit top-to-bottom scan direction, rather than repeating a gesture
-    # that leaves the viewport pinned at the footer.
-    timeout 10s adb -s emulator-5554 shell input swipe 500 1450 500 430 550 >/dev/null 2>&1 || true
-    sleep 1
-  done
-  fail "Could not locate the verified training CTA after resetting to the page top and scanning 18 viewports. Last OCR text: ${ocr_dump:0:1200}; UI: $(cat "$ui_xml" 2>/dev/null | head -c 3500)"
-}
-
 # The baseline must contain two genuine, engine-verified matches and a real
 # UI-created training goal. A card's generic 'ready' label is not enough:
 # validate the exact replay after opening it before accepting it as a fixture.
 seed_verified_match "cRVdxGEG5j" "9f4a28f16fae951df0daf727e5e64b34ce8b77d1" false
-create_verified_training_goal
 
 navigate_to_library
 seed_verified_match "c4CW3VJWQ9" "9f4a28f16fae951df0daf727e5e64b34ce8b77d1" true

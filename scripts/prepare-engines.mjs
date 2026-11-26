@@ -61,7 +61,7 @@ for (let attempt = 1; attempt <= 4; attempt++) {
     run(process.execPath, [
       "-e", "Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, Number(process.argv[1]) * 1000);",
       String(delaySeconds),
-    ], {}, "Wait before submodule retry", 30_000);
+    ], {}, "Wait before submodule retry", 60_000);
   }
 }
 if (!initialized) throw new Error("Could not initialize exact OpenFront engine submodules after four attempts.");

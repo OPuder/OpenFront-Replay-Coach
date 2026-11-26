@@ -43,14 +43,12 @@ function inputFingerprint() {
   return hash.digest("hex");
 }
 
-function sourcesArePinned() {
+function sourcesMatchPins() {
   return engines.every((engine) => {
     if (!/^[0-9a-f]{40}$/.test(engine.commit) || !/^[0-9a-f]{12}$/.test(engine.bundleId)) {
       throw new Error(`Invalid engine catalog entry: ${JSON.stringify(engine)}`);
     }
-    const source = path.join(root, engine.source);
-    return existsSync(path.join(source, "node_modules/vite/bin/vite.js"))
-      && git(source, ["rev-parse", "HEAD"]) === engine.commit;
+    return git(path.join(root, engine.source), ["rev-parse", "HEAD"]) === engine.commit;
   });
 }
 
@@ -65,7 +63,7 @@ function bundlesComplete() {
   });
 }
 
-const sourcesReady = sourcesArePinned();
+const sourcesReady = sourcesMatchPins();
 const cleanSources = sourcesReady && sourcesAreClean();
 const fingerprint = cleanSources ? inputFingerprint() : null;
 if (!force && cleanSources && bundlesComplete() && existsSync(manifestPath)) {
@@ -100,7 +98,7 @@ for (const engine of engines) {
 }
 
 if (!bundlesComplete()) throw new Error("Engine build completed without producing every expected replay bundle.");
-if (!sourcesArePinned()) throw new Error("Engine checkout changed during the build; refusing to accept the result.");
+if (!sourcesMatchPins()) throw new Error("Engine checkout changed during the build; refusing to accept the result.");
 if (sourcesAreClean()) {
   writeFileSync(manifestPath, JSON.stringify({
     schema: 1,

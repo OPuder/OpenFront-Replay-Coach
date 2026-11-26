@@ -56,7 +56,7 @@ assert.match(ciWorkflow, /npm run test:opencode-config/,
 assert.match(ciWorkflow, /xvfb-run -a npm run test:ux-ui/,
   "The responsive UI regression suite must remain in CI, including when suites execute concurrently.");
 assert.match(releaseWorkflow, /push:\s*branches: \[main\]/);
-assert.match(releaseWorkflow, /push:\s*\n\s+branches: \[main\]\s*\n[\s\S]*?paths:\s*\n\s+- "package\\.json"\s*\n\s+- "package-lock\\.json"\s*\n\s+- "\\.github\\/workflows\\/release-on-main\\.yml"/,
+assert.match(releaseWorkflow, /push:\s*\n\s+branches: \[main\]\s*\n[\s\S]*?paths:\s*\n\s+- "package\.json"\s*\n\s+- "package-lock\.json"\s*\n\s+- "\.github\/workflows\/release-on-main\.yml"/,
   "A reviewed version bump or release-workflow correction must trigger the release gate.");
 assert.match(releaseWorkflow, /Package version \$base_version is already released/,
   "A workflow-only retry must skip a version that has already been published.");

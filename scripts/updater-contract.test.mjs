@@ -288,6 +288,11 @@ for (const workflow of engineCacheWorkflows) {
     "Engine Git objects must be shared across jobs.");
 }
 
+const engineDiscoveryWorkflow = read(".github/workflows/discover-openfront-engine.yml");
+assert.match(engineDiscoveryWorkflow, /git diff --cached --check -- \. ':!src\/renderer\/engine\/replay-engine-\*\.js'/,
+  "Engine discovery must check repository-owned staged changes without failing on upstream-generated bundle whitespace.");
+assert.doesNotMatch(engineDiscoveryWorkflow, /git diff --cached --check\s*$/m,
+  "Engine discovery must not run the unrestricted whitespace check over generated upstream bundles.");
 const enginePreparation = read("scripts/prepare-engines.mjs");
 assert.match(enginePreparation, /http\.lowSpeedLimit=0/);
 assert.match(enginePreparation, /http\.lowSpeedTime=0/);

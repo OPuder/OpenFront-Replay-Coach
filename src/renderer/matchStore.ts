@@ -52,38 +52,30 @@ function openStore(): Promise<IDBDatabase> {
         matches.createIndex(MATCH_PLAYER_UPDATED_INDEX, ["playerId", "updatedAt"], { unique: false });
       }
 
-      // Move large raw replay payloads out of the eagerly loaded match index.
-      // Keep existing users' data intact during the v1 -> v2 upgrade.
-      if (event.oldVersion < 2 && transaction) {
-        const matches = transaction.objectStore(MATCH_STORE);
-        const replays = transaction.objectStore(REPLAY_STORE);
-        const cursorRequest = matches.openCursor();
-        cursorRequest.onsuccess = () => {
-          const cursor = cursorRequest.result;
-          if (!cursor) return;
-          const stored = cursor.value as StoredMatch;
-          const record = stored.result?.record;
-          if (record && stored.result) {
-            replays.put({ playerId: stored.playerId, gameId: stored.game.gameId, record });
-            const { record: _record, ...summary } = stored.result;
-            stored.result = summary as StoredMatch["result"];
-            cursor.update(stored);
-          }
-          cursor.continue();
-        };
-      }
-
-      // Move bulky simulation snapshots out of the match-list store. The
-      // migration is transactional: old entries are only stripped after their
-      // analysis payload is written to the dedicated store.
+      // Upgrade older match entries in one cursor pass. Combining both moves
+      // avoids concurrent cursor updates overwriting one another when a v1
+      // record contains both raw replay data and a simulation snapshot.
       if (event.oldVersion < 4 && transaction) {
         const matches = transaction.objectStore(MATCH_STORE);
+        const replays = transaction.objectStore(REPLAY_STORE);
         const analyses = transaction.objectStore(ANALYSIS_STORE);
         const cursorRequest = matches.openCursor();
         cursorRequest.onsuccess = () => {
           const cursor = cursorRequest.result;
           if (!cursor) return;
           const stored = cursor.value as StoredMatch;
+          let changed = false;
+
+          if (event.oldVersion < 2) {
+            const record = stored.result?.record;
+            if (record && stored.result) {
+              replays.put({ playerId: stored.playerId, gameId: stored.game.gameId, record });
+              const { record: _record, ...summary } = stored.result;
+              stored.result = summary as StoredMatch["result"];
+              changed = true;
+            }
+          }
+
           if (stored.simulation) {
             analyses.put({
               playerId: stored.playerId,
@@ -94,8 +86,9 @@ function openStore(): Promise<IDBDatabase> {
               updatedAt: stored.updatedAt,
             });
             delete stored.simulation;
-            cursor.update(stored);
+            changed = true;
           }
+          if (changed) cursor.update(stored);
           cursor.continue();
         };
       }

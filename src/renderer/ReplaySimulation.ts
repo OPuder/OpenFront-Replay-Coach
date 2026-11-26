@@ -388,8 +388,6 @@ export async function simulateReplay(
     const tileState = state.tileState as Uint16Array | undefined;
     const territory = tileState ? encodeTileOwners(tileState, mapWidth, mapHeight) : null;
     const playerMeta = new Map(reader.header.players.map((p: any) => [p.smallID, p]));
-    const tileState = state.tileState as Uint16Array | undefined;
-    const territory = tileState ? encodeTileOwners(tileState, mapWidth, mapHeight) : null;
     const players = [...state.players.entries()].map(([id, p]: [number, any]) => {
       const meta: any = playerMeta.get(id) ?? {};
       const outgoingAttacks = Array.isArray(p.outgoingAttacks) ? p.outgoingAttacks : [];

@@ -12,7 +12,6 @@ const catalog = readFileSync('src/main/decoder/ReplayEngineCatalog.ts', 'utf8');
 const registry = readFileSync('src/renderer/engineRegistry.ts', 'utf8');
 const seenCommits = new Set();
 
-const root = process.cwd();
 const fingerprint = computeEngineBundleFingerprint(
   path.resolve('engine-build/engines.json'),
   path.resolve('engine-build'),

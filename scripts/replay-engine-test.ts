@@ -1,5 +1,5 @@
 import { buildReplayEngineAssets, simulateReplay } from "../src/renderer/ReplaySimulation";
-import { loadImportedMatch, loadImportedMatches, loadPlayerLibrary, saveImportedMatch, savePlayerLibrary } from "../src/renderer/matchStore";
+import { loadImportedMatch, loadImportedMatches, loadImportedReplayRecord, loadPlayerLibrary, saveImportedMatch, savePlayerLibrary } from "../src/renderer/matchStore";
 import { runSequentialBatchAnalysis } from "../src/renderer/BatchAnalysisRunner";
 import { assessReplayCompatibility } from "../src/main/decoder/ReplayCompatibility";
 import { resolveReplayJsonExport } from "../src/main/decoder/ReplayJsonExport";
@@ -125,6 +125,7 @@ window.__verifyLegacyMigration = async () => {
     });
   }
   const rehydratedAfterSummarySave = await loadImportedMatch("migration-player", "legacy-replay");
+  const rawReplayRecord = await loadImportedReplayRecord("migration-player", "legacy-replay") as any;
   const db = await new Promise<IDBDatabase>((resolve, reject) => {
     const request = indexedDB.open("openfront-replay-coach");
     request.onsuccess = () => resolve(request.result);
@@ -162,6 +163,7 @@ window.__verifyLegacyMigration = async () => {
     migratedActionAnalysisMarker: rehydratedAfterSummarySave?.result?.actionAnalysis?.legacyMarker ?? null,
     replayId: (match?.result?.record as any)?.info?.gameID ?? null,
     replayHash: (match?.result?.record as any)?.turns?.[0]?.hash ?? null,
+    rawOnlyReplayHash: rawReplayRecord?.turns?.[0]?.hash ?? null,
   };
 };
 

@@ -5,7 +5,15 @@ const DATABASE_NAME = "openfront-replay-coach";
 type StoreSnapshot = {
   name: string;
   count: number;
-  records: Array<{ key: string; sha256: string; fields: string[]; metadata?: Record<string, unknown> }>;
+  records: Array<{ key: string; summarySha256: string; fields: string[]; metadata?: Record<string, unknown> }>;
+};
+
+type StoreSummary = {
+  key: string;
+  playerId?: string | null;
+  gameId?: string | null;
+  hasResult?: boolean;
+  metadata?: Record<string, unknown>;
 };
 
 function stableValue(value: unknown): unknown {
@@ -17,19 +25,6 @@ function stableValue(value: unknown): unknown {
   if (value instanceof Blob) return { $blob: { size: value.size, type: value.type } };
   const source = value as Record<string, unknown>;
   return Object.fromEntries(Object.keys(source).sort().map(key => [key, stableValue(source[key])]));
-}
-
-function fieldPaths(value: unknown, prefix = "", depth = 0): string[] {
-  if (depth >= 6 || value === null || typeof value !== "object") return prefix ? [prefix] : [];
-  if (Array.isArray(value)) {
-    const first = value.length ? fieldPaths(value[0], prefix ? `${prefix}[]` : "[]", depth + 1) : [];
-    return [...new Set([...(prefix ? [prefix] : []), ...first])];
-  }
-  const entries = Object.entries(value as Record<string, unknown>);
-  return [...new Set([
-    ...(prefix ? [prefix] : []),
-    ...entries.flatMap(([key, child]) => fieldPaths(child, prefix ? `${prefix}.${key}` : key, depth + 1)),
-  ])].sort();
 }
 
 async function sha256(value: unknown): Promise<string> {
@@ -47,24 +42,87 @@ function openDatabase(): Promise<IDBDatabase> {
   });
 }
 
-async function readStore(db: IDBDatabase, name: string): Promise<{ values: unknown[]; keys: IDBValidKey[] }> {
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction(name, "readonly");
-    const store = tx.objectStore(name);
-    const valuesRequest = store.getAll();
-    const keysRequest = store.getAllKeys();
-    let values: unknown[] | undefined;
-    let keys: IDBValidKey[] | undefined;
-    const finish = () => { if (values && keys) resolve({ values, keys }); };
-    valuesRequest.onsuccess = () => { values = valuesRequest.result as unknown[]; finish(); };
-    keysRequest.onsuccess = () => { keys = keysRequest.result; finish(); };
-    valuesRequest.onerror = keysRequest.onerror = () => reject(tx.error ?? new Error(`Could not read IndexedDB store ${name}.`));
-    tx.onabort = () => reject(tx.error ?? new Error(`IndexedDB read aborted for ${name}.`));
-  });
-}
-
 function keyText(key: IDBValidKey): string {
   return JSON.stringify(stableValue(key));
+}
+
+/**
+ * Read stores with cursors and hash only the semantic metadata summary.
+ * The Android test separately hashes every physical LevelDB file before/after
+ * the upgrade, so re-serializing all replay payloads here is redundant and
+ * caused CDP Runtime.evaluate to exceed its 60-second timeout on large imports.
+ */
+async function readStoreSummary(db: IDBDatabase, name: string): Promise<{ records: StoreSnapshot["records"]; values: StoreSummary[] }> {
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(name, "readonly");
+    const request = tx.objectStore(name).openCursor();
+    const records: Array<{ key: string; fields: string[]; metadata?: Record<string, unknown> }> = [];
+    const values: StoreSummary[] = [];
+
+    request.onerror = () => reject(tx.error ?? request.error ?? new Error(`Could not read IndexedDB store ${name}.`));
+    tx.onabort = () => reject(tx.error ?? new Error(`IndexedDB cursor aborted for ${name}.`));
+    request.onsuccess = () => {
+      const cursor = request.result;
+      if (!cursor) {
+        // Hash small summaries only; exact persistence is checked against the
+        // physical IndexedDB and Local Storage LevelDB file manifests.
+        Promise.all(records.map(async record => ({
+          ...record,
+          summarySha256: await sha256({ store: name, key: record.key, metadata: record.metadata ?? null }),
+        }))).then(summaries => resolve({ records: summaries, values })).catch(reject);
+        return;
+      }
+
+      const item = cursor.value as Record<string, any>;
+      const key = keyText(cursor.primaryKey);
+      let metadata: Record<string, unknown> | undefined;
+      let fields: string[];
+      const summary: StoreSummary = { key };
+
+      if (name === "matches") {
+        metadata = {
+          playerId: item.playerId ?? null,
+          gameId: item.game?.gameId ?? null,
+          status: item.status ?? null,
+          analysisStatus: item.analysisStatus ?? null,
+          simulationStatus: item.simulation?.status ?? null,
+          sampleCount: Array.isArray(item.simulation?.samples) ? item.simulation.samples.length : 0,
+          actionReviewCount: Array.isArray(item.simulation?.actionReviews) ? item.simulation.actionReviews.length : 0,
+          replayCommit: item.result?.engineCompatibility?.replayCommit ?? null,
+        };
+        fields = ["playerId", "game.gameId", "status", "analysisStatus", "simulation.status", "simulation.samples[]", "simulation.actionReviews[]", "result.engineCompatibility.replayCommit"];
+        summary.playerId = item.playerId ?? null;
+        summary.gameId = item.game?.gameId ?? null;
+        summary.hasResult = Boolean(item.result);
+      } else if (name === "profiles") {
+        metadata = {
+          playerId: item.playerId ?? null,
+          username: item.profile?.username ?? item.profile?.displayName ?? null,
+          gameCount: Array.isArray(item.games) ? item.games.length : 0,
+        };
+        fields = ["playerId", "profile.username", "profile.displayName", "games[]"];
+        summary.playerId = item.playerId ?? null;
+      } else if (name === "replay-records") {
+        const record = item.record as Record<string, any> | undefined;
+        metadata = {
+          playerId: item.playerId ?? null,
+          gameId: item.gameId ?? null,
+          recordGameId: record?.info?.gameID ?? record?.game?.info?.gameID ?? null,
+          engineCommit: record?.gitCommit ?? null,
+          turnCount: Array.isArray(record?.turns) ? record.turns.length : 0,
+        };
+        fields = ["playerId", "gameId", "record.info.gameID", "record.gitCommit", "record.turns[]"];
+        summary.playerId = item.playerId ?? null;
+        summary.gameId = item.gameId ?? null;
+      } else {
+        fields = Object.keys(item ?? {}).sort().slice(0, 30);
+      }
+
+      values.push({ ...summary, ...(metadata ? { metadata } : {}) });
+      records.push({ key, fields, ...(metadata ? { metadata } : {}) });
+      cursor.continue();
+    };
+  });
 }
 
 export async function installAndroidUpgradeTestBridge(): Promise<void> {
@@ -77,88 +135,59 @@ export async function installAndroidUpgradeTestBridge(): Promise<void> {
     const db = await openDatabase();
     try {
       const stores: StoreSnapshot[] = [];
-      const raw = new Map<string, unknown[]>();
+      const summaries = new Map<string, StoreSummary[]>();
       for (const name of Array.from(db.objectStoreNames).sort()) {
-        const { values, keys } = await readStore(db, name);
-        raw.set(name, values);
-        const records = await Promise.all(values.map(async (value, index) => {
-          const item = value as Record<string, any>;
-          let metadata: Record<string, unknown> | undefined;
-          if (name === "matches") {
-            metadata = {
-              playerId: item.playerId ?? null,
-              gameId: item.game?.gameId ?? null,
-              status: item.status ?? null,
-              analysisStatus: item.analysisStatus ?? null,
-              simulationStatus: item.simulation?.status ?? null,
-              sampleCount: Array.isArray(item.simulation?.samples) ? item.simulation.samples.length : 0,
-              actionReviewCount: Array.isArray(item.simulation?.actionReviews) ? item.simulation.actionReviews.length : 0,
-              replayCommit: item.result?.engineCompatibility?.replayCommit ?? null,
-            };
-          } else if (name === "profiles") {
-            metadata = {
-              playerId: item.playerId ?? null,
-              username: item.profile?.username ?? item.profile?.displayName ?? null,
-              gameCount: Array.isArray(item.games) ? item.games.length : 0,
-            };
-          } else if (name === "replay-records") {
-            const record = item.record as Record<string, any> | undefined;
-            metadata = {
-              playerId: item.playerId ?? null,
-              gameId: item.gameId ?? null,
-              recordGameId: record?.info?.gameID ?? record?.game?.info?.gameID ?? null,
-              engineCommit: record?.gitCommit ?? null,
-              turnCount: Array.isArray(record?.turns) ? record.turns.length : 0,
-            };
-          }
-          return {
-            key: keyText(keys[index]),
-            sha256: await sha256(value),
-            fields: fieldPaths(value),
-            ...(metadata ? { metadata } : {}),
-          };
-        }));
+        const { records, values } = await readStoreSummary(db, name);
+        summaries.set(name, values);
         stores.push({ name, count: values.length, records });
       }
 
-      const profiles = raw.get("profiles") ?? [];
-      const matches = raw.get("matches") ?? [];
-      const replays = raw.get("replay-records") ?? [];
-      const replayKeys = new Set(replays.map(value => {
-        const item = value as Record<string, unknown>;
-        return `${String(item.playerId ?? "")}:${String(item.gameId ?? "")}`;
+      const profiles = summaries.get("profiles") ?? [];
+      const matches = summaries.get("matches") ?? [];
+      const replays = summaries.get("replay-records") ?? [];
+      const matchMetadata = matches.map(record => record.metadata ?? {});
+      const replayMetadata = replays.map(record => record.metadata ?? {});
+      const verifiedAnalyses = matchMetadata.filter(item => item.analysisStatus === "verified"
+        && item.simulationStatus === "verified" && Number(item.sampleCount) > 0 && Number(item.actionReviewCount) > 0);
+      const matchIds = new Set(matchMetadata.map(item => String(item.gameId ?? "")));
+      const playerId = localStorageEntries.find(entry => entry.key === "ofrc:last-player-id")?.value;
+      const trainingGoalEntry = localStorageEntries.find(entry => entry.key === "openfront-coach-training-goal")?.value;
+      const trainingGoal = trainingGoalEntry ? JSON.parse(trainingGoalEntry) : null;
+
+      if (playerId !== "5SVg4WbI") throw new Error("The actual UI-seeded player profile key is missing or does not match the archived profile.");
+      if (!profiles.some(profile => String(profile.playerId ?? "") === playerId)
+        || !matches.some(match => String(match.playerId ?? "") === playerId)) {
+        throw new Error("The actual UI profile ID is not consistently linked across LocalStorage and IndexedDB.");
+      }
+      if (profiles.length < 1 || matches.length < 2 || replays.length < 2) {
+        throw new Error(`Expected a real profile and at least two persisted replay records; found profiles=${profiles.length}, matches=${matches.length}, replayRecords=${replays.length}.`);
+      }
+      if (!verifiedAnalyses.length) throw new Error("No verified replay analysis result survived in the match records.");
+
+      // Rehydrate the two exact UI-seeded replays rather than whichever records
+      // happen to appear first in IndexedDB's key order.
+      const requiredGameIds = ["cRVdxGEG5j", "c4CW3VJWQ9"];
+      const reusableMatches = await Promise.all(requiredGameIds.map(async gameId => {
+        const loaded = playerId ? await loadImportedMatch(playerId, gameId) : null;
+        const record = loaded?.result?.record as Record<string, any> | undefined;
+        return {
+          playerId: playerId ?? "",
+          gameId,
+          loaded: Boolean(loaded),
+          replayRestored: Boolean(record),
+          recordGameId: record?.info?.gameID ?? record?.game?.info?.gameID ?? null,
+          engineCommit: record?.gitCommit ?? null,
+          turnCount: Array.isArray(record?.turns) ? record.turns.length : 0,
+          analysisStatus: loaded?.analysisStatus ?? null,
+        };
       }));
-      const matchKeys = matches.filter(value => Boolean((value as Record<string, any>).result)).map(value => {
-        const item = value as Record<string, any>;
-        return `${String(item.playerId ?? "")}:${String(item.game?.gameId ?? "")}`;
-      });
+
+      const replayKeys = new Set(replays.map(value => `${String(value.playerId ?? "")}:${String(value.gameId ?? "")}`));
+      const matchKeys = matches.filter(value => value.hasResult).map(value => `${String(value.playerId ?? "")}:${String(value.gameId ?? "")}`);
       const missingReplayRecords = matchKeys.filter(key => !replayKeys.has(key));
       const orphanReplayRecords = [...replayKeys].filter(key => !matchKeys.includes(key));
-      const profileIds = profiles.map(value => String((value as Record<string, unknown>).playerId ?? "")).sort();
-      const profileRelations = [...new Set(matches.map(value => String((value as Record<string, unknown>).playerId ?? "")))].sort();
-
-      // Exercise the production matchStore hydration path, not only raw IndexedDB reads.
-      // A match is reusable only when its saved replay payload is reattached by loadImportedMatch.
-      const reusableMatches = await Promise.all(matches
-        .filter(value => Boolean((value as Record<string, any>).result))
-        .slice(0, 2)
-        .map(async value => {
-          const item = value as Record<string, any>;
-          const playerId = String(item.playerId ?? "");
-          const gameId = String(item.game?.gameId ?? "");
-          const loaded = playerId && gameId ? await loadImportedMatch(playerId, gameId) : null;
-          const record = loaded?.result?.record as Record<string, any> | undefined;
-          return {
-            playerId,
-            gameId,
-            loaded: Boolean(loaded),
-            replayRestored: Boolean(record),
-            recordGameId: record?.info?.gameID ?? record?.game?.info?.gameID ?? null,
-            engineCommit: record?.gitCommit ?? null,
-            turnCount: Array.isArray(record?.turns) ? record.turns.length : 0,
-            analysisStatus: loaded?.analysisStatus ?? null,
-          };
-        }));
+      const profileIds = profiles.map(value => String(value.playerId ?? "")).sort();
+      const profileRelations = [...new Set(matches.map(value => String(value.playerId ?? "")))].sort();
 
       return {
         schema: "ofrc-android-upgrade-snapshot-v1",

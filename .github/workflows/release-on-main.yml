@@ -4,11 +4,12 @@ on:
   # Main merges enter the fully gated release pipeline; manual dispatch remains available for retries.
   push:
     branches: [main]
-    # A release is created only when the reviewed application version changes.
-    # Ordinary source/docs/workflow commits must not rebuild and republish the same version.
+    # Re-run a pending release after a workflow correction; the version gate skips versions already published.
+    # Application version changes still require a reviewed package.json/package-lock.json bump.
     paths:
       - "package.json"
       - "package-lock.json"
+      - ".github/workflows/release-on-main.yml"
   workflow_dispatch:
 
 permissions:

@@ -139,6 +139,16 @@ jobs:
         timeout-minutes: 55
         run: npm run prepare:engines
 
+      - name: Restore verified replay engine bundles
+        uses: actions/cache@v4
+        with:
+          path: |
+            src/renderer/engine
+            .openfront-engine-build.json
+          key: openfront-engine-bundles-${{ hashFiles('.gitmodules', 'engine-build/**', 'vendor/**/package-lock.json', 'scripts/build-engines.mjs') }}
+          enableCrossOsArchive: true
+
+
       - name: Build all exact replay engine worker bundles
         run: npm run build:engine
 
@@ -201,6 +211,16 @@ jobs:
         timeout-minutes: 55
         run: npm run prepare:engines
 
+      - name: Restore verified replay engine bundles
+        uses: actions/cache@v4
+        with:
+          path: |
+            src/renderer/engine
+            .openfront-engine-build.json
+          key: openfront-engine-bundles-${{ hashFiles('.gitmodules', 'engine-build/**', 'vendor/**/package-lock.json', 'scripts/build-engines.mjs') }}
+          enableCrossOsArchive: true
+
+
       - name: Install Coach dependencies
         run: npm ci
 
@@ -261,6 +281,16 @@ jobs:
       - name: Prepare all exact historical OpenFront engines
         timeout-minutes: 55
         run: npm run prepare:engines
+
+      - name: Restore verified replay engine bundles
+        uses: actions/cache@v4
+        with:
+          path: |
+            src/renderer/engine
+            .openfront-engine-build.json
+          key: openfront-engine-bundles-${{ hashFiles('.gitmodules', 'engine-build/**', 'vendor/**/package-lock.json', 'scripts/build-engines.mjs') }}
+          enableCrossOsArchive: true
+
 
       - name: Install Coach and Capacitor dependencies
         run: npm ci

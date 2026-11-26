@@ -15,12 +15,16 @@ function visitFiles(directory, relative = "") {
 }
 
 /** Fingerprint only immutable build inputs. Exact source content is represented by its pinned Git commit. */
-export function computeEngineBundleFingerprint(catalogPath, engineBuildDirectory, engines) {
+export function computeEngineBundleFingerprint(catalogPath, engineBuildDirectory, engines, buildScripts = []) {
   const hash = createHash("sha256");
   hash.update(readFileSync(catalogPath));
   for (const file of visitFiles(engineBuildDirectory)) {
     hash.update(file);
     hash.update(readFileSync(path.join(engineBuildDirectory, file)));
+  }
+  for (const scriptPath of buildScripts) {
+    hash.update(path.relative(path.dirname(catalogPath), scriptPath).split(path.sep).join("/"));
+    hash.update(readFileSync(scriptPath));
   }
   for (const engine of engines) {
     hash.update(engine.commit);

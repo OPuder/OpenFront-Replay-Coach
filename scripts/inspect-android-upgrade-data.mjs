@@ -50,8 +50,32 @@ function send(method, params = {}, timeoutMs = 30_000) {
 
 try {
   await send("Runtime.enable");
+
+  // The Android app's main entry asynchronously imports the test-only bridge.
+  // A cold-started Activity can be resumed before that import installs the
+  // window hook; poll readiness instead of mistaking this startup race for a
+  // production APK or missing persisted data.
+  const bridgeReadyDeadline = Date.now() + 30_000;
+  let bridgeReady = false;
+  for (let attempt = 1; attempt <= 30; attempt++) {
+    const remaining = bridgeReadyDeadline - Date.now();
+    if (remaining <= 0) break;
+    const readiness = await send("Runtime.evaluate", {
+      expression: "typeof window.__OFRC_ANDROID_UPGRADE_TEST__?.snapshot === 'function'",
+      returnByValue: true,
+      userGesture: true,
+    }, Math.min(5_000, remaining));
+    if (readiness.exceptionDetails) throw new Error(readiness.exceptionDetails.text ?? "Storage inspector readiness check threw an exception.");
+    if (readiness.result?.value === true) {
+      bridgeReady = true;
+      break;
+    }
+    if (attempt < 30) await new Promise(resolve => setTimeout(resolve, 1_000));
+  }
+  if (!bridgeReady) throw new Error("Android upgrade-test storage bridge did not initialize within 30 seconds after cold start.");
+
   const evaluated = await send("Runtime.evaluate", {
-    expression: "window.__OFRC_ANDROID_UPGRADE_TEST__ ? window.__OFRC_ANDROID_UPGRADE_TEST__.snapshot() : null",
+    expression: "window.__OFRC_ANDROID_UPGRADE_TEST__.snapshot()",
     awaitPromise: true,
     returnByValue: true,
     userGesture: true,

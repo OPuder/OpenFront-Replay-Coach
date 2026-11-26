@@ -165,12 +165,14 @@ export async function installAndroidUpgradeTestBridge(): Promise<void> {
       const replayMetadata = replays.map(record => record.metadata ?? {});
       const analysisMetadata = analyses.map(record => record.metadata ?? {});
       const playerId = localStorageEntries.find(entry => entry.key === "ofrc:last-player-id")?.value;
-      const matchIds = new Set(matchMetadata
-        .filter(item => item.playerId === playerId)
-        .map(item => String(item.gameId ?? "")));
+      const matchIds = new Set(matchMetadata.map(item => String(item.gameId ?? "")));
+      // IndexedDB v4 deliberately keeps simulation payloads out of the
+      // lightweight matches index. Validate the dedicated analysis-results
+      // store and require the selected profile + persisted match relationship.
       const verifiedAnalyses = analysisMetadata.filter(item => item.playerId === playerId
         && matchIds.has(String(item.gameId ?? "")) && item.analysisStatus === "verified"
-        && item.simulationStatus === "verified" && Number(item.sampleCount) > 0 && Number(item.actionReviewCount) > 0);
+        && item.simulationStatus === "verified" && Number(item.sampleCount) > 0
+        && Number(item.actionReviewCount) > 0);
       const trainingGoalEntry = localStorageEntries.find(entry => entry.key === "openfront-coach-training-goal")?.value;
       const trainingGoal = trainingGoalEntry ? JSON.parse(trainingGoalEntry) : null;
 
@@ -182,7 +184,7 @@ export async function installAndroidUpgradeTestBridge(): Promise<void> {
       if (profiles.length < 1 || matches.length < 2 || replays.length < 2) {
         throw new Error(`Expected a real profile and at least two persisted replay records; found profiles=${profiles.length}, matches=${matches.length}, replayRecords=${replays.length}.`);
       }
-      if (!verifiedAnalyses.length) throw new Error("No verified replay analysis result survived in the analysis-results store.");
+      if (!verifiedAnalyses.length) throw new Error("No verified replay analysis result survived in the analysis-results store for the selected profile and persisted matches.");
 
       // Rehydrate the two exact UI-seeded replays rather than whichever records
       // happen to appear first in IndexedDB's key order.

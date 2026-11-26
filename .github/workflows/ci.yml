@@ -21,8 +21,7 @@ permissions:
 
 concurrency:
   group: replay-coach-ci-${{ github.event.pull_request.number || github.ref }}
-  # Keep the active main validation alive; newer pushes replace only the pending run.
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 jobs:
   detect-replay-changes:

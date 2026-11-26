@@ -585,6 +585,24 @@ export async function simulateReplay(
           } : null;
           const sampleByFrame = new Map(samples.map(sample => [sample.frame, sample]));
           const replayPlayerMetadata = readerRef.current?.header.players ?? [];
+          // Build identity indexes once; action review can process hundreds of intents.
+          const playerMetaById = new Map<string, any>();
+          const nameBySmallID = new Map<number, string>();
+          for (const meta of replayPlayerMetadata) {
+            playerMetaById.set(String(meta.id), meta);
+            nameBySmallID.set(Number(meta.smallID), replayPlayerName(meta, `Spieler ${meta.smallID}`));
+          }
+          const playersByFrame = new Map<number, Map<number, ReplayStateSample["players"][number]>>();
+          const getPlayerAtFrame = (frame: number, playerId: number) => {
+            const sample = sampleByFrame.get(frame);
+            if (!sample) return undefined;
+            let index = playersByFrame.get(frame);
+            if (!index) {
+              index = new Map(sample.players.map(player => [player.id, player]));
+              playersByFrame.set(frame, index);
+            }
+            return index.get(playerId);
+          };
           const metrics = (player: ReplayStateSample["players"][number]) => ({
             tiles: player.tiles,
             gold: player.gold,
@@ -598,7 +616,6 @@ export async function simulateReplay(
             if (!player) return null;
             const activeTargets = new Set(player.outgoingAttackDetails.map(attack => attack.targetID));
             const incomingAttackerIDs = new Set(player.incomingAttackDetails.map(attack => attack.attackerID));
-            const nameBySmallID = new Map<number, string>(replayPlayerMetadata.map((meta: any): [number, string] => [Number(meta.smallID), replayPlayerName(meta, `Spieler ${meta.smallID}`)]));
             return {
               activeTargetCount: activeTargets.size,
               outgoingTargetIds: [...activeTargets],
@@ -640,7 +657,7 @@ export async function simulateReplay(
           const summarizeActiveAttack = (baseFrame: number, offset: number, targetSmallID: number | null): ReplayActiveAttackSummary | null => {
             if (targetSmallID === null || baseFrame + offset >= totalTicks) return null;
             const sample = sampleByFrame.get(baseFrame + offset);
-            const actor = sample?.players.find(p => p.id === target.smallID);
+            const actor = getPlayerAtFrame(baseFrame + offset, target.smallID);
             if (!actor) return null;
             const attacks = actor.outgoingAttackDetails.filter(attack => attack.targetID === targetSmallID);
             return {
@@ -658,32 +675,28 @@ export async function simulateReplay(
               .map((intent: any) => {
                 const beforeSample = sampleByFrame.get(Math.max(0, frame - 1));
                 const afterSample = sampleByFrame.get(Math.min(totalTicks - 1, frame + 1));
-                const beforePlayer = beforeSample?.players.find(p => p.id === target.smallID);
-                const afterPlayer = afterSample?.players.find(p => p.id === target.smallID);
+                const beforePlayer = getPlayerAtFrame(Math.max(0, frame - 1), target.smallID);
+                const afterPlayer = getPlayerAtFrame(Math.min(totalTicks - 1, frame + 1), target.smallID);
                 const before = beforePlayer ? metrics(beforePlayer) : null;
                 const after = afterPlayer ? metrics(afterPlayer) : null;
                 const targetId = intent?.type === "attack" && intent?.targetID != null ? String(intent.targetID) : null;
-                const targetMeta: any = targetId === null ? null : replayPlayerMetadata.find((player: any) => String(player.id) === targetId);
+                const targetMeta: any = targetId === null ? null : playerMetaById.get(targetId);
                 const targetSmallID = targetMeta?.smallID == null ? null : Number(targetMeta.smallID);
                 const targetName = targetMeta ? replayPlayerName(targetMeta, "") || null : null;
-                const targetBeforePlayer = targetSmallID === null ? null : beforeSample?.players.find(p => p.id === targetSmallID) ?? null;
+                const targetBeforePlayer = targetSmallID === null ? null : getPlayerAtFrame(Math.max(0, frame - 1), targetSmallID) ?? null;
                 const targetDeltaToFrame = (offset: number) => {
                   if (!targetBeforePlayer || frame + offset >= totalTicks) return null;
-                  const sample = sampleByFrame.get(frame + offset);
-                  const targetAtFrame = sample?.players.find(p => p.id === targetSmallID);
+                  const targetAtFrame = getPlayerAtFrame(frame + offset, targetSmallID);
                   if (!targetAtFrame) return null;
                   return difference(metrics(targetAtFrame), metrics(targetBeforePlayer));
                 };
                 const targetAliveAt = (offset: number): boolean | null => {
                   if (targetSmallID === null || frame + offset >= totalTicks) return null;
-                  const sample = sampleByFrame.get(frame + offset);
-                  const targetAtFrame = sample?.players.find(p => p.id === targetSmallID);
-                  return targetAtFrame ? targetAtFrame.alive : null;
+                  return getPlayerAtFrame(frame + offset, targetSmallID)?.alive ?? null;
                 };
                 const deltaToFrame = (offset: number) => {
                   if (!beforePlayer || frame + offset >= totalTicks) return null;
-                  const sample = sampleByFrame.get(frame + offset);
-                  const player = sample?.players.find(p => p.id === target.smallID);
+                  const player = getPlayerAtFrame(frame + offset, target.smallID);
                   if (!player) return null;
                   return difference(metrics(player), metrics(beforePlayer));
                 };

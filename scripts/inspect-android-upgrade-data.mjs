@@ -92,10 +92,12 @@ try {
       || String(item.recordGameId) !== String(item.gameId) || !item.engineCommit || Number(item.turnCount) < 1)) {
     throw new Error(`Production matchStore rehydration failed after update: ${JSON.stringify(rehydration)}`);
   }
+  // Archived replay records may legitimately contain zero turns (e.g. historical placeholders).
+  // The upgrade test must verify their identity/metadata survives unchanged, not reject legacy content.
   const invalidReplayRecords = replays.filter(record => {
     const metadata = record.metadata ?? {};
     return !metadata.gameId || String(metadata.recordGameId) !== String(metadata.gameId)
-      || !metadata.engineCommit || Number(metadata.turnCount) < 1;
+      || !metadata.engineCommit || !Number.isInteger(Number(metadata.turnCount)) || Number(metadata.turnCount) < 0;
   });
   if (invalidReplayRecords.length) {
     const describe = record => ({

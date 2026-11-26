@@ -9,7 +9,7 @@ const pid = adb("shell", "pidof", packageId).split(/\s+/)[0];
 if (!/^\d+$/.test(pid ?? "")) throw new Error("The upgraded Android app is not running; cannot inspect its WebView.");
 adb("forward", "tcp:9222", `localabstract:webview_devtools_remote_${pid}`);
 
-const targets = await fetch("http://127.0.0.1:9222/json/list", { signal: AbortSignal.timeout(15_000 }).then(response => {
+const targets = await fetch("http://127.0.0.1:9222/json/list", { signal: AbortSignal.timeout(15_000) }).then(response => {
   if (!response.ok) throw new Error(`WebView DevTools endpoint returned HTTP ${response.status}.`);
   return response.json();
 });

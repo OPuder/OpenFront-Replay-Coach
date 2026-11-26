@@ -643,6 +643,13 @@ const androidUpgradeBridge = read("src/renderer/androidUpgradeTestBridge.ts");
 assert.match(androidUpgradeBridge, /import \{ loadImportedMatch \} from "\.\/matchStore"/);
 assert.match(androidUpgradeBridge, /name === "analysis-results"/,
   "The Android persistence inspector must inspect the v4 analysis payload store.");
+assert.match(androidUpgradeBridge, /const analyses = summaries\.get\("analysis-results"\)/,
+  "The Android upgrade bridge must read verified analyses from the v4 analysis-results store.");
+assert.match(androidUpgradeBridge, /const analysisMetadata = analyses\.map\(record => record\.metadata \?\? \{\}\)/);
+assert.match(androidUpgradeBridge, /const verifiedAnalyses = analysisMetadata\.filter\(item => item\.playerId === playerId[\s\S]*?matchIds\.has/,
+  "The bridge must validate verified analyses against the selected player's match IDs, not the lightweight match index.");
+assert.doesNotMatch(androidUpgradeBridge, /const verifiedAnalyses = matchMetadata\.filter/,
+  "The bridge must not look for v4 simulation payloads in the lightweight matches index.");
 assert.match(androidUpgradeBridge, /simulationStatus:[\s\S]*?sampleCount:[\s\S]*?actionReviewCount:/,
   "The test bridge must expose analysis payload status and evidence counts without serializing payloads.");
 assert.match(androidStorageInspector, /const analyses = stores\["analysis-results"\]/,

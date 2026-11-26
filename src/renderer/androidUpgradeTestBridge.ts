@@ -192,6 +192,23 @@ export async function installAndroidUpgradeTestBridge(): Promise<void> {
       const reusableMatches = await Promise.all(requiredGameIds.map(async gameId => {
         const loaded = playerId ? await loadImportedMatch(playerId, gameId) : null;
         const record = loaded?.result?.record as Record<string, any> | undefined;
+        const directReplay = playerId ? await new Promise<Record<string, any> | null>((resolve, reject) => {
+          const tx = db.transaction("replay-records", "readonly");
+          const request = tx.objectStore("replay-records").get([playerId, gameId]);
+          request.onsuccess = () => resolve((request.result as Record<string, any> | undefined) ?? null);
+          request.onerror = () => reject(request.error ?? new Error("Direct replay-record lookup failed."));
+          tx.onabort = () => reject(tx.error ?? new Error("Direct replay-record lookup aborted."));
+        }) : null;
+        const directRecord = directReplay?.record as Record<string, any> | undefined;
+        const replayStoreCandidates = replayMetadata
+          .filter(item => String(item.gameId ?? "") === gameId)
+          .map(item => ({
+            playerId: item.playerId ?? null,
+            gameId: item.gameId ?? null,
+            recordGameId: item.recordGameId ?? null,
+            engineCommit: item.engineCommit ?? null,
+            turnCount: item.turnCount ?? 0,
+          }));
         return {
           playerId: playerId ?? "",
           gameId,
@@ -201,6 +218,12 @@ export async function installAndroidUpgradeTestBridge(): Promise<void> {
           engineCommit: record?.gitCommit ?? null,
           turnCount: Array.isArray(record?.turns) ? record.turns.length : 0,
           analysisStatus: loaded?.analysisStatus ?? null,
+          directReplayFound: Boolean(directReplay),
+          directReplayRecordPresent: Boolean(directRecord),
+          directReplayRecordGameId: directRecord?.info?.gameID ?? directRecord?.game?.info?.gameID ?? null,
+          directReplayEngineCommit: directRecord?.gitCommit ?? null,
+          directReplayTurnCount: Array.isArray(directRecord?.turns) ? directRecord.turns.length : 0,
+          replayStoreCandidates,
         };
       }));
 

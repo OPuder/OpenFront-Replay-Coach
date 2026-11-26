@@ -45,9 +45,9 @@ const ciWorkflow = read(".github/workflows/ci.yml");
 const packageJson = JSON.parse(read("package.json"));
 assert.equal(packageJson.scripts["test:opencode-config"], "node --test scripts/opencode-config.test.mjs",
   "The OpenCode specialist configuration test script must remain available.");
-assert.match(ciWorkflow, /Validate OpenCode specialist configuration[\sS]*?run: npm run test:opencode-config/,
+assert.match(ciWorkflow, /Validate OpenCode specialist configuration[\s\S]*?run: npm run test:opencode-config/,
   "CI must keep running the OpenCode specialist configuration contract.");
-assert.match(ciWorkflow, /Run responsive replay visualization UI tests[\sS]*?run: xvfb-run -a npm run test:ux-ui/,
+assert.match(ciWorkflow, /Run responsive replay visualization UI tests[\s\S]*?run: xvfb-run -a npm run test:ux-ui/,
   "The new responsive UI regression suite must also remain in CI.");
 assert.match(releaseWorkflow, /push:\s*branches: \[main\]/);
 assert.match(releaseWorkflow, /paths-ignore:[\s\S]*scripts\/prepare-engines\.mjs[\s\S]*scripts\/install-android-updater-plugin\.mjs[\s\S]*scripts\/updater-contract\.test\.mjs/,
@@ -74,6 +74,8 @@ assert.match(releaseWorkflow, /No repository files are modified or pushed/,
 
 assert.match(branchCleanupWorkflow, /types: \[closed\]/);
 assert.match(branchCleanupWorkflow, /pr\.merged/);
+assert.match(branchCleanupWorkflow, /error\.status === 404 \|\| \(error\.status === 422 && error\.message\?\.includes\("Reference does not exist"\)\)/,
+  "Branch cleanup must tolerate only the explicit missing-ref 404/422 responses, not other API failures.");
 assert.match(branchCleanupWorkflow, /if \(pr\.merged && allowlisted\.has\(pr\.head\.ref\)\)/,
   "Branch deletion must require a merged PR; closing PR #165 unmerged must not delete its source branch.");
 assert.match(branchCleanupWorkflow, /pr\.number === 166/);
@@ -183,8 +185,6 @@ assert.match(androidReleaseUpgrade, /rm -f "\$test_keystore" "\$test_signed_apk"
 assert.doesNotMatch(androidReleaseUpgrade, /echo "\$test_password"|cat "\$test_keystore"|upload-artifact.*test_keystore/);
 const androidBaselineUiSeed = read("scripts/seed-android-baseline-ui.sh");
 assert.match(androidBaselineUiSeed, /uiautomator dump --compressed/);
-assert.match(androidBaselineUiSeed, /dump_ui\(\)\s*\{\s*local dump_output="" pull_output="" attempt/,
-  "UI dump retries must keep their attempt counter local so outer UI scans can advance.");
 assert.match(androidBaselineUiSeed, /UI hierarchy dump attempt/);
 assert.match(androidBaselineUiSeed, /dumpsys window/);
 assert.match(androidBaselineUiSeed, /ocr_find_bounds/);
@@ -192,14 +192,27 @@ assert.ok(androidBaselineUiSeed.includes('tesseract "$screen_path" stdout -l deu
 assert.match(androidBaselineUiSeed, /OpenFront-Profillink/);
 assert.match(androidBaselineUiSeed, /OCR text:/);
 assert.match(androidBaselineUiSeed, /search_query=.*tr '\[:upper:\]' '\[:lower:\]'/);
-assert.match(androidBaselineUiSeed, /Neither IME text injection nor Android key-event fallback populated the library search/,
-  "Android search must fail closed after both text and key-event input paths fail.");
-assert.match(androidBaselineUiSeed, /local keycodes=\(\) char code/,
-  "The fallback must collect validated Android keycodes.");
-assert.ok(androidBaselineUiSeed.includes('for code in "${keycodes[@]}"; do'),
-  "The fallback must inject mapped keycodes sequentially.");
-assert.ok(androidBaselineUiSeed.includes('shell input keyevent "$code"'),
-  "Each fallback character must be sent as a single Android key event.");
+assert.match(androidBaselineUiSeed, /wait_for_search_ime\(\)\s*\{\s*local ime_state="" attempt/,
+  "IME polling must keep its counter local.");
+assert.match(androidBaselineUiSeed, /send_search_query_by_keyevents\(\)\s*\{\s*local query="\$1" char ascii keycode index/,
+  "Key-event fallback must keep its character index local.");
+assert.match(androidBaselineUiSeed, /dump_ui\(\)\s*\{\s*local dump_output="" pull_output="" attempt/,
+  "UI dump retries must keep their counter local so outer viewport scans can advance.");
+assert.match(androidBaselineUiSeed, /wait_for_search_ime\(\)/,
+  "Android search typing must wait for the IME/focus transition before injecting text.");
+assert.match(androidBaselineUiSeed, /send_search_query_by_keyevents/,
+  "Search IDs must have a key-event fallback when adb shell input text is dropped.");
+assert.match(androidBaselineUiSeed, /for keycode in "\$\{keycodes\[@\]\}"; do/,
+  "Key-event fallback must send the keycodes sequentially rather than pass an unsupported multi-key command.");
+assert.match(androidBaselineUiSeed, /shell input keyevent "\$keycode"/,
+  "The key-event fallback must inject each mapped Android keycode individually.");
+assert.match(androidBaselineUiSeed, /keycode=\$\(\(ascii - 68\)\)/,
+  "The fallback must map lowercase letters to Android KEYCODE_A-Z.");
+assert.match(androidBaselineUiSeed, /keycode=\$\(\(ascii - 41\)\)/,
+  "The fallback must map digits to Android keycodes.");
+assert.match(androidBaselineUiSeed, /Android text input and key-event fallback both failed/,
+  "The test must fail closed when neither input method produces a verified query.");
+
 assert.match(androidBaselineUiSeed, /navigate_to_library/);
 assert.match(androidBaselineUiSeed, /Using verified bottom-navigation fallback/);
 assert.match(androidBaselineUiSeed, /wait_for_library_page\(\)\s*\{/,
@@ -209,6 +222,12 @@ assert.match(androidBaselineUiSeed, /wait_for_library_page 12/);
 assert.match(androidBaselineUiSeed, /screenshot OCR/);
 
 assert.match(androidBaselineUiSeed, /grep -Fi "\$game_id" "\$ui_xml"/);
+assert.doesNotMatch(androidBaselineUiSeed, /create_verified_training_goal/,
+  "The published v2.2.51 baseline must not be forced to expose a training CTA when its verified replay has no actionable finding.");
+assert.match(androidStorageInspector, /if \(trainingGoal && !matchIds\.has/,
+  "A baseline training goal is optional, but any existing goal must reference a persisted match.");
+assert.match(androidStorageInspector, /trainingGoalPresent: Boolean\(trainingGoal\)/,
+  "Storage validation must report whether a goal was preserved without requiring one to exist.");
 assert.match(androidReleaseUpgrade, /snapshot-android-web-storage\.sh after/);
 assert.match(androidReleaseUpgrade, /after-negative-test-storage\.json/);
 assert.match(androidReleaseUpgrade, /compare-android-upgrade-snapshots\.mjs/);
@@ -305,17 +324,29 @@ for (const workflow of engineCacheWorkflows) {
     "Engine Git objects must be shared across jobs.");
 }
 
+const engineDiscoveryWorkflow = read(".github/workflows/discover-openfront-engine.yml");
+assert.match(engineDiscoveryWorkflow, /git diff --cached --check -- \. ':!src\/renderer\/engine\/replay-engine-\*\.js'/,
+  "Engine discovery must check repository-owned staged changes without failing on upstream-generated bundle whitespace.");
+assert.doesNotMatch(engineDiscoveryWorkflow, /git diff --cached --check\s*$/m,
+  "Engine discovery must not run the unrestricted whitespace check over generated upstream bundles.");
 const enginePreparation = read("scripts/prepare-engines.mjs");
 assert.match(enginePreparation, /http\.lowSpeedLimit=0/);
 assert.match(enginePreparation, /http\.lowSpeedTime=0/);
 assert.match(enginePreparation, /http\.version=HTTP\/1\.1/);
 assert.match(enginePreparation, /attempt <= 4/);
 assert.match(enginePreparation, /12 \* 60_000/);
+assert.match(enginePreparation, /Wait before submodule retry", 60_000\)/,
+  "The retry wait timeout must exceed the longest bounded retry delay.");
 assert.match(enginePreparation, /Initialize exact OpenFront engine submodules/);
 assert.match(androidValidationWorkflow, /-gpu software/,
   "Android emulator validation must use stable software rendering instead of flaky GPU color buffers.");
-assert.doesNotMatch(androidBaselineUiSeed, /create_verified_training_goal|Als Trainingsziel übernehmen/,
-  "The published baseline storage fixture must not require an optional coaching CTA or training goal.");
+const androidBaselineSeed = read("scripts/seed-android-baseline-ui.sh");
+assert.match(androidBaselineSeed, /seed_verified_match "cRVdxGEG5j"/,
+  "The baseline fixture must seed its first real replay through the published app UI.");
+assert.match(androidBaselineSeed, /seed_verified_match "c4CW3VJWQ9"/,
+  "The baseline fixture must seed its second real replay through the published app UI.");
+assert.doesNotMatch(androidBaselineSeed, /create_verified_training_goal/,
+  "Baseline seeding must not require a training-goal CTA that may not exist in the published app.");
 const androidEmulatorDiagnostics = read("scripts/android-emulator-diagnostics.sh");
 assert.match(androidEmulatorDiagnostics, /adb kill-server/);
 assert.match(androidEmulatorDiagnostics, /adb start-server/);

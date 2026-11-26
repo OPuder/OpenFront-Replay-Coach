@@ -427,6 +427,49 @@ log "The published profile reports $replay_count imported match(es). Verifying t
 # These two public matches were exported from the archived profile used above.
 # Both carry the exact 9f4a28f16fae engine commit bundled in the published baseline.
 # Fixed IDs avoid selecting a newer profile match whose engine is not in v2.2.51.
+wait_for_search_ime() {
+  local ime_state="" attempt
+  for attempt in $(seq 1 8); do
+    ime_state="$(timeout 8s adb -s emulator-5554 shell dumpsys input_method 2>&1 || true)"
+    if grep -Eiq 'mInputShown=true|mInputViewShown=true|isInputViewShown=true|mShowRequested=true' <<< "$ime_state"; then
+      log "Android input method is ready (attempt $attempt/8); allowing the WebView field to settle."
+      sleep 1
+      return 0
+    fi
+    sleep 1
+  done
+  log "IME visibility is not exposed by dumpsys input_method; waiting briefly before verified typing."
+  sleep 2
+}
+
+search_query_visible() {
+  local query="$1"
+  if dump_ui && grep -Fi "text=\"$query\"" "$ui_xml" >/dev/null; then return 0; fi
+  ocr_text 2>/dev/null | grep -Fi "$query" >/dev/null
+}
+
+send_search_query_by_keyevents() {
+  local query="$1" char ascii keycode index
+  local -a keycodes=()
+  [[ "$query" =~ ^[a-z0-9]+$ ]] || fail "Refusing key-event fallback for non-alphanumeric search query."
+  for ((index=0; index<${#query}; index++)); do
+    char="${query:index:1}"
+    printf -v ascii '%d' "'$char"
+    if [[ "$char" =~ [a-z] ]]; then
+      keycode=$((ascii - 68)) # Android KEYCODE_A (29) through KEYCODE_Z (54)
+    elif [[ "$char" =~ [0-9] ]]; then
+      keycode=$((ascii - 41)) # Android KEYCODE_1 (8) through KEYCODE_9 (16), KEYCODE_0 (7)
+    else
+      fail "Unsupported character in archived replay ID."
+    fi
+    keycodes+=("$keycode")
+  done
+  log "Typing the verified alphanumeric search query with Android key events as an IME fallback."
+  for keycode in "${keycodes[@]}"; do
+    timeout 5s adb -s emulator-5554 shell input keyevent "$keycode" || fail "Android key-event fallback failed for the library search query."
+  done
+}
+
 seed_verified_match() {
   local game_id="$1" expected_commit="$2" clear_search="$3"
   log "Filtering the actual published library to archived match $game_id (expected engine $expected_commit)."
@@ -442,64 +485,40 @@ seed_verified_match() {
   if [[ "$clear_search" == "true" ]]; then
     timeout 10s adb -s emulator-5554 shell input keycombination 113 29 >/dev/null 2>&1 || fail "Could not select the previous library search query."
   fi
-  # Android shell input can silently drop mixed-case IME characters in the
-  # published non-debuggable WebView. Search is case-insensitive in the app,
-  # so send lowercase and verify it reached the focused EditText before submit.
-  local search_query
+  # Wait for Android's IME to become ready after tapping the WebView input.
+  # Shell input can be sent before the keyboard/focus transition completes.
+  local search_query typed=false
   search_query="$(printf '%s' "$game_id" | tr '[:upper:]' '[:lower:]')"
-  # Give the Android IME time to attach to the WebView input. Some emulator
-  # images accept the tap and display the keyboard but silently drop input text.
-  sleep 2
-  timeout 10s adb -s emulator-5554 shell input text "$search_query" || true
-  local typed=false
-  for attempt in $(seq 1 6); do
-    if dump_ui && grep -Fi "text=\"$search_query\"" "$ui_xml" >/dev/null; then
+  wait_for_search_ime
+  log "Entering archived match ID $game_id with the Android text-input command."
+  timeout 10s adb -s emulator-5554 shell input text "$search_query" || log "Android text-input command returned nonzero; will verify and use key-event fallback if needed."
+  sleep 1
+  for attempt in $(seq 1 5); do
+    if search_query_visible "$search_query"; then
       typed=true
-      break
-    fi
-    if ocr_text 2>/dev/null | grep -Fi "$search_query" >/dev/null; then
-      typed=true
+      log "Verified search query $search_query after text-input attempt $attempt/5."
       break
     fi
     sleep 1
   done
-
   if [[ "$typed" != true ]]; then
-    log "IME text injection did not appear in the focused search field; retrying with Android key events."
-    # Reset the focused field before sending the query one key at a time.
-    timeout 10s adb -s emulator-5554 shell input keyevent 113 29 || true # Ctrl+A
-    timeout 10s adb -s emulator-5554 shell input keyevent 67 || true # Delete
-    local keycodes=() char code i
-    for ((i=0; i<${#search_query}; i++)); do
-      char="${search_query:i:1}"
-      case "$char" in
-        a) code=29;; b) code=30;; c) code=31;; d) code=32;; e) code=33;;
-        f) code=34;; g) code=35;; h) code=36;; i) code=37;; j) code=38;;
-        k) code=39;; l) code=40;; m) code=41;; n) code=42;; o) code=43;;
-        p) code=44;; q) code=45;; r) code=46;; s) code=47;; t) code=48;;
-        u) code=49;; v) code=50;; w) code=51;; x) code=52;; y) code=53;; z) code=54;;
-        0) code=7;; 1) code=8;; 2) code=9;; 3) code=10;; 4) code=11;;
-        5) code=12;; 6) code=13;; 7) code=14;; 8) code=15;; 9) code=16;;
-        *) fail "Unsupported character '$char' in archived match ID; cannot use key-event fallback.";;
-      esac
-      keycodes+=("$code")
-    done
-    for code in "${keycodes[@]}"; do
-      timeout 5s adb -s emulator-5554 shell input keyevent "$code" || fail "Android key-event fallback failed for archived match ID $game_id."
-    done
-    for attempt in $(seq 1 8); do
-      if dump_ui && grep -Fi "text=\"$search_query\"" "$ui_xml" >/dev/null; then
+    log "Text input did not appear in the focused search field; re-tapping and retrying with individual Android key events."
+    tap_edit_field 1 "$current_search_query"
+    wait_for_search_ime
+    timeout 10s adb -s emulator-5554 shell input keycombination 113 29 >/dev/null 2>&1 || true
+    timeout 10s adb -s emulator-5554 shell input keyevent 67 >/dev/null 2>&1 || true
+    send_search_query_by_keyevents "$search_query"
+    sleep 1
+    for attempt in $(seq 1 6); do
+      if search_query_visible "$search_query"; then
         typed=true
-        break
-      fi
-      if ocr_text 2>/dev/null | grep -Fi "$search_query" >/dev/null; then
-        typed=true
+        log "Verified search query $search_query after key-event fallback (attempt $attempt/6)."
         break
       fi
       sleep 1
     done
   fi
-  [[ "$typed" == true ]] || fail "Neither IME text injection nor Android key-event fallback populated the library search for $game_id; refusing to treat an empty search as a match."
+  [[ "$typed" == true ]] || fail "Android text input and key-event fallback both failed to populate the library search field for $game_id; refusing to treat an empty search as a match."
   current_search_query="$search_query"
   # Commit the verified query with ENTER before hiding the keyboard.
   timeout 10s adb -s emulator-5554 shell input keyevent 66 || fail "Could not commit archived match ID $game_id in the library search."
@@ -582,10 +601,9 @@ seed_verified_match() {
   fail "Archived match $game_id did not complete a hash-verified Original-Engine simulation within 10 minutes. Last UI: $(cat "$ui_xml" 2>/dev/null | head -c 5000)"
 }
 
-# The baseline fixture requires two genuine, engine-verified replay records.
-# Training goals are intentionally optional: older published Coach versions may
-# not expose actionable evidence, and goal creation is not part of the storage
-# migration contract. The inspector validates any existing goal's relationship.
+# The baseline must contain two genuine, engine-verified matches and a real
+# UI-created training goal. A card's generic 'ready' label is not enough:
+# validate the exact replay after opening it before accepting it as a fixture.
 seed_verified_match "cRVdxGEG5j" "9f4a28f16fae951df0daf727e5e64b34ce8b77d1" false
 
 navigate_to_library

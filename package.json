@@ -18,7 +18,8 @@
     "validate:engine-pin": "node scripts/validate-engine-pin.mjs",
     "prepare:engines": "node scripts/prepare-engines.mjs",
     "test:integration-e2e": "node --import ./vendor/OpenFrontIO/node_modules/tsx/dist/loader.mjs --test scripts/integration-e2e-contract.test.mjs",
-    "test:opencode-config": "node --test scripts/opencode-config.test.mjs"
+    "test:opencode-config": "node --test scripts/opencode-config.test.mjs",
+    "test:ux-ui": "node --check scripts/replay-visualization-ui-test.mjs && electron --no-sandbox scripts/replay-visualization-ui-test.mjs"
   },
   "dependencies": {
     "@capacitor/android": "8.6.0",

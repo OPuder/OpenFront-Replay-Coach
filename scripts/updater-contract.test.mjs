@@ -639,6 +639,14 @@ assert.match(updateValidationWorkflow, /android_capture_diagnostics "post-emulat
 assert.match(androidEmulatorDiagnostics, /am start -W -n/);
 const androidUpgradeBridge = read("src/renderer/androidUpgradeTestBridge.ts");
 assert.match(androidUpgradeBridge, /import \{ loadImportedMatch \} from "\.\/matchStore"/);
+assert.match(androidUpgradeBridge, /name === "analysis-results"/,
+  "The Android persistence inspector must inspect the v4 analysis payload store.");
+assert.match(androidUpgradeBridge, /simulationStatus:[\s\S]*?sampleCount:[\s\S]*?actionReviewCount:/,
+  "The test bridge must expose analysis payload status and evidence counts without serializing payloads.");
+assert.match(androidStorageInspector, /const analyses = stores\["analysis-results"\]/,
+  "The post-upgrade inspector must validate persisted analysis records from their dedicated IndexedDB store.");
+assert.match(androidStorageInspector, /analysisMetadata\.filter[\s\S]*?item\.playerId === playerId[\s\S]*?matchIds\.has/,
+  "Verified analysis results must be linked to the UI-seeded player and existing match IDs.");
 assert.match(androidUpgradeBridge, /loadImportedMatch\(playerId, gameId\)/);
 assert.match(androidUpgradeBridge, /const requiredGameIds = \["cRVdxGEG5j", "c4CW3VJWQ9"\]/);
 assert.doesNotMatch(androidUpgradeBridge, /slice\(0, 2\)/,

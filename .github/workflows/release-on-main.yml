@@ -176,6 +176,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           ref: ${{ needs.prepare-release.outputs.release_sha }}
+          submodules: false
 
       - name: Restore exact historical engine Git objects
         uses: actions/cache@v4
@@ -189,13 +190,22 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: "24.15.0"
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            vendor/**/package-lock.json
 
       - name: Set up pinned npm
         run: npm install --global npm@12.1.0
 
-      - name: Prepare all exact historical OpenFront engines
-        timeout-minutes: 55
-        run: npm run prepare:engines
+      # Platform packaging only needs the production engine. Historical engine
+      # coverage stays in the dedicated replay validation and core CI jobs.
+      - name: Initialize only the production replay engine
+        run: git submodule update --init --depth 1 -- vendor/OpenFrontIO
+
+      - name: Install production replay engine dependencies
+        timeout-minutes: 12
+        run: npm ci --prefix vendor/OpenFrontIO --ignore-scripts --no-audit --no-fund --fetch-retries=2 --fetch-timeout=120000
 
       - name: Install Coach dependencies
         run: npm ci
@@ -233,6 +243,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           ref: ${{ needs.prepare-release.outputs.release_sha }}
+          submodules: false
 
       - name: Restore exact historical engine Git objects
         uses: actions/cache@v4
@@ -247,13 +258,21 @@ jobs:
         with:
           node-version: "24.15.0"
           cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            vendor/**/package-lock.json
 
       - name: Set up pinned npm
         run: npm install --global npm@12.1.0
 
-      - name: Prepare all exact historical OpenFront engines
-        timeout-minutes: 55
-        run: npm run prepare:engines
+      # Android packages the same production engine as desktop; historical
+      # revisions are validated once in the replay-validation job.
+      - name: Initialize only the production replay engine
+        run: git submodule update --init --depth 1 -- vendor/OpenFrontIO
+
+      - name: Install production replay engine dependencies
+        timeout-minutes: 12
+        run: npm ci --prefix vendor/OpenFrontIO --ignore-scripts --no-audit --no-fund --fetch-retries=2 --fetch-timeout=120000
 
       - name: Install Coach and Capacitor dependencies
         run: npm ci

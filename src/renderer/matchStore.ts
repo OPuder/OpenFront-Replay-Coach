@@ -66,10 +66,16 @@ function openStore(): Promise<IDBDatabase> {
           const stored = cursor.value as StoredMatch;
           let changed = false;
 
-          const record = stored.result?.record;
-          if (record && stored.result) {
-            replays.put({ playerId: stored.playerId, gameId: stored.game.gameId, record });
-            const { record: _record, ...summary } = stored.result;
+          const replayPayload = stored.result;
+          if (replayPayload && (replayPayload.record || replayPayload.decodedActions || replayPayload.actionAnalysis)) {
+            replays.put({
+              playerId: stored.playerId,
+              gameId: stored.game.gameId,
+              record: replayPayload.record,
+              decodedActions: replayPayload.decodedActions,
+              actionAnalysis: replayPayload.actionAnalysis,
+            });
+            const { record: _record, decodedActions: _decodedActions, actionAnalysis: _actionAnalysis, ...summary } = replayPayload;
             stored.result = summary as StoredMatch["result"];
             changed = true;
           }
@@ -131,15 +137,20 @@ export async function saveImportedMatch(playerId: string, item: StoredMatchEntry
   await new Promise<void>((resolve, reject) => {
     const tx = db.transaction([MATCH_STORE, REPLAY_STORE, ANALYSIS_STORE], "readwrite");
     const result = item.result;
-    const record = result?.record;
+    const replayPayload = result && (result.record || result.decodedActions || result.actionAnalysis)
+      ? { record: result.record, decodedActions: result.decodedActions, actionAnalysis: result.actionAnalysis }
+      : undefined;
     const summary = result ? (() => {
-      const { record: _record, ...value } = result;
+      const { record: _record, decodedActions: _decodedActions, actionAnalysis: _actionAnalysis, ...value } = result;
       return value;
     })() : undefined;
     const updatedAt = Date.now();
     const stored: StoredMatch = { ...item, simulation: undefined, result: summary as StoredMatch["result"], playerId, updatedAt };
     tx.objectStore(MATCH_STORE).put(stored);
-    if (record) tx.objectStore(REPLAY_STORE).put({ playerId, gameId: item.game.gameId, record });
+    if (result) {
+      if (replayPayload) tx.objectStore(REPLAY_STORE).put({ playerId, gameId: item.game.gameId, ...replayPayload });
+      else tx.objectStore(REPLAY_STORE).delete([playerId, item.game.gameId]);
+    }
     if (item.simulation) {
       tx.objectStore(ANALYSIS_STORE).put({
         playerId, gameId: item.game.gameId, simulation: item.simulation,
@@ -193,16 +204,16 @@ export async function loadImportedMatches(playerId: string): Promise<StoredMatch
 /** Hydrate only the one large replay payload currently being analyzed or opened. */
 export async function loadImportedMatch(playerId: string, gameId: string): Promise<StoredMatchEntry | null> {
   const db = await openStore();
-  const value = await new Promise<{ match: StoredMatch | undefined; record: unknown; analysis: any }>((resolve, reject) => {
+  const value = await new Promise<{ match: StoredMatch | undefined; replayPayload: any; analysis: any }>((resolve, reject) => {
     const tx = db.transaction([MATCH_STORE, REPLAY_STORE, ANALYSIS_STORE], "readonly");
     const matchRequest = tx.objectStore(MATCH_STORE).get([playerId, gameId]);
     const replayRequest = tx.objectStore(REPLAY_STORE).get([playerId, gameId]);
     const analysisRequest = tx.objectStore(ANALYSIS_STORE).get([playerId, gameId]);
     let matchReady = false, replayReady = false, analysisReady = false;
-    let match: StoredMatch | undefined, record: unknown, analysis: any;
-    const finish = () => { if (matchReady && replayReady && analysisReady) resolve({ match, record, analysis }); };
+    let match: StoredMatch | undefined, replayPayload: any, analysis: any;
+    const finish = () => { if (matchReady && replayReady && analysisReady) resolve({ match, replayPayload, analysis }); };
     matchRequest.onsuccess = () => { match = matchRequest.result as StoredMatch | undefined; matchReady = true; finish(); };
-    replayRequest.onsuccess = () => { record = replayRequest.result?.record; replayReady = true; finish(); };
+    replayRequest.onsuccess = () => { replayPayload = replayRequest.result; replayReady = true; finish(); };
     analysisRequest.onsuccess = () => { analysis = analysisRequest.result; analysisReady = true; finish(); };
     matchRequest.onerror = replayRequest.onerror = analysisRequest.onerror = () => reject(tx.error ?? new Error("Gespeicherte Partie konnte nicht geladen werden."));
     tx.onabort = () => reject(tx.error ?? new Error("Laden der gespeicherten Partie wurde abgebrochen."));
@@ -210,7 +221,7 @@ export async function loadImportedMatch(playerId: string, gameId: string): Promi
   db.close();
   if (!value.match) return null;
   const result = value.match.result
-    ? { ...value.match.result, ...(value.record ? { record: value.record } : {}) }
+    ? { ...value.match.result, ...(value.replayPayload ?? {}) }
     : undefined;
   const { game, status, error, simulation, analysisStatus, analysisError } = value.match;
   return { game, result, status, error, simulation: value.analysis?.simulation ?? simulation, analysisStatus: value.analysis?.analysisStatus ?? analysisStatus, analysisError: value.analysis?.analysisError ?? analysisError };

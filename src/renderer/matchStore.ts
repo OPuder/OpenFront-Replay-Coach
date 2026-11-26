@@ -200,6 +200,20 @@ export async function loadImportedMatches(playerId: string): Promise<StoredMatch
   }));
 }
 
+/** Fetch only the raw simulation record for batch analysis, avoiding hydration of cached actions and coaching results. */
+export async function loadImportedReplayRecord(playerId: string, gameId: string): Promise<unknown | null> {
+  const db = await openStore();
+  const record = await new Promise<unknown | null>((resolve, reject) => {
+    const tx = db.transaction(REPLAY_STORE, "readonly");
+    const request = tx.objectStore(REPLAY_STORE).get([playerId, gameId]);
+    request.onsuccess = () => resolve(request.result?.record ?? null);
+    request.onerror = () => reject(request.error ?? new Error("Replay-Daten konnten nicht geladen werden."));
+    tx.onabort = () => reject(tx.error ?? new Error("Laden der Replay-Daten wurde abgebrochen."));
+  });
+  db.close();
+  return record;
+}
+
 /** Hydrate only the one large replay payload currently being analyzed or opened. */
 export async function loadImportedMatch(playerId: string, gameId: string): Promise<StoredMatchEntry | null> {
   const db = await openStore();

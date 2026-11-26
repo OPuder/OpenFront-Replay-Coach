@@ -20,7 +20,8 @@ permissions:
   contents: read
 
 concurrency:
-  group: replay-coach-ci-${{ github.event.pull_request.number || github.ref }}
+  # PR updates replace stale runs; each main SHA keeps its own validation record.
+  group: replay-coach-ci-${{ github.event.pull_request.number || github.sha }}
   cancel-in-progress: true
 
 jobs:

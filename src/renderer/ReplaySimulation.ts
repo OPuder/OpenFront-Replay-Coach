@@ -601,7 +601,7 @@ export async function simulateReplay(
           } : null;
           const sampleByFrame = new Map(samples.map(sample => [sample.frame, sample]));
           const replayPlayerMetadata = readerRef.current?.header.players ?? [];
-          // Build identity indexes once; per-action player lookups then stay near constant time.
+          // Build identity indexes once; repeated action lookups reuse the cached frame index.
           const playerMetaById = new Map<string, any>();
           const nameBySmallID = new Map<number, string>();
           for (const meta of replayPlayerMetadata) {

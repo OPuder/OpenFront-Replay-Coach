@@ -109,6 +109,7 @@ window.__prepareLegacyMatchStore = async () => {
 
 window.__verifyLegacyMigration = async () => {
   const profile = await loadPlayerLibrary("migration-player");
+  const libraryEntries = await loadImportedMatches("migration-player");
   const match = await loadImportedMatch("migration-player", "legacy-replay");
   const db = await new Promise<IDBDatabase>((resolve, reject) => {
     const request = indexedDB.open("openfront-replay-coach");
@@ -132,7 +133,9 @@ window.__verifyLegacyMigration = async () => {
     version,
     hasAnalysisStore,
     hasUpdatedAtIndex,
-    legacyMatchHasSimulation,
+    legacyMatchHasSimulation: legacyPayloadFlags.simulation,
+    legacyMatchHasRawReplay: legacyPayloadFlags.rawReplay,
+    libraryHasSimulation: Boolean(libraryEntries.find(entry => entry.game.gameId === "legacy-replay")?.simulation),
     profileName: profile?.profile?.displayName ?? null,
     matchStatus: match?.status ?? null,
     analysisStatus: match?.analysisStatus ?? null,

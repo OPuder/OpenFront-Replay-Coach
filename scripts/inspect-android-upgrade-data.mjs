@@ -9,7 +9,7 @@ const pid = adb("shell", "pidof", packageId).split(/\s+/)[0];
 if (!/^\d+$/.test(pid ?? "")) throw new Error("The upgraded Android app is not running; cannot inspect its WebView.");
 adb("forward", "tcp:9222", `localabstract:webview_devtools_remote_${pid}`);
 
-const targets = await fetch("http://127.0.0.1:9222/json/list").then(response => {
+const targets = await fetch("http://127.0.0.1:9222/json/list", { signal: AbortSignal.timeout(15_000 }).then(response => {
   if (!response.ok) throw new Error(`WebView DevTools endpoint returned HTTP ${response.status}.`);
   return response.json();
 });
@@ -18,25 +18,33 @@ if (!target) throw new Error("No inspectable WebView page was exposed by the tes
 
 const socket = new WebSocket(target.webSocketDebuggerUrl);
 await new Promise((resolve, reject) => {
-  socket.addEventListener("open", resolve, { once: true });
-  socket.addEventListener("error", () => reject(new Error("Could not connect to the test APK WebView DevTools socket.")), { once: true });
+  const timer = setTimeout(() => reject(new Error("Timed out after 15s connecting to the test APK WebView DevTools socket.")), 15_000);
+  socket.addEventListener("open", () => { clearTimeout(timer); resolve(); }, { once: true });
+  socket.addEventListener("error", () => { clearTimeout(timer); reject(new Error("Could not connect to the test APK WebView DevTools socket.")); }, { once: true });
+  socket.addEventListener("close", () => { clearTimeout(timer); reject(new Error("WebView DevTools socket closed before connecting.")); }, { once: true });
 });
 
 let nextId = 1;
-function send(method, params = {}) {
+function send(method, params = {}, timeoutMs = 30_000) {
   const id = nextId++;
   return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => {
+      socket.removeEventListener("message", onMessage);
+      reject(new Error(`CDP command ${method} timed out after ${timeoutMs}ms.`));
+    }, timeoutMs);
     const onMessage = event => {
       let message;
       try { message = JSON.parse(typeof event.data === "string" ? event.data : Buffer.from(event.data).toString("utf8")); }
       catch { return; }
       if (message.id !== id) return;
       socket.removeEventListener("message", onMessage);
+      clearTimeout(timer);
       if (message.error) reject(new Error(message.error.message ?? `CDP command ${method} failed.`));
       else resolve(message.result);
     };
     socket.addEventListener("message", onMessage);
-    socket.send(JSON.stringify({ id, method, params }));
+    try { socket.send(JSON.stringify({ id, method, params })); }
+    catch (error) { clearTimeout(timer); socket.removeEventListener("message", onMessage); reject(error); }
   });
 }
 
@@ -47,7 +55,7 @@ try {
     awaitPromise: true,
     returnByValue: true,
     userGesture: true,
-  });
+  }, 60_000);
   if (evaluated.exceptionDetails) throw new Error(evaluated.exceptionDetails.text ?? "Storage snapshot threw an exception.");
   const snapshot = evaluated.result?.value;
   if (!snapshot || snapshot.schema !== "ofrc-android-upgrade-snapshot-v1") {

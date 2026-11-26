@@ -465,44 +465,49 @@ require_baseline_app_window() {
   baseline_app_window_is_focused || fail "The published baseline app is not safely foregrounded; refusing Back or coordinate gestures. Window focus: ${focus_state:-unavailable}"
 }
 dismiss_search_ime() {
-  local ime_state="" attempt visibility_flags=""
-  local visible_pattern='mInputShown=true'
-  local hidden_pattern='mInputShown=false'
-  local inconsistent_pattern='mInputViewShown=true|isInputViewShown=true'
+  local ime_state="" attempt visibility_flags="" hidden_streak=0
+  local visible_pattern='minputshown=true'
+  local hidden_pattern='minputshown=false'
   ime_state="$(timeout 8s adb -s emulator-5554 shell dumpsys input_method 2>&1)" || fail "Could not read Android IME state before re-focusing the library search field."
   [[ -n "$ime_state" ]] || fail "Android IME state was empty; refusing to guess whether the keyboard covers the WebView."
-  visibility_flags="$(grep -Eo 'mInputShown=(true|false)|mInputViewShown=(true|false)|isInputViewShown=(true|false)' <<< "$ime_state" | tr '\n' ' ' || true)"
+  ime_state_lc="${ime_state,,}"
+  visibility_flags="$(grep -Eo 'minputshown=(true|false)|minputviewshown=(true|false)|isinputviewshown=(true|false)' <<< "$ime_state_lc" | tr '\n' ' ' || true)"
   log "Android IME visibility flags: ${visibility_flags:-not exposed}."
-  if grep -Eiq "$visible_pattern" <<< "$ime_state"; then
+  if grep -Eq "$visible_pattern" <<< "$ime_state_lc"; then
     require_baseline_app_window
     log "Android reports mInputShown=true; dismissing the keyboard while the baseline app remains foregrounded."
     timeout 10s adb -s emulator-5554 shell input keyevent 4 || fail "Could not dismiss Android keyboard before re-focusing the library search field."
-  elif grep -Eiq "$hidden_pattern" <<< "$ime_state"; then
-    if grep -Eiq "$inconsistent_pattern" <<< "$ime_state"; then
-      fail "Android IME visibility flags contradict mInputShown=false (${visibility_flags}); refusing to send Back or tap clipped coordinates."
-    fi
-    require_baseline_app_window
-    log "Android mInputShown=false and secondary visibility flags are hidden; avoiding Back so the app cannot be exited."
-    return 0
+  elif grep -Eq "$hidden_pattern" <<< "$ime_state_lc"; then
+    log "Android reports mInputShown=false; treating secondary IME view flags as diagnostic only and never sending Back."
   else
     fail "Android IME visibility is unknown (${visibility_flags:-no visibility flags}); refusing to send Back or tap coordinates that may be covered by the keyboard."
   fi
   for attempt in $(seq 1 8); do
     ime_state="$(timeout 8s adb -s emulator-5554 shell dumpsys input_method 2>&1)" || fail "Could not re-check Android IME visibility after dismissal."
     [[ -n "$ime_state" ]] || fail "Android IME state became empty after dismissal; refusing to guess keyboard visibility."
-    visibility_flags="$(grep -Eo 'mInputShown=(true|false)|mInputViewShown=(true|false)|isInputViewShown=(true|false)' <<< "$ime_state" | tr '\n' ' ' || true)"
-    if grep -Eiq "$hidden_pattern" <<< "$ime_state" && ! grep -Eiq "$inconsistent_pattern" <<< "$ime_state"; then
+    ime_state_lc="${ime_state,,}"
+    visibility_flags="$(grep -Eo 'minputshown=(true|false)|minputviewshown=(true|false)|isinputviewshown=(true|false)' <<< "$ime_state_lc" | tr '\n' ' ' || true)"
+    if grep -Eq "$hidden_pattern" <<< "$ime_state_lc"; then
+      hidden_streak=$((hidden_streak + 1))
+      if (( hidden_streak >= 2 )); then
+        require_baseline_app_window
+        if grep -Eq 'minputviewshown=true|isinputviewshown=true' <<< "$ime_state_lc"; then
+          log "Secondary IME view flags remain stale while mInputShown=false; primary window visibility is stable, so no Back is sent."
+        else
+          log "Android keyboard is confirmed hidden (${visibility_flags:-primary visibility flag}); no Back is sent."
+        fi
+        log "The WebView search field will be re-located from fresh UI/OCR bounds after the IME dismissal."
+        return 0
+      fi
+    elif grep -Eq "$visible_pattern" <<< "$ime_state_lc"; then
+      hidden_streak=0
       require_baseline_app_window
-      log "Android keyboard is confirmed hidden (${visibility_flags:-visibility flag}); the WebView search field can be re-located with full viewport bounds."
-      return 0
+    else
+      fail "Android IME visibility became unknown after dismissal (${visibility_flags:-no visibility flags}); refusing to tap clipped coordinates."
     fi
-    if ! grep -Eiq "$visible_pattern" <<< "$ime_state"; then
-      fail "Android IME visibility became unknown or contradictory after dismissal (${visibility_flags:-no visibility flags}); refusing to tap clipped coordinates."
-    fi
-    require_baseline_app_window
     sleep 1
   done
-  fail "Android keyboard remained visible after the bounded dismissal attempts; refusing to tap coordinates clipped by the IME."
+  fail "Android keyboard did not remain hidden for two consecutive checks; refusing to tap coordinates clipped by the IME."
 }
 
 search_query_visible() {

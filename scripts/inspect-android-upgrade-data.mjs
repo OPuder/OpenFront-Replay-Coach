@@ -94,12 +94,18 @@ try {
   const trainingGoal = trainingGoalEntry ? JSON.parse(trainingGoalEntry) : null;
   const matches = stores.matches?.records ?? [];
   const replays = stores["replay-records"]?.records ?? [];
+  const analyses = stores["analysis-results"]?.records ?? [];
   const profiles = stores.profiles?.records ?? [];
   const matchMetadata = matches.map(record => record.metadata ?? {});
   const replayMetadata = replays.map(record => record.metadata ?? {});
-  const verifiedAnalyses = matchMetadata.filter(item => item.analysisStatus === "verified"
-    && item.simulationStatus === "verified" && Number(item.sampleCount) > 0 && Number(item.actionReviewCount) > 0);
+  const analysisMetadata = analyses.map(record => record.metadata ?? {});
   const matchIds = new Set(matchMetadata.map(item => String(item.gameId ?? "")));
+  // IndexedDB v4 stores simulation payloads in analysis-results, not in the
+  // lightweight matches index. Validate the real analysis records and their
+  // player/game linkage rather than looking for removed inline payload fields.
+  const verifiedAnalyses = analysisMetadata.filter(item => item.playerId === playerId
+    && matchIds.has(String(item.gameId ?? "")) && item.analysisStatus === "verified"
+    && item.simulationStatus === "verified" && Number(item.sampleCount) > 0 && Number(item.actionReviewCount) > 0);
   if (playerId !== "5SVg4WbI") throw new Error("The actual UI-seeded player profile key is missing or does not match the archived profile.");
   if (!snapshot.indexedDb.relationships.profileIds.includes(playerId)
     || !snapshot.indexedDb.relationships.matchProfileIds.includes(playerId)) {
@@ -108,7 +114,7 @@ try {
   if (profiles.length < 1 || matches.length < 2 || replays.length < 2) {
     throw new Error(`Expected a real profile and at least two persisted full replays; found profiles=${profiles.length}, matches=${matches.length}, replayRecords=${replays.length}.`);
   }
-  if (!verifiedAnalyses.length) throw new Error("No verified replay analysis result survived in the match records.");
+  if (!verifiedAnalyses.length) throw new Error("No verified replay analysis result survived in the analysis-results store.");
   const rehydration = snapshot.rehydration;
   const expectedReplayIds = ["cRVdxGEG5j", "c4CW3VJWQ9"];
   const rehydratedGameIds = new Set((rehydration?.matches ?? []).map(item => String(item.gameId ?? "")));

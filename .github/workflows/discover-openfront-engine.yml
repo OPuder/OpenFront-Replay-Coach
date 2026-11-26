@@ -60,11 +60,6 @@ jobs:
         if: steps.discovery.outputs.changed == 'true'
         run: npm install --global npm@12.1.0
 
-      - name: Prepare every exact replay engine revision
-        if: steps.discovery.outputs.changed == 'true'
-        timeout-minutes: 55
-        run: npm run prepare:engines
-
       - name: Restore verified replay engine bundles
         uses: actions/cache@v4
         with:
@@ -73,6 +68,11 @@ jobs:
             .openfront-engine-build.json
           key: openfront-engine-bundles-${{ hashFiles('.gitmodules', 'engine-build/**', 'vendor/**/package-lock.json', 'scripts/build-engines.mjs') }}
           enableCrossOsArchive: true
+
+      - name: Prepare every exact replay engine revision
+        if: steps.discovery.outputs.changed == 'true'
+        timeout-minutes: 55
+        run: npm run prepare:engines
 
 
       - name: Install Coach dependencies

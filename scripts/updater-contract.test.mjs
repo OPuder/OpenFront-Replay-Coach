@@ -623,5 +623,12 @@ assert.match(androidReleaseUpgrade, /install_apk "\$current_apk" true[\s\S]*?am 
 assert.ok(androidReleaseUpgrade.includes('android_launch_package "$package_id" "the valid signed app after unsigned-APK rejection"'));
 assert.ok(androidReleaseUpgrade.includes('android_launch_package "$package_id" "the original signed app after wrong-signer rejection"'));
 assert.match(androidReleaseUpgrade, /pre-update app process remained alive/);
+const finalStorageComparison = androidReleaseUpgrade.lastIndexOf("node scripts/compare-android-web-storage.mjs");
+const finalColdStart = androidReleaseUpgrade.lastIndexOf("android_launch_package \\\"$package_id\\\" \\\"the original signed app after final persistent-file comparison\\\"");
+const finalRunningCheck = androidReleaseUpgrade.indexOf("if ! adb_cmd shell pidof", finalStorageComparison);
+assert.ok(finalStorageComparison >= 0 && finalColdStart > finalStorageComparison && finalRunningCheck > finalColdStart,
+  "The final app-running assertion must follow a cold-start after the final exact storage snapshot comparison.");
+assert.doesNotMatch(androidReleaseUpgrade.slice(finalColdStart, finalRunningCheck), /am force-stop/,
+  "The release-upgrade test must not force-stop the app after the final cold-start and before asserting it remains running.");
 
-console.log("Android emulator diagnostics contract tests passed: bounded ADB restart/reconnect, separate boot/transport checks, early-failure log/screenshot capture, and classified launch outcomes.");
+console.log("Android emulator diagnostics contract tests passed: bounded ADB restart/reconnect, separate boot/transport checks, early-failure log/screenshot capture, and classified launch outcomes."); bounded ADB restart/reconnect, separate boot/transport checks, early-failure log/screenshot capture, and classified launch outcomes.");

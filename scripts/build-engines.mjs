@@ -67,9 +67,6 @@ if (!force && verifyEngineBundleCache(manifestPath, outputDir, fingerprint, engi
   process.exit(0);
 }
 
-const sourcesReady = sourcesMatchPins();
-const cleanSources = sourcesReady && sourcesAreClean();
-
 rmSync(outputDir, { recursive: true, force: true });
 mkdirSync(outputDir, { recursive: true });
 

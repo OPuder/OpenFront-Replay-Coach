@@ -624,7 +624,7 @@ assert.ok(androidReleaseUpgrade.includes('android_launch_package "$package_id" "
 assert.ok(androidReleaseUpgrade.includes('android_launch_package "$package_id" "the original signed app after wrong-signer rejection"'));
 assert.match(androidReleaseUpgrade, /pre-update app process remained alive/);
 const finalStorageComparison = androidReleaseUpgrade.lastIndexOf("node scripts/compare-android-web-storage.mjs");
-const finalColdStart = androidReleaseUpgrade.lastIndexOf("android_launch_package \\\"$package_id\\\" \\\"the original signed app after final persistent-file comparison\\\"");
+const finalColdStart = androidReleaseUpgrade.lastIndexOf('android_launch_package "$package_id" "the original signed app after final persistent-file comparison"');
 const finalRunningCheck = androidReleaseUpgrade.indexOf("if ! adb_cmd shell pidof", finalStorageComparison);
 assert.ok(finalStorageComparison >= 0 && finalColdStart > finalStorageComparison && finalRunningCheck > finalColdStart,
   "The final app-running assertion must follow a cold-start after the final exact storage snapshot comparison.");

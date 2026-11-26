@@ -339,10 +339,13 @@ function App() {
   async function openBatchMatch(gameId:string) {
     cancelBatchAnalysis();
     const item=batchMatches.find(entry=>entry.game.gameId===gameId);
-    if (!item?.result) return;
+    if (!item) return;
+    // A v3 status-only update can leave the lightweight library row without a
+    // result summary while the raw replay remains in replay-records. Hydrate
+    // before deciding that the replay is missing.
     const hydrated=playerPage?await loadImportedMatch(playerPage.playerId,gameId):null;
     const result=hydrated?.result??item.result;
-    if(!result.record){setError('Die Replay-Daten dieser Partie fehlen im lokalen Speicher. Bitte importiere sie erneut.');return;}
+    if(!result?.record){setError('Die Replay-Daten dieser Partie fehlen im lokalen Speicher. Bitte importiere sie erneut.');return;}
     const simulation=hydrated?.simulation;
     engineReviewAbort.current?.abort(); engineReviewAbort.current=null; engineReviewRunId.current++;
     setSimulationProgress(null); setSimulationResult(simulation??null);

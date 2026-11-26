@@ -135,6 +135,22 @@ const androidSigningConfigurator = read("scripts/configure-android-signing.mjs")
 const androidReleaseUpgrade = read("scripts/test-android-release-upgrade.sh");
 const androidBaselineDownload = read("scripts/download-android-release-baseline.sh");
 const androidStorageInspector = read("scripts/inspect-android-upgrade-data.mjs");
+
+assert.match(androidStorageInspector, /AbortSignal\.timeout\(15_000\)/,
+  "The WebView inspector must bound its DevTools discovery request.");
+assert.match(androidStorageInspector, /function send\(method, params = \{\}, timeoutMs = 30_000\)/,
+  "The WebView inspector must bound every DevTools command.");
+assert.match(androidStorageInspector, /\}, 60_000\);/,
+  "The storage snapshot command must have a bounded longer timeout.");
+const androidReplayMetadataGuard = androidStorageInspector.match(/const malformedReplayRecords[\s\S]*?if \(malformedReplayRecords\.length\)/)?.[0] ?? "";
+assert.match(androidReplayMetadataGuard, /!metadata\.gameId[\s\S]*?recordGameId[\s\S]*?engineCommit[\s\S]*?Number\.isInteger\(turnCount\)/,
+  "Every stored replay record must retain valid identity, engine metadata and a nonnegative integer turn count.");
+assert.doesNotMatch(androidReplayMetadataGuard, /turnCount < 1/,
+  "Empty imported records must not be confused with failed persistence of selected full replays.");
+assert.match(androidStorageInspector, /fullReplayRecords\.length < 2/,
+  "The upgrade inspector must still require at least two complete replay records.");
+assert.match(androidStorageInspector, /emptyReplayRecordCount: emptyReplayRecords\.length/,
+  "The inspector must report empty imported records separately for diagnosis.");
 const androidStorageSnapshot = read("scripts/snapshot-android-web-storage.sh");
 const androidUnsignedNegative = read("scripts/create-android-unsigned-negative-apk.py");
 

@@ -213,5 +213,5 @@ export async function loadImportedMatch(playerId: string, gameId: string): Promi
     ? { ...value.match.result, ...(value.record ? { record: value.record } : {}) }
     : undefined;
   const { game, status, error, simulation, analysisStatus, analysisError } = value.match;
-  return { game, result, status, error, simulation, analysisStatus, analysisError };
+  return { game, result, status, error, simulation: value.analysis?.simulation ?? simulation, analysisStatus: value.analysis?.analysisStatus ?? analysisStatus, analysisError: value.analysis?.analysisError ?? analysisError };
 }

@@ -170,7 +170,7 @@ installed_after_mismatch="$(adb_cmd shell dumpsys package "$package_id")" || fai
 grep -F "versionCode=$current_version_code" <<<"$installed_after_mismatch" >/dev/null || fail "The failed signer-mismatch update replaced or damaged the installed app."
 adb_cmd shell am force-stop "$package_id" >/dev/null 2>&1 || true
 bash scripts/snapshot-android-web-storage.sh after-signer-rejection
-node scripts/compare-android-web-storage.mjs "$RUNNER_TEMP/ofrc-android-storage-after-negative-test/manifest.json" "$RUNNER_TEMP/ofrc-android-storage-after-signer-rejection/manifest.json" --exact
+node scripts/compare-android-web-storage.mjs "$RUNNER_TEMP/ofrc-android-storage-after/manifest.json" "$RUNNER_TEMP/ofrc-android-storage-after-signer-rejection/manifest.json" --exact
 log "Raw WebView persistent files remained byte-identical while the app was stopped after wrong-signer rejection."
 android_launch_package "$package_id" "the original signed app after wrong-signer rejection" || fail "The original signed app could not be cold-started after Android rejected the valid wrong-signer APK."
 node scripts/inspect-android-upgrade-data.mjs "$RUNNER_TEMP/after-signature-mismatch-storage.json"

@@ -192,6 +192,14 @@ assert.match(androidBaselineUiSeed, /dump_ui\(\)\s*\{\s*local dump_output="" pul
   "UI dump retries must keep their counter local so outer viewport scans can advance.");
 assert.match(androidBaselineUiSeed, /wait_for_search_ime\(\)/,
   "Android search typing must wait for the IME/focus transition before injecting text.");
+assert.match(androidBaselineUiSeed, /dismiss_search_ime\(\)\s*\{\s*local ime_state="" attempt/,
+  "The Android fallback must have a bounded helper to dismiss the keyboard.");
+assert.match(androidBaselineUiSeed, /tap_edit_field\(\)\s*\{[\s\S]*?dismiss_search_ime[\s\S]*?for attempt in \$\(seq 1 8\)/,
+  "The search field must be located after the IME is dismissed, so clipped coordinates are not reused.");
+assert.match(androidBaselineUiSeed, /Text input did not appear in the focused search field[\s\S]*?dismiss_search_ime[\s\S]*?tap_edit_field/,
+  "The key-event fallback must dismiss the keyboard before re-focusing the search field.");
+assert.match(androidBaselineUiSeed, /tap_edit_field 1 "\$current_search_query"[\s\S]*?wait_for_search_ime[\s\S]*?if \[\[ "\$clear_search" == "true" \]\]/,
+  "Clear/select commands must run only after the input method is ready.");
 assert.match(androidBaselineUiSeed, /send_search_query_by_keyevents/,
   "Search IDs must have a key-event fallback when adb shell input text is dropped.");
 assert.match(androidBaselineUiSeed, /for keycode in "\$\{keycodes\[@\]\}"; do/,

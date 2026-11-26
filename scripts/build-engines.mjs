@@ -22,7 +22,10 @@ function git(source, args) {
 }
 
 function inputFingerprint() {
-  return computeEngineBundleFingerprint(catalogPath, path.join(root, "engine-build"), engines);
+  return computeEngineBundleFingerprint(catalogPath, path.join(root, "engine-build"), engines, [
+    path.join(root, "scripts/build-engines.mjs"),
+    path.join(root, "scripts/engine-bundle-cache.mjs"),
+  ]);
 }
 
 function sourcesMatchPins() {
@@ -46,7 +49,20 @@ function bundlesComplete() {
 }
 
 const fingerprint = inputFingerprint();
-if (!force && verifyEngineBundleCache(manifestPath, outputDir, fingerprint, engines)) {
+function existingSourceCheckoutsAreSafeForCache() {
+  return engines.every(engine => {
+    const source = path.join(root, engine.source);
+    if (!existsSync(path.join(source, ".git"))) return true;
+    try {
+      return git(source, ["rev-parse", "HEAD"]) === engine.commit
+        && git(source, ["status", "--porcelain", "--untracked-files=normal"]) === "";
+    } catch {
+      return false;
+    }
+  });
+}
+if (!force && verifyEngineBundleCache(manifestPath, outputDir, fingerprint, engines)
+  && existingSourceCheckoutsAreSafeForCache()) {
   console.log(`Verified replay engine bundles are current (${engines.length} exact revisions); skipping source checkout validation and rebuild. Use --force to rebuild.`);
   process.exit(0);
 }

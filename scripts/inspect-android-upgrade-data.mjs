@@ -55,7 +55,7 @@ try {
     awaitPromise: true,
     returnByValue: true,
     userGesture: true,
-  }, 60_000);
+  }, 90_000);
   if (evaluated.exceptionDetails) throw new Error(evaluated.exceptionDetails.text ?? "Storage snapshot threw an exception.");
   const snapshot = evaluated.result?.value;
   if (!snapshot || snapshot.schema !== "ofrc-android-upgrade-snapshot-v1") {
@@ -86,11 +86,15 @@ try {
   }
   if (!verifiedAnalyses.length) throw new Error("No verified replay analysis result survived in the match records.");
   const rehydration = snapshot.rehydration;
-  if (!rehydration || rehydration.attempted < 2 || rehydration.loaded !== rehydration.attempted
+  const expectedReplayIds = ["cRVdxGEG5j", "c4CW3VJWQ9"];
+  const rehydratedGameIds = new Set((rehydration?.matches ?? []).map(item => String(item.gameId ?? "")));
+  if (!rehydration || rehydration.attempted < expectedReplayIds.length
+    || expectedReplayIds.some(gameId => !rehydratedGameIds.has(gameId))
+    || rehydration.loaded !== rehydration.attempted
     || rehydration.replayRestored !== rehydration.attempted
     || rehydration.matches.some(item => !item.loaded || !item.replayRestored
       || String(item.recordGameId) !== String(item.gameId) || !item.engineCommit || Number(item.turnCount) < 1)) {
-    throw new Error(`Production matchStore rehydration failed after update: ${JSON.stringify(rehydration)}`);
+    throw new Error(`Production matchStore rehydration failed after update; required replay IDs ${expectedReplayIds.join(", ")}: ${JSON.stringify(rehydration)}`);
   }
   const malformedReplayRecords = replays.filter(record => {
     const metadata = record.metadata ?? {};
@@ -104,6 +108,8 @@ try {
       && String(metadata.recordGameId) === String(metadata.gameId) && Boolean(metadata.engineCommit);
   });
   const emptyReplayRecords = replays.filter(record => Number(record.metadata?.turnCount) === 0);
+  const selectedFullReplayRecords = fullReplayRecords.filter(record => record.metadata?.playerId === playerId
+    && expectedReplayIds.includes(String(record.metadata?.gameId ?? "")));
   if (malformedReplayRecords.length) {
     const describe = record => ({
       recordKeys: Object.keys(record ?? {}),
@@ -119,6 +125,9 @@ try {
     throw new Error(`Replay identity/engine metadata validation failed for ${malformedReplayRecords.length}/${replays.length} records. Record shape diagnostics: ${JSON.stringify(malformedReplayRecords.map(describe))}`);
   }
   if (fullReplayRecords.length < 2) throw new Error(`Expected at least two complete replay records; found ${fullReplayRecords.length} full and ${emptyReplayRecords.length} empty records.`);
+  if (selectedFullReplayRecords.length !== expectedReplayIds.length) {
+    throw new Error(`The two UI-seeded replay records are not complete in the selected profile: expected ${expectedReplayIds.length}, found ${selectedFullReplayRecords.length}.`);
+  }
   if (trainingGoal && !matchIds.has(String(trainingGoal.gameId ?? ""))) {
     throw new Error("The saved training goal does not reference a persisted match.");
   }
@@ -134,6 +143,7 @@ try {
     verifiedAnalyses: verifiedAnalyses.length,
     fullReplayIdentityCount: replayMetadata.length,
     fullReplayRecordCount: fullReplayRecords.length,
+    selectedFullReplayRecordCount: selectedFullReplayRecords.length,
     emptyReplayRecordCount: emptyReplayRecords.length,
     productionStoreRehydration: {
       attempted: rehydration.attempted,

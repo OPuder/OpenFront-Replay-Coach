@@ -681,7 +681,7 @@ export async function simulateReplay(
                 const targetName = targetMeta ? replayPlayerName(targetMeta, "") || null : null;
                 const targetBeforePlayer = targetSmallID === null ? null : getPlayerAtFrame(Math.max(0, frame - 1), targetSmallID) ?? null;
                 const targetDeltaToFrame = (offset: number) => {
-                  if (!targetBeforePlayer || frame + offset >= totalTicks) return null;
+                  if (targetSmallID === null || !targetBeforePlayer || frame + offset >= totalTicks) return null;
                   const targetAtFrame = getPlayerAtFrame(frame + offset, targetSmallID);
                   if (!targetAtFrame) return null;
                   return difference(metrics(targetAtFrame), metrics(targetBeforePlayer));

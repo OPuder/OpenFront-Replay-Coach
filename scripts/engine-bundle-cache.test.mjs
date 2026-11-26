@@ -79,6 +79,7 @@ test("verified cache rejects missing engine entries or bundle files", () => {
     const fingerprint = computeEngineBundleFingerprint(catalogPath, buildDir, engines);
     writeFileSync(manifestPath, JSON.stringify({ schema: 2, fingerprint, engines: [] }));
     assert.equal(verifyEngineBundleCache(manifestPath, outputDir, fingerprint, engines), false);
+    assert.equal(verifyEngineBundleCache(manifestPath, outputDir, fingerprint, [{ commit: "bad", bundleId: engines[0].bundleId }]), false);
     const bundlePath = path.join(outputDir, "replay-engine-" + engines[0].bundleId + ".js");
     writeFileSync(bundlePath, "/* cached */");
     writeFileSync(manifestPath, JSON.stringify(createEngineBundleManifest(fingerprint, engines, outputDir)));

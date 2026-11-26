@@ -111,18 +111,6 @@ async function writeRecord<T>(storeName: string, value: T): Promise<void> {
   db.close();
 }
 
-async function readAll<T>(storeName: string): Promise<T[]> {
-  const db = await openStore();
-  const values = await new Promise<T[]>((resolve, reject) => {
-    const tx = db.transaction(storeName, "readonly");
-    const request = tx.objectStore(storeName).getAll();
-    request.onsuccess = () => resolve(request.result as T[]);
-    request.onerror = () => reject(request.error ?? new Error("Lokale Daten konnten nicht gelesen werden."));
-  });
-  db.close();
-  return values;
-}
-
 export async function savePlayerLibrary(page: PlayerPage): Promise<void> {
   await writeRecord(PROFILE_STORE, { ...page, savedAt: Date.now() });
 }

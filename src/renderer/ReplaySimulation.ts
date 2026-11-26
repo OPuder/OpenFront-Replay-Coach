@@ -634,7 +634,6 @@ export async function simulateReplay(
             const attacks = targetPlayer.incomingAttackDetails;
             const otherAttacks = attacks.filter(attack => attack.attackerID !== selectedSmallID);
             const otherAttackerIDs = new Set(otherAttacks.map(attack => attack.attackerID));
-            const nameBySmallID = new Map<number, string>(replayPlayerMetadata.map((meta: any): [number, string] => [Number(meta.smallID), replayPlayerName(meta, `Spieler ${meta.smallID}`)]));
             return {
               incomingAttackCount: attacks.length,
               incomingAttackTroops: attacks.reduce((sum, attack) => sum + attack.troops, 0),
@@ -656,7 +655,6 @@ export async function simulateReplay(
           });
           const summarizeActiveAttack = (baseFrame: number, offset: number, targetSmallID: number | null): ReplayActiveAttackSummary | null => {
             if (targetSmallID === null || baseFrame + offset >= totalTicks) return null;
-            const sample = sampleByFrame.get(baseFrame + offset);
             const actor = getPlayerAtFrame(baseFrame + offset, target.smallID);
             if (!actor) return null;
             const attacks = actor.outgoingAttackDetails.filter(attack => attack.targetID === targetSmallID);
@@ -673,8 +671,6 @@ export async function simulateReplay(
             return (turn?.intents ?? [])
               .filter((intent: any) => String(intent?.clientID ?? "") === String(target.clientID ?? preferredClientId ?? ""))
               .map((intent: any) => {
-                const beforeSample = sampleByFrame.get(Math.max(0, frame - 1));
-                const afterSample = sampleByFrame.get(Math.min(totalTicks - 1, frame + 1));
                 const beforePlayer = getPlayerAtFrame(Math.max(0, frame - 1), target.smallID);
                 const afterPlayer = getPlayerAtFrame(Math.min(totalTicks - 1, frame + 1), target.smallID);
                 const before = beforePlayer ? metrics(beforePlayer) : null;

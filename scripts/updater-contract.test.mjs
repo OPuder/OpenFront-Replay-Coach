@@ -631,4 +631,4 @@ assert.ok(finalStorageComparison >= 0 && finalColdStart > finalStorageComparison
 assert.doesNotMatch(androidReleaseUpgrade.slice(finalColdStart, finalRunningCheck), /am force-stop/,
   "The release-upgrade test must not force-stop the app after the final cold-start and before asserting it remains running.");
 
-console.log("Android emulator diagnostics contract tests passed: bounded ADB restart/reconnect, separate boot/transport checks, early-failure log/screenshot capture, and classified launch outcomes."); bounded ADB restart/reconnect, separate boot/transport checks, early-failure log/screenshot capture, and classified launch outcomes.");
+console.log("Android emulator diagnostics contract tests passed: bounded ADB restart/reconnect, separate boot/transport checks, early-failure log/screenshot capture, and classified launch outcomes.");

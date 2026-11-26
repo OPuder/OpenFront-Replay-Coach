@@ -465,7 +465,7 @@ require_baseline_app_window() {
   baseline_app_window_is_focused || fail "The published baseline app is not safely foregrounded; refusing Back or coordinate gestures. Window focus: ${focus_state:-unavailable}"
 }
 dismiss_search_ime() {
-  local ime_state="" attempt visibility_flags="" hidden_streak=0
+  local ime_state="" ime_state_lc="" attempt visibility_flags="" hidden_streak=0
   local visible_pattern='minputshown=true'
   local hidden_pattern='minputshown=false'
   ime_state="$(timeout 8s adb -s emulator-5554 shell dumpsys input_method 2>&1)" || fail "Could not read Android IME state before re-focusing the library search field."

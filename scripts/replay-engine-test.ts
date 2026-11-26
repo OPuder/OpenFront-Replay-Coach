@@ -115,6 +115,16 @@ window.__verifyLegacyMigration = async () => {
   const profile = await loadPlayerLibrary("migration-player");
   const libraryEntries = await loadImportedMatches("migration-player");
   const match = await loadImportedMatch("migration-player", "legacy-replay");
+  if (match?.result) {
+    const { record: _record, decodedActions: _decodedActions, actionAnalysis: _actionAnalysis, ...summary } = match.result;
+    await saveImportedMatch("migration-player", {
+      game: match.game,
+      result: summary as ApiImportSummary,
+      status: match.status,
+      analysisStatus: "verified",
+    });
+  }
+  const rehydratedAfterSummarySave = await loadImportedMatch("migration-player", "legacy-replay");
   const db = await new Promise<IDBDatabase>((resolve, reject) => {
     const request = indexedDB.open("openfront-replay-coach");
     request.onsuccess = () => resolve(request.result);
@@ -147,9 +157,9 @@ window.__verifyLegacyMigration = async () => {
     matchStatus: match?.status ?? null,
     analysisStatus: match?.analysisStatus ?? null,
     migratedSimulationStatus: match?.simulation?.status ?? null,
-    migratedSampleCount: match?.simulation?.samples?.length ?? 0,
-    migratedDecodedActionCount: match?.result?.decodedActions?.length ?? 0,
-    migratedActionAnalysisMarker: match?.result?.actionAnalysis?.legacyMarker ?? null,
+    migratedSampleCount: rehydratedAfterSummarySave?.simulation?.samples?.length ?? 0,
+    migratedDecodedActionCount: rehydratedAfterSummarySave?.result?.decodedActions?.length ?? 0,
+    migratedActionAnalysisMarker: rehydratedAfterSummarySave?.result?.actionAnalysis?.legacyMarker ?? null,
     replayId: (match?.result?.record as any)?.info?.gameID ?? null,
     replayHash: (match?.result?.record as any)?.turns?.[0]?.hash ?? null,
   };

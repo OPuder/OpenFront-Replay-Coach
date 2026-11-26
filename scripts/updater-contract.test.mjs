@@ -194,22 +194,22 @@ assert.match(androidBaselineUiSeed, /wait_for_search_ime\(\)/,
   "Android search typing must wait for the IME/focus transition before injecting text.");
 assert.match(androidBaselineUiSeed, /dismiss_search_ime\(\)\s*\{\s*local ime_state="" attempt visibility_flags=""/,
   "The Android fallback must have a bounded helper to dismiss the keyboard and log its state.");
-const androidImeDismissHelper = androidBaselineUiSeed.match(/dismiss_search_ime\\(\\)\\s*\\{[\\s\\S]*?\\n\\}/)?.[0] ?? "";
+const androidImeDismissHelper = androidBaselineUiSeed.match(/dismiss_search_ime\(\)\s*\{[\s\S]*?\n\}/)?.[0] ?? "";
 assert.match(androidImeDismissHelper, /visible_pattern='mInputShown=true'/,
   "Only the authoritative mInputShown=true flag may trigger Back.");
 assert.match(androidImeDismissHelper, /hidden_pattern='mInputShown=false'/,
   "The authoritative hidden IME flag must be checked before coordinate taps.");
-assert.match(androidImeDismissHelper, /(mInputViewShown=true|isInputViewShown=true)[\\s\\S]*?contradict/,
+assert.match(androidImeDismissHelper, /(mInputViewShown=true|isInputViewShown=true)[\s\S]*?contradict/,
   "Contradictory secondary IME flags must fail closed instead of dismissing a possibly hidden keyboard.");
-assert.match(androidImeDismissHelper, /require_baseline_app_window[\\s\\S]*?input keyevent 4/,
+assert.match(androidImeDismissHelper, /require_baseline_app_window[\s\S]*?input keyevent 4/,
   "Back must be guarded by a verified foreground baseline app.");
-assert.match(androidImeDismissHelper, /mInputShown=false[\\s\\S]*?avoiding Back/,
+assert.match(androidImeDismissHelper, /mInputShown=false[\s\S]*?avoiding Back/,
   "A hidden keyboard must never trigger Back and close the app.");
 assert.doesNotMatch(androidImeDismissHelper, /mShowRequested=true/,
   "A stale IME show request must not trigger Android Back after the keyboard is already hidden.");
-assert.match(androidBaselineUiSeed, /baseline_app_window_is_focused\\(\\)\\s*\\{[\\s\\S]*?mCurrentFocus=[\\s\\S]*?NotificationShade/,
+assert.match(androidBaselineUiSeed, /baseline_app_window_is_focused\(\)\s*\{[\s\S]*?mCurrentFocus=[\s\S]*?NotificationShade/,
   "The baseline seed must distinguish the app window from notification shade or launcher focus.");
-assert.match(androidBaselineUiSeed, /require_baseline_app_window[\\s\\S]*?input swipe 500 700 500 1250/,
+assert.match(androidBaselineUiSeed, /require_baseline_app_window[\s\S]*?input swipe 500 700 500 1250/,
   "Scroll gestures must be guarded by app focus and start away from the status-bar gesture region.");
 assert.doesNotMatch(androidBaselineUiSeed, /input swipe 500 350 500 1500/,
   "The old down-swipe starting near the system shade must not return.");

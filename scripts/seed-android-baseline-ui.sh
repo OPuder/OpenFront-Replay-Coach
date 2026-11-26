@@ -670,8 +670,9 @@ seed_verified_match() {
   fail "Archived match $game_id did not complete a hash-verified Original-Engine simulation within 10 minutes. Last UI: $(cat "$ui_xml" 2>/dev/null | head -c 5000)"
 }
 
-# The baseline must contain two genuine, engine-verified matches and a real
-# UI-created training goal. A card's generic 'ready' label is not enough:
+# The baseline must contain two genuine, engine-verified matches. A training
+# goal is optional in the published baseline; if one exists, the inspector must
+# prove it references persisted data. A generic card "ready" label is not enough:
 # validate the exact replay after opening it before accepting it as a fixture.
 seed_verified_match "cRVdxGEG5j" "9f4a28f16fae951df0daf727e5e64b34ce8b77d1" false
 

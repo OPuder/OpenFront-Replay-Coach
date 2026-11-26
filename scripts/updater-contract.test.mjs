@@ -456,7 +456,8 @@ assert.doesNotMatch(appRenderer, /className="adaptive-training-goals"/,
   "The three featured training goals must not be duplicated in the old adaptive-goals section.");
 assert.match(matchStore, /const DB_VERSION = 4/);
 assert.match(matchStore, /const REPLAY_STORE = "replay-records"/);
-assert.match(matchStore, /event\.oldVersion < 4[\s\S]*?replays\.put[\s\S]*?cursor\.update[\s\S]*?cursor\.continue/);
+assert.match(matchStore, /event\.oldVersion < 4[\s\S]*?const replayRequest = replays\.get\(\[stored\.playerId, stored\.game\.gameId\]\)[\s\S]*?replays\.put\(mergedReplayRecord\)/,
+  "The v4 migration must merge the existing replay-store row inside the upgrade cursor transaction.");
 assert.match(matchStore, /const replayRequest = replays\.get\(\[stored\.playerId, stored\.game\.gameId\]\)/,
   "The v4 migration must read an existing v3 replay record before writing compact match payloads.");
 assert.match(matchStore, /if \(replayPayload\.record != null\) mergedReplayRecord\.record = replayPayload\.record/,

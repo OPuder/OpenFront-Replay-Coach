@@ -55,8 +55,14 @@ assert.match(ciWorkflow, /npm run test:opencode-config/,
   "CI must keep running the OpenCode specialist configuration contract, including when suites execute concurrently.");
 assert.match(ciWorkflow, /xvfb-run -a npm run test:ux-ui/,
   "The responsive UI regression suite must remain in CI, including when suites execute concurrently.");
-assert.match(releaseWorkflow, /paths:\s*[\s\S]*package\.json[\s\S]*package-lock\.json/,
-  "Application releases must be triggered only by reviewed package-version changes.");
+assert.match(releaseWorkflow, /paths:\s*[\s\S]*package\.json[\s\S]*package-lock\.json[\s\S]*\.github\/workflows\/release-on-main\.yml/,
+  "Reviewed version changes and release-workflow corrections must trigger the release gate.");
+assert.match(releaseWorkflow, /node --import \.\/node_modules\/tsx\/dist\/loader\.mjs/,
+  "Release replay metadata validation must use root TSX, not a cache-omitted vendor dependency.");
+assert.doesNotMatch(releaseWorkflow, /vendor\/OpenFrontIO\/node_modules\/tsx/,
+  "Cached historical engine dependencies must not supply the release test loader.");
+assert.match(releaseWorkflow, /Package version \$base_version is already released/,
+  "Workflow-only retry must skip already-published versions.");
 assert.doesNotMatch(releaseWorkflow, /paths-ignore:/,
   "Release triggers must use an explicit allowlist, not a broad paths-ignore list.");
 
@@ -441,9 +447,9 @@ assert.match(appRenderer, /additionalRecurringStrengths/);
 assert.match(appRenderer, /coach-focus-target/);
 assert.doesNotMatch(appRenderer, /className="adaptive-training-goals"/,
   "The three featured training goals must not be duplicated in the old adaptive-goals section.");
-assert.match(matchStore, /const DB_VERSION = 3/);
+assert.match(matchStore, /const DB_VERSION = 4/);
 assert.match(matchStore, /const REPLAY_STORE = "replay-records"/);
-assert.match(matchStore, /event\.oldVersion < 2[\s\S]*?replays\.put[\s\S]*?cursor\.update/);
+assert.match(matchStore, /event\.oldVersion < 4[\s\S]*?replays\.put[\s\S]*?cursor\.update/);
 assert.match(matchStore, /export async function loadImportedMatch\(/);
 assert.doesNotMatch(read("src/main/main.ts"), /importedReplayJson/);
 const startupUpdater = updater.slice(updater.indexOf("export async function autoUpdateOnStartup"));

@@ -8,6 +8,7 @@ import { buildEngineCoachInsights } from "../src/main/decoder/EngineCoachInsight
 import { selectPrimaryCoachInsights } from "../src/main/decoder/CoachInsightSelection";
 import { buildReplayTimeline } from "../src/main/decoder/CoachTimeline";
 import { buildLongitudinalCoachReport } from "../src/main/decoder/LongitudinalCoach";
+import { isValidTerritorySnapshot } from "../src/renderer/ReplayTerritory";
 
 const expect = {
   ok(condition: unknown, message = "Expected condition to be truthy"): void {
@@ -21,6 +22,9 @@ const expect = {
 };
 
 const batchTestRecords = new Map<string, any>();
+const replayPlayerLabel = (player: any): string =>
+  [player?.displayName, player?.name, player?.username]
+    .find(value => typeof value === "string" && value.trim().length > 0)?.trim() ?? "";
 
 declare global {
   interface Window {
@@ -38,6 +42,9 @@ declare global {
       verifiedHashes: number;
       samples: number;
       totalTicks: number;
+      territorySnapshots: number;
+      territoryTileCount: number;
+      movementSampleCount: number;
       playerReview: unknown;
     }>;
   }
@@ -130,11 +137,18 @@ window.__runReplayTest = async (record, gameId) => {
     analysisStatus: result.status === "verified" ? "verified" : "unverified",
     simulation: result,
   });
+  const territorySnapshots = result.samples
+    .map(sample => sample.territory)
+    .filter(isValidTerritorySnapshot);
+  const firstTerritory = territorySnapshots[0];
   return {
     status: result.status,
     verifiedHashes: result.verifiedHashes,
     samples: result.samples.length,
     totalTicks: result.totalTicks,
+    territorySnapshots: territorySnapshots.length,
+    territoryTileCount: firstTerritory ? firstTerritory.width * firstTerritory.height : 0,
+    movementSampleCount: result.samples.reduce((count, sample) => count + sample.unitMovements.length, 0),
     playerReview: result.playerReview,
   };
 };
@@ -169,8 +183,7 @@ window.__testAbortBatchReplay = async (gameId) => {
   const record = batchTestRecords.get(gameId);
   if (!record) throw new Error(`No real replay fixture is registered for batch cancellation: ${gameId}`);
   const players = Array.isArray(record?.info?.players) ? record.info.players : [];
-  const selected = players.find((player: any) =>
-    /oligenole/i.test(String(player?.displayName ?? player?.name ?? player?.username ?? "")));
+  const selected = players.find((player: any) => /oligenole/i.test(replayPlayerLabel(player)));
   if (!selected?.clientID) throw new Error(`Fixture ${gameId} does not contain the required OligenOle player`);
 
   const controller = new AbortController();
@@ -224,8 +237,7 @@ window.__runBatchReplayTest = async (gameIds) => {
     analyze: async (item, onProgress, signal) => {
       const record = item.record;
       const players = Array.isArray(record?.info?.players) ? record.info.players : [];
-      const selected = players.find((player: any) =>
-        /oligenole/i.test(String(player?.displayName ?? player?.name ?? player?.username ?? "")));
+      const selected = players.find((player: any) => /oligenole/i.test(replayPlayerLabel(player)));
       if (!selected?.clientID) throw new Error(`Fixture ${item.gameId} does not contain the required OligenOle player`);
       const clientId = String(selected.clientID);
       const simulation = await simulateReplay(record, buildReplayEngineAssets(record), onProgress, 50, clientId, signal);
@@ -284,11 +296,11 @@ window.__runBatchReplayTest = async (gameIds) => {
         intents.set(frame, playerIntents);
       }
       for (const action of simulation.actionReviews) {
-        const sourceIntents = intents.get(action.frame) ?? [];
+        const sourceIntents = intents.get(action.turn) ?? [];
         expect.ok(sourceIntents.some((intent: any) => String(intent?.type ?? "unknown") === action.type),
           `Coach action ${action.type} at frame ${action.frame} has no matching original replay intent in ${item.gameId}`);
-        expect.equal(action.turn, action.frame, `Replay timeline turn differs from source turn in ${item.gameId}`);
-        expect.equal(action.seconds, Number(sourceIntents.length >= 0 ? action.turn : NaN) / 10,
+        expect.equal(action.turn, action.frame + 1, `Replay frame does not map to its one-based source turn in ${item.gameId}`);
+        expect.equal(action.seconds, Number(action.turn) / 10,
           `Replay action seconds do not match original turnNumber / 10 in ${item.gameId}`);
       }
       for (const entry of timeline) {
@@ -527,7 +539,13 @@ window.__runBatchReplayTest = async (gameIds) => {
     }
   }
   if (new Set(reportIdentities.map(identity => identity.sourceMatchId)).size !== 2) {
-    throw new Error(`Real coaching reports do not map to two unique source matches: ${JSON.stringify(reportIdentities)}`);
+    throw new Error(`Real coaching reports do not map to two unique source matches: ${JSON.stringify({
+      reportIdentities,
+      coachingResultCount: coachingResults.length,
+      verifiedGameIds,
+      summary,
+      outcomes: [...outcomes.values()],
+    })}`);
   }
   if (coachingForAssertion.length !== summary.verified) {
     throw new Error(`Coaching collection mismatch before Electron bridge: verified=${summary.verified}, reports=${coachingForAssertion.length}, gameIds=${verifiedGameIds.join(",")}`);

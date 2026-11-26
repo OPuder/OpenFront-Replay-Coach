@@ -192,11 +192,11 @@ assert.match(androidReleaseUpgrade, /openssl rand -hex 24/);
 assert.match(androidReleaseUpgrade, /apksigner" sign --ks/);
 assert.match(androidReleaseUpgrade, /INSTALL_FAILED_UPDATE_INCOMPATIBLE/);
 assert.match(androidReleaseUpgrade, /after-signature-mismatch-storage\.json/);
-assert.match(androidReleaseUpgrade, /snapshot-android-web-storage\\.sh after-unsigned-rejection/);
-assert.match(androidReleaseUpgrade, /after-unsigned-rejection[\\s\\S]*?--exact/);
-assert.match(androidReleaseUpgrade, /snapshot-android-web-storage\\.sh after-signer-rejection/);
-assert.match(androidReleaseUpgrade, /after-signer-rejection[\\s\\S]*?--exact/);
-assert.doesNotMatch(androidReleaseUpgrade, /compare-android-upgrade-snapshots\\.mjs/,
+assert.match(androidReleaseUpgrade, /snapshot-android-web-storage\.sh after-unsigned-rejection/);
+assert.match(androidReleaseUpgrade, /after-unsigned-rejection[\s\S]*?--exact/);
+assert.match(androidReleaseUpgrade, /snapshot-android-web-storage\.sh after-signer-rejection/);
+assert.match(androidReleaseUpgrade, /after-signer-rejection[\s\S]*?--exact/);
+assert.doesNotMatch(androidReleaseUpgrade, /compare-android-upgrade-snapshots\.mjs/,
   "Negative-install data integrity must be checked before app relaunch, not against mutable analysis metadata after startup.");
 
 assert.match(androidReleaseUpgrade, /rm -f "\$test_keystore" "\$test_signed_apk"/);
@@ -377,7 +377,7 @@ assert.ok(
   updateValidationWorkflow.indexOf("Test genuine published-APK in-place upgrade on Android emulator") <
     updateValidationWorkflow.indexOf("Verify permanent Android release signing key and continuity"),
   "The permanent signing continuity gate must run after the published-APK emulator upgrade test."
-);assert.match(androidStorageComparison, /const exact = process\\.argv\\[4\\] === "--exact"/,
+);\nassert.match(androidStorageComparison, /const exact = process\.argv\[4\] === "--exact"/,
   "Negative-install integrity checks must compare physical persistent files before app relaunch.");
 assert.match(androidStorageComparison, /Persistent WebView files changed after failed APK install/,
   "The exact negative-install mode must fail on missing, changed or added persistent files.");

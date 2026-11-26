@@ -25,6 +25,7 @@ export function getTotalRecordedFrames(record: unknown): number {
  * Bound expensive full-map snapshots on very long replays while retaining the
  * requested cadence for ordinary matches. Exact action frames and their
  * before/after/outcome windows are added separately and are never coarsened.
+ * This keeps full-map encoding bounded without weakening decision evidence.
  */
 export function chooseReplaySampleCadence(
   totalFrames: number,

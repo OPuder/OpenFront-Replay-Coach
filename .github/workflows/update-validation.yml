@@ -98,6 +98,16 @@ jobs:
         timeout-minutes: 55
         run: npm run prepare:engines
 
+      - name: Restore verified replay engine bundles
+        uses: actions/cache@v4
+        with:
+          path: |
+            src/renderer/engine
+            .openfront-engine-build.json
+          key: openfront-engine-bundles-${{ hashFiles('.gitmodules', 'engine-build/**', 'vendor/**/package-lock.json', 'scripts/build-engines.mjs') }}
+          enableCrossOsArchive: true
+
+
       - name: Verify updater contract tests
         run: node --test scripts/updater-contract.test.mjs
 
@@ -170,6 +180,16 @@ jobs:
       - name: Prepare all exact historical OpenFront engines
         timeout-minutes: 55
         run: npm run prepare:engines
+
+      - name: Restore verified replay engine bundles
+        uses: actions/cache@v4
+        with:
+          path: |
+            src/renderer/engine
+            .openfront-engine-build.json
+          key: openfront-engine-bundles-${{ hashFiles('.gitmodules', 'engine-build/**', 'vendor/**/package-lock.json', 'scripts/build-engines.mjs') }}
+          enableCrossOsArchive: true
+
 
       - name: Install Coach dependencies once
         run: npm ci

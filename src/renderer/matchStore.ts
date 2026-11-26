@@ -159,6 +159,10 @@ export async function saveImportedMatch(playerId: string, item: StoredMatchEntry
         playerId, gameId: item.game.gameId, simulation: item.simulation,
         analysisStatus: item.analysisStatus, analysisError: item.analysisError, updatedAt,
       });
+    } else if (item.analysisStatus === "pending" || item.analysisStatus === "unsupported") {
+      // A fresh import or newly incompatible engine must not retain stale
+      // coaching payloads from a previous analysis of this match.
+      tx.objectStore(ANALYSIS_STORE).delete([playerId, item.game.gameId]);
     } else if (item.analysisStatus || item.analysisError) {
       const analysisStore = tx.objectStore(ANALYSIS_STORE);
       const analysisRequest = analysisStore.get([playerId, item.game.gameId]);

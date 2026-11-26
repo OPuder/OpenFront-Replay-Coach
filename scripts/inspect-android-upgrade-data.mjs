@@ -124,7 +124,7 @@ try {
     || rehydration.replayRestored !== rehydration.attempted
     || rehydration.matches.some(item => !item.loaded || !item.replayRestored
       || String(item.recordGameId) !== String(item.gameId) || !item.engineCommit || Number(item.turnCount) < 1)) {
-    throw new Error(`Production matchStore rehydration failed after update; required replay IDs ${expectedReplayIds.join(", ")}. Rehydration: ${JSON.stringify(rehydration)}. IndexedDB relationships: ${JSON.stringify(relationships)}. Replay store summaries: ${JSON.stringify(replayMetadata)}`);
+    throw new Error(`Production matchStore rehydration failed after update; required replay IDs ${expectedReplayIds.join(", ")}: ${JSON.stringify(rehydration)}`);
   }
   const malformedReplayRecords = replays.filter(record => {
     const metadata = record.metadata ?? {};

@@ -8,7 +8,7 @@ const exact = process.argv[4] === "--exact";
 const before = JSON.parse(readFileSync(beforePath, "utf8"));
 const after = JSON.parse(readFileSync(afterPath, "utf8"));
 
-const isPersistentLevelDbFile = path => /\\.(?:ldb|sst)$/i.test(path) || /(?:^|\\/)\\d+\\.log$/i.test(path);
+const isPersistentLevelDbFile = path => /\.(?:ldb|sst)$/i.test(path) || /(?:^|\/)\d+\.log$/i.test(path);
 const localStorageDataFiles = manifest => manifest.files.filter(item =>
   item.path.startsWith("Local Storage/") && isPersistentLevelDbFile(item.path));
 const beforeIndexedTables = before.immutableTables.filter(item => item.path.startsWith("IndexedDB/"));
@@ -89,7 +89,7 @@ if (exact) {
     localStorageTables: beforeLocalStorageTables.length,
     baselineLocalStorageDataFiles: beforeLocalStorageFiles.length,
     preservedLocalStorageDataFiles: beforeLocalStorageFiles.length,
-    localStorageWriteAheadLogs: beforeLocalStorageFiles.filter(item => /(?:^|\\/)\\d+\\.log$/i.test(item.path)).length,
+    localStorageWriteAheadLogs: beforeLocalStorageFiles.filter(item => /(?:^|\/)\d+\.log$/i.test(item.path)).length,
     baselineFiles: before.files.length,
     updatedFiles: after.files.length,
   }, null, 2));

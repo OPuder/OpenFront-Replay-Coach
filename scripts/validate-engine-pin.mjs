@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { computeEngineBundleFingerprint, verifyEngineBundleCache } from './engine-bundle-cache.mjs';
 
@@ -21,8 +21,7 @@ const fingerprint = computeEngineBundleFingerprint(
 function existingSourceCheckoutsAreSafeForCache() {
   return engines.every(engine => {
     const source = path.resolve(engine.source);
-    if (!readFileSync(path.resolve('engine-build/engines.json'), 'utf8') && !path.existsSync(source)) return true;
-    if (!path.existsSync(path.join(source, '.git'))) return true;
+    if (!existsSync(path.join(source, '.git'))) return true;
     try {
       const revision = execFileSync('git', ['-C', source, 'rev-parse', 'HEAD'], { encoding: 'utf8' }).trim();
       const status = execFileSync('git', ['-C', source, 'status', '--porcelain', '--untracked-files=normal'], { encoding: 'utf8' }).trim();
@@ -37,7 +36,7 @@ const cachedBundlesVerified = verifyEngineBundleCache(
   path.resolve('src/renderer/engine'),
   fingerprint,
   engines,
-) && existingSourceCheckoutsAreSafeForCache;
+ ) && existingSourceCheckoutsAreSafeForCache();
 
 
 for (const engine of engines) {

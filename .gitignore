@@ -17,3 +17,4 @@ release
 
 # Local metadata for verified replay-engine build reuse
 .openfront-engine-build.json
+.cache/

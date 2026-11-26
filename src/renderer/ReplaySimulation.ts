@@ -69,6 +69,42 @@ export interface ReplayUnitMovement {
   unitType: string;
 }
 
+/** Aggregate unit counts, troop totals, construction and movement evidence in one pass. */
+export function collectUnitSnapshotMetrics(
+  units: Iterable<any>,
+  mapTileCount: number,
+): {
+  unitCountsByOwner: Map<number, Record<string, number>>;
+  unitTroopsByOwner: Map<number, Record<string, number>>;
+  unitsUnderConstructionByOwner: Map<number, number>;
+  unitMovements: ReplayUnitMovement[];
+} {
+  const unitCountsByOwner = new Map<number, Record<string, number>>();
+  const unitTroopsByOwner = new Map<number, Record<string, number>>();
+  const unitsUnderConstructionByOwner = new Map<number, number>();
+  const unitMovements: ReplayUnitMovement[] = [];
+  for (const unit of units) {
+    const ownerID = Number(unit.ownerID);
+    const type = String(unit.unitType ?? "unknown");
+    const counts = unitCountsByOwner.get(ownerID) ?? {};
+    counts[type] = (counts[type] ?? 0) + 1;
+    unitCountsByOwner.set(ownerID, counts);
+    const troops = unitTroopsByOwner.get(ownerID) ?? {};
+    troops[type] = (troops[type] ?? 0) + Number(unit.troops ?? 0);
+    unitTroopsByOwner.set(ownerID, troops);
+    if (unit.underConstruction) {
+      unitsUnderConstructionByOwner.set(ownerID, (unitsUnderConstructionByOwner.get(ownerID) ?? 0) + 1);
+    }
+    const fromTile = Number(unit.pos);
+    if (unit.targetTile === null || unit.targetTile === undefined) continue;
+    const targetTile = Number(unit.targetTile);
+    if (!unit.isActive || !Number.isInteger(fromTile) || !Number.isInteger(targetTile) ||
+        fromTile < 0 || targetTile < 0 || fromTile === targetTile || targetTile >= mapTileCount) continue;
+    unitMovements.push({ ownerID, fromTile, targetTile, troops: Number(unit.troops ?? 0), unitType: type });
+  }
+  return { unitCountsByOwner, unitTroopsByOwner, unitsUnderConstructionByOwner, unitMovements };
+}
+
 export interface ReplayStateSample {
   tick: number;
   frame: number;
@@ -345,34 +381,12 @@ export async function simulateReplay(
   ): Promise<ReplayStateSample> => {
     await reader.load(reader.chunkOf(frame));
     const state = reader.seek(frame);
-    const unitCountsByOwner = new Map<number, Record<string, number>>();
-    const unitTroopsByOwner = new Map<number, Record<string, number>>();
-    const unitsUnderConstructionByOwner = new Map<number, number>();
     const mapWidth = Number(reader.header.mapWidth ?? 0);
     const mapHeight = Number(reader.header.mapHeight ?? 0);
-    const mapTileCount = mapWidth * mapHeight;
-    const unitMovements: ReplayStateSample["unitMovements"] = [];
-    // Traverse the engine's unit collection once: derive owner statistics and
-    // movement evidence together instead of allocating a second temporary array.
-    for (const unit of state.units.values() as Iterable<any>) {
-      const ownerID = Number(unit.ownerID);
-      const type = String(unit.unitType ?? "unknown");
-      const counts = unitCountsByOwner.get(ownerID) ?? {};
-      counts[type] = (counts[type] ?? 0) + 1;
-      unitCountsByOwner.set(ownerID, counts);
-      const troops = unitTroopsByOwner.get(ownerID) ?? {};
-      troops[type] = (troops[type] ?? 0) + Number(unit.troops ?? 0);
-      unitTroopsByOwner.set(ownerID, troops);
-      if (unit.underConstruction) {
-        unitsUnderConstructionByOwner.set(ownerID, (unitsUnderConstructionByOwner.get(ownerID) ?? 0) + 1);
-      }
-      const fromTile = Number(unit.pos);
-      if (unit.targetTile === null || unit.targetTile === undefined) continue;
-      const targetTile = Number(unit.targetTile);
-      if (!unit.isActive || !Number.isInteger(fromTile) || !Number.isInteger(targetTile) ||
-          fromTile < 0 || targetTile < 0 || fromTile === targetTile || targetTile >= mapTileCount) continue;
-      unitMovements.push({ ownerID, fromTile, targetTile, troops: Number(unit.troops ?? 0), unitType: type });
-    }
+    const { unitCountsByOwner, unitTroopsByOwner, unitsUnderConstructionByOwner, unitMovements } =
+      collectUnitSnapshotMetrics(state.units.values() as Iterable<any>, mapWidth * mapHeight);
+    const tileState = state.tileState as Uint16Array | undefined;
+    const territory = tileState ? encodeTileOwners(tileState, mapWidth, mapHeight) : null;
     const playerMeta = new Map(reader.header.players.map((p: any) => [p.smallID, p]));
     const tileState = state.tileState as Uint16Array | undefined;
     const territory = tileState ? encodeTileOwners(tileState, mapWidth, mapHeight) : null;

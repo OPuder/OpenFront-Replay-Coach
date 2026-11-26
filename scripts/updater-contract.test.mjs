@@ -494,6 +494,10 @@ for (const workflow of engineCacheWorkflows) {
   assert.doesNotMatch(workflow, /openfront-engine-git-\$\{\{ runner\.os \}\}-\$\{\{ github\.job \}\}/,
     "Engine Git objects must be shared across jobs.");
 }
+for (const workflow of engineCacheWorkflows) {
+  assert.match(workflow, /Restore verified replay engine bundles[\\s\\S]*?actions\\/cache@v4[\\s\\S]*?src\\/renderer\\/engine[\\s\\S]*?\\.openfront-engine-build\\.json[\\s\\S]*?key: openfront-engine-bundles-\\$\\{\\{ hashFiles\\('\.gitmodules', 'engine-build\\/\\*\\*', 'vendor\\/\\*\\*\\/package-lock\\.json', 'scripts\\/build-engines\\.mjs'\\) \\}\\}[\\s\\S]*?enableCrossOsArchive: true/,
+    "Exact replay worker bundles must be cached across jobs and operating systems using all build inputs.");
+}
 
 const engineDiscoveryWorkflow = read(".github/workflows/discover-openfront-engine.yml");
 assert.match(engineDiscoveryWorkflow, /git diff --cached --check -- \. ':!src\/renderer\/engine\/replay-engine-\*\.js'/,

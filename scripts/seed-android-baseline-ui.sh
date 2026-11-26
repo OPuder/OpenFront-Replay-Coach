@@ -444,17 +444,31 @@ wait_for_search_ime() {
   sleep 2
 }
 dismiss_search_ime() {
-  local ime_state="" attempt
-  ime_state="$(timeout 8s adb -s emulator-5554 shell dumpsys input_method 2>&1 || true)"
-  if grep -Eiq 'mInputShown=true|mInputViewShown=true|isInputViewShown=true|mShowRequested=true' <<< "$ime_state"; then
-    log "Dismissing the visible Android keyboard before re-locating the WebView search field."
+  local ime_state="" attempt visibility_flags=""
+  local visible_pattern='mInputShown=true|mInputViewShown=true|isInputViewShown=true'
+  local hidden_pattern='mInputShown=false|mInputViewShown=false|isInputViewShown=false'
+  ime_state="$(timeout 8s adb -s emulator-5554 shell dumpsys input_method 2>&1)" || fail "Could not read Android IME state before re-focusing the library search field."
+  [[ -n "$ime_state" ]] || fail "Android IME state was empty; refusing to guess whether the keyboard covers the WebView."
+  visibility_flags="$(grep -Eo 'mInputShown=(true|false)|mInputViewShown=(true|false)|isInputViewShown=(true|false)' <<< "$ime_state" | tr '\n' ' ' || true)"
+  log "Android IME visibility flags: ${visibility_flags:-not exposed}."
+  if grep -Eiq "$visible_pattern" <<< "$ime_state"; then
+    log "Dismissing the visibly open Android keyboard before re-locating the WebView search field."
     timeout 10s adb -s emulator-5554 shell input keyevent 4 || fail "Could not dismiss Android keyboard before re-focusing the library search field."
+  elif grep -Eiq "$hidden_pattern" <<< "$ime_state"; then
+    log "Android IME reports the keyboard hidden; avoiding an unsafe Back key that could exit the app."
+  else
+    fail "Android IME visibility is unknown; refusing to send Back or tap coordinates that may be covered by the keyboard."
   fi
   for attempt in $(seq 1 8); do
-    ime_state="$(timeout 8s adb -s emulator-5554 shell dumpsys input_method 2>&1 || true)"
-    if ! grep -Eiq 'mInputShown=true|mInputViewShown=true|isInputViewShown=true|mShowRequested=true' <<< "$ime_state"; then
-      log "Android keyboard is dismissed; the WebView search field can be re-located with full viewport bounds."
+    ime_state="$(timeout 8s adb -s emulator-5554 shell dumpsys input_method 2>&1)" || fail "Could not re-check Android IME visibility after dismissal."
+    [[ -n "$ime_state" ]] || fail "Android IME state became empty after dismissal; refusing to guess keyboard visibility."
+    visibility_flags="$(grep -Eo 'mInputShown=(true|false)|mInputViewShown=(true|false)|isInputViewShown=(true|false)' <<< "$ime_state" | tr '\n' ' ' || true)"
+    if grep -Eiq "$hidden_pattern" <<< "$ime_state"; then
+      log "Android keyboard is confirmed hidden (${visibility_flags:-visibility flag}); the WebView search field can be re-located with full viewport bounds."
       return 0
+    fi
+    if ! grep -Eiq "$visible_pattern" <<< "$ime_state"; then
+      fail "Android IME visibility became unknown after dismissal (${visibility_flags:-no visibility flags}); refusing to tap clipped coordinates."
     fi
     sleep 1
   done

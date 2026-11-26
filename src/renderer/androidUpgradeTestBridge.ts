@@ -209,6 +209,15 @@ export async function installAndroidUpgradeTestBridge(): Promise<void> {
             engineCommit: item.engineCommit ?? null,
             turnCount: item.turnCount ?? 0,
           }));
+        const directReplayShape = directReplay ? {
+          topLevelKeys: Object.keys(directReplay).sort(),
+          valueTypes: Object.fromEntries(Object.keys(directReplay).sort().map(key => [key, typeof directReplay[key]])),
+          nestedObjectKeys: Object.fromEntries(Object.entries(directReplay)
+            .filter(([, value]) => value && typeof value === "object" && !Array.isArray(value))
+            .map(([key, value]) => [key, Object.keys(value).sort()])),
+          arrayLengths: Object.fromEntries(Object.entries(directReplay)
+            .filter(([, value]) => Array.isArray(value)).map(([key, value]) => [key, value.length])),
+        } : null;
         return {
           playerId: playerId ?? "",
           gameId,
@@ -219,6 +228,7 @@ export async function installAndroidUpgradeTestBridge(): Promise<void> {
           turnCount: Array.isArray(record?.turns) ? record.turns.length : 0,
           analysisStatus: loaded?.analysisStatus ?? null,
           directReplayFound: Boolean(directReplay),
+          directReplayShape,
           directReplayRecordPresent: Boolean(directRecord),
           directReplayRecordGameId: directRecord?.info?.gameID ?? directRecord?.game?.info?.gameID ?? null,
           directReplayEngineCommit: directRecord?.gitCommit ?? null,

@@ -192,7 +192,13 @@ assert.match(androidReleaseUpgrade, /openssl rand -hex 24/);
 assert.match(androidReleaseUpgrade, /apksigner" sign --ks/);
 assert.match(androidReleaseUpgrade, /INSTALL_FAILED_UPDATE_INCOMPATIBLE/);
 assert.match(androidReleaseUpgrade, /after-signature-mismatch-storage\.json/);
-assert.match(androidReleaseUpgrade, /compare-android-upgrade-snapshots\.mjs.*after-negative-test-storage\.json.*after-signature-mismatch-storage\.json/);
+assert.match(androidReleaseUpgrade, /snapshot-android-web-storage\\.sh after-unsigned-rejection/);
+assert.match(androidReleaseUpgrade, /after-unsigned-rejection[\\s\\S]*?--exact/);
+assert.match(androidReleaseUpgrade, /snapshot-android-web-storage\\.sh after-signer-rejection/);
+assert.match(androidReleaseUpgrade, /after-signer-rejection[\\s\\S]*?--exact/);
+assert.doesNotMatch(androidReleaseUpgrade, /compare-android-upgrade-snapshots\\.mjs/,
+  "Negative-install data integrity must be checked before app relaunch, not against mutable analysis metadata after startup.");
+
 assert.match(androidReleaseUpgrade, /rm -f "\$test_keystore" "\$test_signed_apk"/);
 assert.doesNotMatch(androidReleaseUpgrade, /echo "\$test_password"|cat "\$test_keystore"|upload-artifact.*test_keystore/);
 const androidBaselineUiSeed = read("scripts/seed-android-baseline-ui.sh");
@@ -273,7 +279,7 @@ assert.match(androidStorageInspector, /trainingGoalPresent: Boolean\(trainingGoa
   "Storage validation must report whether a goal was preserved without requiring one to exist.");
 assert.match(androidReleaseUpgrade, /snapshot-android-web-storage\.sh after/);
 assert.match(androidReleaseUpgrade, /after-negative-test-storage\.json/);
-assert.match(androidReleaseUpgrade, /compare-android-upgrade-snapshots\.mjs/);
+
 assert.match(androidStorageInspector, /ofrc-android-upgrade-snapshot-v1/);
 assert.match(androidStorageInspector, /missingReplayRecords/);
 assert.match(androidStorageInspector, /orphanReplayRecords/);
@@ -328,6 +334,40 @@ test("Android storage comparison preserves Local Storage WAL-only data", () => {
     rmSync(fixtureRoot, { recursive: true, force: true });
   }
 });
+test("Android negative-install check compares exact physical WebView files", () => {
+  const fixtureRoot = mkdtempSync(join(tmpdir(), "ofrc-android-negative-install-contract-"));
+  const beforePath = join(fixtureRoot, "before.json");
+  const afterPath = join(fixtureRoot, "after.json");
+  const indexedDbTable = { path: "IndexedDB/https_localhost_0.indexeddb.leveldb/000005.ldb", sha256: "idb-table-hash", size: 10 };
+  const localStorageWal = { path: "Local Storage/leveldb/000003.log", sha256: "local-storage-wal-hash", size: 12 };
+  const manifest = { files: [indexedDbTable, localStorageWal], immutableTables: [indexedDbTable] };
+  const writeManifest = value => writeFileSync(afterPath, JSON.stringify(value), "utf8");
+  writeFileSync(beforePath, JSON.stringify(manifest), "utf8");
+  writeManifest(manifest);
+  const compareScript = fileURLToPath(new URL("../scripts/compare-android-web-storage.mjs", import.meta.url));
+  const runExact = () => {
+    try {
+      return execFileSync(process.execPath, [compareScript, beforePath, afterPath, "--exact"], { encoding: "utf8", stdio: "pipe" });
+    } catch (error) {
+      throw new Error(`${error.stdout ?? ""}${error.stderr ?? ""}`);
+    }
+  };
+  try {
+    assert.match(runExact(), /exact-persistent-files/,
+      "Identical persistent IndexedDB and Local Storage files must pass the negative-install comparison.");
+    writeManifest({ ...manifest, files: [indexedDbTable, { ...localStorageWal, sha256: "changed-wal-hash" }] });
+    assert.throws(runExact, /modified/,
+      "A changed persistent file must fail the negative-install comparison.");
+    writeManifest({ ...manifest, files: [indexedDbTable, localStorageWal, { path: "IndexedDB/new-table.ldb", sha256: "new-table", size: 4 }] });
+    assert.throws(runExact, /added/,
+      "A newly added persistent file must fail the negative-install comparison.");
+    writeManifest({ ...manifest, files: [indexedDbTable] });
+    assert.throws(runExact, /Missing/,
+      "A missing persistent file must fail the negative-install comparison.");
+  } finally {
+    rmSync(fixtureRoot, { recursive: true, force: true });
+  }
+});
 assert.match(androidUnsignedNegative, /META-INF/);
 assert.match(androidUnsignedNegative, /No signing key was generated or used/);
 assert.match(androidUpdateRegression, /OPENFRONT_UPDATE_APK/);
@@ -337,7 +377,11 @@ assert.ok(
   updateValidationWorkflow.indexOf("Test genuine published-APK in-place upgrade on Android emulator") <
     updateValidationWorkflow.indexOf("Verify permanent Android release signing key and continuity"),
   "The permanent signing continuity gate must run after the published-APK emulator upgrade test."
-);
+);assert.match(androidStorageComparison, /const exact = process\\.argv\\[4\\] === "--exact"/,
+  "Negative-install integrity checks must compare physical persistent files before app relaunch.");
+assert.match(androidStorageComparison, /Persistent WebView files changed after failed APK install/,
+  "The exact negative-install mode must fail on missing, changed or added persistent files.");
+
 
 assert.ok(releaseWorkflow.includes(String.raw`names.some(name => /-win\.zip$/i.test(name))`), "Release verification must match the actual Windows portable ZIP filename.");
 const portableAssetMatcher = /^OpenFront\.Replay\.Coach-[0-9]+\.[0-9]+\.[0-9]+-win\.zip$/i;

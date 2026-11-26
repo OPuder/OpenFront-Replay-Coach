@@ -458,6 +458,14 @@ assert.match(matchStore, /const DB_VERSION = 4/);
 assert.match(matchStore, /const REPLAY_STORE = "replay-records"/);
 assert.match(matchStore, /event\.oldVersion < 4[\s\S]*?replays\.put[\s\S]*?cursor\.update[\s\S]*?cursor\.continue/);
 assert.match(matchStore, /export async function loadImportedMatch\(/);
+assert.match(matchStore, /const hasReplayPayload = Boolean\(value\.replayPayload/,
+  "The v4 hydrator must restore replay payloads even when a compact status update left no result summary.");
+assert.match(matchStore, /value\.match\.result \|\| hasReplayPayload/,
+  "Replay hydration must not be gated solely on the lightweight match result summary.");
+assert.match(matchStore, /const existingRequest = matchStore\.get\(\[playerId, item\.game\.gameId\]\)/,
+  "Status-only match updates must inspect the previous match before writing a compact entry.");
+assert.match(matchStore, /result: existing\?\.result \?\? stored\.result/,
+  "Status-only updates must preserve an existing result summary instead of erasing replay metadata.");
 assert.doesNotMatch(read("src/main/main.ts"), /importedReplayJson/);
 const startupUpdater = updater.slice(updater.indexOf("export async function autoUpdateOnStartup"));
 assert.match(startupUpdater, /Installation wartet auf Bestätigung im Update Center/);

@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { spawnSync } from "node:child_process";
 import { existsSync, readFileSync, readdirSync, rmSync, symlinkSync } from "node:fs";
 import path from "node:path";
+import { computeEngineBundleFingerprint, verifyEngineBundleCache } from "./engine-bundle-cache.mjs";
 
 const engines = JSON.parse(readFileSync("engine-build/engines.json", "utf8"));
 if (!Array.isArray(engines) || engines.length === 0) throw new Error("No replay engines are registered.");
@@ -24,6 +25,17 @@ const run = (command, args, options, label, timeoutMs) => {
   }
   if (result.status !== 0) throw new Error(`${label} failed with exit code ${result.status ?? "unknown"}.`);
 };
+
+const root = process.cwd();
+const catalogPath = path.resolve("engine-build/engines.json");
+const engineBuildDirectory = path.resolve("engine-build");
+const outputDirectory = path.resolve("src/renderer/engine");
+const manifestPath = path.resolve(".openfront-engine-build.json");
+const fingerprint = computeEngineBundleFingerprint(catalogPath, engineBuildDirectory, engines);
+if (verifyEngineBundleCache(manifestPath, outputDirectory, fingerprint, engines)) {
+  console.log(`Verified cache contains all ${engines.length} exact engine bundles; skipping historical submodule checkout and dependency installs.`);
+  process.exit(0);
+}
 
 console.log(`Preparing ${engines.length} exact engine revisions from ${sources.length} submodule paths.`);
 

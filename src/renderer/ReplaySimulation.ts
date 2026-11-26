@@ -348,6 +348,12 @@ export async function simulateReplay(
     const unitCountsByOwner = new Map<number, Record<string, number>>();
     const unitTroopsByOwner = new Map<number, Record<string, number>>();
     const unitsUnderConstructionByOwner = new Map<number, number>();
+    const mapWidth = Number(reader.header.mapWidth ?? 0);
+    const mapHeight = Number(reader.header.mapHeight ?? 0);
+    const mapTileCount = mapWidth * mapHeight;
+    const unitMovements: ReplayStateSample["unitMovements"] = [];
+    // Traverse the engine's unit collection once: derive owner statistics and
+    // movement evidence together instead of allocating a second temporary array.
     for (const unit of state.units.values() as Iterable<any>) {
       const ownerID = Number(unit.ownerID);
       const type = String(unit.unitType ?? "unknown");
@@ -360,20 +366,16 @@ export async function simulateReplay(
       if (unit.underConstruction) {
         unitsUnderConstructionByOwner.set(ownerID, (unitsUnderConstructionByOwner.get(ownerID) ?? 0) + 1);
       }
-    }
-    const playerMeta = new Map(reader.header.players.map((p: any) => [p.smallID, p]));
-    const mapWidth = Number(reader.header.mapWidth ?? 0);
-    const mapHeight = Number(reader.header.mapHeight ?? 0);
-    const tileState = state.tileState as Uint16Array | undefined;
-    const territory = tileState ? encodeTileOwners(tileState, mapWidth, mapHeight) : null;
-    const unitMovements = [...state.units.values()].flatMap((unit: any) => {
       const fromTile = Number(unit.pos);
-      if (unit.targetTile === null || unit.targetTile === undefined) return [];
+      if (unit.targetTile === null || unit.targetTile === undefined) continue;
       const targetTile = Number(unit.targetTile);
       if (!unit.isActive || !Number.isInteger(fromTile) || !Number.isInteger(targetTile) ||
-          fromTile < 0 || targetTile < 0 || fromTile === targetTile || targetTile >= mapWidth * mapHeight) return [];
-      return [{ ownerID: Number(unit.ownerID), fromTile, targetTile, troops: Number(unit.troops ?? 0), unitType: String(unit.unitType ?? "unknown") }];
-    });
+          fromTile < 0 || targetTile < 0 || fromTile === targetTile || targetTile >= mapTileCount) continue;
+      unitMovements.push({ ownerID, fromTile, targetTile, troops: Number(unit.troops ?? 0), unitType: type });
+    }
+    const playerMeta = new Map(reader.header.players.map((p: any) => [p.smallID, p]));
+    const tileState = state.tileState as Uint16Array | undefined;
+    const territory = tileState ? encodeTileOwners(tileState, mapWidth, mapHeight) : null;
     const players = [...state.players.entries()].map(([id, p]: [number, any]) => {
       const meta: any = playerMeta.get(id) ?? {};
       const outgoingAttacks = Array.isArray(p.outgoingAttacks) ? p.outgoingAttacks : [];

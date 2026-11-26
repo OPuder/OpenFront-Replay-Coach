@@ -97,6 +97,7 @@ async function main() {
     migratedActionAnalysisMarker: "preserved",
     replayId: "legacy-replay",
     replayHash: "legacy-hash",
+    rawOnlyReplayHash: "legacy-hash",
   }, "IndexedDB v2 → v4 upgrade must preserve profile, match metadata, raw replay and migrate analysis payload");
 
   const fixtures = [

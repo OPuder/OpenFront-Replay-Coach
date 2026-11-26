@@ -84,8 +84,24 @@ try {
       || String(item.recordGameId) !== String(item.gameId) || !item.engineCommit || Number(item.turnCount) < 1)) {
     throw new Error(`Production matchStore rehydration failed after update: ${JSON.stringify(rehydration)}`);
   }
-  if (replayMetadata.some(item => !item.gameId || String(item.recordGameId) !== String(item.gameId) || !item.engineCommit || Number(item.turnCount) < 1)) {
-    throw new Error("One or more full replay records lost their game identity or exact engine commit metadata.");
+  const invalidReplayRecords = replays.filter(record => {
+    const metadata = record.metadata ?? {};
+    return !metadata.gameId || String(metadata.recordGameId) !== String(metadata.gameId)
+      || !metadata.engineCommit || Number(metadata.turnCount) < 1;
+  });
+  if (invalidReplayRecords.length) {
+    const describe = record => ({
+      recordKeys: Object.keys(record ?? {}),
+      metadataKeys: Object.keys(record?.metadata ?? {}),
+      identityAndEngineFields: {
+        gameId: record?.gameId ?? record?.metadata?.gameId ?? null,
+        recordGameId: record?.recordGameId ?? record?.metadata?.recordGameId ?? null,
+        engineCommit: record?.engineCommit ?? record?.metadata?.engineCommit ?? null,
+        turnCount: record?.turnCount ?? record?.metadata?.turnCount ?? null,
+      },
+      nestedReplayKeys: Object.fromEntries(Object.entries(record ?? {}).filter(([, value]) => value && typeof value === "object" && !Array.isArray(value)).map(([key, value]) => [key, Object.keys(value)])),
+    });
+    throw new Error(`Replay identity/engine metadata validation failed for ${invalidReplayRecords.length}/${replays.length} records. Record shape diagnostics: ${JSON.stringify(invalidReplayRecords.map(describe))}`);
   }
   if (trainingGoal && !matchIds.has(String(trainingGoal.gameId ?? ""))) {
     throw new Error("The saved training goal does not reference a persisted match.");

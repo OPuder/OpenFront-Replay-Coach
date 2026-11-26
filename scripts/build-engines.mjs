@@ -43,16 +43,19 @@ function inputFingerprint() {
   return hash.digest("hex");
 }
 
-function exactSourcesReady() {
+function sourcesArePinned() {
   return engines.every((engine) => {
     if (!/^[0-9a-f]{40}$/.test(engine.commit) || !/^[0-9a-f]{12}$/.test(engine.bundleId)) {
       throw new Error(`Invalid engine catalog entry: ${JSON.stringify(engine)}`);
     }
     const source = path.join(root, engine.source);
-    if (!existsSync(path.join(source, "node_modules/vite/bin/vite.js"))) return false;
-    return git(source, ["rev-parse", "HEAD"]) === engine.commit
-      && git(source, ["status", "--porcelain", "--untracked-files=normal"]) === "";
+    return existsSync(path.join(source, "node_modules/vite/bin/vite.js"))
+      && git(source, ["rev-parse", "HEAD"]) === engine.commit;
   });
+}
+
+function sourcesAreClean() {
+  return engines.every((engine) => git(path.join(root, engine.source), ["status", "--porcelain", "--untracked-files=normal"]) === "");
 }
 
 function bundlesComplete() {
@@ -62,9 +65,10 @@ function bundlesComplete() {
   });
 }
 
-const sourcesReady = exactSourcesReady();
-const fingerprint = sourcesReady ? inputFingerprint() : null;
-if (!force && sourcesReady && bundlesComplete() && existsSync(manifestPath)) {
+const sourcesReady = sourcesArePinned();
+const cleanSources = sourcesReady && sourcesAreClean();
+const fingerprint = cleanSources ? inputFingerprint() : null;
+if (!force && cleanSources && bundlesComplete() && existsSync(manifestPath)) {
   try {
     const manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
     if (manifest.schema === 1 && manifest.fingerprint === fingerprint) {
@@ -96,11 +100,16 @@ for (const engine of engines) {
 }
 
 if (!bundlesComplete()) throw new Error("Engine build completed without producing every expected replay bundle.");
-if (!exactSourcesReady()) throw new Error("Engine source changed during the build; refusing to cache the result.");
-writeFileSync(manifestPath, JSON.stringify({
-  schema: 1,
-  fingerprint: inputFingerprint(),
-  engines: engines.map(({ commit, bundleId }) => ({ commit, bundleId })),
-  builtAt: new Date().toISOString(),
-}, null, 2) + "\n");
-console.log(`Built and verified ${engines.length} exact OpenFront replay engines.`);
+if (!sourcesArePinned()) throw new Error("Engine checkout changed during the build; refusing to accept the result.");
+if (sourcesAreClean()) {
+  writeFileSync(manifestPath, JSON.stringify({
+    schema: 1,
+    fingerprint: inputFingerprint(),
+    engines: engines.map(({ commit, bundleId }) => ({ commit, bundleId })),
+    builtAt: new Date().toISOString(),
+  }, null, 2) + "\n");
+  console.log(`Built and verified ${engines.length} exact OpenFront replay engines; reusable cache metadata written.`);
+} else {
+  rmSync(manifestPath, { force: true });
+  console.log("Built exact pinned engine checkouts with local modifications; cache reuse disabled for this build.");
+}

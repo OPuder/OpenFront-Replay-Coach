@@ -377,7 +377,8 @@ assert.ok(
   updateValidationWorkflow.indexOf("Test genuine published-APK in-place upgrade on Android emulator") <
     updateValidationWorkflow.indexOf("Verify permanent Android release signing key and continuity"),
   "The permanent signing continuity gate must run after the published-APK emulator upgrade test."
-);\nassert.match(androidStorageComparison, /const exact = process\.argv\[4\] === "--exact"/,
+);
+assert.match(androidStorageComparison, /const exact = process\.argv\[4\] === "--exact"/,
   "Negative-install integrity checks must compare physical persistent files before app relaunch.");
 assert.match(androidStorageComparison, /Persistent WebView files changed after failed APK install/,
   "The exact negative-install mode must fail on missing, changed or added persistent files.");

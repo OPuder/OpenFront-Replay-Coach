@@ -510,7 +510,7 @@ for (const workflow of engineCacheWorkflows) {
     "Engine Git objects must be shared across jobs.");
 }
 for (const workflow of engineCacheWorkflows) {
-  assert.match(workflow, /Restore verified replay engine bundles[\s\S]*?actions\/cache@v4[\s\S]*?src\/renderer\/engine[\s\S]*?\.openfront-engine-build\.json[\s\S]*?key: openfront-engine-bundles-\$\{\{ hashFiles\('\.gitmodules', 'engine-build\/\*\*', 'vendor\/\*\*\/package-lock\.json', 'scripts\/build-engines\.mjs'\) \}\}[\s\S]*?enableCrossOsArchive: true/,
+  assert.match(workflow, /Restore verified replay engine bundles[\s\S]*?actions\/cache@v4[\s\S]*?src\/renderer\/engine[\s\S]*?\.openfront-engine-build\.json[\s\S]*?key: openfront-engine-bundles-\$\{\{ hashFiles\('\.gitmodules', 'engine-build\/\*\*', 'vendor\/\*\*\/package-lock\.json', 'scripts\/build-engines\.mjs', 'scripts\/engine-bundle-cache\.mjs'\) \}\}[\s\S]*?enableCrossOsArchive: true/,
     "Exact replay worker bundles must be cached across jobs and operating systems using all build inputs.");
 }
 

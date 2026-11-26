@@ -14,3 +14,6 @@ release
  workflow-full.txt
  # Ignore generated JS wrappers for agents (compiled from TS)
  src/renderer/agents/*.js
+
+# Local metadata for verified replay-engine build reuse
+.openfront-engine-build.json

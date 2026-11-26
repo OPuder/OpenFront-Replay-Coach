@@ -16,18 +16,19 @@ The full coach suite includes replay compatibility, engine coverage/corpus, long
 
 ## GitHub Actions gates
 
-The current `main` branch still contains the legacy workflow set. PR #156 is the candidate replacement architecture and is not yet merged. Its intended workflow set is:
+The workflow files currently present on `main` are the source of truth:
 
-- `discover-openfront-engine.yml` — pinned engine discovery/preparation.
-- `validate-engine.yml` — engine pin and bundle integrity.
-- `replay-compatibility.yml` — replay compatibility and regression gates.
-- `integration-e2e.yml` — replay → simulation → coaching → timeline → persistence integration.
-- `update-validation.yml` — change-scoped Windows and Android updater/package validation.
-- `release-on-main.yml` — signed Windows/Android release packaging and install/upgrade verification.
+| Workflow | Responsibility | Expected cadence |
+|---|---|---|
+| `ci.yml` | Typecheck, production build, coach/replay regression, OpenCode/UX/integration tests; live replay regression for replay-sensitive changes | Every push/PR; full live replay weekly and on replay-sensitive changes |
+| `update-validation.yml` | Updater contract, Windows installer/portable packaging and launch, Android signing and real upgrade validation | Relevant PR changes; manual and monthly full validation |
+| `discover-openfront-engine.yml` | Discover upstream engine revisions, prepare exact pinned history, run regressions and publish a reviewable candidate branch | Every six hours and manual |
+| `release-on-main.yml` | Build and verify user-facing Windows and Android release artifacts from main | Main/release trigger as defined in the workflow |
+| `cleanup-merged-branches.yml` | Remove only allowlisted branches whose exact PR head is already merged | Scheduled/manual and relevant repository events |
 
-The standalone Windows-build, Android-validation and Capacitor-lock workflows are consolidated or retired in that candidate. Treat the new set as the target only after PR #156 is reviewed, merged and verified on `main`; until then, use the actual workflow files present on the checked-out branch.
+Do not treat an old workflow proposal or historical PR description as the active workflow architecture. Before changing CI, inspect the current workflow files and recent run/job timings. Preserve the existing separation between fast core validation, replay-sensitive regression, platform update validation, engine discovery and release packaging.
 
-For changes affecting a platform or shared application behavior, inspect the corresponding workflow results on the exact PR head SHA. Replay/coaching changes require replay compatibility and coach regression coverage; updater changes require updater validation and platform update checks; release changes require actual artifact and install/upgrade verification.
+For every change, inspect workflow results on the exact commit SHA. Replay/coaching/engine changes require the live replay regression job; updater changes require updater validation; release changes require actual artifact and install/upgrade verification. A skipped job is acceptable only when its documented path filter proves the change is outside that job's scope.
 
 ## Failure handling
 

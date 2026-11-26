@@ -94,6 +94,16 @@ jobs:
         timeout-minutes: 55
         run: npm run prepare:engines
 
+      - name: Restore verified replay engine bundles
+        uses: actions/cache@v4
+        with:
+          path: |
+            src/renderer/engine
+            .openfront-engine-build.json
+          key: openfront-engine-bundles-${{ hashFiles('.gitmodules', 'engine-build/**', 'vendor/**/package-lock.json', 'scripts/build-engines.mjs') }}
+          enableCrossOsArchive: true
+
+
       - name: Validate exact engine pins and runtime mappings
         run: npm run validate:engine-pin
 
@@ -163,6 +173,16 @@ jobs:
       - name: Prepare exact historical OpenFront engines
         timeout-minutes: 55
         run: npm run prepare:engines
+
+      - name: Restore verified replay engine bundles
+        uses: actions/cache@v4
+        with:
+          path: |
+            src/renderer/engine
+            .openfront-engine-build.json
+          key: openfront-engine-bundles-${{ hashFiles('.gitmodules', 'engine-build/**', 'vendor/**/package-lock.json', 'scripts/build-engines.mjs') }}
+          enableCrossOsArchive: true
+
 
       - name: Build production renderer and replay workers
         run: npm run build

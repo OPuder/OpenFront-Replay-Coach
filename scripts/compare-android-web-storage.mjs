@@ -16,7 +16,7 @@ for (const [path, hash] of beforeMap) {
 
 const beforeIndexedTables = before.immutableTables.filter(item => item.path.startsWith("IndexedDB/"));
 const beforeLocalStorageTables = before.immutableTables.filter(item => item.path.startsWith("Local Storage/"));
-const isPersistentLevelDbFile = path => /\\.(?:ldb|sst)$/i.test(path) || /(?:^|\\/)\\d+\\.log$/i.test(path);
+const isPersistentLevelDbFile = path => /\.(?:ldb|sst)$/i.test(path) || /(?:^|\/)\d+\.log$/i.test(path);
 const localStorageDataFiles = manifest => manifest.files.filter(item =>
   item.path.startsWith("Local Storage/") && isPersistentLevelDbFile(item.path));
 const beforeLocalStorageFiles = localStorageDataFiles(before);
@@ -52,7 +52,7 @@ console.log(JSON.stringify({
   localStorageTables: beforeLocalStorageTables.length,
   baselineLocalStorageDataFiles: beforeLocalStorageFiles.length,
   preservedLocalStorageDataFiles: beforeLocalStorageFiles.length,
-  localStorageWriteAheadLogs: beforeLocalStorageFiles.filter(item => /(?:^|\\/)\\d+\\.log$/i.test(item.path)).length,
+  localStorageWriteAheadLogs: beforeLocalStorageFiles.filter(item => /(?:^|\/)\d+\.log$/i.test(item.path)).length,
   baselineFiles: before.files.length,
   updatedFiles: after.files.length,
 }, null, 2));

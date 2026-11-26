@@ -78,14 +78,18 @@ assert.match(releaseWorkflow, /No repository files are modified or pushed/,
   "Release selection must not mutate repository files.");
 
 assert.match(branchCleanupWorkflow, /types: \[closed\]/);
-assert.match(branchCleanupWorkflow, /pr\.merged/);
-assert.match(branchCleanupWorkflow, /error\.status === 404 \|\| \(error\.status === 422 && error\.message\?\.includes\("Reference does not exist"\)\)/,
+assert.match(branchCleanupWorkflow, /pr\.merged_at/);
+assert.match(branchCleanupWorkflow, /pr\.head\.repo\?\.full_name === \x60\$\{owner\}\/\$\{repo\}\x60/,
+  "Only pull requests originating in this repository may authorize branch deletion.");
+assert.match(branchCleanupWorkflow, /allowlisted\.has\(pr\.head\.ref\)/,
+  "Only explicitly reviewed branch names may be considered for deletion.");
+assert.match(branchCleanupWorkflow, /current\.data\.commit\.sha !== mergedSha/,
+  "A branch whose head moved after merge must be preserved.");
+assert.match(branchCleanupWorkflow, /error\.status === 404 \|\|\s*\(error\.status === 422 && error\.message\?\.includes\("Reference does not exist"\)\)/,
   "Branch cleanup must tolerate only the explicit missing-ref 404/422 responses, not other API failures.");
-assert.match(branchCleanupWorkflow, /if \(pr\.merged && allowlisted\.has\(pr\.head\.ref\)\)/,
-  "Branch deletion must require a merged PR; closing PR #165 unmerged must not delete its source branch.");
-assert.match(branchCleanupWorkflow, /pr\.number === 166/);
-assert.doesNotMatch(branchCleanupWorkflow, /pr\.number === 165/,
-  "An unmerged modernization branch must be preserved until its remaining changes are reviewed and transferred.");
+assert.match(branchCleanupWorkflow, /ref: \x60heads\/\$\{branch\}\x60/);
+assert.doesNotMatch(branchCleanupWorkflow, /archive\/branch-history-consolidation/,
+  "The preserved branch-history archive must never be deleted by automatic cleanup.");
 assert.match(branchCleanupWorkflow, /fix\/current-workflow-contracts/);
 assert.match(branchCleanupWorkflow, /fix\/engine-preparation-workflow-timeouts/);
 assert.match(branchCleanupWorkflow, /integration\/replay-coaching-ux/);

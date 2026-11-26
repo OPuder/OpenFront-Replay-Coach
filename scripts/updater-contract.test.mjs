@@ -441,7 +441,7 @@ assert.match(appRenderer, /additionalRecurringStrengths/);
 assert.match(appRenderer, /coach-focus-target/);
 assert.doesNotMatch(appRenderer, /className="adaptive-training-goals"/,
   "The three featured training goals must not be duplicated in the old adaptive-goals section.");
-assert.match(matchStore, /const DB_VERSION = 3/);
+assert.match(matchStore, /const DB_VERSION = 4/);
 assert.match(matchStore, /const REPLAY_STORE = "replay-records"/);
 assert.match(matchStore, /event\.oldVersion < 2[\s\S]*?replays\.put[\s\S]*?cursor\.update/);
 assert.match(matchStore, /export async function loadImportedMatch\(/);

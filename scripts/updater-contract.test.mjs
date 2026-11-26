@@ -215,8 +215,12 @@ assert.match(androidImeDismissHelper, /visible_pattern='mInputShown=true'/,
   "Only the authoritative mInputShown=true flag may trigger Back.");
 assert.match(androidImeDismissHelper, /hidden_pattern='mInputShown=false'/,
   "The authoritative hidden IME flag must be checked before coordinate taps.");
-assert.match(androidImeDismissHelper, /(mInputViewShown=true|isInputViewShown=true)[\s\S]*?contradict/,
-  "Contradictory secondary IME flags must fail closed instead of dismissing a possibly hidden keyboard.");
+assert.match(androidImeDismissHelper, /mInputShown=false[\\s\\S]*?secondary IME view flags as diagnostic only[\\s\\S]*?never sending Back/,
+  "Secondary IME view flags must not override a stable hidden primary input-window flag.");
+assert.match(androidImeDismissHelper, /hidden_streak >= 2[\\s\\S]*?require_baseline_app_window[\\s\\S]*?return 0/,
+  "The hidden primary IME state must remain stable for two checks while the baseline app is foregrounded before tapping.");
+assert.match(androidImeDismissHelper, /mInputViewShown=true|isInputViewShown=true[\\s\\S]*?stale/,
+  "Secondary view flags may be stale and must be logged rather than trigger Back.");
 assert.match(androidImeDismissHelper, /require_baseline_app_window[\s\S]*?input keyevent 4/,
   "Back must be guarded by a verified foreground baseline app.");
 assert.match(androidImeDismissHelper, /mInputShown=false[\s\S]*?avoiding Back/,

@@ -457,6 +457,12 @@ assert.doesNotMatch(appRenderer, /className="adaptive-training-goals"/,
 assert.match(matchStore, /const DB_VERSION = 4/);
 assert.match(matchStore, /const REPLAY_STORE = "replay-records"/);
 assert.match(matchStore, /event\.oldVersion < 4[\s\S]*?replays\.put[\s\S]*?cursor\.update[\s\S]*?cursor\.continue/);
+assert.match(matchStore, /const replayRequest = replays\.get\(\[stored\.playerId, stored\.game\.gameId\]\)/,
+  "The v4 migration must read an existing v3 replay record before writing compact match payloads.");
+assert.match(matchStore, /if \(replayPayload\.record != null\) mergedReplayRecord\.record = replayPayload\.record/,
+  "The v4 migration must not overwrite an existing raw replay with an undefined record.");
+assert.match(matchStore, /existingReplayRecord[\s\S]*?playerId: stored\.playerId,[\s\S]*?gameId: stored\.game\.gameId/,
+  "The v4 migration must merge decoded action/coaching caches into the existing replay-store row.");
 assert.match(matchStore, /export async function loadImportedMatch\(/);
 assert.match(matchStore, /const hasReplayPayload = Boolean\(value\.replayPayload/,
   "The v4 hydrator must restore replay payloads even when a compact status update left no result summary.");

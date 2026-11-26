@@ -116,9 +116,20 @@ window.__verifyLegacyMigration = async () => {
     request.onerror = () => reject(request.error ?? new Error("Could not read migrated database version"));
   });
   const version = db.version;
+  const hasAnalysisStore = db.objectStoreNames.contains("analysis-results");
+  const hasUpdatedAtIndex = db.transaction("matches", "readonly").objectStore("matches").indexNames.contains("by-player-updated-at");
+  const legacyMatchHasSimulation = await new Promise<boolean>((resolve, reject) => {
+    const tx = db.transaction("matches", "readonly");
+    const request = tx.objectStore("matches").get(["migration-player", "legacy-replay"]);
+    request.onsuccess = () => resolve(Boolean(request.result?.simulation));
+    request.onerror = () => reject(request.error ?? new Error("Could not verify migrated match payload"));
+  });
   db.close();
   return {
     version,
+    hasAnalysisStore,
+    hasUpdatedAtIndex,
+    legacyMatchHasSimulation,
     profileName: profile?.profile?.displayName ?? null,
     matchStatus: match?.status ?? null,
     analysisStatus: match?.analysisStatus ?? null,

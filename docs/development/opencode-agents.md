@@ -47,3 +47,19 @@ Start OpenCode from the repository root so it discovers project configuration.
 ## Verification
 
 Static review confirms the project config references the five discovered Markdown agent IDs and each file declares `mode: subagent` with read-only restrictions. The merge commit's GitHub Actions checks were still running when reviewed. Runtime discovery, model/provider availability, and real invocation of each agent still require verification in the local OpenCode installation. Do not report agents as operational until OpenCode lists them and each specialist has been invoked successfully.
+
+## Primary workspace workflow: Visual Studio Code agents
+
+The repository now also provides native VS Code workspace agents in `.github/agents/*.agent.md` and shared Copilot instructions in `.github/copilot-instructions.md`. Use these profiles as the primary shared agent workflow when working in VS Code; the OpenCode files above remain available for users who still use OpenCode.
+
+The workspace profiles are:
+- `openfront-coordinator`: coordinates the task and delegates independent work.
+- `replay-engine`: replay formats, exact engine revisions, simulation and data integrity.
+- `coaching-intelligence`: decision quality, evidence, phases and longitudinal coaching.
+- `ux-visualization`: dashboard, replay map/timeline, accessibility and responsive UI.
+- `platform-updates`: Windows, Android, browser, persistence and updates.
+- `qa-release`: independent validation and release review.
+
+Profiles intentionally do not pin a model. VS Code uses the model selected for the session, so the developer can choose an available local Ollama model or another configured provider without repository changes. Tool availability depends on the selected VS Code agent harness; the profile tool lists use VS Code's documented built-in aliases.
+
+Open the repository root in VS Code, select a profile from the Agents picker, or use the Agents window to run independent tasks in parallel. Parallel agents must have separate file ownership; integrate their work through the coordinator and run the relevant quality gates. The presence of a profile does not prove that a local model, tool, or agent invocation is available: verify that in the local VS Code runtime.

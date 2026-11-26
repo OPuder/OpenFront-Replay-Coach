@@ -49,3 +49,25 @@ test("global shell policy keeps push denied and routine inspection allowlisted",
     assert.ok(config.permissions.some(rule => rule.action === "shell" && rule.resource === command && rule.effect === "allow"), `${command} allowlist missing`);
   }
 });
+
+
+const vscodeAgents = [
+  "openfront-coordinator",
+  "replay-engine",
+  "coaching-intelligence",
+  "ux-visualization",
+  "platform-updates",
+  "qa-release",
+];
+
+test("VS Code workspace agents and shared instructions are present", async () => {
+  const instructions = await readFile(new URL("../.github/copilot-instructions.md", import.meta.url), "utf8");
+  assert.match(instructions, /AGENTS\.md/);
+  for (const id of vscodeAgents) {
+    const file = await readFile(new URL(`../.github/agents/${id}.agent.md`, import.meta.url), "utf8");
+    const frontmatter = file.split(/^---$/m)[1];
+    assert.ok(frontmatter, `${id}: frontmatter missing`);
+    assert.match(frontmatter, /^name:\s*.+$/m, `${id}: name missing`);
+    assert.match(frontmatter, /^description:\s*.+$/m, `${id}: description missing`);
+  }
+});

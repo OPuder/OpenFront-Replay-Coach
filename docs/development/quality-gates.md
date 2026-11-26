@@ -42,3 +42,12 @@ For every change, inspect workflow results on the exact commit SHA. Replay/coach
 ## Release verification
 
 Before publishing, verify artifact names, non-zero sizes, expected package identity/version/signature, and install/launch behavior where supported. Required user-facing deliverables are the Windows installer, Windows portable package and Android APK. The web build remains available for browser access. Release deliverables remain the Windows installer, Windows portable ZIP and permanently signed Android APK; do not reintroduce a PWA service worker into native release packages.
+
+## Performance and cache behavior
+
+- CI restores the exact replay-engine bundle cache before preparing historical engine dependencies.
+- A cache hit is accepted only when the build manifest fingerprint, complete engine catalog, exact commit/bundle IDs and all expected non-empty bundles match. The source submodules are still checked out and verified against their pinned commits.
+- On a verified hit, historical engine npm dependency installation is skipped. On a miss, the normal lockfile-grouped installation and full engine build remain mandatory.
+- The production build independently validates the manifest fingerprint and bundle completeness; a stale, incomplete or mismatched cache is a cache miss, never a reason to skip validation.
+- Desktop batch analysis uses bounded concurrency based on reported hardware; mobile remains sequential. Never raise worker limits without replay correctness, memory and thermal validation.
+- Performance work must preserve deterministic simulation, exact historical engine behavior, cancellation, resumability and evidence quality. Compare cold-cache and warm-cache CI timings, plus representative long-replay and multi-match analysis timings; do not claim a speedup without measurements.

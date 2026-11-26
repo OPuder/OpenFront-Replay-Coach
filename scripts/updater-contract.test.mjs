@@ -448,7 +448,7 @@ assert.doesNotMatch(appRenderer, /className="adaptive-training-goals"/,
   "The three featured training goals must not be duplicated in the old adaptive-goals section.");
 assert.match(matchStore, /const DB_VERSION = 4/);
 assert.match(matchStore, /const REPLAY_STORE = "replay-records"/);
-assert.match(matchStore, /event\.oldVersion < 2[\s\S]*?replays\.put[\s\S]*?cursor\.update/);
+assert.match(matchStore, /event\.oldVersion < 4[\s\S]*?replays\.put[\s\S]*?cursor\.update[\s\S]*?cursor\.continue/);
 assert.match(matchStore, /export async function loadImportedMatch\(/);
 assert.doesNotMatch(read("src/main/main.ts"), /importedReplayJson/);
 const startupUpdater = updater.slice(updater.indexOf("export async function autoUpdateOnStartup"));

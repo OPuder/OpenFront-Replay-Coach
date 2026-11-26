@@ -44,15 +44,21 @@ test("verified cache rejects modified bundle bytes and changed build inputs", ()
     writeFileSync(path.join(buildDir, "config.mjs"), "export default 1;");
     const bundlePath = path.join(outputDir, "replay-engine-" + engines[0].bundleId + ".js");
     writeFileSync(bundlePath, "/* original */");
-    const fingerprint = computeEngineBundleFingerprint(catalogPath, buildDir, engines);
+    const buildScriptPath = path.join(root, "build.mjs");
+    writeFileSync(buildScriptPath, "/* builder v1 */");
+    const fingerprint = computeEngineBundleFingerprint(catalogPath, buildDir, engines, [buildScriptPath]);
     writeFileSync(manifestPath, JSON.stringify(createEngineBundleManifest(fingerprint, engines, outputDir)));
     writeFileSync(bundlePath, "/* tampered */");
     assert.equal(verifyEngineBundleCache(manifestPath, outputDir, fingerprint, engines), false);
     writeFileSync(bundlePath, "/* original */");
     writeFileSync(path.join(buildDir, "config.mjs"), "export default 2;");
-    const changedFingerprint = computeEngineBundleFingerprint(catalogPath, buildDir, engines);
+    const changedFingerprint = computeEngineBundleFingerprint(catalogPath, buildDir, engines, [buildScriptPath]);
     assert.notEqual(changedFingerprint, fingerprint);
     assert.equal(verifyEngineBundleCache(manifestPath, outputDir, changedFingerprint, engines), false);
+    writeFileSync(path.join(buildDir, "config.mjs"), "export default 1;");
+    writeFileSync(buildScriptPath, "/* builder v2 */");
+    const changedScriptFingerprint = computeEngineBundleFingerprint(catalogPath, buildDir, engines, [buildScriptPath]);
+    assert.notEqual(changedScriptFingerprint, fingerprint);
   } finally {
     rmSync(root, { recursive: true, force: true });
   }

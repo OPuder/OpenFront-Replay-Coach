@@ -211,9 +211,9 @@ assert.match(androidBaselineUiSeed, /wait_for_search_ime\(\)/,
 assert.match(androidBaselineUiSeed, /dismiss_search_ime\(\)\s*\{\s*local ime_state="" attempt visibility_flags=""/,
   "The Android fallback must have a bounded helper to dismiss the keyboard and log its state.");
 const androidImeDismissHelper = androidBaselineUiSeed.match(/dismiss_search_ime\(\)\s*\{[\s\S]*?\n\}/)?.[0] ?? "";
-assert.match(androidImeDismissHelper, /visible_pattern='mInputShown=true'/,
+assert.match(androidImeDismissHelper, /visible_pattern='minputshown=true'/,
   "Only the authoritative mInputShown=true flag may trigger Back.");
-assert.match(androidImeDismissHelper, /hidden_pattern='mInputShown=false'/,
+assert.match(androidImeDismissHelper, /hidden_pattern='minputshown=false'/,
   "The authoritative hidden IME flag must be checked before coordinate taps.");
 assert.match(androidImeDismissHelper, /mInputShown=false[\\s\\S]*?secondary IME view flags as diagnostic only[\\s\\S]*?never sending Back/,
   "Secondary IME view flags must not override a stable hidden primary input-window flag.");

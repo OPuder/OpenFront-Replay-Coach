@@ -22,6 +22,7 @@ const DB_VERSION = 4;
 const MATCH_STORE = "matches";
 const PROFILE_STORE = "profiles";
 const REPLAY_STORE = "replay-records";
+const ANALYSIS_STORE = "analysis-results";
 const MATCH_PLAYER_INDEX = "by-player-id";
 const MATCH_PLAYER_UPDATED_INDEX = "by-player-updated-at";
 
@@ -38,6 +39,7 @@ function openStore(): Promise<IDBDatabase> {
       if (!db.objectStoreNames.contains(MATCH_STORE)) db.createObjectStore(MATCH_STORE, { keyPath: ["playerId", "game.gameId"] });
       if (!db.objectStoreNames.contains(PROFILE_STORE)) db.createObjectStore(PROFILE_STORE, { keyPath: "playerId" });
       if (!db.objectStoreNames.contains(REPLAY_STORE)) db.createObjectStore(REPLAY_STORE, { keyPath: ["playerId", "gameId"] });
+      if (!db.objectStoreNames.contains(ANALYSIS_STORE)) db.createObjectStore(ANALYSIS_STORE, { keyPath: ["playerId", "gameId"] });
 
       // Query a single player's library without loading every other profile's matches.
       const matches = transaction?.objectStore(MATCH_STORE);
@@ -65,6 +67,33 @@ function openStore(): Promise<IDBDatabase> {
             replays.put({ playerId: stored.playerId, gameId: stored.game.gameId, record });
             const { record: _record, ...summary } = stored.result;
             stored.result = summary as StoredMatch["result"];
+            cursor.update(stored);
+          }
+          cursor.continue();
+        };
+      }
+
+      // Move bulky simulation snapshots out of the match-list store. The
+      // migration is transactional: old entries are only stripped after their
+      // analysis payload is written to the dedicated store.
+      if (event.oldVersion < 4 && transaction) {
+        const matches = transaction.objectStore(MATCH_STORE);
+        const analyses = transaction.objectStore(ANALYSIS_STORE);
+        const cursorRequest = matches.openCursor();
+        cursorRequest.onsuccess = () => {
+          const cursor = cursorRequest.result;
+          if (!cursor) return;
+          const stored = cursor.value as StoredMatch;
+          if (stored.simulation) {
+            analyses.put({
+              playerId: stored.playerId,
+              gameId: stored.game.gameId,
+              simulation: stored.simulation,
+              analysisStatus: stored.analysisStatus,
+              analysisError: stored.analysisError,
+              updatedAt: stored.updatedAt,
+            });
+            delete stored.simulation;
             cursor.update(stored);
           }
           cursor.continue();
@@ -121,16 +150,30 @@ export async function loadPlayerLibrary(playerId: string): Promise<PlayerPage | 
 export async function saveImportedMatch(playerId: string, item: StoredMatchEntry): Promise<void> {
   const db = await openStore();
   await new Promise<void>((resolve, reject) => {
-    const tx = db.transaction([MATCH_STORE, REPLAY_STORE], "readwrite");
+    const tx = db.transaction([MATCH_STORE, REPLAY_STORE, ANALYSIS_STORE], "readwrite");
     const result = item.result;
     const record = result?.record;
     const summary = result ? (() => {
       const { record: _record, ...value } = result;
       return value;
     })() : undefined;
-    const stored: StoredMatch = { ...item, result: summary as StoredMatch["result"], playerId, updatedAt: Date.now() };
+    const updatedAt = Date.now();
+    const stored: StoredMatch = { ...item, simulation: undefined, result: summary as StoredMatch["result"], playerId, updatedAt };
     tx.objectStore(MATCH_STORE).put(stored);
     if (record) tx.objectStore(REPLAY_STORE).put({ playerId, gameId: item.game.gameId, record });
+    if (item.simulation) {
+      tx.objectStore(ANALYSIS_STORE).put({
+        playerId, gameId: item.game.gameId, simulation: item.simulation,
+        analysisStatus: item.analysisStatus, analysisError: item.analysisError, updatedAt,
+      });
+    } else if (item.analysisStatus || item.analysisError) {
+      const analysisStore = tx.objectStore(ANALYSIS_STORE);
+      const analysisRequest = analysisStore.get([playerId, item.game.gameId]);
+      analysisRequest.onsuccess = () => {
+        const existing = analysisRequest.result;
+        if (existing) analysisStore.put({ ...existing, analysisStatus: item.analysisStatus, analysisError: item.analysisError, updatedAt });
+      };
+    }
     tx.oncomplete = () => resolve();
     tx.onerror = () => reject(tx.error ?? new Error("Lokaler Replay-Speicherfehler."));
     tx.onabort = () => reject(tx.error ?? new Error("Lokales Speichern wurde abgebrochen."));
@@ -167,16 +210,18 @@ export async function loadImportedMatches(playerId: string): Promise<StoredMatch
 /** Hydrate only the one large replay payload currently being analyzed or opened. */
 export async function loadImportedMatch(playerId: string, gameId: string): Promise<StoredMatchEntry | null> {
   const db = await openStore();
-  const value = await new Promise<{ match: StoredMatch | undefined; record: unknown }>((resolve, reject) => {
-    const tx = db.transaction([MATCH_STORE, REPLAY_STORE], "readonly");
+  const value = await new Promise<{ match: StoredMatch | undefined; record: unknown; analysis: any }>((resolve, reject) => {
+    const tx = db.transaction([MATCH_STORE, REPLAY_STORE, ANALYSIS_STORE], "readonly");
     const matchRequest = tx.objectStore(MATCH_STORE).get([playerId, gameId]);
     const replayRequest = tx.objectStore(REPLAY_STORE).get([playerId, gameId]);
-    let matchReady = false, replayReady = false;
-    let match: StoredMatch | undefined, record: unknown;
-    const finish = () => { if (matchReady && replayReady) resolve({ match, record }); };
+    const analysisRequest = tx.objectStore(ANALYSIS_STORE).get([playerId, gameId]);
+    let matchReady = false, replayReady = false, analysisReady = false;
+    let match: StoredMatch | undefined, record: unknown, analysis: any;
+    const finish = () => { if (matchReady && replayReady && analysisReady) resolve({ match, record, analysis }); };
     matchRequest.onsuccess = () => { match = matchRequest.result as StoredMatch | undefined; matchReady = true; finish(); };
     replayRequest.onsuccess = () => { record = replayRequest.result?.record; replayReady = true; finish(); };
-    matchRequest.onerror = replayRequest.onerror = () => reject(tx.error ?? new Error("Gespeicherte Partie konnte nicht geladen werden."));
+    analysisRequest.onsuccess = () => { analysis = analysisRequest.result; analysisReady = true; finish(); };
+    matchRequest.onerror = replayRequest.onerror = analysisRequest.onerror = () => reject(tx.error ?? new Error("Gespeicherte Partie konnte nicht geladen werden."));
     tx.onabort = () => reject(tx.error ?? new Error("Laden der gespeicherten Partie wurde abgebrochen."));
   });
   db.close();

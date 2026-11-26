@@ -80,6 +80,9 @@ async function main() {
   const migrated = await window.webContents.executeJavaScript("window.__verifyLegacyMigration()", true);
   assert.deepEqual(migrated, {
     version: 4,
+    hasAnalysisStore: true,
+    hasUpdatedAtIndex: true,
+    legacyMatchHasSimulation: false,
     profileName: "OligenOle",
     matchStatus: "loaded",
     analysisStatus: "verified",

@@ -49,7 +49,7 @@ jobs:
             exit 0
           fi
           changed="$(git diff --name-only "$BASE_SHA" "$HEAD_SHA")"
-          if grep -Eq '^(src/renderer/ReplaySimulation\.ts|src/main/decoder/|scripts/(replay-engine|pro-coach|longitudinal|replay-territory)|src/renderer/ReplayVisualization|src/renderer/main\.tsx)' <<< "$changed"; then
+          if grep -Eq '^(\.gitmodules$|engine-build/|vendor/|src/renderer/engine/|src/renderer/ReplaySimulation\.ts|src/main/decoder/|scripts/(build-engines|prepare-engines|validate-engine-pin|replay-engine|pro-coach|longitudinal|replay-territory)|src/renderer/ReplayVisualization|src/renderer/main\.tsx)' <<< "$changed"; then
             echo "replay_changed=true" >> "$GITHUB_OUTPUT"
             printf '%s\n' "$changed" | grep -E '^(src/renderer/ReplaySimulation\.ts|src/main/decoder/|scripts/(replay-engine|pro-coach|longitudinal|replay-territory)|src/renderer/ReplayVisualization|src/renderer/main\.tsx)'
           else

@@ -142,7 +142,18 @@ jobs:
     # Reuse the engine bundle cache produced by the core job rather than
     # preparing every historical engine concurrently a second time. Scheduled
     # runs intentionally skip core validation and still execute live replay.
-    if: always() && (github.event_name == 'schedule' || (needs.validate.result == 'success' && (github.event_name == 'workflow_dispatch' && inputs.include_live_replay || ((github.event_name == 'pull_request' || github.event_name == 'push') && needs.detect-replay-changes.outputs.replay_changed == 'true')))
+    if: |
+      always() &&
+      (
+        github.event_name == 'schedule' ||
+        (
+          needs.validate.result == 'success' &&
+          (
+            (github.event_name == 'workflow_dispatch' && inputs.include_live_replay) ||
+            ((github.event_name == 'pull_request' || github.event_name == 'push') && needs.detect-replay-changes.outputs.replay_changed == 'true')
+          )
+        )
+      )
     name: Live replay simulation, coaching and IndexedDB regression
     runs-on: ubuntu-latest
     timeout-minutes: 60

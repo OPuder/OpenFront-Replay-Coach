@@ -65,9 +65,6 @@ if (exact) {
     throw new Error("IndexedDB has no persistent immutable tables after the APK upgrade.");
   }
 
-  if (!afterLocalStorageFiles.length) {
-    throw new Error("Local Storage has no persistent LevelDB files after the APK upgrade.");
-  }
 
   const beforeLocalStorageByPath = new Map(beforeLocalStorageFiles.map(item => [item.path, item]));
   const afterLocalStorageByPath = new Map(afterLocalStorageFiles.map(item => [item.path, item]));

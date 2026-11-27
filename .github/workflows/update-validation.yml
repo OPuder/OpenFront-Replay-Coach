@@ -495,6 +495,7 @@ jobs:
         run: bash scripts/verify-android-release-signing.sh
 
       - name: Upload validated production APK
+        id: production_apk_upload
         uses: actions/upload-artifact@v4
         with:
           name: updater-validation-android
@@ -505,7 +506,7 @@ jobs:
       - name: Download uploaded APK for byte-for-byte verification
         uses: actions/download-artifact@v4
         with:
-          name: updater-validation-android
+          artifact-ids: ${{ steps.production_apk_upload.outputs.artifact-id }}
           path: ${{ runner.temp }}/verified-android-artifact
 
       - name: Verify uploaded production APK hash and signature

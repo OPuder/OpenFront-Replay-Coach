@@ -229,7 +229,10 @@ tap_text() {
   local needle="$1"
   local occurrence="${2:-1}"
   local mode="${3:-text}"
+  local required="${4:-true}"
+  local max_ocr_attempts=12
   local coords=""
+  if [[ "$required" == "false" ]]; then max_ocr_attempts=1; fi
   # Try the native hierarchy once. The published APK is a WebView app, and
   # repeatedly launching UIAutomator can take minutes while exposing no DOM.
   if dump_ui; then
@@ -244,19 +247,23 @@ tap_text() {
     return 0
   fi
   # OCR retries are bounded independently and do not rerun UIAutomator.
-  for attempt in $(seq 1 12); do
+  for attempt in $(seq 1 "$max_ocr_attempts"); do
     coords="$(ocr_find_bounds "$needle" "$occurrence" || true)"
     if [[ -n "$coords" ]]; then
       read -r x y <<< "$coords"
-      log "Tapping '$needle' at $x,$y (German/English screenshot OCR, attempt $attempt/12)."
+      log "Tapping '$needle' at $x,$y (German/English screenshot OCR, attempt $attempt/$max_ocr_attempts)."
       timeout 10s adb -s emulator-5554 shell input tap "$x" "$y" || fail "ADB tap failed for '$needle'."
       return 0
     fi
     if (( attempt % 3 == 0 )); then
-      log "Waiting for visible UI control '$needle' (OCR attempt $attempt/12)."
+      log "Waiting for visible UI control '$needle' (OCR attempt $attempt/$max_ocr_attempts)."
     fi
     sleep 2
   done
+  if [[ "$required" == "false" ]]; then
+    log "Optional UI control '$needle' was not found through UIAutomator/OCR; caller will use its guarded fallback."
+    return 1
+  fi
   local ocr_dump
   ocr_dump="$(ocr_text 2>/dev/null | tr '\n' ' ' || true)"
   fail "Could not find the UI control '$needle' in UIAutomator or OCR after bounded retries. OCR text: ${ocr_dump:0:1200}. Captured UI: $(cat "$ui_xml" 2>/dev/null | head -c 4000)"
@@ -329,41 +336,56 @@ wait_for_library_page() {
 navigate_to_library() {
   log "Navigating to the published app's match library with verified UI retries."
   for attempt in 1 2 3; do
+    local tapped=false coords="" x="" y="" screen_size="" screen_width="" screen_height=""
     if (( attempt == 1 )); then
-      tap_text "Partien" last exact
+      if tap_text "Partien" last exact false; then
+        tapped=true
+      else
+        log "Partien was not available through the first fresh UI/OCR lookup; continuing to guarded fallbacks."
+      fi
     elif (( attempt == 2 )); then
-      # UIAutomator can report the nav node as clickable while the WebView's
-      # event handler misses the tap. Re-target the visible label via OCR.
+      # Re-sample the visible label once. If OCR cannot provide fresh bounds,
+      # do not hard-fail here; the final viewport fallback is independently guarded.
       coords="$(ocr_find_bounds "Partien" last || true)"
       if [[ -n "$coords" ]]; then
         read -r x y <<< "$coords"
         if (( x >= 350 && x <= 730 && y >= 1600 && y <= 1800 )); then
-          log "Retrying the visible Partien navigation label at $x,$y using OCR."
+          log "Retrying the visible Partien navigation label at $x,$y using fresh OCR bounds."
           timeout 10s adb -s emulator-5554 shell input tap "$x" "$y" || fail "ADB retry tap failed for Partien navigation."
+          tapped=true
         else
-          tap_text "Partien" last exact
+          log "Fresh Partien OCR bounds ($x,$y) were outside the safe bottom-navigation viewport; refusing that tap."
         fi
       else
-        tap_text "Partien" last exact
+        log "OCR did not return fresh Partien bounds; continuing to the guarded viewport fallback."
       fi
     else
-      # Accessibility and OCR can both fail for a published WebView. The
-      # emulator is configured with a bottom navigation bar; calculate its
-      # center tap from the reported screen dimensions instead of guessing
-      # text coordinates. The tap remains guarded by a supported viewport.
-      screen_size="$(adb -s emulator-5554 shell wm size | sed -n 's/.*: \\([0-9]*\\)x\\([0-9]*\\).*/\\1 \\2/p' | tail -n 1)"
+      # Accessibility and OCR can both fail while the published WebView is
+      # rendering. Verify the app still owns the foreground window, then derive
+      # a fresh center point from the emulator's current supported viewport.
+      require_baseline_app_window
+      screen_size="$(timeout 10s adb -s emulator-5554 shell wm size | sed -n 's/.*: \([0-9]*\)x\([0-9]*\).*/\1 \2/p' | tail -n 1)"
       read -r screen_width screen_height <<< "$screen_size"
       if [[ "$screen_width" =~ ^[0-9]+$ && "$screen_height" =~ ^[0-9]+$ ]] && (( screen_width >= 800 && screen_height >= 1400 )); then
         nav_x=$((screen_width / 2))
         nav_y=$((screen_height * 89 / 100))
-        log "Using verified bottom-navigation fallback at $nav_x,$nav_y for $screen_width x $screen_height viewport."
-        timeout 10s adb -s emulator-5554 shell input tap "$nav_x" "$nav_y" || fail "ADB fallback tap failed for Partien navigation."
+        if (( nav_x > 0 && nav_x < screen_width && nav_y > 0 && nav_y < screen_height )); then
+          log "Using verified bottom-navigation fallback at $nav_x,$nav_y for $screen_width x $screen_height viewport."
+          timeout 10s adb -s emulator-5554 shell input tap "$nav_x" "$nav_y" || fail "ADB fallback tap failed for Partien navigation."
+          tapped=true
+        else
+          fail "Calculated Partien navigation point is outside the current Android viewport: $nav_x,$nav_y in $screen_width x $screen_height."
+        fi
       else
         fail "Cannot safely calculate bottom-navigation fallback from Android screen size: $screen_size"
       fi
     fi
-    if wait_for_library_page 12; then return 0; fi
-    log "Partien navigation did not verify after attempt $attempt/3; retrying."
+    if [[ "$tapped" == "true" ]] && wait_for_library_page 12; then return 0; fi
+    if [[ "$tapped" == "true" ]]; then
+      log "Partien navigation did not verify after attempt $attempt/3; retrying with fresh bounds."
+    else
+      log "No safe Partien tap was available on attempt $attempt/3; retrying."
+    fi
   done
   fail "The Partien navigation did not reach the Spielbibliothek after three verified attempts. OCR: $(ocr_text 2>/dev/null | tr '\n' ' ' | head -c 1200); UI: $(cat "$ui_xml" 2>/dev/null | head -c 3500)"
 }

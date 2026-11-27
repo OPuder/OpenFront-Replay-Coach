@@ -302,9 +302,9 @@ assert.match(androidBaselineUiSeed, /require_baseline_app_window[\s\S]*?input sw
   "Scroll gestures must be guarded by app focus and start away from the status-bar gesture region.");
 assert.doesNotMatch(androidBaselineUiSeed, /input swipe 500 350 500 1500/,
   "The old down-swipe starting near the system shade must not return.");
-assert.match(androidBaselineUiSeed, /tap_edit_field\(\)\s*\{[\s\S]*?dismiss_search_ime[\s\S]*?for attempt in \$\(seq 1 8\)/,
+assert.match(androidBaselineUiSeed, /tap_edit_field\(\)\s*\{[\s\S]*?dismiss_android_ime[\s\S]*?for attempt in \$\(seq 1 8\)/,
   "The search field must be located after the IME is dismissed, so clipped coordinates are not reused.");
-assert.match(androidBaselineUiSeed, /Text input did not appear in the focused search field[\s\S]*?dismiss_search_ime[\s\S]*?tap_edit_field/,
+assert.match(androidBaselineUiSeed, /Text input did not appear in the focused search field[\s\S]*?dismiss_android_ime[\s\S]*?tap_edit_field/,
   "The key-event fallback must dismiss the keyboard before re-focusing the search field.");
 assert.match(androidBaselineUiSeed, /tap_edit_field 1 "\$current_search_query"[\s\S]*?wait_for_search_ime[\s\S]*?if \[\[ "\$clear_search" == "true" \]\]/,
   "Clear/select commands must run only after the input method is ready.");

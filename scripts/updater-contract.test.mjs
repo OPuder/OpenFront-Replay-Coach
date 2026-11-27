@@ -597,8 +597,8 @@ assert.match(androidValidationWorkflow, /emulator-boot-timeout: 1800/);
 const androidBaselineSeed = read("scripts/seed-android-baseline-ui.sh");
 const launcherAnrGuard = androidBaselineSeed.indexOf("dismiss_pixel_launcher_anr()");
 const launcherAnrInvocation = androidBaselineSeed.search(/(?:^|\r?\n)[ \t]*dismiss_pixel_launcher_anr(?:\r?\n|$)/);
-const profileKeyboardGuard = androidBaselineSeed.indexOf("dismiss_profile_keyboard_safely() {");
-const profileKeyboardCall = androidBaselineSeed.search(/(?:^|\r?\n)[ \t]*dismiss_profile_keyboard_safely(?:\r?\n|$)/);
+const profileKeyboardGuard = androidBaselineSeed.indexOf("dismiss_android_ime() {");
+const profileKeyboardCall = androidBaselineSeed.indexOf('dismiss_pixel_launcher_anr\ndismiss_android_ime\nif tap_text "Konto laden"');
 const profileOcrLookup = androidBaselineSeed.indexOf('coords="$(ocr_find_bounds "OpenFront-Profillink" 1');
 const dashboardTabFallback = androidBaselineSeed.indexOf('if ! tap_text "Dashboard" last exact false; then');
 const profileEditSearch = androidBaselineSeed.indexOf('find_bounds "OpenFront-Profillink" edit 1');
@@ -623,7 +623,7 @@ assert.match(androidBaselineSeed, /if needle\.casefold\(\) not in label\.casefol
   "Editable-field lookup must match the requested placeholder, not any arbitrary EditText.");
 assert.match(androidBaselineSeed, /wait_for_profile_loaded\(\)/,
   "The baseline seeder must verify an explicit account-loaded result before accepting profile data.");
-assert.match(androidBaselineSeed, /Dashboard navigation alone is not proof of profile loading/,
+assert.match(androidBaselineSeed, /Dashboard\/Partien navigation alone is never evidence that a profile loaded/,
   "Dashboard navigation alone must never count as evidence that the archived profile was loaded.");
 assert.match(androidBaselineSeed, /input keyevent 66/,
   "If the submit button is not exposed, the profile form may use its guarded Enter submit handler.");

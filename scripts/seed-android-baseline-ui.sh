@@ -406,7 +406,6 @@ dismiss_profile_keyboard_safely
 if tap_text "Konto laden" last exact false; then
   log "The published profile form accepted the player ID through its visible Konto laden control."
 else
-  dashboard_ui=""
   if dump_ui && grep -q 'text="Dashboard"' "$ui_xml" && grep -q 'text="Partien"' "$ui_xml"; then
     dashboard_window="$(timeout 10s adb -s emulator-5554 shell dumpsys window 2>&1 | grep -E 'mCurrentFocus=|mFocusedApp=' | tail -n 2 || true)"
     dashboard_focused_app="$(grep -E 'mFocusedApp=' <<< "$dashboard_window" | tail -n 1 || true)"

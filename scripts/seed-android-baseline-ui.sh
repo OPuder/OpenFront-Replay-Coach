@@ -335,6 +335,34 @@ PY
   fail "Pixel Launcher ANR overlay remained after two verified 'Wait' actions; refusing to continue with obscured UI."
 }
 
+dismiss_profile_keyboard_safely() {
+  local window_state="" current_focus="" focused_app="" lower_focus=""
+  window_state="$(timeout 10s adb -s emulator-5554 shell dumpsys window 2>&1)" || fail "Could not inspect Android window focus before dismissing the profile keyboard."
+  current_focus="$(grep -E 'mCurrentFocus=' <<< "$window_state" | tail -n 1 || true)"
+  focused_app="$(grep -E 'mFocusedApp=' <<< "$window_state" | tail -n 1 || true)"
+  lower_focus="${current_focus,,}"
+
+  if [[ "$focused_app" != *"$package_id"* ]]; then
+    fail "The published baseline app is no longer the focused application after profile entry; refusing to send Back. Focus: ${current_focus:-missing}; app: ${focused_app:-missing}"
+  fi
+
+  if [[ "$lower_focus" == *"inputmethod"* ]]; then
+    log "The Android input method is explicitly focused for the published app; dismissing only that visible keyboard."
+    timeout 10s adb -s emulator-5554 shell input keyevent 4 || fail "Could not dismiss the verified profile keyboard."
+    sleep 1
+    window_state="$(timeout 10s adb -s emulator-5554 shell dumpsys window 2>&1)" || fail "Could not verify app focus after dismissing the profile keyboard."
+    current_focus="$(grep -E 'mCurrentFocus=' <<< "$window_state" | tail -n 1 || true)"
+    focused_app="$(grep -E 'mFocusedApp=' <<< "$window_state" | tail -n 1 || true)"
+    if [[ "$current_focus" != *"$package_id"* || "$focused_app" != *"$package_id"* ]]; then
+      fail "Dismissing the visible profile keyboard did not return focus to the published app; refusing further UI input. Focus: ${current_focus:-missing}; app: ${focused_app:-missing}"
+    fi
+  elif [[ "$current_focus" == *"$package_id"* ]]; then
+    log "The published app already owns the foreground window and no input-method window is focused; skipping Back to avoid exiting the app."
+  else
+    fail "The published app is not foregrounded and the focused window is not a verified input method; refusing Back or coordinate input. Focus: ${current_focus:-missing}"
+  fi
+}
+
 log "Rechecking ADB transport and boot state before launching the published baseline."
 android_prepare_emulator || fail "Baseline emulator preparation failed; inspect stage-specific ADB/boot diagnostics."
 log "Launching the genuine published v2.2.51 APK and classifying ADB, ActivityManager and crash failures."
@@ -373,8 +401,8 @@ read -r input_x input_y <<< "$coords"
 log "Entering the archived player ID through the real published app UI at $input_x,$input_y."
 adb -s emulator-5554 shell input tap "$input_x" "$input_y"
 adb -s emulator-5554 shell input text "$player_id"
-adb -s emulator-5554 shell input keyevent 4
 dismiss_pixel_launcher_anr
+dismiss_profile_keyboard_safely
 tap_text "Konto laden"
 
 # The published baseline is a non-debuggable WebView app, so Android exposes

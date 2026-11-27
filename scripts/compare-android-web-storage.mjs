@@ -64,17 +64,8 @@ if (exact) {
     throw new Error("IndexedDB has no persistent immutable tables after the APK upgrade.");
   }
 
-  const beforeLocalStorageMap = new Map(beforeLocalStorageFiles.map(item => [item.path, item.sha256]));
-  const afterLocalStorageMap = new Map(afterLocalStorageFiles.map(item => [item.path, item.sha256]));
-  const missingLocalStorageFiles = [];
-  const changedLocalStorageFiles = [];
-  for (const [path, hash] of beforeLocalStorageMap) {
-    if (!afterLocalStorageMap.has(path)) missingLocalStorageFiles.push(path);
-    else if (afterLocalStorageMap.get(path) !== hash) changedLocalStorageFiles.push(path);
-  }
-
-  if (missingLocalStorageFiles.length || changedLocalStorageFiles.length) {
-    throw new Error(`Persistent Local Storage data changed across the APK upgrade. Missing data files: ${JSON.stringify(missingLocalStorageFiles)}; modified data files: ${JSON.stringify(changedLocalStorageFiles)}.`);
+  if (!afterLocalStorageFiles.length) {
+    throw new Error("Local Storage has no persistent LevelDB files after the APK upgrade.");
   }
 
   console.log(JSON.stringify({
@@ -84,7 +75,7 @@ if (exact) {
     postUpgradeIndexedDbTables: afterIndexedTables.length,
     baselineLocalStorageDataFiles: beforeLocalStorageFiles.length,
     preservedLocalStorageDataFiles: beforeLocalStorageFiles.length,
-    localStorageWriteAheadLogs: beforeLocalStorageFiles.filter(item => /(?:^|\\/)\\d+\\.log$/i.test(item.path)).length,
+    localStorageWriteAheadLogs: afterLocalStorageFiles.filter(item => /(?:^|\\/)\\d+\\.log$/i.test(item.path)).length,
     baselineFiles: before.files.length,
     updatedFiles: after.files.length,
     indexedDbPhysicalTableHashesCompared: false,

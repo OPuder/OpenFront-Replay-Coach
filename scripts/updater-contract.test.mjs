@@ -197,6 +197,12 @@ assert.match(androidStorageInspector, /fullReplayRecords\.length < 2/,
 assert.match(androidStorageInspector, /emptyReplayRecordCount: emptyReplayRecords\.length/,
   "The inspector must report empty imported records separately for diagnosis.");
 const androidStorageSnapshot = read("scripts/snapshot-android-web-storage.sh");
+const androidStorageComparison = read("scripts/compare-android-web-storage.mjs");
+assert.match(androidStorageComparison, /comparison: "logical-indexeddb-plus-localstorage-files"/,
+  "Upgrade persistence must validate IndexedDB logically rather than require LevelDB physical-table identity.");
+assert.match(androidStorageComparison, /indexedDbPhysicalTableHashesCompared: false/);
+assert.match(androidStorageComparison, /if \(exact\)[\s\S]*?exact-persistent-files/,
+  "Exact physical storage comparison remains required after rejected APK installs when the app is stopped.");
 const androidUnsignedNegative = read("scripts/create-android-unsigned-negative-apk.py");
 
 assert.match(updateValidationWorkflow, /Download and verify exact public v2\.2\.51 Android baseline/);

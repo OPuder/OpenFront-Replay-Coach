@@ -388,8 +388,11 @@ fi
 # UIAutomator. The same screen may expose its DOM-backed EditText nodes a few
 # seconds later, so do not treat the first valid-but-shallow hierarchy as a
 # missing field or fall back to OCR immediately.
-coords=""
 for attempt in $(seq 1 15); do
+  if [[ -n "$coords" ]]; then
+    log "Located the profile input from its visible placeholder before accessibility retries."
+    break
+  fi
   dismiss_pixel_launcher_anr
   if dump_ui; then
     coords="$(find_bounds "OpenFront-Profillink" edit 1 2>/dev/null || true)"

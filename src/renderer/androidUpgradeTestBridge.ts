@@ -221,6 +221,7 @@ export async function installAndroidUpgradeTestBridge(): Promise<void> {
           verifiedAnalysisCount: verifiedAnalyses.length,
           verifiedAnalysisGameIds: verifiedAnalyses.map(item => String(item.gameId ?? "")).sort(),
           analysisMetadata,
+        },
         appVersion: typeof __APP_VERSION__ === "string" ? __APP_VERSION__ : "unknown",
         capturedAt: new Date().toISOString(),
         localStorage: { count: localStorageEntries.length, entries: localStorageEntries, hashes: localStorageHashes },

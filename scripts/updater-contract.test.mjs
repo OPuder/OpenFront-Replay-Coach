@@ -530,7 +530,7 @@ const engineCatalog = read("src/main/decoder/ReplayEngineCatalog.ts");
 const replayEngineDeclarations = read("src/renderer/replay-engine.d.ts");
 for (const match of engineCatalog.matchAll(/bundleId:\s*"([0-9a-f]{12})"/g)) {
   assert.match(replayEngineDeclarations, new RegExp('declare module "\\*replay-engine-' + match[1] + '\\.js"'),
-    \`Engine bundle \${match[1]} must have an ambient renderer module declaration.\`);
+    "Engine bundle " + match[1] + " must have an ambient renderer module declaration.");
 }
 
 const enginePreparation = read("scripts/prepare-engines.mjs");

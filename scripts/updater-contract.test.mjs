@@ -689,6 +689,10 @@ assert.match(androidStorageInspector, /const analyses = stores\["analysis-result
 assert.match(androidStorageInspector, /analysisMetadata\.filter[\s\S]*?item\.playerId === playerId[\s\S]*?matchIds\.has/,
   "Verified analysis results must be linked to the UI-seeded player and existing match IDs.");
 assert.match(androidUpgradeBridge, /loadImportedMatch\(playerId, gameId\)/);
+const diagnosticDbClose = androidUpgradeBridge.indexOf("db.close();");
+const productionHydration = androidUpgradeBridge.indexOf("loadImportedMatch(playerId, gameId)");
+assert.ok(diagnosticDbClose >= 0 && diagnosticDbClose < productionHydration,
+  "The diagnostic IndexedDB connection must close before production schema-v4 rehydration so it cannot block an upgrade.");
 const replayPersistenceHarness = read("scripts/replay-engine-test.ts");
 assert.match(replayPersistenceHarness, /const saved = await loadImportedMatch\("ci-persistence-player", gameId\)/,
   "Refresh persistence tests must hydrate the full analysis payload from analysis-results, not the lightweight library index.");

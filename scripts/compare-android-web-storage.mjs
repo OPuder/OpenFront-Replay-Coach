@@ -82,4 +82,3 @@ if (exact) {
     indexedDbLogicalIntegrityVerifiedByInspector: true,
   }, null, 2));
 }
-}

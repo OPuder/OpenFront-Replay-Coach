@@ -612,9 +612,12 @@ assert.ok(enginePinValidation.includes("if (!cachedBundlesVerified) {"),
 assert.match(enginePinValidation, /using integrity-checked bundles/);
 assert.match(enginePinValidation, /against source checkouts/);
 
-assert.match(enginePreparation, /attempt <= 1/);
-assert.match(enginePreparation, /Do not retry in this workspace/);
-assert.match(enginePreparation, /25 \* 60_000/);
+assert.match(enginePreparation, /for \(let attempt = 1; attempt <= 4; attempt\+\+\)/);
+assert.match(enginePreparation, /attempt === 4\) throw error/);
+assert.match(enginePreparation, /12 \* 60_000/);
+assert.match(enginePreparation, /attempt \* 15/);
+assert.match(enginePreparation, /Wait before submodule retry/);
+assert.match(enginePreparation, /after four attempts/);
 assert.match(androidValidationWorkflow, /-gpu swiftshader_indirect/,
   "Android emulator validation must use indirect SwiftShader rendering to avoid unstable GPU color buffers.");
 assert.match(androidValidationWorkflow, /target: google_apis/);

@@ -564,6 +564,9 @@ assert.match(enginePreparation, /http\.lowSpeedLimit=0/);
 assert.match(enginePreparation, /http\.lowSpeedTime=0/);
 assert.match(enginePreparation, /http\.version=HTTP\/1\.1/);
 assert.match(enginePreparation, /attempt <= 4/);
+assert.match(enginePreparation, /25 \* 60_000/);
+assert.match(enginePreparation, /if \(error\.message\.includes\("exceeded its"\)\) throw error/,
+  "Timed-out submodule fetches must not overlap with retry processes holding Git locks.");
 assert.match(enginePreparation, /12 \* 60_000/);
 assert.match(enginePreparation, /Wait before submodule retry", 60_000\)/,
   "The retry wait timeout must exceed the longest bounded retry delay.");

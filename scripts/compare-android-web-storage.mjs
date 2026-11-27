@@ -75,7 +75,7 @@ if (exact) {
     postUpgradeIndexedDbTables: afterIndexedTables.length,
     baselineLocalStorageDataFiles: beforeLocalStorageFiles.length,
     preservedLocalStorageDataFiles: beforeLocalStorageFiles.length,
-    localStorageWriteAheadLogs: afterLocalStorageFiles.filter(item => /(?:^|\\/)\\d+\\.log$/i.test(item.path)).length,
+    localStorageWriteAheadLogs: afterLocalStorageFiles.filter(item => /(?:^|\/)\d+\.log$/i.test(item.path)).length,
     baselineFiles: before.files.length,
     updatedFiles: after.files.length,
     indexedDbPhysicalTableHashesCompared: false,

@@ -518,6 +518,7 @@ for (const workflow of engineCacheWorkflows) {
     assert.ok(cacheKey.includes("scripts/engine-bundle-cache.mjs"),
       "Every replay-engine bundle cache key must include the verifier/fingerprint implementation.");
   }
+}
 
 const engineDiscoveryWorkflow = read(".github/workflows/discover-openfront-engine.yml");
 assert.match(engineDiscoveryWorkflow, /git diff --cached --check -- \. ':!src\/renderer\/engine\/replay-engine-\*\.js'/,

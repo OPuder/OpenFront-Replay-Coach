@@ -607,18 +607,20 @@ assert.ok(launcherAnrInvocation > launcherAnrGuard,
   "The Pixel Launcher ANR recovery helper must be defined before its first top-level invocation.");
 assert.ok(profileKeyboardGuard >= 0 && profileKeyboardCall > profileKeyboardGuard,
   "The profile keyboard guard must be defined before the published baseline UI uses it.");
-assert.match(androidBaselineSeed, /skipping Back to avoid exiting the app/,
-  "The baseline script must never send Back unless Android confirms the input-method window is focused.");
-assert.match(androidBaselineSeed, /refusing further UI input/,
-  "The baseline script must fail closed if keyboard dismissal loses the published app's foreground focus.");
+assert.match(androidBaselineSeed, /minputshown=true/,
+  "The baseline script must use Android's primary IME visibility flag before dismissing the profile keyboard.");
+assert.match(androidBaselineSeed, /two consecutive checks/,
+  "The baseline script must verify keyboard dismissal before tapping profile controls.");
 assert.ok(profileOcrLookup >= 0 && dashboardTabFallback > profileOcrLookup && profileEditSearch > dashboardTabFallback,
   "The seeder must search the profile-specific placeholder first, select Dashboard only when absent, and never reuse the Partien library search input.");
 assert.match(androidBaselineSeed, /if needle\.casefold\(\) not in label\.casefold\(\):/,
   "Editable-field lookup must match the requested placeholder, not any arbitrary EditText.");
-assert.match(androidBaselineSeed, /already transitioned to its authenticated Dashboard with Partien navigation/,
-  "The baseline seeder may accept an already-loaded dashboard only as a verified UI state before the persisted profile/replay acceptance checks.");
-assert.match(androidBaselineSeed, /Dashboard and Partien controls were visible, but the published app did not own the foreground application/,
-  "The dashboard fallback must fail closed when another Android window owns the foreground.");
+assert.match(androidBaselineSeed, /wait_for_profile_loaded\(\)/,
+  "The baseline seeder must verify an explicit account-loaded result before accepting profile data.");
+assert.match(androidBaselineSeed, /Dashboard navigation alone is not proof of profile loading/,
+  "Dashboard navigation alone must never count as evidence that the archived profile was loaded.");
+assert.match(androidBaselineSeed, /input keyevent 66/,
+  "If the submit button is not exposed, the profile form may use its guarded Enter submit handler.");
 assert.ok(launcherAppPid > launcherAnrWait && launcherResumedApp > launcherAppPid,
   "The launcher ANR Wait action must require the published app process and resumed activity to remain alive.");
 assert.ok(launcherNavigationCall > androidBaselineSeed.indexOf("require_baseline_app_window() {"),

@@ -198,8 +198,11 @@ assert.match(androidStorageInspector, /emptyReplayRecordCount: emptyReplayRecord
   "The inspector must report empty imported records separately for diagnosis.");
 const androidStorageSnapshot = read("scripts/snapshot-android-web-storage.sh");
 const androidStorageComparison = read("scripts/compare-android-web-storage.mjs");
-assert.match(androidStorageComparison, /comparison: "logical-indexeddb-plus-localstorage-files"/,
-  "Upgrade persistence must validate IndexedDB logically rather than require LevelDB physical-table identity.");
+assert.match(androidStorageComparison, /comparison: "logical-indexeddb-plus-hash-verified-localstorage-files"/,
+  "Upgrade persistence must validate IndexedDB logically and hash-check Local Storage data files.");
+assert.match(androidStorageComparison, /localStorageDataFileHashesCompared: true/);
+assert.match(androidStorageComparison, /current\\.sha256 !== file\\.sha256 \\|\\| current\\.size !== file\\.size/,
+  "The upgrade must fail if any persisted Local Storage data file changes.");
 assert.match(androidStorageComparison, /indexedDbPhysicalTableHashesCompared: false/);
 assert.match(androidStorageComparison, /if \(exact\)[\s\S]*?exact-persistent-files/,
   "Exact physical storage comparison remains required after rejected APK installs when the app is stopped.");

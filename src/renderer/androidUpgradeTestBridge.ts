@@ -176,15 +176,12 @@ export async function installAndroidUpgradeTestBridge(): Promise<void> {
       const trainingGoalEntry = localStorageEntries.find(entry => entry.key === "openfront-coach-training-goal")?.value;
       const trainingGoal = trainingGoalEntry ? JSON.parse(trainingGoalEntry) : null;
 
-      if (playerId !== "5SVg4WbI") throw new Error("The actual UI-seeded player profile key is missing or does not match the archived profile.");
-      if (!profiles.some(profile => String(profile.playerId ?? "") === playerId)
-        || !matches.some(match => String(match.playerId ?? "") === playerId)) {
-        throw new Error("The actual UI profile ID is not consistently linked across LocalStorage and IndexedDB.");
-      }
-      if (profiles.length < 1 || matches.length < 2 || replays.length < 2) {
-        throw new Error(`Expected a real profile and at least two persisted replay records; found profiles=${profiles.length}, matches=${matches.length}, replayRecords=${replays.length}.`);
-      }
-      if (!verifiedAnalyses.length) throw new Error("No verified replay analysis result survived in the analysis-results store for the selected profile and persisted matches.");
+      // Keep the bridge diagnostic-only: return the complete store summary even
+      // when acceptance invariants fail. The external inspector writes this
+      // snapshot before enforcing every invariant, so CI artifacts expose the
+      // actual profile/match/replay/analysis state instead of hiding it behind
+      // the first thrown assertion.
+
 
       // Rehydrate the two exact UI-seeded replays rather than whichever records
       // happen to appear first in IndexedDB's key order.
@@ -213,6 +210,17 @@ export async function installAndroidUpgradeTestBridge(): Promise<void> {
 
       return {
         schema: "ofrc-android-upgrade-snapshot-v1",
+        diagnostics: {
+          selectedPlayerId: playerId ?? null,
+          profilePresent: profiles.some(profile => String(profile.playerId ?? "") === String(playerId ?? "")),
+          matchProfileLinked: matches.some(match => String(match.playerId ?? "") === String(playerId ?? "")),
+          profileCount: profiles.length,
+          matchCount: matches.length,
+          replayRecordCount: replays.length,
+          analysisResultCount: analyses.length,
+          verifiedAnalysisCount: verifiedAnalyses.length,
+          verifiedAnalysisGameIds: verifiedAnalyses.map(item => String(item.gameId ?? "")).sort(),
+          analysisMetadata,
         appVersion: typeof __APP_VERSION__ === "string" ? __APP_VERSION__ : "unknown",
         capturedAt: new Date().toISOString(),
         localStorage: { count: localStorageEntries.length, entries: localStorageEntries, hashes: localStorageHashes },

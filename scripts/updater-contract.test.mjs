@@ -344,8 +344,8 @@ assert.match(androidStorageSnapshot, /Local Storage/);
 assert.match(androidStorageComparison, /const localStorageDataFiles = manifest => manifest\.files\.filter/);
 assert.ok(androidStorageComparison.includes(String.raw`/(?:^|\/)\d+\.log$/i`),
   "The Android storage comparison must recognize numbered LevelDB write-ahead logs as persistent Local Storage data.");
-assert.match(androidStorageComparison, /Persistent Local Storage data changed across the APK upgrade/,
-  "Local Storage WALs and immutable tables must be hash-compared across the in-place update.");
+assert.match(androidStorageComparison, /modifiedLocalStorageFiles\.length/,
+  "Local Storage data-file hashes must be compared across the in-place update.");
 assert.doesNotMatch(androidStorageComparison, /if \(!beforeIndexedTables\.length \|\| !beforeLocalStorageTables\.length\)/,
   "Local Storage persistence must not require compaction into an immutable table when the baseline contains a data-bearing WAL.");
 test("Android storage comparison preserves Local Storage WAL-only data", () => {

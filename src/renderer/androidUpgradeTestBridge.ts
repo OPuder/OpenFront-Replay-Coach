@@ -209,7 +209,7 @@ export async function installAndroidUpgradeTestBridge(): Promise<void> {
 
 
       // Close the unversioned diagnostic connection before production hydration.
-      // loadImportedMatch opens the database at schema v4; if this inspector opened
+      // loadImportedMatch opens the database at the current schema version; if this inspector opened
       // an older baseline schema and kept its connection alive, that upgrade can
       // be blocked by this very connection and report the misleading "another tab"
       // error. The cursor reads above are complete, so release the connection now.

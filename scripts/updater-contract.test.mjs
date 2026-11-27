@@ -484,7 +484,7 @@ assert.match(appRenderer, /additionalRecurringStrengths/);
 assert.match(appRenderer, /coach-focus-target/);
 assert.doesNotMatch(appRenderer, /className="adaptive-training-goals"/,
   "The three featured training goals must not be duplicated in the old adaptive-goals section.");
-assert.match(matchStore, /const DB_VERSION = 4/);
+assert.match(matchStore, /const DB_VERSION = 5/);
 assert.match(matchStore, /const REPLAY_STORE = "replay-records"/);
 assert.match(matchStore, /function migrateLegacyMatch\(db: IDBDatabase, key: IDBValidKey\): Promise<void>/,
   "Legacy match payload migration must use a bounded transaction per match.");
@@ -492,6 +492,8 @@ assert.match(matchStore, /for \(const key of keys\) await migrateLegacyMatch\(db
   "Legacy migrations must complete sequentially so large profiles do not create concurrent storage pressure.");
 assert.match(matchStore, /One atomic transaction per match[\s\S]*?interrupted runs resume/,
   "Completed legacy rows must remain compacted if a later row interrupts migration.");
+assert.match(matchStore, /const LEGACY_MIGRATION_KEY = "legacy-payloads-v4"[\s\S]*?get\(LEGACY_MIGRATION_KEY\)[\s\S]*?put\(\{ key: LEGACY_MIGRATION_KEY, complete: true \}\)/,
+  "The completed one-time migration must be recorded so later app launches do not rescan the full library.");
 assert.match(matchStore, /if \(legacyPayload\.record != null && mergedReplayRecord\.record == null\) mergedReplayRecord\.record = legacyPayload\.record/,
   "Legacy migration must preserve an existing raw replay row instead of replacing it.");
 assert.match(matchStore, /if \(!Number\.isFinite\(stored\.updatedAt\)\)[\s\S]*?stored\.updatedAt = Date\.now\(\)/,

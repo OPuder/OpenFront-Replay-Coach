@@ -588,7 +588,7 @@ assert.match(androidValidationWorkflow, /-memory 4096/);
 assert.match(androidValidationWorkflow, /emulator-boot-timeout: 1800/);
 const androidBaselineSeed = read("scripts/seed-android-baseline-ui.sh");
 const launcherAnrGuard = androidBaselineSeed.indexOf("dismiss_pixel_launcher_anr()");
-const launcherAnrInvocation = androidBaselineSeed.search(/(?:^|\\r?\\n)[ \\t]*dismiss_pixel_launcher_anr(?:\\r?\\n|$)/);
+const launcherAnrInvocation = androidBaselineSeed.search(/(?:^|\r?\n)[ \t]*dismiss_pixel_launcher_anr(?:\r?\n|$)/);
 const launcherAnrWait = androidBaselineSeed.indexOf("android:id/aerr_wait");
 const launcherAppPid = androidBaselineSeed.indexOf('pidof "$package_id"', launcherAnrGuard);
 const launcherResumedApp = androidBaselineSeed.indexOf('mResumedActivity|topResumedActivity', launcherAnrGuard);

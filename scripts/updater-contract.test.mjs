@@ -593,7 +593,7 @@ const launcherAnrGuard = androidBaselineSeed.indexOf("dismiss_pixel_launcher_anr
 const launcherAnrWait = androidBaselineSeed.indexOf("android:id/aerr_wait");
 const launcherAppPid = androidBaselineSeed.indexOf('pidof "$package_id"', launcherAnrGuard);
 const launcherResumedApp = androidBaselineSeed.indexOf('mResumedActivity|topResumedActivity', launcherAnrGuard);
-const launcherNavigationMatch = /(?:^|\\r?\\n)navigate_to_library(?:\\r?\\n|$)/.exec(androidBaselineSeed);
+const launcherNavigationMatch = /(?:^|\r?\n)navigate_to_library(?:\r?\n|$)/.exec(androidBaselineSeed);
 const launcherNavigationCall = launcherNavigationMatch?.index ?? -1;
 assert.ok(launcherAnrGuard >= 0 && launcherAnrWait > launcherAnrGuard,
   "Android baseline seeding must recognize only the explicit Pixel Launcher ANR dialog and its Wait control.");

@@ -53,44 +53,54 @@ if (exact) {
     localStorageFiles: persistentFiles(before).filter(item => item.path.startsWith("Local Storage/")).length,
     unchangedPersistentFiles: beforeFiles.size,
   }, null, 2));
-} else {
-  const beforeMap = new Map(before.immutableTables.map(item => [item.path, item.sha256]));
-  const afterMap = new Map(after.immutableTables.map(item => [item.path, item.sha256]));
-  const missing = [];
-  const changed = [];
-  for (const [path, hash] of beforeMap) {
-    if (!afterMap.has(path)) missing.push(path);
-    else if (afterMap.get(path) !== hash) changed.push(path);
+ } else {
+  // IndexedDB is a logical database, not an immutable collection of LevelDB files.
+  // Schema upgrades can compact/rewrite .ldb tables, so byte-for-byte table
+  // equality is invalid here. The inspector validates exact replay IDs, raw
+  // GameRecords, engine metadata, verified analyses and training-goal data.
+  // Local Storage is separate from IndexedDB: compare its data-bearing LevelDB
+  // files across the update so a rewrite or loss cannot be mistaken for survival.
+  const afterIndexedTables = after.immutableTables.filter(item => item.path.startsWith("IndexedDB/"));
+  if (!afterIndexedTables.length) {
+    throw new Error("IndexedDB has no persistent immutable tables after the APK upgrade.");
   }
 
-  const beforeLocalStorageMap = new Map(beforeLocalStorageFiles.map(item => [item.path, item.sha256]));
-  const afterLocalStorageMap = new Map(afterLocalStorageFiles.map(item => [item.path, item.sha256]));
+
+  const beforeLocalStorageByPath = new Map(beforeLocalStorageFiles.map(item => [item.path, item]));
+  const afterLocalStorageByPath = new Map(afterLocalStorageFiles.map(item => [item.path, item]));
   const missingLocalStorageFiles = [];
-  const changedLocalStorageFiles = [];
-  for (const [path, hash] of beforeLocalStorageMap) {
-    if (!afterLocalStorageMap.has(path)) missingLocalStorageFiles.push(path);
-    else if (afterLocalStorageMap.get(path) !== hash) changedLocalStorageFiles.push(path);
+  const modifiedLocalStorageFiles = [];
+  const addedLocalStorageFiles = [];
+  for (const [path, file] of beforeLocalStorageByPath) {
+    const current = afterLocalStorageByPath.get(path);
+    if (!current) missingLocalStorageFiles.push(path);
+    else if (current.sha256 !== file.sha256 || current.size !== file.size) modifiedLocalStorageFiles.push(path);
   }
-
-  if (missing.length || changed.length) {
-    throw new Error(`Persistent IndexedDB storage changed across the APK upgrade. Missing immutable tables: ${JSON.stringify(missing)}; modified immutable tables: ${JSON.stringify(changed)}.`);
+  for (const path of afterLocalStorageByPath.keys()) {
+    if (!beforeLocalStorageByPath.has(path)) addedLocalStorageFiles.push(path);
   }
-  if (missingLocalStorageFiles.length || changedLocalStorageFiles.length) {
-    throw new Error(`Persistent Local Storage data changed across the APK upgrade. Missing data files: ${JSON.stringify(missingLocalStorageFiles)}; modified data files: ${JSON.stringify(changedLocalStorageFiles)}.`);
+  if (missingLocalStorageFiles.length) {
+    throw new Error(`Missing data files across APK upgrade: ${JSON.stringify(missingLocalStorageFiles)}.`);
+  }
+  if (modifiedLocalStorageFiles.length) {
+    throw new Error(`Local Storage modified data files across APK upgrade: ${JSON.stringify(modifiedLocalStorageFiles)}.`);
+  }
+  if (addedLocalStorageFiles.length) {
+    throw new Error(`Added Local Storage data files across APK upgrade: ${JSON.stringify(addedLocalStorageFiles)}.`);
   }
 
   console.log(JSON.stringify({
     result: "PASS",
-    comparison: "upgrade-persistence",
-    baselineImmutableTables: beforeMap.size,
-    preservedImmutableTables: beforeMap.size,
-    additionalImmutableTables: afterMap.size - beforeMap.size,
-    indexedDbTables: beforeIndexedTables.length,
-    localStorageTables: beforeLocalStorageTables.length,
+    comparison: "logical-indexeddb-plus-hash-verified-localstorage-files",
+    baselineIndexedDbTables: beforeIndexedTables.length,
+    postUpgradeIndexedDbTables: afterIndexedTables.length,
     baselineLocalStorageDataFiles: beforeLocalStorageFiles.length,
     preservedLocalStorageDataFiles: beforeLocalStorageFiles.length,
-    localStorageWriteAheadLogs: beforeLocalStorageFiles.filter(item => /(?:^|\/)\d+\.log$/i.test(item.path)).length,
+    localStorageWriteAheadLogs: afterLocalStorageFiles.filter(item => /(?:^|\/)\d+\.log$/i.test(item.path)).length,
     baselineFiles: before.files.length,
     updatedFiles: after.files.length,
+    indexedDbPhysicalTableHashesCompared: false,
+    localStorageDataFileHashesCompared: true,
+    indexedDbLogicalIntegrityVerifiedByInspector: true,
   }, null, 2));
 }

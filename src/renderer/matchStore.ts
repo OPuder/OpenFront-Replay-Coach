@@ -75,33 +75,50 @@ function openStore(): Promise<IDBDatabase> {
           }
 
           const replayPayload = stored.result;
+          const continueMigrationCursor = () => {
+            if (stored.simulation) {
+              analyses.put({
+                playerId: stored.playerId,
+                gameId: stored.game.gameId,
+                simulation: stored.simulation,
+                analysisStatus: stored.analysisStatus,
+                analysisError: stored.analysisError,
+                updatedAt: stored.updatedAt,
+              });
+              delete stored.simulation;
+              changed = true;
+            }
+            if (changed) cursor.update(stored);
+            cursor.continue();
+          };
+
           if (replayPayload && (replayPayload.record || replayPayload.decodedActions || replayPayload.actionAnalysis)) {
-            replays.put({
-              playerId: stored.playerId,
-              gameId: stored.game.gameId,
-              record: replayPayload.record,
-              decodedActions: replayPayload.decodedActions,
-              actionAnalysis: replayPayload.actionAnalysis,
-            });
-            const { record: _record, decodedActions: _decodedActions, actionAnalysis: _actionAnalysis, ...summary } = replayPayload;
-            stored.result = summary as StoredMatch["result"];
-            changed = true;
+            // v3 already stored the raw GameRecord separately. Compact match rows
+            // can still contain decoded actions/coaching payloads, so merging
+            // those fields must never overwrite an existing replay record with
+            // undefined during the v3 -> v4 migration.
+            const replayRequest = replays.get([stored.playerId, stored.game.gameId]);
+            replayRequest.onsuccess = () => {
+              const existingReplayRecord = replayRequest.result as Record<string, unknown> | undefined;
+              const mergedReplayRecord: Record<string, unknown> = {
+                ...(existingReplayRecord ?? {}),
+                playerId: stored.playerId,
+                gameId: stored.game.gameId,
+              };
+              if (replayPayload.record != null) mergedReplayRecord.record = replayPayload.record;
+              if (replayPayload.decodedActions != null) mergedReplayRecord.decodedActions = replayPayload.decodedActions;
+              if (replayPayload.actionAnalysis != null) mergedReplayRecord.actionAnalysis = replayPayload.actionAnalysis;
+              replays.put(mergedReplayRecord);
+
+              const { record: _record, decodedActions: _decodedActions, actionAnalysis: _actionAnalysis, ...summary } = replayPayload;
+              stored.result = summary as StoredMatch["result"];
+              changed = true;
+              continueMigrationCursor();
+            };
+            return;
           }
 
-          if (stored.simulation) {
-            analyses.put({
-              playerId: stored.playerId,
-              gameId: stored.game.gameId,
-              simulation: stored.simulation,
-              analysisStatus: stored.analysisStatus,
-              analysisError: stored.analysisError,
-              updatedAt: stored.updatedAt,
-            });
-            delete stored.simulation;
-            changed = true;
-          }
-          if (changed) cursor.update(stored);
-          cursor.continue();
+          continueMigrationCursor();
         };
       }
     };
@@ -154,9 +171,19 @@ export async function saveImportedMatch(playerId: string, item: StoredMatchEntry
     })() : undefined;
     const updatedAt = Date.now();
     const stored: StoredMatch = { ...item, simulation: undefined, result: summary as StoredMatch["result"], playerId, updatedAt };
-    tx.objectStore(MATCH_STORE).put(stored);
-    // Status-only updates often receive a compact library entry. Preserve the
-    // previously stored replay payload unless a replacement payload is supplied.
+    const matchStore = tx.objectStore(MATCH_STORE);
+    if (result) {
+      matchStore.put(stored);
+    } else {
+      // Status-only library updates must not erase the result summary that
+      // keeps the independently stored replay payload discoverable.
+      const existingRequest = matchStore.get([playerId, item.game.gameId]);
+      existingRequest.onsuccess = () => {
+        const existing = existingRequest.result as StoredMatch | undefined;
+        matchStore.put({ ...stored, result: existing?.result ?? stored.result });
+      };
+    }
+    // Preserve the previously stored replay payload unless a replacement payload is supplied.
     if (replayPayload) tx.objectStore(REPLAY_STORE).put({ playerId, gameId: item.game.gameId, ...replayPayload });
     if (item.simulation) {
       tx.objectStore(ANALYSIS_STORE).put({
@@ -241,8 +268,10 @@ export async function loadImportedMatch(playerId: string, gameId: string): Promi
   });
   db.close();
   if (!value.match) return null;
-  const result = value.match.result
-    ? { ...value.match.result, ...(value.replayPayload ?? {}) }
+  const hasReplayPayload = Boolean(value.replayPayload
+    && (value.replayPayload.record || value.replayPayload.decodedActions || value.replayPayload.actionAnalysis));
+  const result = value.match.result || hasReplayPayload
+    ? { ...(value.match.result ?? {}), ...(value.replayPayload ?? {}) }
     : undefined;
   const { game, status, error, simulation, analysisStatus, analysisError } = value.match;
   return { game, result, status, error, simulation: value.analysis?.simulation ?? simulation, analysisStatus: value.analysis?.analysisStatus ?? analysisStatus, analysisError: value.analysis?.analysisError ?? analysisError };

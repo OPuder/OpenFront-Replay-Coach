@@ -70,26 +70,20 @@ const initializeSubmodules = [
   ...sources,
 ];
 let initialized = false;
-for (let attempt = 1; attempt <= 4; attempt++) {
+for (let attempt = 1; attempt <= 1; attempt++) {
   try {
     run("git", initializeSubmodules, {
       env: { ...process.env, GIT_TERMINAL_PROMPT: "0" },
-    }, `Initialize exact OpenFront engine submodules (attempt ${attempt}/4)`, 12 * 60_000);
+    }, `Initialize exact OpenFront engine submodules (attempt ${attempt}/1)`, 25 * 60_000);
     initialized = true;
     break;
   } catch (error) {
-    if (attempt === 4) throw error;
-    const delaySeconds = attempt * 15;
-    console.warn(`Submodule initialization attempt ${attempt} failed; retrying in ${delaySeconds}s.`);
-    // Use Node's portable synchronous wait so the retry works on both Windows
-    // runners and Linux without relying on an external sleep executable.
-    run(process.execPath, [
-      "-e", "Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, Number(process.argv[1]) * 1000);",
-      String(delaySeconds),
-    ], {}, "Wait before submodule retry", 60_000);
+    // Do not retry in this workspace: an interrupted Git child may still hold
+    // submodule locks. A fresh CI job is the safe retry boundary.
+    throw error;
   }
 }
-if (!initialized) throw new Error("Could not initialize exact OpenFront engine submodules after four attempts.");
+if (!initialized) throw new Error("Could not initialize exact OpenFront engine submodules in this CI job.");
 
 // Historical revisions share immutable dependency lockfiles. Install each
 // lockfile once and link the identical node_modules tree into its engine group.

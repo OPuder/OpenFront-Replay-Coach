@@ -262,6 +262,12 @@ assert.match(androidBaselineUiSeed, /ocr_find_bounds/);
 assert.ok(androidBaselineUiSeed.includes('tesseract "$screen_path" stdout -l deu+eng'));
 assert.match(androidBaselineUiSeed, /OpenFront-Profillink/);
 assert.match(androidBaselineUiSeed, /OCR text:/);
+assert.match(androidBaselineUiSeed, /local required="\$\{4:-true\}"[\s\S]*?if \[\[ "\$required" == "false" \]\]; then max_ocr_attempts=1/);
+assert.match(androidBaselineUiSeed, /dismiss_android_ime\(\)[\s\S]*?dumpsys input_method[\s\S]*?mInputShown=true[\s\S]*?hidden_streak >= 2/);
+assert.match(androidBaselineUiSeed, /if tap_text "Konto laden" last exact false; then[\s\S]*?input keyevent 66[\s\S]*?wait_for_profile_loaded/);
+assert.match(androidBaselineUiSeed, /wait_for_profile_loaded\(\)[\s\S]*?Konto geladen[\s\S]*?\$player_id/);
+assert.doesNotMatch(androidBaselineUiSeed, /authenticated Dashboard with Partien navigation/);
+assert.match(androidBaselineUiSeed, /Dashboard\/Partien navigation alone is never evidence that a profile loaded/);
 assert.match(androidBaselineUiSeed, /search_query=.*tr '\[:upper:\]' '\[:lower:\]'/);
 assert.match(androidBaselineUiSeed, /wait_for_search_ime\(\)\s*\{\s*local ime_state="" attempt/,
   "IME polling must keep its counter local.");
@@ -271,9 +277,9 @@ assert.match(androidBaselineUiSeed, /dump_ui\(\)\s*\{\s*local dump_output="" pul
   "UI dump retries must keep their counter local so outer viewport scans can advance.");
 assert.match(androidBaselineUiSeed, /wait_for_search_ime\(\)/,
   "Android search typing must wait for the IME/focus transition before injecting text.");
-assert.match(androidBaselineUiSeed, /dismiss_search_ime\(\)\s*\{\s*local ime_state="" ime_state_lc="" attempt visibility_flags="" hidden_streak=0/,
-  "The Android fallback must have a bounded helper to dismiss the keyboard and log its state.");
-const androidImeDismissHelper = androidBaselineUiSeed.match(/dismiss_search_ime\(\)\s*\{[\s\S]*?\n\}/)?.[0] ?? "";
+assert.match(androidBaselineUiSeed, /dismiss_android_ime\(\)\s*\{\s*local ime_state="" ime_state_lc="" attempt visibility_flags="" hidden_streak=0/,
+  "The Android fallback must share a bounded IME-dismiss helper between profile submission and replay search.");
+const androidImeDismissHelper = androidBaselineUiSeed.match(/dismiss_android_ime\(\)\s*\{[\s\S]*?\n\}/)?.[0] ?? "";
 assert.match(androidImeDismissHelper, /visible_pattern='minputshown=true'/,
   "Only the authoritative mInputShown=true flag may trigger Back.");
 assert.match(androidImeDismissHelper, /hidden_pattern='minputshown=false'/,
@@ -296,9 +302,9 @@ assert.match(androidBaselineUiSeed, /require_baseline_app_window[\s\S]*?input sw
   "Scroll gestures must be guarded by app focus and start away from the status-bar gesture region.");
 assert.doesNotMatch(androidBaselineUiSeed, /input swipe 500 350 500 1500/,
   "The old down-swipe starting near the system shade must not return.");
-assert.match(androidBaselineUiSeed, /tap_edit_field\(\)\s*\{[\s\S]*?dismiss_search_ime[\s\S]*?for attempt in \$\(seq 1 8\)/,
+assert.match(androidBaselineUiSeed, /tap_edit_field\(\)\s*\{[\s\S]*?dismiss_android_ime[\s\S]*?for attempt in \$\(seq 1 8\)/,
   "The search field must be located after the IME is dismissed, so clipped coordinates are not reused.");
-assert.match(androidBaselineUiSeed, /Text input did not appear in the focused search field[\s\S]*?dismiss_search_ime[\s\S]*?tap_edit_field/,
+assert.match(androidBaselineUiSeed, /Text input did not appear in the focused search field[\s\S]*?dismiss_android_ime[\s\S]*?tap_edit_field/,
   "The key-event fallback must dismiss the keyboard before re-focusing the search field.");
 assert.match(androidBaselineUiSeed, /tap_edit_field 1 "\$current_search_query"[\s\S]*?wait_for_search_ime[\s\S]*?if \[\[ "\$clear_search" == "true" \]\]/,
   "Clear/select commands must run only after the input method is ready.");

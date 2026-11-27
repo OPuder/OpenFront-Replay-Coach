@@ -25,6 +25,105 @@ const REPLAY_STORE = "replay-records";
 const ANALYSIS_STORE = "analysis-results";
 const MATCH_PLAYER_INDEX = "by-player-id";
 const MATCH_PLAYER_UPDATED_INDEX = "by-player-updated-at";
+let legacyPayloadMigration: Promise<void> | null = null;
+let legacyPayloadMigrationComplete = false;
+
+function migrateLegacyMatch(db: IDBDatabase, key: IDBValidKey): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction([MATCH_STORE, REPLAY_STORE, ANALYSIS_STORE], "readwrite");
+    const matches = tx.objectStore(MATCH_STORE);
+    const replays = tx.objectStore(REPLAY_STORE);
+    const analyses = tx.objectStore(ANALYSIS_STORE);
+    const matchRequest = matches.get(key);
+    const replayRequest = replays.get(key);
+    const analysisRequest = analyses.get(key);
+    let matchReady = false;
+    let replayReady = false;
+    let analysisReady = false;
+    let migratedMatch: StoredMatch | undefined;
+    let replayRecord: Record<string, unknown> | undefined;
+    let analysisRecord: Record<string, unknown> | undefined;
+    let migrationScheduled = false;
+
+    const migrateWhenReady = () => {
+      if (!matchReady || !replayReady || !analysisReady || migrationScheduled) return;
+      migrationScheduled = true;
+      const stored = migratedMatch;
+      if (!stored) return;
+      let changed = false;
+
+      if (!Number.isFinite(stored.updatedAt)) {
+        stored.updatedAt = Date.now();
+        changed = true;
+      }
+
+      if (stored.simulation) {
+        if (!analysisRecord?.simulation) {
+          analyses.put({
+            playerId: stored.playerId,
+            gameId: stored.game.gameId,
+            simulation: stored.simulation,
+            analysisStatus: stored.analysisStatus,
+            analysisError: stored.analysisError,
+            updatedAt: stored.updatedAt,
+          });
+        }
+        delete stored.simulation;
+        changed = true;
+      }
+
+      const legacyPayload = stored.result as (StoredMatch["result"] & {
+        record?: unknown;
+        decodedActions?: unknown;
+        actionAnalysis?: unknown;
+      }) | undefined;
+      if (legacyPayload && (legacyPayload.record || legacyPayload.decodedActions || legacyPayload.actionAnalysis)) {
+        const mergedReplayRecord: Record<string, unknown> = {
+          ...(replayRecord ?? {}),
+          playerId: stored.playerId,
+          gameId: stored.game.gameId,
+        };
+        if (legacyPayload.record != null && mergedReplayRecord.record == null) mergedReplayRecord.record = legacyPayload.record;
+        if (legacyPayload.decodedActions != null && mergedReplayRecord.decodedActions == null) mergedReplayRecord.decodedActions = legacyPayload.decodedActions;
+        if (legacyPayload.actionAnalysis != null && mergedReplayRecord.actionAnalysis == null) mergedReplayRecord.actionAnalysis = legacyPayload.actionAnalysis;
+        replays.put(mergedReplayRecord);
+
+        const { record: _record, decodedActions: _decodedActions, actionAnalysis: _actionAnalysis, ...summary } = legacyPayload;
+        stored.result = summary as StoredMatch["result"];
+        changed = true;
+      }
+
+      if (changed) matches.put(stored);
+    };
+
+    matchRequest.onsuccess = () => { migratedMatch = matchRequest.result as StoredMatch | undefined; matchReady = true; migrateWhenReady(); };
+    replayRequest.onsuccess = () => { replayRecord = replayRequest.result as Record<string, unknown> | undefined; replayReady = true; migrateWhenReady(); };
+    analysisRequest.onsuccess = () => { analysisRecord = analysisRequest.result as Record<string, unknown> | undefined; analysisReady = true; migrateWhenReady(); };
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error ?? new Error("Legacy Replay-Daten konnten nicht migriert werden."));
+    tx.onabort = () => reject(tx.error ?? new Error("Legacy Replay-Migration wurde abgebrochen."));
+  });
+}
+
+async function migrateLegacyPayloads(db: IDBDatabase): Promise<void> {
+  if (legacyPayloadMigrationComplete) return;
+  if (legacyPayloadMigration) return legacyPayloadMigration;
+  legacyPayloadMigration = (async () => {
+    const keys = await new Promise<IDBValidKey[]>((resolve, reject) => {
+      const tx = db.transaction(MATCH_STORE, "readonly");
+      const request = tx.objectStore(MATCH_STORE).getAllKeys();
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error ?? new Error("Legacy Replay-Schlüssel konnten nicht gelesen werden."));
+      tx.onabort = () => reject(tx.error ?? new Error("Legacy Replay-Schlüssel konnten nicht gelesen werden."));
+    });
+    // One atomic transaction per match keeps large profiles within WebView memory
+    // and quota limits. Completed rows are compacted, so interrupted runs resume
+    // from the first row that still contains legacy payload data.
+    for (const key of keys) await migrateLegacyMatch(db, key);
+    legacyPayloadMigrationComplete = true;
+  })().finally(() => { legacyPayloadMigration = null; });
+  return legacyPayloadMigration;
+}
 
 function openStore(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
@@ -33,7 +132,7 @@ function openStore(): Promise<IDBDatabase> {
       return;
     }
     const request = indexedDB.open(DB_NAME, DB_VERSION);
-    request.onupgradeneeded = event => {
+    request.onupgradeneeded = () => {
       const db = request.result;
       const transaction = request.transaction;
       if (!db.objectStoreNames.contains(MATCH_STORE)) db.createObjectStore(MATCH_STORE, { keyPath: ["playerId", "game.gameId"] });
@@ -52,77 +151,17 @@ function openStore(): Promise<IDBDatabase> {
         matches.createIndex(MATCH_PLAYER_UPDATED_INDEX, ["playerId", "updatedAt"], { unique: false });
       }
 
-      // Upgrade older match entries in one cursor pass. Combining both moves
-      // avoids concurrent cursor updates overwriting one another when a v1
-      // record contains both raw replay data and a simulation snapshot.
-      if (event.oldVersion < 4 && transaction) {
-        const matches = transaction.objectStore(MATCH_STORE);
-        const replays = transaction.objectStore(REPLAY_STORE);
-        const analyses = transaction.objectStore(ANALYSIS_STORE);
-        const cursorRequest = matches.openCursor();
-        cursorRequest.onsuccess = () => {
-          const cursor = cursorRequest.result;
-          if (!cursor) return;
-          const stored = cursor.value as StoredMatch;
-          let changed = false;
-
-          // v4 adds an indexed update timestamp. Legacy rows must be backfilled
-          // during the same migration cursor or they become invisible to the
-          // player+updatedAt range query after the upgrade.
-          if (!Number.isFinite(stored.updatedAt)) {
-            stored.updatedAt = Date.now();
-            changed = true;
-          }
-
-          const replayPayload = stored.result;
-          const continueMigrationCursor = () => {
-            if (stored.simulation) {
-              analyses.put({
-                playerId: stored.playerId,
-                gameId: stored.game.gameId,
-                simulation: stored.simulation,
-                analysisStatus: stored.analysisStatus,
-                analysisError: stored.analysisError,
-                updatedAt: stored.updatedAt,
-              });
-              delete stored.simulation;
-              changed = true;
-            }
-            if (changed) cursor.update(stored);
-            cursor.continue();
-          };
-
-          if (replayPayload && (replayPayload.record || replayPayload.decodedActions || replayPayload.actionAnalysis)) {
-            // v3 already stored the raw GameRecord separately. Compact match rows
-            // can still contain decoded actions/coaching payloads, so merging
-            // those fields must never overwrite an existing replay record with
-            // undefined during the v3 -> v4 migration.
-            const replayRequest = replays.get([stored.playerId, stored.game.gameId]);
-            replayRequest.onsuccess = () => {
-              const existingReplayRecord = replayRequest.result as Record<string, unknown> | undefined;
-              const mergedReplayRecord: Record<string, unknown> = {
-                ...(existingReplayRecord ?? {}),
-                playerId: stored.playerId,
-                gameId: stored.game.gameId,
-              };
-              if (replayPayload.record != null) mergedReplayRecord.record = replayPayload.record;
-              if (replayPayload.decodedActions != null) mergedReplayRecord.decodedActions = replayPayload.decodedActions;
-              if (replayPayload.actionAnalysis != null) mergedReplayRecord.actionAnalysis = replayPayload.actionAnalysis;
-              replays.put(mergedReplayRecord);
-
-              const { record: _record, decodedActions: _decodedActions, actionAnalysis: _actionAnalysis, ...summary } = replayPayload;
-              stored.result = summary as StoredMatch["result"];
-              changed = true;
-              continueMigrationCursor();
-            };
-            return;
-          }
-
-          continueMigrationCursor();
-        };
-      }
+      // Keep versionchange work schema-only. Moving large legacy replays and
+      // simulation payloads in this atomic transaction can exceed Android
+      // WebView storage limits and abort the entire database upgrade.
     };
-    request.onsuccess = () => resolve(request.result);
+    request.onsuccess = () => {
+      const db = request.result;
+      void migrateLegacyPayloads(db).then(() => resolve(db), error => {
+        db.close();
+        reject(error instanceof Error ? error : new Error(String(error)));
+      });
+    };
     request.onerror = () => reject(request.error ?? new Error("Lokaler Replay-Speicher konnte nicht geöffnet werden."));
     request.onblocked = () => reject(new Error("Lokaler Replay-Speicher ist durch einen anderen App-Tab blockiert."));
   });

@@ -486,14 +486,18 @@ assert.doesNotMatch(appRenderer, /className="adaptive-training-goals"/,
   "The three featured training goals must not be duplicated in the old adaptive-goals section.");
 assert.match(matchStore, /const DB_VERSION = 4/);
 assert.match(matchStore, /const REPLAY_STORE = "replay-records"/);
-assert.match(matchStore, /event\.oldVersion < 4[\s\S]*?const replayRequest = replays\.get\(\[stored\.playerId, stored\.game\.gameId\]\)[\s\S]*?replays\.put\(mergedReplayRecord\)/,
-  "The v4 migration must merge the existing replay-store row inside the upgrade cursor transaction.");
-assert.match(matchStore, /const replayRequest = replays\.get\(\[stored\.playerId, stored\.game\.gameId\]\)/,
-  "The v4 migration must read an existing v3 replay record before writing compact match payloads.");
-assert.match(matchStore, /if \(replayPayload\.record != null\) mergedReplayRecord\.record = replayPayload\.record/,
-  "The v4 migration must not overwrite an existing raw replay with an undefined record.");
-assert.match(matchStore, /existingReplayRecord[\s\S]*?playerId: stored\.playerId,[\s\S]*?gameId: stored\.game\.gameId/,
-  "The v4 migration must merge decoded action/coaching caches into the existing replay-store row.");
+assert.match(matchStore, /function migrateLegacyMatch\(db: IDBDatabase, key: IDBValidKey\): Promise<void>/,
+  "Legacy match payload migration must use a bounded transaction per match.");
+assert.match(matchStore, /for \(const key of keys\) await migrateLegacyMatch\(db, key\)/,
+  "Legacy migrations must complete sequentially so large profiles do not create concurrent storage pressure.");
+assert.match(matchStore, /One atomic transaction per match[\s\S]*?interrupted runs resume/,
+  "Completed legacy rows must remain compacted if a later row interrupts migration.");
+assert.match(matchStore, /if \(legacyPayload\.record != null && mergedReplayRecord\.record == null\) mergedReplayRecord\.record = legacyPayload\.record/,
+  "Legacy migration must preserve an existing raw replay row instead of replacing it.");
+assert.match(matchStore, /if \(!Number\.isFinite\(stored\.updatedAt\)\)[\s\S]*?stored\.updatedAt = Date\.now\(\)/,
+  "The bounded migration must populate timestamps required by the player library index.");
+assert.match(matchStore, /Keep versionchange work schema-only[\s\S]*?can exceed Android[\s\S]*?limits/,
+  "The atomic versionchange handler must stay schema-only for large Android profiles.");
 assert.match(matchStore, /export async function loadImportedMatch\(/);
 assert.match(matchStore, /const hasReplayPayload = Boolean\(value\.replayPayload/,
   "The v4 hydrator must restore replay payloads even when a compact status update left no result summary.");

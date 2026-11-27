@@ -792,10 +792,12 @@ assert.match(androidUpgradeBridge, /value: Object\.freeze\(\{ snapshot, rehydrat
   "The Android bridge must expose diagnostic snapshot and separate production rehydration methods.");
 assert.match(androidUpgradeBridge, /rehydration: null/,
   "The raw storage snapshot must not depend on production rehydration completing.");
-const initialSnapshotWrite = androidStorageInspector.indexOf("writeFileSync(outputPath, JSON.stringify(snapshot, null, 2));");
+const initialSnapshotWrite = androidStorageInspector.indexOf("writeFileSync(outputPath.replace(/\\.json$/i, \"-before-migration.json\"), JSON.stringify(beforeMigration, null, 2));");
 const separateRehydration = androidStorageInspector.indexOf("window.__OFRC_ANDROID_UPGRADE_TEST__.rehydrate()");
 assert.ok(initialSnapshotWrite >= 0 && separateRehydration > initialSnapshotWrite,
   "The inspector must persist raw storage evidence before production rehydration.");
+assert.match(androidStorageInspector, /window\.__OFRC_ANDROID_UPGRADE_TEST__\.snapshot\(\)[\s\S]*?postMigrationSnapshot = refreshed\.result\.value/,
+  "The inspector must validate a refreshed snapshot after the production migration has run.");
 assert.match(androidStorageInspector, /exceptionDetails: details/,
   "The inspector must retain the full CDP exception details when rehydration fails.");
 const replayPersistenceHarness = read("scripts/replay-engine-test.ts");

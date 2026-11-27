@@ -81,8 +81,8 @@ try {
     userGesture: true,
   }, 90_000);
   if (evaluated.exceptionDetails) throw new Error(evaluated.exceptionDetails.text ?? "Storage snapshot threw an exception.");
-  const snapshot = evaluated.result?.value;
-  if (!snapshot || snapshot.schema !== "ofrc-android-upgrade-snapshot-v1") {
+  const beforeMigration = evaluated.result?.value;
+  if (!beforeMigration || beforeMigration.schema !== "ofrc-android-upgrade-snapshot-v1") {
     throw new Error("The test-only storage inspector is missing. The installed APK may be a production build instead of the isolated test build.");
   }
 
@@ -90,7 +90,7 @@ try {
   // This is essential for distinguishing an upgrade migration defect from a missing
   // pre-upgrade analysis persistence step without rerunning the emulator blindly.
   // Persist IndexedDB diagnostics before exercising production rehydration.
-  writeFileSync(outputPath, JSON.stringify(snapshot, null, 2));
+  writeFileSync(outputPath.replace(/\.json$/i, "-before-migration.json"), JSON.stringify(beforeMigration, null, 2));
   let rehydrationResult;
   try {
     const hydrated = await send("Runtime.evaluate", {
@@ -111,7 +111,35 @@ try {
   } catch (error) {
     rehydrationResult = { error: error instanceof Error ? error.message : String(error) };
   }
+
+  let postMigrationSnapshot = beforeMigration;
+  let snapshotRefreshError;
+  try {
+    const refreshed = await send("Runtime.evaluate", {
+      expression: "window.__OFRC_ANDROID_UPGRADE_TEST__.snapshot()",
+      awaitPromise: true,
+      returnByValue: true,
+      userGesture: true,
+    }, 90_000);
+    if (refreshed.exceptionDetails) {
+      snapshotRefreshError = refreshed.exceptionDetails.text ?? "Post-migration storage snapshot threw an exception.";
+    } else if (refreshed.result?.value?.schema === "ofrc-android-upgrade-snapshot-v1") {
+      postMigrationSnapshot = refreshed.result.value;
+    } else {
+      snapshotRefreshError = "Post-migration storage snapshot returned an invalid schema.";
+    }
+  } catch (error) {
+    snapshotRefreshError = error instanceof Error ? error.message : String(error);
+  }
+  const snapshot = postMigrationSnapshot;
   snapshot.rehydration = rehydrationResult;
+  snapshot.preMigration = {
+    indexedDbVersion: beforeMigration.indexedDb.version,
+    storeCounts: Object.fromEntries(beforeMigration.indexedDb.stores.map(store => [store.name, store.count])),
+    analysisResultCount: beforeMigration.diagnostics.analysisResultCount,
+    verifiedAnalysisCount: beforeMigration.diagnostics.verifiedAnalysisCount,
+  };
+  if (snapshotRefreshError) snapshot.postMigrationSnapshotError = snapshotRefreshError;
   writeFileSync(outputPath, JSON.stringify(snapshot, null, 2));
   console.log(JSON.stringify({
     diagnostic: "post-upgrade-storage-snapshot",

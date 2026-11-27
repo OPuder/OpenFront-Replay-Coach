@@ -42,10 +42,10 @@ const declarationPath = "src/renderer/replay-engine.d.ts";
 let declarations = readFileSync(declarationPath, "utf8");
 const declarationName = `*replay-engine-${bundleId}.js`;
 if (!declarations.includes(`declare module "${declarationName}"`)) {
-  const declarationTemplate = declarations.match(/declare module "\*replay-engine-[^"]+\\.js" \\{[\\s\\S]*?\\n\\}/);
+  const declarationTemplate = declarations.match(/declare module "\*replay-engine-[^"]+\.js" \{[\s\S]*?\n\\}/);
   if (!declarationTemplate) throw new Error("Could not find a replay-engine ambient declaration template.");
-  const declaration = declarationTemplate[0].replace(/declare module "\*replay-engine-[^"]+\\.js"/, `declare module "${declarationName}"`);
-  declarations = `${declarations.trimEnd()}\\n\\n${declaration}\\n`;
+  const declaration = declarationTemplate[0].replace(/declare module "\*replay-engine-[^"]+\.js"/, `declare module "${declarationName}"`);
+  declarations = `${declarations.trimEnd()}\n\n${declaration}\n`;
   writeFileSync(declarationPath, declarations);
 }
 

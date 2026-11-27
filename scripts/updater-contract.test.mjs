@@ -591,7 +591,8 @@ const launcherAnrGuard = androidBaselineSeed.indexOf("dismiss_pixel_launcher_anr
 const launcherAnrInvocation = androidBaselineSeed.search(/(?:^|\r?\n)[ \t]*dismiss_pixel_launcher_anr(?:\r?\n|$)/);
 const profileKeyboardGuard = androidBaselineSeed.indexOf("dismiss_profile_keyboard_safely() {");
 const profileKeyboardCall = androidBaselineSeed.search(/(?:^|\r?\n)[ \t]*dismiss_profile_keyboard_safely(?:\r?\n|$)/);
-const dashboardTabSelection = androidBaselineSeed.indexOf('tap_text "Dashboard" last exact false');
+const profileOcrLookup = androidBaselineSeed.indexOf('coords="$(ocr_find_bounds "OpenFront-Profillink" 1');
+const dashboardTabFallback = androidBaselineSeed.indexOf('if ! tap_text "Dashboard" last exact false; then');
 const profileEditSearch = androidBaselineSeed.indexOf('find_bounds "OpenFront-Profillink" edit 1');
 const launcherAnrWait = androidBaselineSeed.indexOf("android:id/aerr_wait");
 const launcherAppPid = androidBaselineSeed.indexOf('pidof "$package_id"', launcherAnrGuard);
@@ -608,8 +609,8 @@ assert.match(androidBaselineSeed, /skipping Back to avoid exiting the app/,
   "The baseline script must never send Back unless Android confirms the input-method window is focused.");
 assert.match(androidBaselineSeed, /refusing further UI input/,
   "The baseline script must fail closed if keyboard dismissal loses the published app's foreground focus.");
-assert.ok(dashboardTabSelection >= 0 && profileEditSearch > dashboardTabSelection,
-  "The seeder must explicitly select Dashboard and locate the labelled profile field before typing, never reuse the Partien library search input.");
+assert.ok(profileOcrLookup >= 0 && dashboardTabFallback > profileOcrLookup && profileEditSearch > dashboardTabFallback,
+  "The seeder must search the profile-specific placeholder first, select Dashboard only when absent, and never reuse the Partien library search input.");
 assert.match(androidBaselineSeed, /if needle\.casefold\(\) not in label\.casefold\(\):/,
   "Editable-field lookup must match the requested placeholder, not any arbitrary EditText.");
 assert.match(androidBaselineSeed, /already transitioned to its authenticated Dashboard with Partien navigation/,

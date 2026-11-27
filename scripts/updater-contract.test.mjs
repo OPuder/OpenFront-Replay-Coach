@@ -690,9 +690,20 @@ assert.match(androidStorageInspector, /analysisMetadata\.filter[\s\S]*?item\.pla
   "Verified analysis results must be linked to the UI-seeded player and existing match IDs.");
 assert.match(androidUpgradeBridge, /loadImportedMatch\(playerId, gameId\)/);
 const diagnosticDbClose = androidUpgradeBridge.indexOf("db.close();");
+const bridgeRehydrate = androidUpgradeBridge.indexOf("const rehydrate = async");
 const productionHydration = androidUpgradeBridge.indexOf("loadImportedMatch(playerId, gameId)");
-assert.ok(diagnosticDbClose >= 0 && diagnosticDbClose < productionHydration,
-  "The diagnostic IndexedDB connection must close before production schema-v4 rehydration so it cannot block an upgrade.");
+assert.ok(diagnosticDbClose >= 0 && diagnosticDbClose < bridgeRehydrate && bridgeRehydrate < productionHydration,
+  "The diagnostic IndexedDB connection must close and the snapshot must be returned before production rehydration runs separately.");
+assert.match(androidUpgradeBridge, /value: Object\.freeze\(\{ snapshot, rehydrate \}\)/,
+  "The Android bridge must expose diagnostic snapshot and separate production rehydration methods.");
+assert.match(androidUpgradeBridge, /rehydration: null/,
+  "The raw storage snapshot must not depend on production rehydration completing.");
+const initialSnapshotWrite = androidStorageInspector.indexOf("writeFileSync(outputPath, JSON.stringify(snapshot, null, 2));");
+const separateRehydration = androidStorageInspector.indexOf("window.__OFRC_ANDROID_UPGRADE_TEST__.rehydrate()");
+assert.ok(initialSnapshotWrite >= 0 && separateRehydration > initialSnapshotWrite,
+  "The inspector must persist raw storage evidence before production rehydration.");
+assert.match(androidStorageInspector, /exceptionDetails: details/,
+  "The inspector must retain the full CDP exception details when rehydration fails.");
 const replayPersistenceHarness = read("scripts/replay-engine-test.ts");
 assert.match(replayPersistenceHarness, /const saved = await loadImportedMatch\("ci-persistence-player", gameId\)/,
   "Refresh persistence tests must hydrate the full analysis payload from analysis-results, not the lightweight library index.");

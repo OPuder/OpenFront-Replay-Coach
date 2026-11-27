@@ -324,7 +324,7 @@ assert.match(androidBaselineUiSeed, /Retrying the visible Partien navigation lab
 assert.match(androidBaselineUiSeed, /wait_for_library_page 12/);
 const androidBaselineTapText = androidBaselineUiSeed.match(/tap_text\(\) \{[\s\S]*?\n\}/)?.[0] ?? "";
 assert.match(androidBaselineTapText, /local required="\$\{4:-true\}"/);
-assert.match(androidBaselineTapText, /required == "false"[\s\S]*?return 1/);
+assert.match(androidBaselineTapText, /if \[\[ "\$required" == "false" \]\]; then[\s\S]*?return 1/);
 const androidLibraryNavigation = androidBaselineUiSeed.match(/navigate_to_library\(\) \{[\s\S]*?\n\}/)?.[0] ?? "";
 assert.match(androidLibraryNavigation, /tap_text "Partien" last exact false/);
 assert.match(androidLibraryNavigation, /require_baseline_app_window/);

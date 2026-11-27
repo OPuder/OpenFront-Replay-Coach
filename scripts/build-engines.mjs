@@ -1,8 +1,8 @@
-import { createHash } from "node:crypto";
-import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
+import { computeEngineBundleFingerprint, createEngineBundleManifest, verifyEngineBundleCache } from "./engine-bundle-cache.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const catalogPath = path.join(root, "engine-build/engines.json");
@@ -22,25 +22,10 @@ function git(source, args) {
 }
 
 function inputFingerprint() {
-  const hash = createHash("sha256");
-  hash.update(readFileSync(catalogPath));
-  const visit = (directory, relative = "") => {
-    for (const entry of readdirSync(path.join(directory, relative), { withFileTypes: true }).sort((a, b) => a.name.localeCompare(b.name))) {
-      const file = path.posix.join(relative.split(path.sep).join("/"), entry.name);
-      if (entry.isDirectory()) visit(directory, file);
-      else if (entry.isFile()) {
-        hash.update(file);
-        hash.update(readFileSync(path.join(directory, file)));
-      }
-    }
-  };
-  visit(path.join(root, "engine-build"));
-  for (const engine of engines) {
-    hash.update(engine.commit);
-    hash.update(engine.bundleId);
-    hash.update(readFileSync(path.join(root, engine.source, "package-lock.json")));
-  }
-  return hash.digest("hex");
+  return computeEngineBundleFingerprint(catalogPath, path.join(root, "engine-build"), engines, [
+    path.join(root, "scripts/build-engines.mjs"),
+    path.join(root, "scripts/engine-bundle-cache.mjs"),
+  ]);
 }
 
 function sourcesMatchPins() {
@@ -63,19 +48,23 @@ function bundlesComplete() {
   });
 }
 
-const sourcesReady = sourcesMatchPins();
-const cleanSources = sourcesReady && sourcesAreClean();
-const fingerprint = cleanSources ? inputFingerprint() : null;
-if (!force && cleanSources && bundlesComplete() && existsSync(manifestPath)) {
-  try {
-    const manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
-    if (manifest.schema === 1 && manifest.fingerprint === fingerprint) {
-      console.log(`Replay engine bundles are current (${engines.length} exact revisions); skipping rebuild. Use --force to rebuild.`);
-      process.exit(0);
+const fingerprint = inputFingerprint();
+function existingSourceCheckoutsAreSafeForCache() {
+  return engines.every(engine => {
+    const source = path.join(root, engine.source);
+    if (!existsSync(path.join(source, ".git"))) return true;
+    try {
+      return git(source, ["rev-parse", "HEAD"]) === engine.commit
+        && git(source, ["status", "--porcelain", "--untracked-files=normal"]) === "";
+    } catch {
+      return false;
     }
-  } catch {
-    // Invalid or missing metadata is a cache miss, never a reason to trust stale bundles.
-  }
+  });
+}
+if (!force && verifyEngineBundleCache(manifestPath, outputDir, fingerprint, engines)
+  && existingSourceCheckoutsAreSafeForCache()) {
+  console.log(`Verified replay engine bundles are current (${engines.length} exact revisions); skipping source checkout validation and rebuild. Use --force to rebuild.`);
+  process.exit(0);
 }
 
 rmSync(outputDir, { recursive: true, force: true });
@@ -100,12 +89,7 @@ for (const engine of engines) {
 if (!bundlesComplete()) throw new Error("Engine build completed without producing every expected replay bundle.");
 if (!sourcesMatchPins()) throw new Error("Engine checkout changed during the build; refusing to accept the result.");
 if (sourcesAreClean()) {
-  writeFileSync(manifestPath, JSON.stringify({
-    schema: 1,
-    fingerprint: inputFingerprint(),
-    engines: engines.map(({ commit, bundleId }) => ({ commit, bundleId })),
-    builtAt: new Date().toISOString(),
-  }, null, 2) + "\n");
+  writeFileSync(manifestPath, JSON.stringify(createEngineBundleManifest(inputFingerprint(), engines, outputDir), null, 2) + "\n");
   console.log(`Built and verified ${engines.length} exact OpenFront replay engines; reusable cache metadata written.`);
 } else {
   rmSync(manifestPath, { force: true });

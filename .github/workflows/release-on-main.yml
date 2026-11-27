@@ -143,7 +143,7 @@ jobs:
           path: |
             src/renderer/engine
             .openfront-engine-build.json
-          key: openfront-engine-bundles-${{ hashFiles('.gitmodules', 'engine-build/**', 'vendor/**/package-lock.json', 'scripts/build-engines.mjs') }}
+          key: openfront-engine-bundles-${{ hashFiles('.gitmodules', 'engine-build/**', 'vendor/**/package-lock.json', 'scripts/build-engines.mjs', 'scripts/engine-bundle-cache.mjs') }}
           enableCrossOsArchive: true
 
       - name: Prepare all exact historical OpenFront engines
@@ -215,7 +215,7 @@ jobs:
           path: |
             src/renderer/engine
             .openfront-engine-build.json
-          key: openfront-engine-bundles-${{ hashFiles('.gitmodules', 'engine-build/**', 'vendor/**/package-lock.json', 'scripts/build-engines.mjs') }}
+          key: openfront-engine-bundles-${{ hashFiles('.gitmodules', 'engine-build/**', 'vendor/**/package-lock.json', 'scripts/build-engines.mjs', 'scripts/engine-bundle-cache.mjs') }}
           enableCrossOsArchive: true
 
       - name: Prepare all exact historical OpenFront engines
@@ -286,7 +286,7 @@ jobs:
           path: |
             src/renderer/engine
             .openfront-engine-build.json
-          key: openfront-engine-bundles-${{ hashFiles('.gitmodules', 'engine-build/**', 'vendor/**/package-lock.json', 'scripts/build-engines.mjs') }}
+          key: openfront-engine-bundles-${{ hashFiles('.gitmodules', 'engine-build/**', 'vendor/**/package-lock.json', 'scripts/build-engines.mjs', 'scripts/engine-bundle-cache.mjs') }}
           enableCrossOsArchive: true
 
       - name: Prepare all exact historical OpenFront engines

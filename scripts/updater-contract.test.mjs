@@ -533,10 +533,13 @@ for (const workflow of engineCacheWorkflows) {
     "Engine Git objects must be shared across jobs.");
 }
 for (const workflow of engineCacheWorkflows) {
-  assert.match(workflow, /Restore verified replay engine bundles[\s\S]*?actions\/cache@v4[\s\S]*?src\/renderer\/engine[\s\S]*?\.openfront-engine-build\.json[\s\S]*?key: openfront-engine-bundles-\$\{\{ hashFiles\('\.gitmodules', 'engine-build\/\*\*', 'vendor\/\*\*\/package-lock\.json', 'scripts\/build-engines\.mjs'\) \}\}[\s\S]*?enableCrossOsArchive: true/,
-    "Exact replay worker bundles must be cached across jobs and operating systems using all build inputs.");
+  const bundleCacheKeys = workflow.split("\n").filter(line => line.trim().startsWith("key: openfront-engine-bundles-"));
+  assert.ok(bundleCacheKeys.length > 0, "Each engine workflow must define a bundle-cache key.");
+  for (const cacheKey of bundleCacheKeys) {
+    assert.ok(cacheKey.includes("scripts/engine-bundle-cache.mjs"),
+      "Every replay-engine bundle cache key must include the verifier/fingerprint implementation.");
+  }
 }
-
 const engineDiscoveryWorkflow = read(".github/workflows/discover-openfront-engine.yml");
 assert.match(engineDiscoveryWorkflow, /git diff --cached --check -- \. ':!src\/renderer\/engine\/replay-engine-\*\.js'/,
   "Engine discovery must check repository-owned staged changes without failing on upstream-generated bundle whitespace.");
@@ -551,8 +554,26 @@ assert.match(enginePreparation, /12 \* 60_000/);
 assert.match(enginePreparation, /Wait before submodule retry", 60_000\)/,
   "The retry wait timeout must exceed the longest bounded retry delay.");
 assert.match(enginePreparation, /Initialize exact OpenFront engine submodules/);
-assert.match(androidValidationWorkflow, /-gpu software/,
-  "Android emulator validation must use stable software rendering instead of flaky GPU color buffers.");
+assert.match(enginePreparation, /verifyEngineBundleCache[\s\S]*?skipping historical submodule checkout/,
+  "A verified engine-bundle cache hit must skip historical submodule checkout and dependency installation.");
+assert.match(read("scripts/build-engines.mjs"), /verifyEngineBundleCache[\s\S]*?skipping source checkout validation and rebuild/,
+  "Engine build must validate cached bundle hashes and fast-path without source checkout.");
+assert.match(read("scripts/engine-bundle-cache.mjs"), /manifest\.schema !== 2[\s\S]*?entry\?\.sha256 === digest/,
+  "Verified engine cache must reject stale schema, missing entries and modified bundle bytes.");
+const enginePinValidation = read("scripts/validate-engine-pin.mjs");
+assert.match(enginePinValidation, /const cachedBundlesVerified = verifyEngineBundleCache/,
+  "Engine pin validation must verify cache provenance before relying on it.");
+assert.ok(enginePinValidation.includes("if (!cachedBundlesVerified) {"),
+  "Unverified cache entries must still require exact source checkout validation.");
+assert.match(enginePinValidation, /using integrity-checked bundles/);
+assert.match(enginePinValidation, /against source checkouts/);
+
+assert.match(androidValidationWorkflow, /-gpu swiftshader_indirect/,
+  "Android emulator validation must use indirect SwiftShader rendering to avoid unstable GPU color buffers.");
+assert.match(androidValidationWorkflow, /target: google_apis/);
+assert.match(androidValidationWorkflow, /cores: 4/);
+assert.match(androidValidationWorkflow, /-memory 4096/);
+assert.match(androidValidationWorkflow, /emulator-boot-timeout: 1800/);
 const androidBaselineSeed = read("scripts/seed-android-baseline-ui.sh");
 assert.match(androidBaselineSeed, /seed_verified_match "cRVdxGEG5j"/,
   "The baseline fixture must seed its first real replay through the published app UI.");
@@ -602,8 +623,8 @@ function validateAndroidKvmWorkflow(workflow) {
   ]) assert.match(preflight, pattern, message);
   const emulator = workflow.slice(emulatorStart);
   assert.match(emulator, /arch: x86_64/, "Emulator architecture must be x86_64.");
-  assert.match(emulator, /cores: 2/);
-  assert.match(emulator, /-memory 3072/);
+  assert.match(emulator, /cores: 4/);
+  assert.match(emulator, /-memory 4096/);
   assert.match(emulator, /disable-linux-hw-accel: false/,
     "Hardware acceleration must be mandatory; software fallback is forbidden.");
 }

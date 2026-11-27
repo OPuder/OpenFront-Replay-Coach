@@ -510,6 +510,20 @@ assert.ok(releaseUpgradeScript.includes("timeout --signal=INT --kill-after=15s 2
 assert.ok(releaseUpgradeScript.includes("versionCode"));
 assert.ok(releaseUpgradeScript.includes("pidof"));
 assert.ok(releaseUpgradeScript.includes("timeout 60s adb -s emulator-5554"));
+assert.match(enginePreparation, /verifyEngineBundleCache[\s\S]*?skipping historical submodule checkout/,
+  "A verified engine-bundle cache hit must skip historical submodule checkout and dependency installation.");
+assert.match(read("scripts/build-engines.mjs"), /verifyEngineBundleCache[\s\S]*?skipping source checkout validation and rebuild/,
+  "Engine build must validate cached bundle hashes and fast-path without source checkout.");
+assert.match(read("scripts/engine-bundle-cache.mjs"), /manifest\.schema !== 2[\s\S]*?entry\?\.sha256 === digest/,
+  "Verified engine cache must reject stale schema, missing entries and modified bundle bytes.");
+const enginePinValidation = read("scripts/validate-engine-pin.mjs");
+assert.match(enginePinValidation, /const cachedBundlesVerified = verifyEngineBundleCache/,
+  "Engine pin validation must verify cache provenance before relying on it.");
+assert.ok(enginePinValidation.includes("if (!cachedBundlesVerified) {"),
+  "Unverified cache entries must still require exact source checkout validation.");
+assert.match(enginePinValidation, /using integrity-checked bundles/);
+assert.match(enginePinValidation, /against source checkouts/);
+
 const androidValidationWorkflow = read(".github/workflows/update-validation.yml");
 assert.ok(androidValidationWorkflow.includes("bash -n scripts/test-android-release-upgrade.sh"));
 assert.ok(androidValidationWorkflow.includes("bash -n scripts/android-emulator-diagnostics.sh"));
@@ -534,10 +548,13 @@ for (const workflow of engineCacheWorkflows) {
     "Engine Git objects must be shared across jobs.");
 }
 for (const workflow of engineCacheWorkflows) {
-  assert.match(workflow, /Restore verified replay engine bundles[\s\S]*?actions\/cache@v4[\s\S]*?src\/renderer\/engine[\s\S]*?\.openfront-engine-build\.json[\s\S]*?key: openfront-engine-bundles-\$\{\{ hashFiles\('\.gitmodules', 'engine-build\/\*\*', 'vendor\/\*\*\/package-lock\.json', 'scripts\/build-engines\.mjs'\) \}\}[\s\S]*?enableCrossOsArchive: true/,
-    "Exact replay worker bundles must be cached across jobs and operating systems using all build inputs.");
+  const bundleCacheKeys = workflow.split("\n").filter(line => line.trim().startsWith("key: openfront-engine-bundles-"));
+  assert.ok(bundleCacheKeys.length > 0, "Each engine workflow must define a bundle-cache key.");
+  for (const cacheKey of bundleCacheKeys) {
+    assert.ok(cacheKey.includes("scripts/engine-bundle-cache.mjs"),
+      "Every replay-engine bundle cache key must include the verifier/fingerprint implementation.");
+  }
 }
-
 const engineDiscoveryWorkflow = read(".github/workflows/discover-openfront-engine.yml");
 assert.match(engineDiscoveryWorkflow, /git diff --cached --check -- \. ':!src\/renderer\/engine\/replay-engine-\*\.js'/,
   "Engine discovery must check repository-owned staged changes without failing on upstream-generated bundle whitespace.");

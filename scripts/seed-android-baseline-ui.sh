@@ -359,11 +359,6 @@ log "Launching the genuine published v2.2.51 APK and classifying ADB, ActivityMa
 android_launch_package "$package_id" "the published v2.2.51 baseline APK" || fail "Published baseline app launch failed; see classified emulator diagnostics."
 sleep 20
 
-log "Rechecking ADB transport and boot state before launching the published baseline."
-android_prepare_emulator || fail "Baseline emulator preparation failed; inspect stage-specific ADB/boot diagnostics."
-log "Launching the genuine published v2.2.51 APK and classifying ADB, ActivityManager and crash failures."
-android_launch_package "$package_id" "the published v2.2.51 baseline APK" || fail "Published baseline app launch failed; see classified emulator diagnostics."
-sleep 20
 # A non-debuggable WebView can initially expose only its container to
 # UIAutomator. The same screen may expose its DOM-backed EditText nodes a few
 # seconds later, so do not treat the first valid-but-shallow hierarchy as a

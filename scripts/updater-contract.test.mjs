@@ -277,9 +277,9 @@ assert.match(androidBaselineUiSeed, /dump_ui\(\)\s*\{\s*local dump_output="" pul
   "UI dump retries must keep their counter local so outer viewport scans can advance.");
 assert.match(androidBaselineUiSeed, /wait_for_search_ime\(\)/,
   "Android search typing must wait for the IME/focus transition before injecting text.");
-assert.match(androidBaselineUiSeed, /dismiss_search_ime\(\)\s*\{\s*local ime_state="" ime_state_lc="" attempt visibility_flags="" hidden_streak=0/,
-  "The Android fallback must have a bounded helper to dismiss the keyboard and log its state.");
-const androidImeDismissHelper = androidBaselineUiSeed.match(/dismiss_search_ime\(\)\s*\{[\s\S]*?\n\}/)?.[0] ?? "";
+assert.match(androidBaselineUiSeed, /dismiss_android_ime\(\)\s*\{\s*local ime_state="" ime_state_lc="" attempt visibility_flags="" hidden_streak=0/,
+  "The Android fallback must share a bounded IME-dismiss helper between profile submission and replay search.");
+const androidImeDismissHelper = androidBaselineUiSeed.match(/dismiss_android_ime\(\)\s*\{[\s\S]*?\n\}/)?.[0] ?? "";
 assert.match(androidImeDismissHelper, /visible_pattern='minputshown=true'/,
   "Only the authoritative mInputShown=true flag may trigger Back.");
 assert.match(androidImeDismissHelper, /hidden_pattern='minputshown=false'/,

@@ -593,7 +593,8 @@ const launcherAnrGuard = androidBaselineSeed.indexOf("dismiss_pixel_launcher_anr
 const launcherAnrWait = androidBaselineSeed.indexOf("android:id/aerr_wait");
 const launcherAppPid = androidBaselineSeed.indexOf('pidof "$package_id"', launcherAnrGuard);
 const launcherResumedApp = androidBaselineSeed.indexOf('mResumedActivity|topResumedActivity', launcherAnrGuard);
-const launcherNavigationCall = androidBaselineSeed.indexOf("\nnavigate_to_library\n");
+const launcherNavigationMatch = /(?:^|\\r?\\n)navigate_to_library(?:\\r?\\n|$)/.exec(androidBaselineSeed);
+const launcherNavigationCall = launcherNavigationMatch?.index ?? -1;
 assert.ok(launcherAnrGuard >= 0 && launcherAnrWait > launcherAnrGuard,
   "Android baseline seeding must recognize only the explicit Pixel Launcher ANR dialog and its Wait control.");
 assert.ok(launcherAppPid > launcherAnrWait && launcherResumedApp > launcherAppPid,
@@ -602,7 +603,7 @@ assert.ok(launcherNavigationCall > androidBaselineSeed.indexOf("require_baseline
   "The foreground-window guard must be defined before top-level UI navigation invokes it.");
 assert.match(androidBaselineSeed, /refusing coordinate fallback/,
   "Launcher ANR recovery must fail closed instead of guessing dialog coordinates.");
-assert.match(androidBaselineSeed, /for attempt in \$\(seq 1 15\); do\n  dismiss_pixel_launcher_anr/,
+assert.match(androidBaselineSeed, /for attempt in \$\(seq 1 15\); do\r?\n  dismiss_pixel_launcher_anr/,
   "Profile-field polling must recover a verified launcher ANR overlay before reading the published UI.");
 assert.match(androidBaselineSeed, /seed_verified_match "cRVdxGEG5j"/,
   "The baseline fixture must seed its first real replay through the published app UI.");

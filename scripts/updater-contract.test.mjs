@@ -13,6 +13,12 @@ const renderer = read("src/renderer/UpdateCenter.tsx");
 const versionScript = read("scripts/set-release-version.mjs");
 const releaseWorkflow = read(".github/workflows/release-on-main.yml");
 const branchCleanupWorkflow = read(".github/workflows/cleanup-merged-branches.yml");
+assert.match(branchCleanupWorkflow, /const allowlisted = new Set\(\[/);
+assert.match(branchCleanupWorkflow, /pr\.merged_at/);
+assert.match(branchCleanupWorkflow, /pr\.head\.repo\?\.full_name/);
+assert.match(branchCleanupWorkflow, /current\.data\.commit\.sha !== mergedSha/);
+assert.match(branchCleanupWorkflow, /fix\/replay-persistence-v4-hydration-current-main/,
+  "The exact merged PR #187 branch should be cleaned up once its verified head is unchanged.");
 assert.match(updater, /releases\/latest/);
 assert.match(updater, /createHash\('sha256'\)/);
 assert.match(updater, /autoUpdateOnStartup/);

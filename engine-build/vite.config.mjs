@@ -19,6 +19,7 @@ const aliases = Object.fromEntries(
 export default {
   root,
   configFile: false,
+  publicDir: false,
   resolve: {
     alias: [{ find: "@openfront-source", replacement: upstream }, ...Object.entries(aliases).map(([find, replacement]) => ({ find, replacement }))],
     dedupe: [],

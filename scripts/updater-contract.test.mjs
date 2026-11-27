@@ -329,8 +329,12 @@ const androidLibraryNavigation = androidBaselineUiSeed.match(/navigate_to_librar
 assert.match(androidLibraryNavigation, /tap_text "Partien" last exact false/);
 assert.match(androidLibraryNavigation, /require_baseline_app_window/);
 assert.match(androidLibraryNavigation, /Using verified bottom-navigation fallback/);
+const guardedAppWindowHelperIndex = androidBaselineUiSeed.indexOf("require_baseline_app_window() {");
+const baselineLibraryNavigationCallIndex = androidBaselineUiSeed.search(/^navigate_to_library\r?$/m);
 assert.ok(
-  androidBaselineUiSeed.indexOf("require_baseline_app_window() {") < androidBaselineUiSeed.indexOf("navigate_to_library\n"),
+  guardedAppWindowHelperIndex >= 0
+    && baselineLibraryNavigationCallIndex >= 0
+    && guardedAppWindowHelperIndex < baselineLibraryNavigationCallIndex,
   "The guarded app-window helper must be defined before baseline library navigation runs."
 );
 

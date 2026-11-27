@@ -79,7 +79,7 @@ async function main() {
   await window.webContents.executeJavaScript("window.__prepareLegacyMatchStore()", true);
   const migrated = await window.webContents.executeJavaScript("window.__verifyLegacyMigration()", true);
   assert.deepEqual(migrated, {
-    version: 4,
+    version: 5,
     hasAnalysisStore: true,
     hasUpdatedAtIndex: true,
     legacyMatchHasSimulation: false,
@@ -98,7 +98,7 @@ async function main() {
     replayId: "legacy-replay",
     replayHash: "legacy-hash",
     rawOnlyReplayHash: "legacy-hash",
-  }, "IndexedDB v2 → v4 upgrade must preserve profile, match metadata, raw replay and migrate analysis payload");
+  }, "IndexedDB v2 → v5 upgrade must preserve profile, match metadata, raw replay and migrate analysis payload");
 
   const playerIndex = await window.webContents.executeJavaScript("window.__verifyPlayerIndexTest()", true);
   assert.deepEqual(playerIndex, {
@@ -112,7 +112,7 @@ async function main() {
   await window.webContents.executeJavaScript("window.__prepareLegacyV3ReplayStore()", true);
   const migratedV3 = await window.webContents.executeJavaScript("window.__verifyLegacyV3ReplayMigration()", true);
   assert.deepEqual(migratedV3, {
-    version: 4,
+    version: 5,
     hasAnalysisStore: true,
     rawReplayPreserved: true,
     rawReplayGameId: "legacy-v3-replay",
@@ -123,7 +123,7 @@ async function main() {
     hydratedDecodedActionCount: 1,
     hydratedActionAnalysisMarker: "v3-cache-preserved",
     lightweightMatchHasReplayPayload: false,
-  }, "IndexedDB v3 → v4 migration must merge decoded-action caches without replacing the existing raw replay with undefined");
+  }, "IndexedDB v3 → v5 migration must merge decoded-action caches without replacing the existing raw replay with undefined");
 
   const fixtures = [
     ["Europe", europe],

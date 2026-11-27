@@ -44,7 +44,8 @@ assert.match(renderer, /registerPlugin<ApkUpdaterPlugin>/);
 assert.match(renderer, /version: latestVersion/);
 assert.match(renderer, /keine Android-APK veröffentlicht/);
 assert.doesNotMatch(renderer, /Web\/PWA|serviceWorker|isBrowserPwa/);
-assert.doesNotMatch(releaseWorkflow, /assembleDebug/);
+assert.match(releaseWorkflow, /paths:[\s\S]*?release-on-main\.yml[\s\S]*?workflow_dispatch:/,
+  "A release-workflow correction must retry an unpublished reviewed version through the same full release gates; already-published versions are skipped.");
 const ciWorkflow = read(".github/workflows/ci.yml");
 assert.ok(ciWorkflow.includes("github.event_name == 'push'") && ciWorkflow.includes("needs.detect-replay-changes.outputs.replay_changed == 'true'"), "Replay-sensitive commits pushed to main must trigger the live replay regression job.");
 const liveReplayJob = ciWorkflow.slice(ciWorkflow.indexOf("  live-replay:"));

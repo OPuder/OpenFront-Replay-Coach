@@ -338,31 +338,58 @@ PY
 }
 
 dismiss_profile_keyboard_safely() {
-  local window_state="" current_focus="" focused_app="" lower_focus=""
-  window_state="$(timeout 10s adb -s emulator-5554 shell dumpsys window 2>&1)" || fail "Could not inspect Android window focus before dismissing the profile keyboard."
-  current_focus="$(grep -E 'mCurrentFocus=' <<< "$window_state" | tail -n 1 || true)"
-  focused_app="$(grep -E 'mFocusedApp=' <<< "$window_state" | tail -n 1 || true)"
-  lower_focus="${current_focus,,}"
-
-  if [[ "$focused_app" != *"$package_id"* ]]; then
-    fail "The published baseline app is no longer the focused application after profile entry; refusing to send Back. Focus: ${current_focus:-missing}; app: ${focused_app:-missing}"
-  fi
-
-  if [[ "$lower_focus" == *"inputmethod"* ]]; then
-    log "The Android input method is explicitly focused for the published app; dismissing only that visible keyboard."
-    timeout 10s adb -s emulator-5554 shell input keyevent 4 || fail "Could not dismiss the verified profile keyboard."
-    sleep 1
-    window_state="$(timeout 10s adb -s emulator-5554 shell dumpsys window 2>&1)" || fail "Could not verify app focus after dismissing the profile keyboard."
-    current_focus="$(grep -E 'mCurrentFocus=' <<< "$window_state" | tail -n 1 || true)"
-    focused_app="$(grep -E 'mFocusedApp=' <<< "$window_state" | tail -n 1 || true)"
-    if [[ "$current_focus" != *"$package_id"* || "$focused_app" != *"$package_id"* ]]; then
-      fail "Dismissing the visible profile keyboard did not return focus to the published app; refusing further UI input. Focus: ${current_focus:-missing}; app: ${focused_app:-missing}"
-    fi
-  elif [[ "$current_focus" == *"$package_id"* ]]; then
-    log "The published app already owns the foreground window and no input-method window is focused; skipping Back to avoid exiting the app."
+  local ime_state="" ime_state_lc="" window_state="" current_focus="" focused_app="" hidden_streak=0 attempt
+  ime_state="$(timeout 8s adb -s emulator-5554 shell dumpsys input_method 2>&1)" || fail "Could not read Android IME visibility before profile submission."
+  [[ -n "$ime_state" ]] || fail "Android IME state was empty; refusing to guess whether the keyboard covers the profile button."
+  ime_state_lc="${ime_state,,}"
+  if grep -Eq 'minputshown=true' <<< "$ime_state_lc"; then
+    require_baseline_app_window
+    log "Android reports mInputShown=true; dismissing the profile IME while the published app remains foregrounded."
+    timeout 10s adb -s emulator-5554 shell input keyevent 4 || fail "Could not dismiss the visible profile IME."
+  elif grep -Eq 'minputshown=false' <<< "$ime_state_lc"; then
+    log "Android reports mInputShown=false; stale secondary IME flags will not trigger Back."
   else
-    fail "The published app is not foregrounded and the focused window is not a verified input method; refusing Back or coordinate input. Focus: ${current_focus:-missing}"
+    fail "Android IME visibility is unknown; refusing Back or clipped profile-button coordinates."
   fi
+  for attempt in $(seq 1 8); do
+    ime_state="$(timeout 8s adb -s emulator-5554 shell dumpsys input_method 2>&1)" || fail "Could not re-check Android IME visibility after profile dismissal."
+    ime_state_lc="${ime_state,,}"
+    if grep -Eq 'minputshown=false' <<< "$ime_state_lc"; then
+      hidden_streak=$((hidden_streak + 1))
+      if (( hidden_streak >= 2 )); then
+        require_baseline_app_window
+        log "Primary Android IME visibility is hidden for two consecutive checks; fresh profile-button bounds may now be used."
+        return 0
+      fi
+    elif grep -Eq 'minputshown=true' <<< "$ime_state_lc"; then
+      hidden_streak=0
+      require_baseline_app_window
+    else
+      fail "Android IME visibility became unknown; refusing to tap clipped profile controls."
+    fi
+    sleep 1
+  done
+  fail "Android profile IME did not remain hidden for two consecutive checks."
+}
+
+wait_for_profile_loaded() {
+  local started=$SECONDS ui_text="" ocr_dump=""
+  while (( SECONDS - started < 120 )); do
+    if dump_ui; then
+      ui_text="$(cat "$ui_xml" 2>/dev/null || true)"
+      if grep -Fq "Konto geladen" <<< "$ui_text" && grep -Fq "$player_id" <<< "$ui_text"; then
+        log "Verified explicit profile-load success and the expected archived player ID in the published app UI."
+        return 0
+      fi
+    fi
+    ocr_dump="$(ocr_text 2>/dev/null | tr '\n' ' ' || true)"
+    if grep -Fq "Konto geladen" <<< "$ocr_dump" && grep -Fq "$player_id" <<< "$ocr_dump"; then
+      log "Verified explicit profile-load success and the expected archived player ID through screenshot OCR."
+      return 0
+    fi
+    sleep 2
+  done
+  fail "Profile submission did not show the explicit Konto geladen marker and expected player ID. Dashboard navigation alone is not proof of profile loading. OCR: ${ocr_dump:0:1200}"
 }
 
 log "Rechecking ADB transport and boot state before launching the published baseline."
@@ -424,20 +451,12 @@ adb -s emulator-5554 shell input text "$player_id"
 dismiss_pixel_launcher_anr
 dismiss_profile_keyboard_safely
 if tap_text "Konto laden" last exact false; then
-  log "The published profile form accepted the player ID through its visible Konto laden control."
+  log "Submitted the archived player ID through the visible Konto laden control."
 else
-  if dump_ui && grep -q 'text="Dashboard"' "$ui_xml" && grep -q 'text="Partien"' "$ui_xml"; then
-    dashboard_window="$(timeout 10s adb -s emulator-5554 shell dumpsys window 2>&1 | grep -E 'mCurrentFocus=|mFocusedApp=' | tail -n 2 || true)"
-    dashboard_focused_app="$(grep -E 'mFocusedApp=' <<< "$dashboard_window" | tail -n 1 || true)"
-    if [[ "$dashboard_focused_app" == *"$package_id"* ]]; then
-      log "The published app already transitioned to its authenticated Dashboard with Partien navigation; continuing to verify the real library import count and replay persistence."
-    else
-      fail "Dashboard and Partien controls were visible, but the published app did not own the foreground application; refusing to seed through an unverified window. Focus: ${dashboard_window:-missing}"
-    fi
-  else
-    fail "The published profile form exposed neither the Konto laden control nor a verifiable Dashboard/Partien state; refusing to assume the profile loaded."
-  fi
+  log "The Konto laden control was not exposed; submitting the focused profile form through its Enter handler."
+  timeout 10s adb -s emulator-5554 shell input keyevent 66 || fail "Could not submit the focused profile field with Enter."
 fi
+wait_for_profile_loaded
 
 # The published baseline is a non-debuggable WebView app, so Android exposes
 # only the WebView container to UIAutomator. OCR follows the visible UI, and

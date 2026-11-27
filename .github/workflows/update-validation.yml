@@ -352,7 +352,7 @@ jobs:
             echo "emulator_acceleration_configuration:"
             echo "requested_arch=x86_64"
             echo "disable_linux_hw_accel=false"
-            echo "emulator_options=-no-window -no-audio -no-boot-anim -no-snapshot -no-metrics -gpu software -memory 3072 -partition-size 4096"
+            echo "emulator_options=-no-window -no-audio -no-boot-anim -no-snapshot -no-metrics -gpu swiftshader_indirect -memory 4096 -partition-size 4096"
           } | tee "$diag/kvm-preflight.log"
           vendor="$(awk -F: '/vendor_id[[:space:]]*:/ {gsub(/[[:space:]]/,"",$2); print $2; exit}' /proc/cpuinfo)"
           sudo modprobe kvm

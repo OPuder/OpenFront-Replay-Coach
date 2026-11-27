@@ -22,7 +22,7 @@ test("Android Gradle Central mirror patch fails closed if the generated root has
   assert.throws(() => insertMavenCentralMirror("repositories { google() }"), /does not declare mavenCentral/);
 });
 test("Android update-validation workflow runs the generated Gradle mirror smoke test", () => {
-  assert.match(updateValidationWorkflow, /node scripts\\/smoke-test-android-config\\.mjs/);
+  assert.ok(updateValidationWorkflow.includes("node scripts/smoke-test-android-config.mjs"));
 });
 const updater = read("src/main/updater.ts");
 const android = read("android-updater-template/ApkUpdaterPlugin.java");

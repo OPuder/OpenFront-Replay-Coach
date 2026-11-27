@@ -1,5 +1,6 @@
 import { cp, mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
+import { insertMavenCentralMirror } from "./android-gradle-central-mirror.mjs";
 
 const root = process.cwd();
 const javaRoot = path.join(root, "android/app/src/main/java/de/openfront/replaycoach");
@@ -7,6 +8,14 @@ const xmlRoot = path.join(root, "android/app/src/main/res/xml");
 const manifestPath = path.join(root, "android/app/src/main/AndroidManifest.xml");
 const activityPath = path.join(javaRoot, "MainActivity.java");
 const templateRoot = path.join(root, "android-updater-template");
+const rootGradlePath = path.join(root, "android/build.gradle");
+
+let rootGradle = await readFile(rootGradlePath, "utf8");
+const centralMirrorPatch = insertMavenCentralMirror(rootGradle);
+if (centralMirrorPatch.insertedCount > 0) {
+  await writeFile(rootGradlePath, centralMirrorPatch.content);
+  console.log(`Configured the Google-hosted Maven Central mirror before ${centralMirrorPatch.insertedCount} mavenCentral() repositories.`);
+}
 
 await mkdir(javaRoot, { recursive: true });
 await mkdir(xmlRoot, { recursive: true });

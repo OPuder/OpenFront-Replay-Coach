@@ -44,8 +44,7 @@ assert.match(renderer, /registerPlugin<ApkUpdaterPlugin>/);
 assert.match(renderer, /version: latestVersion/);
 assert.match(renderer, /keine Android-APK veröffentlicht/);
 assert.doesNotMatch(renderer, /Web\/PWA|serviceWorker|isBrowserPwa/);
-assert.match(releaseWorkflow, /paths:[\s\S]*?release-on-main\.yml[\s\S]*?workflow_dispatch:/,
-  "A release-workflow correction must retry an unpublished reviewed version through the same full release gates; already-published versions are skipped.");
+assert.doesNotMatch(releaseWorkflow, /assembleDebug/);
 const ciWorkflow = read(".github/workflows/ci.yml");
 assert.ok(ciWorkflow.includes("github.event_name == 'push'") && ciWorkflow.includes("needs.detect-replay-changes.outputs.replay_changed == 'true'"), "Replay-sensitive commits pushed to main must trigger the live replay regression job.");
 const liveReplayJob = ciWorkflow.slice(ciWorkflow.indexOf("  live-replay:"));
@@ -61,10 +60,10 @@ assert.match(ciWorkflow, /npm run test:opencode-config/,
   "CI must keep running the OpenCode specialist configuration contract, including when suites execute concurrently.");
 assert.match(ciWorkflow, /xvfb-run -a npm run test:ux-ui/,
   "The responsive UI regression suite must remain in CI, including when suites execute concurrently.");
-assert.match(releaseWorkflow, /paths:\s*[\s\S]*package\.json[\s\S]*package-lock\.json[\s\S]*workflow_dispatch:/,
-  "Releases must be triggered by reviewed package-version changes or explicit manual retries.");
-assert.doesNotMatch(releaseWorkflow, /paths:[\s\S]*?release-on-main\.yml/,
-  "Workflow corrections must not automatically start a release or publish artifacts.");
+assert.match(releaseWorkflow, /paths:\s*[\s\S]*package\.json[\s\S]*package-lock\.json[\s\S]*release-on-main\.yml[\s\S]*workflow_dispatch:/,
+  "Releases must be triggered by reviewed package-version changes, workflow corrections for an unpublished version, or explicit manual retries.");
+assert.match(releaseWorkflow, /paths:[\s\S]*?release-on-main\.yml[\s\S]*?workflow_dispatch:/,
+  "A release-workflow correction must retry an unpublished reviewed version through the same full release gates; already-published versions are skipped.");
 assert.match(releaseWorkflow, /node --import \.\/node_modules\/tsx\/dist\/loader\.mjs/,
   "Release replay metadata validation must use root TSX, not a cache-omitted vendor dependency.");
 assert.doesNotMatch(releaseWorkflow, /vendor\/OpenFrontIO\/node_modules\/tsx/,

@@ -5,6 +5,7 @@ import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "nod
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { fileURLToPath } from "node:url";
+import { insertMavenCentralMirror, MAVEN_CENTRAL_MIRROR_DECLARATION } from "./android-gradle-central-mirror.mjs";
 const read = path => readFileSync(new URL("../" + path, import.meta.url), "utf8");
 const updater = read("src/main/updater.ts");
 const android = read("android-updater-template/ApkUpdaterPlugin.java");
@@ -13,6 +14,20 @@ const renderer = read("src/renderer/UpdateCenter.tsx");
 const versionScript = read("scripts/set-release-version.mjs");
 const releaseWorkflow = read(".github/workflows/release-on-main.yml");
 const branchCleanupWorkflow = read(".github/workflows/cleanup-merged-branches.yml");
+test("Android Gradle Central mirror is inserted before both root repositories and is idempotent", () => {
+  const fixture = "buildscript {\\n  repositories {\\n    google()\\n    mavenCentral()\\n  }\\n}\\n\\nallprojects {\\n  repositories {\\n    google()\\n    mavenCentral()\\n  }\\n}\\n";
+  const patched = insertMavenCentralMirror(fixture);
+  assert.equal(patched.insertedCount, 2);
+  const buildscriptSection = patched.content.slice(patched.content.indexOf("buildscript {"), patched.content.indexOf("allprojects {"));
+  const allprojectsSection = patched.content.slice(patched.content.indexOf("allprojects {"));
+  assert.ok(buildscriptSection.indexOf(MAVEN_CENTRAL_MIRROR_DECLARATION) < buildscriptSection.indexOf("mavenCentral()"));
+  assert.ok(allprojectsSection.indexOf(MAVEN_CENTRAL_MIRROR_DECLARATION) < allprojectsSection.indexOf("mavenCentral()"));
+  assert.equal(insertMavenCentralMirror(patched.content).insertedCount, 0, "Applying the patch a second time must not duplicate repositories.");
+  assert.equal(patched.content.split(MAVEN_CENTRAL_MIRROR_DECLARATION).length - 1, 2);
+});
+test("Android Gradle Central mirror patch fails closed if the generated root has no Central declaration", () => {
+  assert.throws(() => insertMavenCentralMirror("repositories { google() }"), /does not declare mavenCentral/);
+});
 assert.match(updater, /releases\/latest/);
 assert.match(updater, /createHash\('sha256'\)/);
 assert.match(updater, /autoUpdateOnStartup/);

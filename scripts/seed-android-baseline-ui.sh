@@ -172,7 +172,7 @@ PY
 tap_edit_field() {
   local occurrence="${1:-1}" current_query="${2:-$current_search_query}" coords=""
   # The IME can resize the WebView and leave the search input clipped. Dismiss it before locating or tapping the field.
-  dismiss_search_ime
+  dismiss_android_ime
   # The library field can be above the viewport or expose invalid WebView bounds.
   # Bring the toolbar into view, then prefer its current query text in OCR.
   for attempt in $(seq 1 8); do
@@ -267,68 +267,6 @@ tap_text() {
   fail "Could not find the UI control '$needle' in UIAutomator or OCR after bounded retries. OCR text: ${ocr_dump:0:1200}. Captured UI: $(cat "$ui_xml" 2>/dev/null | head -c 4000)"
 }
 
-dismiss_profile_keyboard_safely() {
-  local window_state="" current_focus="" focused_app="" ime_state="" ime_state_lc="" visibility_flags="" hidden_streak=0 attempt back_sent=false
-  window_state="$(timeout 10s adb -s emulator-5554 shell dumpsys window 2>&1)" || fail "Could not inspect Android window focus before dismissing the profile keyboard."
-  current_focus="$(grep -E 'mCurrentFocus=' <<< "$window_state" | tail -n 1 || true)"
-  focused_app="$(grep -E 'mFocusedApp=' <<< "$window_state" | tail -n  1 || true)"
-  if [[ "$focused_app" != *"$package_id"* ]] || [[ "$current_focus" =~ NotificationShade|com\.android\.systemui|QuickstepLauncher ]]; then
-    fail "The published baseline app is not safely foregrounded after profile entry; refusing Back. Focus: ${current_focus:-missing}; app: ${focused_app:-missing}"
-  fi
-
-  ime_state="$(timeout 8s adb -s emulator-5554 shell dumpsys input_method 2>&1)" || fail "Could not read Android IME state before dismissing the profile keyboard."
-  [[ -n "$ime_state" ]] || fail "Android IME state was empty; refusing to guess whether the profile keyboard covers the form."
-  ime_state_lc="${ime_state,,}"
-  visibility_flags="$(grep -Eo 'minputshown=(true|false)|minputviewshown=(true|false)|isinputviewshown=(true|false)|mshowrequested=(true|false)' <<< "$ime_state_lc" | tr '\n' ' ' || true)"
-  log "Android profile IME visibility flags: ${visibility_flags:-not exposed}."
-  if grep -Eq 'minputshown=true' <<< "$ime_state_lc"; then
-    log "Android reports mInputShown=true; dismissing the profile keyboard while the app remains foregrounded."
-    timeout 10s adb -s emulator-5554 shell input keyevent 4 || fail "Could not dismiss the visible profile keyboard."
-    back_sent=true
-  elif grep -Eq 'minputshown=false' <<< "$ime_state_lc"; then
-    log "Android reports mInputShown=false; secondary IME view flags are diagnostic only and will not trigger Back."
-  else
-    fail "Android IME visibility is unknown (${visibility_flags:-no visibility flags}); refusing Back or profile-button coordinates."
-  fi
-
-  for attempt in $(seq 1 8); do
-    ime_state="$(timeout 8s adb -s emulator-5554 shell dumpsys input_method 2>&1)" || fail "Could not re-check Android IME visibility after profile dismissal."
-    [[ -n "$ime_state" ]] || fail "Android IME state became empty after profile dismissal."
-    ime_state_lc="${ime_state,,}"
-    visibility_flags="$(grep -Eo 'minputshown=(true|false)|minputviewshown=(true|false)|isinputviewshown=(true|false)|mshowrequested=(true|false)' <<< "$ime_state_lc" | tr '\n' ' ' || true)"
-    if grep -Eq 'minputshown=false' <<< "$ime_state_lc"; then
-      hidden_streak=$((hidden_streak + 1))
-      if (( hidden_streak >= 2 )); then
-        window_state="$(timeout 10s adb -s emulator-5554 shell dumpsys window 2>&1)" || fail "Could not verify app focus after profile keyboard dismissal."
-        current_focus="$(grep -E 'mCurrentFocus=' <<< "$window_state" | tail -n 1 || true)"
-        focused_app="$(grep -E 'mFocusedApp=' <<< "$window_state" | tail -n  1 || true)"
-        if [[ "$focused_app" != *"$package_id"* ]] || [[ "$current_focus" =~ NotificationShade|com\.android\.systemui|QuickstepLauncher ]]; then
-          fail "The profile keyboard is hidden but the baseline app is not safely foregrounded. Focus: ${current_focus:-missing}; app: ${focused_app:-missing}"
-        fi
-        if grep -Eq 'minputviewshown=true|isinputviewshown=true|mshowrequested=true' <<< "$ime_state_lc"; then
-          log "Secondary IME view/show flags remain stale while mInputShown=false; primary visibility is stable and no additional Back is sent."
-        fi
-        log "The primary Android IME visibility flag is hidden for two checks; fresh profile-submit bounds may now be used."
-        return 0
-      fi
-    elif grep -Eq 'minputshown=true' <<< "$ime_state_lc"; then
-      hidden_streak=0
-      if [[ "$back_sent" != true ]]; then
-        window_state="$(timeout 10s adb -s emulator-5554 shell dumpsys window 2>&1)" || fail "Could not verify app focus before a second profile-keyboard dismissal."
-        focused_app="$(grep -E 'mFocusedApp=' <<< "$window_state" | tail -n  1 || true)"
-        if [[ "$focused_app" != *"$package_id"* ]]; then fail "Refusing Back while the baseline app is not foregrounded."; fi
-        log "The primary IME visibility flag remains true; sending one guarded Back and waiting for it to dismiss."
-        timeout 10s adb -s emulator-5554 shell input keyevent 4 || fail "Could not dismiss the visible profile keyboard."
-        back_sent=true
-      fi
-    else
-      fail "Android IME visibility became unknown after profile dismissal (${visibility_flags:-no visibility flags}); refusing to tap clipped controls."
-    fi
-    sleep 1
-  done
-  fail "Android profile keyboard did not remain hidden for two consecutive primary-flag checks; refusing to tap a clipped Konto laden control."
-}
-
 wait_for_profile_loaded() {
   local wait_seconds=120 started=$SECONDS attempt=0 ui_text="" ocr_dump=""
   while (( SECONDS - started < wait_seconds )); do
@@ -351,6 +289,69 @@ wait_for_profile_loaded() {
     sleep 2
   done
   fail "Profile submission did not produce the explicit Konto geladen marker and expected player ID within 2 minutes. Dashboard/Partien navigation is not proof of profile loading. OCR: ${ocr_dump:0:1600}; UI: $(cat "$ui_xml" 2>/dev/null | head -c 3500)"
+}
+
+baseline_app_window_is_focused() {
+  local window_state="" current_focus="" focused_app=""
+  window_state="$(timeout 10s adb -s emulator-5554 shell dumpsys window 2>&1)" || return 1
+  current_focus="$(grep -E 'mCurrentFocus=' <<< "$window_state" | tail -n 1 || true)"
+  focused_app="$(grep -E 'mFocusedApp=' <<< "$window_state" | tail -n 1 || true)"
+  # A notification shade or launcher focus is never a safe target for WebView
+  # coordinates, even when ActivityManager still reports the app as resumed.
+  if [[ "$current_focus" =~ NotificationShade|com\.android\.systemui|QuickstepLauncher ]]; then return 1; fi
+  if [[ "$current_focus" == *"$package_id"* ]] && { [[ -z "$focused_app" ]] || [[ "$focused_app" == *"$package_id"* ]]; }; then return 0; fi
+  if [[ "$current_focus" =~ InputMethod|input_method ]] && [[ "$focused_app" == *"$package_id"* ]]; then return 0; fi
+  return 1
+}
+require_baseline_app_window() {
+  local focus_state=""
+  focus_state="$(timeout 10s adb -s emulator-5554 shell dumpsys window 2>&1 | grep -E 'mCurrentFocus=|mFocusedApp=' | tail -n 2 || true)"
+  baseline_app_window_is_focused || fail "The published baseline app is not safely foregrounded; refusing Back or coordinate gestures. Window focus: ${focus_state:-unavailable}"
+}
+dismiss_android_ime() {
+  local ime_state="" ime_state_lc="" attempt visibility_flags="" hidden_streak=0
+  local visible_pattern='minputshown=true'
+  local hidden_pattern='minputshown=false'
+  ime_state="$(timeout 8s adb -s emulator-5554 shell dumpsys input_method 2>&1)" || fail "Could not read Android IME state before the next WebView input."
+  [[ -n "$ime_state" ]] || fail "Android IME state was empty; refusing to guess whether the keyboard covers the WebView."
+  ime_state_lc="${ime_state,,}"
+  visibility_flags="$(grep -Eo 'minputshown=(true|false)|minputviewshown=(true|false)|isinputviewshown=(true|false)' <<< "$ime_state_lc" | tr '\n' ' ' || true)"
+  log "Android IME visibility flags: ${visibility_flags:-not exposed}."
+  if grep -Eq "$visible_pattern" <<< "$ime_state_lc"; then
+    require_baseline_app_window
+    log "Android reports mInputShown=true; dismissing the keyboard while the baseline app remains foregrounded."
+    timeout 10s adb -s emulator-5554 shell input keyevent 4 || fail "Could not dismiss Android keyboard before the next WebView input."
+  elif grep -Eq "$hidden_pattern" <<< "$ime_state_lc"; then
+    log "Android reports mInputShown=false; treating secondary IME view flags as diagnostic only and never sending Back."
+  else
+    fail "Android IME visibility is unknown (${visibility_flags:-no visibility flags}); refusing to send Back or tap coordinates that may be covered by the keyboard."
+  fi
+  for attempt in $(seq 1 8); do
+    ime_state="$(timeout 8s adb -s emulator-5554 shell dumpsys input_method 2>&1)" || fail "Could not re-check Android IME visibility after dismissal."
+    [[ -n "$ime_state" ]] || fail "Android IME state became empty after dismissal; refusing to guess keyboard visibility."
+    ime_state_lc="${ime_state,,}"
+    visibility_flags="$(grep -Eo 'minputshown=(true|false)|minputviewshown=(true|false)|isinputviewshown=(true|false)' <<< "$ime_state_lc" | tr '\n' ' ' || true)"
+    if grep -Eq "$hidden_pattern" <<< "$ime_state_lc"; then
+      hidden_streak=$((hidden_streak + 1))
+      if (( hidden_streak >= 2 )); then
+        require_baseline_app_window
+        if grep -Eq 'minputviewshown=true|isinputviewshown=true' <<< "$ime_state_lc"; then
+          log "Secondary IME view flags remain stale while mInputShown=false; primary window visibility is stable, so no Back is sent."
+        else
+          log "Android keyboard is confirmed hidden (${visibility_flags:-primary visibility flag}); no Back is sent."
+        fi
+        log "The WebView search field will be re-located from fresh UI/OCR bounds after the IME dismissal."
+        return 0
+      fi
+    elif grep -Eq "$visible_pattern" <<< "$ime_state_lc"; then
+      hidden_streak=0
+      require_baseline_app_window
+    else
+      fail "Android IME visibility became unknown after dismissal (${visibility_flags:-no visibility flags}); refusing to tap clipped coordinates."
+    fi
+    sleep 1
+  done
+  fail "Android keyboard did not remain hidden for two consecutive checks; refusing to tap coordinates clipped by the IME."
 }
 
 log "Rechecking ADB transport and boot state before launching the published baseline."
@@ -391,7 +392,7 @@ read -r input_x input_y <<< "$coords"
 log "Entering the archived player ID through the real published app UI at $input_x,$input_y."
 adb -s emulator-5554 shell input tap "$input_x" "$input_y"
 adb -s emulator-5554 shell input text "$player_id"
-dismiss_profile_keyboard_safely
+dismiss_android_ime
 if tap_text "Konto laden" last exact false; then
   log "Submitted the archived player ID through the visible Konto laden control."
 else
@@ -548,68 +549,6 @@ wait_for_search_ime() {
   log "IME visibility is not exposed by dumpsys input_method; waiting briefly before verified typing."
   sleep 2
 }
-baseline_app_window_is_focused() {
-  local window_state="" current_focus="" focused_app=""
-  window_state="$(timeout 10s adb -s emulator-5554 shell dumpsys window 2>&1)" || return 1
-  current_focus="$(grep -E 'mCurrentFocus=' <<< "$window_state" | tail -n 1 || true)"
-  focused_app="$(grep -E 'mFocusedApp=' <<< "$window_state" | tail -n 1 || true)"
-  # A notification shade or launcher focus is never a safe target for WebView
-  # coordinates, even when ActivityManager still reports the app as resumed.
-  if [[ "$current_focus" =~ NotificationShade|com\.android\.systemui|QuickstepLauncher ]]; then return 1; fi
-  if [[ "$current_focus" == *"$package_id"* ]] && { [[ -z "$focused_app" ]] || [[ "$focused_app" == *"$package_id"* ]]; }; then return 0; fi
-  if [[ "$current_focus" =~ InputMethod|input_method ]] && [[ "$focused_app" == *"$package_id"* ]]; then return 0; fi
-  return 1
-}
-require_baseline_app_window() {
-  local focus_state=""
-  focus_state="$(timeout 10s adb -s emulator-5554 shell dumpsys window 2>&1 | grep -E 'mCurrentFocus=|mFocusedApp=' | tail -n 2 || true)"
-  baseline_app_window_is_focused || fail "The published baseline app is not safely foregrounded; refusing Back or coordinate gestures. Window focus: ${focus_state:-unavailable}"
-}
-dismiss_search_ime() {
-  local ime_state="" ime_state_lc="" attempt visibility_flags="" hidden_streak=0
-  local visible_pattern='minputshown=true'
-  local hidden_pattern='minputshown=false'
-  ime_state="$(timeout 8s adb -s emulator-5554 shell dumpsys input_method 2>&1)" || fail "Could not read Android IME state before re-focusing the library search field."
-  [[ -n "$ime_state" ]] || fail "Android IME state was empty; refusing to guess whether the keyboard covers the WebView."
-  ime_state_lc="${ime_state,,}"
-  visibility_flags="$(grep -Eo 'minputshown=(true|false)|minputviewshown=(true|false)|isinputviewshown=(true|false)' <<< "$ime_state_lc" | tr '\n' ' ' || true)"
-  log "Android IME visibility flags: ${visibility_flags:-not exposed}."
-  if grep -Eq "$visible_pattern" <<< "$ime_state_lc"; then
-    require_baseline_app_window
-    log "Android reports mInputShown=true; dismissing the keyboard while the baseline app remains foregrounded."
-    timeout 10s adb -s emulator-5554 shell input keyevent 4 || fail "Could not dismiss Android keyboard before re-focusing the library search field."
-  elif grep -Eq "$hidden_pattern" <<< "$ime_state_lc"; then
-    log "Android reports mInputShown=false; treating secondary IME view flags as diagnostic only and never sending Back."
-  else
-    fail "Android IME visibility is unknown (${visibility_flags:-no visibility flags}); refusing to send Back or tap coordinates that may be covered by the keyboard."
-  fi
-  for attempt in $(seq 1 8); do
-    ime_state="$(timeout 8s adb -s emulator-5554 shell dumpsys input_method 2>&1)" || fail "Could not re-check Android IME visibility after dismissal."
-    [[ -n "$ime_state" ]] || fail "Android IME state became empty after dismissal; refusing to guess keyboard visibility."
-    ime_state_lc="${ime_state,,}"
-    visibility_flags="$(grep -Eo 'minputshown=(true|false)|minputviewshown=(true|false)|isinputviewshown=(true|false)' <<< "$ime_state_lc" | tr '\n' ' ' || true)"
-    if grep -Eq "$hidden_pattern" <<< "$ime_state_lc"; then
-      hidden_streak=$((hidden_streak + 1))
-      if (( hidden_streak >= 2 )); then
-        require_baseline_app_window
-        if grep -Eq 'minputviewshown=true|isinputviewshown=true' <<< "$ime_state_lc"; then
-          log "Secondary IME view flags remain stale while mInputShown=false; primary window visibility is stable, so no Back is sent."
-        else
-          log "Android keyboard is confirmed hidden (${visibility_flags:-primary visibility flag}); no Back is sent."
-        fi
-        log "The WebView search field will be re-located from fresh UI/OCR bounds after the IME dismissal."
-        return 0
-      fi
-    elif grep -Eq "$visible_pattern" <<< "$ime_state_lc"; then
-      hidden_streak=0
-      require_baseline_app_window
-    else
-      fail "Android IME visibility became unknown after dismissal (${visibility_flags:-no visibility flags}); refusing to tap clipped coordinates."
-    fi
-    sleep 1
-  done
-  fail "Android keyboard did not remain hidden for two consecutive checks; refusing to tap coordinates clipped by the IME."
-}
 
 search_query_visible() {
   local query="$1"
@@ -672,7 +611,7 @@ seed_verified_match() {
   done
   if [[ "$typed" != true ]]; then
     log "Text input did not appear in the focused search field; dismissing the IME, re-locating the visible input, and retrying with individual Android key events."
-    dismiss_search_ime
+    dismiss_android_ime
     tap_edit_field 1 "$current_search_query"
     wait_for_search_ime
     timeout 10s adb -s emulator-5554 shell input keycombination 113 29 >/dev/null 2>&1 || true

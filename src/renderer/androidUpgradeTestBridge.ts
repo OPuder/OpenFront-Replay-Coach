@@ -190,24 +190,6 @@ export async function installAndroidUpgradeTestBridge(): Promise<void> {
       // error. The cursor reads above are complete, so release the connection now.
       db.close();
 
-      // Rehydrate the two exact UI-seeded replays rather than whichever records
-      // happen to appear first in IndexedDB's key order.
-      const requiredGameIds = ["cRVdxGEG5j", "c4CW3VJWQ9"];
-      const reusableMatches = await Promise.all(requiredGameIds.map(async gameId => {
-        const loaded = playerId ? await loadImportedMatch(playerId, gameId) : null;
-        const record = loaded?.result?.record as Record<string, any> | undefined;
-        return {
-          playerId: playerId ?? "",
-          gameId,
-          loaded: Boolean(loaded),
-          replayRestored: Boolean(record),
-          recordGameId: record?.info?.gameID ?? record?.game?.info?.gameID ?? null,
-          engineCommit: record?.gitCommit ?? null,
-          turnCount: Array.isArray(record?.turns) ? record.turns.length : 0,
-          analysisStatus: loaded?.analysisStatus ?? null,
-        };
-      }));
-
       const replayKeys = new Set(replays.map(value => `${String(value.playerId ?? "")}:${String(value.gameId ?? "")}`));
       const matchKeys = matches.filter(value => value.hasResult).map(value => `${String(value.playerId ?? "")}:${String(value.gameId ?? "")}`);
       const missingReplayRecords = matchKeys.filter(key => !replayKeys.has(key));
@@ -232,13 +214,7 @@ export async function installAndroidUpgradeTestBridge(): Promise<void> {
         appVersion: typeof __APP_VERSION__ === "string" ? __APP_VERSION__ : "unknown",
         capturedAt: new Date().toISOString(),
         localStorage: { count: localStorageEntries.length, entries: localStorageEntries, hashes: localStorageHashes },
-        rehydration: {
-          attempted: reusableMatches.length,
-          loaded: reusableMatches.filter(item => item.loaded).length,
-          replayRestored: reusableMatches.filter(item => item.replayRestored
-            && item.recordGameId === item.gameId && Boolean(item.engineCommit) && item.turnCount > 0).length,
-          matches: reusableMatches,
-        },
+        rehydration: null,
         indexedDb: {
           name: db.name,
           version: db.version,
@@ -258,10 +234,38 @@ export async function installAndroidUpgradeTestBridge(): Promise<void> {
     }
   };
 
+  // Rehydration is a separate CDP call so the inspector can persist the raw
+  // IndexedDB snapshot first. Any production-store error must not hide evidence.
+  const rehydrate = async () => {
+    const playerId = localStorage.getItem("ofrc:last-player-id") ?? "";
+    const requiredGameIds = ["cRVdxGEG5j", "c4CW3VJWQ9"];
+    const reusableMatches = await Promise.all(requiredGameIds.map(async gameId => {
+      const loaded = playerId ? await loadImportedMatch(playerId, gameId) : null;
+      const record = loaded?.result?.record as Record<string, any> | undefined;
+      return {
+        playerId,
+        gameId,
+        loaded: Boolean(loaded),
+        replayRestored: Boolean(record),
+        recordGameId: record?.info?.gameID ?? record?.game?.info?.gameID ?? null,
+        engineCommit: record?.gitCommit ?? null,
+        turnCount: Array.isArray(record?.turns) ? record.turns.length : 0,
+        analysisStatus: loaded?.analysisStatus ?? null,
+      };
+    }));
+    return {
+      attempted: reusableMatches.length,
+      loaded: reusableMatches.filter(item => item.loaded).length,
+      replayRestored: reusableMatches.filter(item => item.replayRestored
+        && item.recordGameId === item.gameId && Boolean(item.engineCommit) && item.turnCount > 0).length,
+      matches: reusableMatches,
+    };
+  };
+
   Object.defineProperty(window, "__OFRC_ANDROID_UPGRADE_TEST__", {
     configurable: false,
     enumerable: false,
     writable: false,
-    value: Object.freeze({ snapshot }),
+    value: Object.freeze({ snapshot, rehydrate }),
   });
 }

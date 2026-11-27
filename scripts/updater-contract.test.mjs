@@ -539,7 +539,7 @@ assert.match(read("scripts/engine-bundle-cache.mjs"), /manifest\.schema !== 2[\s
 const enginePinValidation = read("scripts/validate-engine-pin.mjs");
 assert.match(enginePinValidation, /const cachedBundlesVerified = verifyEngineBundleCache/,
   "Engine pin validation must verify cache provenance before relying on it.");
-assert.match(enginePinValidation, /if \\(!cachedBundlesVerified\\) \\{/,
+assert.ok(enginePinValidation.includes("if (!cachedBundlesVerified) {"),
   "Unverified cache entries must still require exact source checkout validation.");
 assert.match(enginePinValidation, /using integrity-checked bundles/);
 assert.match(enginePinValidation, /against source checkouts/);

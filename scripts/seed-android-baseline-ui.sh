@@ -229,7 +229,9 @@ tap_text() {
   local needle="$1"
   local occurrence="${2:-1}"
   local mode="${3:-text}"
-  local coords=""
+  local required="${4:-true}"
+  local max_ocr_attempts=12 coords="" ocr_dump=""
+  if [[ "$required" == "false" ]]; then max_ocr_attempts=1; fi
   # Try the native hierarchy once. The published APK is a WebView app, and
   # repeatedly launching UIAutomator can take minutes while exposing no DOM.
   if dump_ui; then
@@ -244,23 +246,118 @@ tap_text() {
     return 0
   fi
   # OCR retries are bounded independently and do not rerun UIAutomator.
-  for attempt in $(seq 1 12); do
+  for attempt in $(seq 1 "$max_ocr_attempts"); do
     coords="$(ocr_find_bounds "$needle" "$occurrence" || true)"
     if [[ -n "$coords" ]]; then
       read -r x y <<< "$coords"
-      log "Tapping '$needle' at $x,$y (German/English screenshot OCR, attempt $attempt/12)."
+      log "Tapping '$needle' at $x,$y (German/English screenshot OCR, attempt $attempt/$max_ocr_attempts)."
       timeout 10s adb -s emulator-5554 shell input tap "$x" "$y" || fail "ADB tap failed for '$needle'."
       return 0
     fi
-    if (( attempt % 3 == 0 )); then
-      log "Waiting for visible UI control '$needle' (OCR attempt $attempt/12)."
+    if [[ "$required" == "true" ]] && (( attempt % 3 == 0 )); then
+      log "Waiting for visible UI control '$needle' (OCR attempt $attempt/$max_ocr_attempts)."
+    fi
+    if (( attempt < max_ocr_attempts )); then sleep 2; fi
+  done
+  ocr_dump="$(ocr_text 2>/dev/null | tr '\n' ' ' || true)"
+  if [[ "$required" == "false" ]]; then
+    log "Optional UI control '$needle' was not found through UIAutomator/OCR; caller must use a verified fallback."
+    return 1
+  fi
+  fail "Could not find the UI control '$needle' in UIAutomator or OCR after bounded retries. OCR text: ${ocr_dump:0:1200}. Captured UI: $(cat "$ui_xml" 2>/dev/null | head -c 4000)"
+}
+
+dismiss_profile_keyboard_safely() {
+  local window_state="" current_focus="" focused_app="" ime_state="" ime_state_lc="" visibility_flags="" hidden_streak=0 attempt back_sent=false
+  window_state="$(timeout 10s adb -s emulator-5554 shell dumpsys window 2>&1)" || fail "Could not inspect Android window focus before dismissing the profile keyboard."
+  current_focus="$(grep -E 'mCurrentFocus=' <<< "$window_state" | tail -n 1 || true)"
+  focused_app="$(grep -E 'mFocusedApp=' <<< "$window_state" | tail -n  1 || true)"
+  if [[ "$focused_app" != *"$package_id"* ]] || [[ "$current_focus" =~ NotificationShade|com\.android\.systemui|QuickstepLauncher ]]; then
+    fail "The published baseline app is not safely foregrounded after profile entry; refusing Back. Focus: ${current_focus:-missing}; app: ${focused_app:-missing}"
+  fi
+
+  ime_state="$(timeout 8s adb -s emulator-5554 shell dumpsys input_method 2>&1)" || fail "Could not read Android IME state before dismissing the profile keyboard."
+  [[ -n "$ime_state" ]] || fail "Android IME state was empty; refusing to guess whether the profile keyboard covers the form."
+  ime_state_lc="${ime_state,,}"
+  visibility_flags="$(grep -Eo 'minputshown=(true|false)|minputviewshown=(true|false)|isinputviewshown=(true|false)|mshowrequested=(true|false)' <<< "$ime_state_lc" | tr '\n' ' ' || true)"
+  log "Android profile IME visibility flags: ${visibility_flags:-not exposed}."
+  if grep -Eq 'minputshown=true' <<< "$ime_state_lc"; then
+    log "Android reports mInputShown=true; dismissing the profile keyboard while the app remains foregrounded."
+    timeout 10s adb -s emulator-5554 shell input keyevent 4 || fail "Could not dismiss the visible profile keyboard."
+    back_sent=true
+  elif grep -Eq 'minputshown=false' <<< "$ime_state_lc"; then
+    log "Android reports mInputShown=false; secondary IME view flags are diagnostic only and will not trigger Back."
+  else
+    fail "Android IME visibility is unknown (${visibility_flags:-no visibility flags}); refusing Back or profile-button coordinates."
+  fi
+
+  for attempt in $(seq 1 8); do
+    ime_state="$(timeout 8s adb -s emulator-5554 shell dumpsys input_method 2>&1)" || fail "Could not re-check Android IME visibility after profile dismissal."
+    [[ -n "$ime_state" ]] || fail "Android IME state became empty after profile dismissal."
+    ime_state_lc="${ime_state,,}"
+    visibility_flags="$(grep -Eo 'minputshown=(true|false)|minputviewshown=(true|false)|isinputviewshown=(true|false)|mshowrequested=(true|false)' <<< "$ime_state_lc" | tr '\n' ' ' || true)"
+    if grep -Eq 'minputshown=false' <<< "$ime_state_lc"; then
+      hidden_streak=$((hidden_streak + 1))
+      if (( hidden_streak >= 2 )); then
+        window_state="$(timeout 10s adb -s emulator-5554 shell dumpsys window 2>&1)" || fail "Could not verify app focus after profile keyboard dismissal."
+        current_focus="$(grep -E 'mCurrentFocus=' <<< "$window_state" | tail -n 1 || true)"
+        focused_app="$(grep -E 'mFocusedApp=' <<< "$window_state" | tail -n  1 || true)"
+        if [[ "$focused_app" != *"$package_id"* ]] || [[ "$current_focus" =~ NotificationShade|com\.android\.systemui|QuickstepLauncher ]]; then
+          fail "The profile keyboard is hidden but the baseline app is not safely foregrounded. Focus: ${current_focus:-missing}; app: ${focused_app:-missing}"
+        fi
+        if grep -Eq 'minputviewshown=true|isinputviewshown=true|mshowrequested=true' <<< "$ime_state_lc"; then
+          log "Secondary IME view/show flags remain stale while mInputShown=false; primary visibility is stable and no additional Back is sent."
+        fi
+        log "The primary Android IME visibility flag is hidden for two checks; fresh profile-submit bounds may now be used."
+        return 0
+      fi
+    elif grep -Eq 'minputshown=true' <<< "$ime_state_lc"; then
+      hidden_streak=0
+      if [[ "$back_sent" != true ]]; then
+        window_state="$(timeout 10s adb -s emulator-5554 shell dumpsys window 2>&1)" || fail "Could not verify app focus before a second profile-keyboard dismissal."
+        focused_app="$(grep -E 'mFocusedApp=' <<< "$window_state" | tail -n  1 || true)"
+        if [[ "$focused_app" != *"$package_id"* ]]; then fail "Refusing Back while the baseline app is not foregrounded."; fi
+        log "The primary IME visibility flag remains true; sending one guarded Back and waiting for it to dismiss."
+        timeout 10s adb -s emulator-5554 shell input keyevent 4 || fail "Could not dismiss the visible profile keyboard."
+        back_sent=true
+      fi
+    else
+      fail "Android IME visibility became unknown after profile dismissal (${visibility_flags:-no visibility flags}); refusing to tap clipped controls."
+    fi
+    sleep 1
+  done
+  fail "Android profile keyboard did not remain hidden for two consecutive primary-flag checks; refusing to tap a clipped Konto laden control."
+}
+
+wait_for_profile_loaded() {
+  local wait_seconds=120 started=$SECONDS attempt=0 ui_text="" ocr_dump=""
+  while (( SECONDS - started < wait_seconds )); do
+    if dump_ui; then
+      ui_text="$(cat "$ui_xml" 2>/dev/null || true)"
+      if grep -Fq "Konto geladen" <<< "$ui_text" && grep -Fq "$player_id" <<< "$ui_text"; then
+        log "Verified the published baseline loaded the exact archived profile through its Account identity UI."
+        return 0
+      fi
+    fi
+    ocr_dump="$(ocr_text 2>/dev/null | tr '\n' ' ' || true)"
+    if grep -Fq "Konto geladen" <<< "$ocr_dump" && grep -Fq "$player_id" <<< "$ocr_dump"; then
+      log "Verified the published baseline loaded the exact archived profile through screenshot OCR."
+      return 0
+    fi
+    attempt=$((attempt + 1))
+    if (( attempt % 10 == 0 )); then
+      log "Waiting for explicit profile-load success (elapsed=$((SECONDS - started))s; no Dashboard-only acceptance)."
     fi
     sleep 2
   done
-  local ocr_dump
-  ocr_dump="$(ocr_text 2>/dev/null | tr '\n' ' ' || true)"
-  fail "Could not find the UI control '$needle' in UIAutomator or OCR after bounded retries. OCR text: ${ocr_dump:0:1200}. Captured UI: $(cat "$ui_xml" 2>/dev/null | head -c 4000)"
+  fail "Profile submission did not produce the explicit Konto geladen marker and expected player ID within 2 minutes. Dashboard/Partien navigation is not proof of profile loading. OCR: ${ocr_dump:0:1600}; UI: $(cat "$ui_xml" 2>/dev/null | head -c 3500)"
 }
+
+log "Rechecking ADB transport and boot state before launching the published baseline."
+android_prepare_emulator || fail "Baseline emulator preparation failed; inspect stage-specific ADB/boot diagnostics."
+log "Launching the genuine published v2.2.51 APK and classifying ADB, ActivityManager and crash failures."
+android_launch_package "$package_id" "the published v2.2.51 baseline APK" || fail "Published baseline app launch failed; see classified emulator diagnostics."
+sleep 20
 
 log "Rechecking ADB transport and boot state before launching the published baseline."
 android_prepare_emulator || fail "Baseline emulator preparation failed; inspect stage-specific ADB/boot diagnostics."
@@ -299,13 +396,22 @@ read -r input_x input_y <<< "$coords"
 log "Entering the archived player ID through the real published app UI at $input_x,$input_y."
 adb -s emulator-5554 shell input tap "$input_x" "$input_y"
 adb -s emulator-5554 shell input text "$player_id"
-adb -s emulator-5554 shell input keyevent 4
-tap_text "Konto laden"
+dismiss_profile_keyboard_safely
+if tap_text "Konto laden" last exact false; then
+  log "Submitted the archived player ID through the visible Konto laden control."
+else
+  # The WebView can omit the button from accessibility/OCR even when the input
+  # is focused. Enter is the input's documented React onKeyDown submit path;
+  # Dashboard/Partien navigation alone is never evidence that a profile loaded.
+  log "Konto laden was not exposed after the IME was verified hidden; submitting the focused profile input with Enter."
+  timeout 10s adb -s emulator-5554 shell input keyevent 66 || fail "Could not submit the focused profile field with Enter."
+fi
+wait_for_profile_loaded
 
 # The published baseline is a non-debuggable WebView app, so Android exposes
 # only the WebView container to UIAutomator. OCR follows the visible UI, and
 # the post-upgrade inspector verifies the imported records in real IndexedDB.
-sleep 20
+sleep 10
 wait_for_library_page() {
   local wait_seconds="${1:-12}"
   local started=$SECONDS ocr_dump=""

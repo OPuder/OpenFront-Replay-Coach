@@ -141,6 +141,8 @@ for node in root.iter("node"):
             continue
         if attrs.get("enabled") != "true" or attrs.get("clickable") != "true":
             continue
+        if needle.casefold() not in label.casefold():
+            continue
     elif mode == "exact":
         if attrs.get("text", "").strip().casefold() != needle.casefold():
             continue
@@ -368,6 +370,13 @@ android_prepare_emulator || fail "Baseline emulator preparation failed; inspect 
 log "Launching the genuine published v2.2.51 APK and classifying ADB, ActivityManager and crash failures."
 android_launch_package "$package_id" "the published v2.2.51 baseline APK" || fail "Published baseline app launch failed; see classified emulator diagnostics."
 sleep 20
+# The published app may restore its last-selected Partien tab. The profile
+# input exists on Dashboard, so select that tab explicitly before searching
+# for its labelled field; never mistake the library search box for a profile ID.
+if ! tap_text "Dashboard" last exact false; then
+  fail "The published baseline did not expose its Dashboard navigation tab; refusing to type a player ID into an unrelated field."
+fi
+sleep 1
 # A non-debuggable WebView can initially expose only its container to
 # UIAutomator. The same screen may expose its DOM-backed EditText nodes a few
 # seconds later, so do not treat the first valid-but-shallow hierarchy as a
@@ -376,7 +385,7 @@ coords=""
 for attempt in $(seq 1 15); do
   dismiss_pixel_launcher_anr
   if dump_ui; then
-    coords="$(find_bounds "" edit 1 2>/dev/null || true)"
+    coords="$(find_bounds "OpenFront-Profillink" edit 1 2>/dev/null || true)"
     if [[ -n "$coords" ]]; then
       log "Located the profile input through the expanded WebView accessibility hierarchy (attempt $attempt/15)."
       break

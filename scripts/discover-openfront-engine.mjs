@@ -36,4 +36,17 @@ let registry = readFileSync(registryPath, "utf8");
 registry = registry.replace("};\n\nexport async function loadReplayEngineModule", `  "${commit}": () => import("./engine/replay-engine-${bundleId}.js"),\n};\n\nexport async function loadReplayEngineModule`);
 writeFileSync(registryPath, registry);
 
+// Generated replay-engine imports need an ambient declaration because their
+// bundles are build artifacts and intentionally are not committed.
+const declarationPath = "src/renderer/replay-engine.d.ts";
+let declarations = readFileSync(declarationPath, "utf8");
+const declarationName = `*replay-engine-${bundleId}.js`;
+if (!declarations.includes(`declare module "${declarationName}"`)) {
+  const declarationTemplate = declarations.match(/declare module "\*replay-engine-[^"]+\\.js" \\{[\\s\\S]*?\\n\\}/);
+  if (!declarationTemplate) throw new Error("Could not find a replay-engine ambient declaration template.");
+  const declaration = declarationTemplate[0].replace(/declare module "\*replay-engine-[^"]+\\.js"/, `declare module "${declarationName}"`);
+  declarations = `${declarations.trimEnd()}\\n\\n${declaration}\\n`;
+  writeFileSync(declarationPath, declarations);
+}
+
 console.log(`Added candidate engine ${commit}. It must pass exact-source builds and real replay hash verification before being treated as replay-verified.`);

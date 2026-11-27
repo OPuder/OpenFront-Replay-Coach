@@ -600,7 +600,6 @@ const launcherAnrInvocation = androidBaselineSeed.search(/(?:^|\r?\n)[ \t]*dismi
 const profileKeyboardGuard = androidBaselineSeed.indexOf("dismiss_android_ime() {");
 const profileKeyboardCall = androidBaselineSeed.search(/dismiss_pixel_launcher_anr\r?\ndismiss_android_ime\r?\nif tap_text "Konto laden"/);
 const profileOcrLookup = androidBaselineSeed.indexOf('coords="$(ocr_find_bounds "OpenFront-Profillink" 1');
-const dashboardTabFallback = androidBaselineSeed.indexOf('if ! tap_text "Dashboard" last exact false; then');
 const profileEditSearch = androidBaselineSeed.indexOf('find_bounds "OpenFront-Profillink" edit 1');
 const launcherAnrWait = androidBaselineSeed.indexOf("android:id/aerr_wait");
 const launcherAppPid = androidBaselineSeed.indexOf('pidof "$package_id"', launcherAnrGuard);
@@ -617,8 +616,10 @@ assert.match(androidBaselineSeed, /minputshown=true/,
   "The baseline script must use Android's primary IME visibility flag before dismissing the profile keyboard.");
 assert.match(androidBaselineSeed, /two consecutive checks/,
   "The baseline script must verify keyboard dismissal before tapping profile controls.");
-assert.ok(profileOcrLookup >= 0 && dashboardTabFallback > profileOcrLookup && profileEditSearch > dashboardTabFallback,
-  "The seeder must search the profile-specific placeholder first, select Dashboard only when absent, and never reuse the Partien library search input.");
+assert.ok(profileOcrLookup >= 0 && profileEditSearch > profileOcrLookup,
+  "The seeder must search the profile-specific placeholder first and retry that screen's editable field before any navigation.");
+assert.doesNotMatch(androidBaselineSeed, /tap_text "Dashboard" last exact false/,
+  "The seeder must not tap unrelated Dashboard navigation when the initial profile placeholder is absent.");
 assert.match(androidBaselineSeed, /if needle\.casefold\(\) not in label\.casefold\(\):/,
   "Editable-field lookup must match the requested placeholder, not any arbitrary EditText.");
 assert.match(androidBaselineSeed, /wait_for_profile_loaded\(\)/,

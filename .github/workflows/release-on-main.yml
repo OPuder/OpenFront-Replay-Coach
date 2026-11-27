@@ -249,8 +249,8 @@ jobs:
     name: Build installable Android APK
     needs: prepare-release
     if: needs.prepare-release.outputs.skip != 'true'
-    # Keep Android emulator upgrade tests on the stable LTS runner (ubuntu-latest is 26.04).
-    runs-on: ubuntu-22.04
+    # Keep Android emulator upgrade tests on the KVM-capable Ubuntu 24.04 LTS runner.
+    runs-on: ubuntu-24.04
     timeout-minutes: 90
     outputs:
       signing_mode: ${{ steps.apk.outputs.signing_mode }}
@@ -402,6 +402,56 @@ jobs:
       - name: Validate signed Android release-upgrade script syntax
         run: bash -n scripts/test-android-release-upgrade.sh
 
+      - name: Enable, diagnose and verify Linux KVM before emulator startup
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          diag="$RUNNER_TEMP/ofrc-android-diagnostics"
+          mkdir -p "$diag"
+          {
+            echo "timestamp_utc=$(date -u +%FT%TZ)"
+            echo "runner_arch=$(uname -m)"
+            echo "runner_kernel=$(uname -sr)"
+            echo "cpu_vendor:"
+            grep -m1 -E 'vendor_id|CPU implementer' /proc/cpuinfo || true
+            echo "kvm_modules_before:"
+            lsmod | grep -E '^kvm' || true
+            echo "kvm_device_before:"
+            ls -l /dev/kvm 2>&1 || true
+            echo "emulator_acceleration_configuration:"
+            echo "requested_arch=x86_64"
+            echo "disable_linux_hw_accel=false"
+            echo "emulator_options=-no-window -no-audio -no-boot-anim -no-snapshot -no-metrics -gpu swiftshader_indirect -memory 4096 -partition-size 4096"
+          } | tee "$diag/kvm-preflight.log"
+          vendor="$(awk -F: '/vendor_id[[:space:]]*:/ {gsub(/[[:space:]]/,"",$2); print $2; exit}' /proc/cpuinfo)"
+          sudo modprobe kvm
+          case "$vendor" in
+            GenuineIntel) sudo modprobe kvm_intel ;;
+            AuthenticAMD) sudo modprobe kvm_amd ;;
+            *) echo "Unsupported or unknown CPU vendor for KVM: ${vendor:-unknown}" | tee -a "$diag/kvm-preflight.log"; exit 1 ;;
+          esac
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+          if [[ ! -e /dev/kvm ]]; then
+            echo "KVM_PREFLIGHT_FAILURE: GitHub-hosted runner does not expose /dev/kvm." | tee -a "$diag/kvm-preflight.log"
+            exit 1
+          fi
+          sudo chmod 666 /dev/kvm
+          if [[ ! -r /dev/kvm || ! -w /dev/kvm ]]; then
+            echo "KVM_PREFLIGHT_FAILURE: /dev/kvm is not readable and writable by the runner." | tee -a "$diag/kvm-preflight.log"
+            exit 1
+          fi
+          {
+            echo "kvm_modules_after:"
+            lsmod | grep -E '^kvm' || true
+            echo "kvm_device_after:"
+            ls -l /dev/kvm
+            echo "runner_user=$(id)"
+            echo "kvm_access=read-write"
+            echo "KVM_PREFLIGHT=PASS"
+          } | tee -a "$diag/kvm-preflight.log"
+
       - name: Install previous published APK and upgrade to exact signed release APK
         timeout-minutes: 60
         uses: reactivecircus/android-emulator-runner@v2
@@ -415,6 +465,7 @@ jobs:
           profile: pixel_2
           cores: 4
           emulator-boot-timeout: 1800
+          disable-linux-hw-accel: false
           emulator-options: -no-window -no-audio -no-boot-anim -no-snapshot -no-metrics -gpu swiftshader_indirect -memory 4096 -partition-size 4096
           script: bash scripts/test-android-release-upgrade.sh
 

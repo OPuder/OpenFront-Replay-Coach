@@ -5,7 +5,22 @@ import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "nod
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { fileURLToPath } from "node:url";
+import { insertMavenCentralMirror, MAVEN_CENTRAL_MIRROR_DECLARATION } from "./android-gradle-central-mirror.mjs";
 const read = path => readFileSync(new URL("../" + path, import.meta.url), "utf8");
+test("Android Gradle Central mirror is inserted before both root repositories and is idempotent", () => {
+  const fixture = "buildscript {\\n  repositories {\\n    google()\\n    mavenCentral()\\n  }\\n}\\n\\nallprojects {\\n  repositories {\\n    google()\\n    mavenCentral()\\n  }\\n}\\n";
+  const patched = insertMavenCentralMirror(fixture);
+  assert.equal(patched.insertedCount, 2);
+  const buildscriptSection = patched.content.slice(patched.content.indexOf("buildscript {"), patched.content.indexOf("allprojects {"));
+  const allprojectsSection = patched.content.slice(patched.content.indexOf("allprojects {"));
+  assert.ok(buildscriptSection.indexOf(MAVEN_CENTRAL_MIRROR_DECLARATION) < buildscriptSection.indexOf("mavenCentral()"));
+  assert.ok(allprojectsSection.indexOf(MAVEN_CENTRAL_MIRROR_DECLARATION) < allprojectsSection.indexOf("mavenCentral()"));
+  assert.equal(insertMavenCentralMirror(patched.content).insertedCount, 0, "Applying the patch a second time must not duplicate repositories.");
+  assert.equal(patched.content.split(MAVEN_CENTRAL_MIRROR_DECLARATION).length - 1, 2);
+});
+test("Android Gradle Central mirror patch fails closed if the generated root has no Central declaration", () => {
+  assert.throws(() => insertMavenCentralMirror("repositories { google() }"), /does not declare mavenCentral/);
+});
 const updater = read("src/main/updater.ts");
 const android = read("android-updater-template/ApkUpdaterPlugin.java");
 const installer = read("scripts/install-android-updater-plugin.mjs");
@@ -611,8 +626,8 @@ assert.match(androidEmulatorDiagnostics, /dumpsys activity lastanr/);
 assert.match(androidEmulatorDiagnostics, /adb -s emulator-5554 pull \/data\/anr/);
 assert.match(androidEmulatorDiagnostics, /uiautomator dump \/sdcard\/window.xml/);
 assert.match(updateValidationWorkflow, /runs-on: ubuntu-24\.04/);
-function validateAndroidKvmWorkflow(workflow) {
-  assert.match(workflow, /android-apk-validation:[\s\S]*?runs-on: ubuntu-24\.04/,
+function validateAndroidKvmWorkflow(workflow, jobId = "android-apk-validation") {
+  assert.match(workflow, new RegExp(`${jobId}:[\\s\\S]*?runs-on: ubuntu-24\\.04`),
     "Android emulator job must use a Linux runner.");
   const preflightStart = workflow.indexOf('diag="$RUNNER_TEMP/ofrc-android-diagnostics"');
   const emulatorStart = workflow.indexOf("uses: reactivecircus/android-emulator-runner@v2");
@@ -635,8 +650,10 @@ function validateAndroidKvmWorkflow(workflow) {
     "Hardware acceleration must be mandatory; software fallback is forbidden.");
 }
 validateAndroidKvmWorkflow(updateValidationWorkflow);
-test("Android KVM contract accepts the current semantic preflight", () => {
+validateAndroidKvmWorkflow(releaseWorkflow, "build-android");
+test("Android KVM contract accepts the semantic preflight in validation and release workflows", () => {
   assert.doesNotThrow(() => validateAndroidKvmWorkflow(updateValidationWorkflow));
+  assert.doesNotThrow(() => validateAndroidKvmWorkflow(releaseWorkflow, "build-android"));
 });
 test("Android KVM contract rejects a missing /dev/kvm guard", () => {
   const broken = updateValidationWorkflow.replace(/if \[\[ ! -e \/dev\/kvm \]\]; then[\s\S]*?fi/, "");

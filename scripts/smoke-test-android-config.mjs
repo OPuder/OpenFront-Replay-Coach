@@ -12,6 +12,18 @@ const versionScript = readFileSync(path.join(root, "scripts/set-android-version.
 const updaterPlugin = readFileSync(path.join(root, "android-updater-template/ApkUpdaterPlugin.java"), "utf8");
 const updaterInstaller = readFileSync(path.join(root, "scripts/install-android-updater-plugin.mjs"), "utf8");
 const nativeIcon = path.join(root, "assets/icon.svg");
+const androidRootGradle = readFileSync(path.join(root, "android/build.gradle"), "utf8");
+const centralMirrorDeclaration = "maven { url 'https://maven-central-eu.storage-download.googleapis.com/maven2/' }";
+const centralRepositoryLines = androidRootGradle.split("\\n");
+const centralPositions = centralRepositoryLines.flatMap((line, index) => line.trim() === "mavenCentral()" ? [index] : []);
+assert.ok(centralPositions.length >= 2, "Generated Android root Gradle file must retain buildscript and allprojects Central repositories.");
+for (const index of centralPositions) {
+  assert.equal(centralRepositoryLines[index - 1]?.trim(), centralMirrorDeclaration, "The Google-hosted Central mirror must be immediately before every mavenCentral() repository.");
+}
+const buildscriptSection = androidRootGradle.slice(androidRootGradle.indexOf("buildscript {"), androidRootGradle.indexOf("allprojects {"));
+const allprojectsSection = androidRootGradle.slice(androidRootGradle.indexOf("allprojects {"));
+assert.ok(buildscriptSection.indexOf(centralMirrorDeclaration) < buildscriptSection.indexOf("mavenCentral()"), "Buildscript dependencies must try the mirror before Central.");
+assert.ok(allprojectsSection.indexOf(centralMirrorDeclaration) < allprojectsSection.indexOf("mavenCentral()"), "Project dependencies must try the mirror before Central.");
 
 for (const name of ["@capacitor/core", "@capacitor/android", "@capacitor/browser", "@capacitor/filesystem", "@capacitor/share"]) {
   const version = packageJson.dependencies?.[name];

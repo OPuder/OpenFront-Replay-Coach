@@ -545,15 +545,24 @@ assert.match(engineDiscoveryWorkflow, /git diff --cached --check -- \. ':!src\/r
   "Engine discovery must check repository-owned staged changes without failing on upstream-generated bundle whitespace.");
 assert.doesNotMatch(engineDiscoveryWorkflow, /git diff --cached --check\s*$/m,
   "Engine discovery must not run the unrestricted whitespace check over generated upstream bundles.");
+const engineDiscoveryScript = read("scripts/discover-openfront-engine.mjs");
+assert.match(engineDiscoveryScript, /src\/renderer\/replay-engine\.d\.ts/,
+  "Engine discovery must update the renderer's ambient module declarations.");
+assert.match(engineDiscoveryScript, /declarations\.match\(\/declare module/,
+  "The discovery script must clone a typed worker-module declaration.");
+assert.match(engineDiscoveryScript, /writeFileSync\(declarationPath, declarations\)/,
+  "The discovery script must persist the declaration for the generated worker.");
+const engineCatalog = read("src/main/decoder/ReplayEngineCatalog.ts");
+const replayEngineDeclarations = read("src/renderer/replay-engine.d.ts");
+for (const match of engineCatalog.matchAll(/bundleId:\s*"([0-9a-f]{12})"/g)) {
+  assert.match(replayEngineDeclarations, new RegExp('declare module "\\*replay-engine-' + match[1] + '\\.js"'),
+    "Engine bundle " + match[1] + " must have an ambient renderer module declaration.");
+}
+
 const enginePreparation = read("scripts/prepare-engines.mjs");
 assert.match(enginePreparation, /http\.lowSpeedLimit=0/);
 assert.match(enginePreparation, /http\.lowSpeedTime=0/);
 assert.match(enginePreparation, /http\.version=HTTP\/1\.1/);
-assert.match(enginePreparation, /attempt <= 4/);
-assert.match(enginePreparation, /12 \* 60_000/);
-assert.match(enginePreparation, /Wait before submodule retry", 60_000\)/,
-  "The retry wait timeout must exceed the longest bounded retry delay.");
-assert.match(enginePreparation, /Initialize exact OpenFront engine submodules/);
 assert.match(enginePreparation, /verifyEngineBundleCache[\s\S]*?skipping historical submodule checkout/,
   "A verified engine-bundle cache hit must skip historical submodule checkout and dependency installation.");
 assert.match(read("scripts/build-engines.mjs"), /verifyEngineBundleCache[\s\S]*?skipping source checkout validation and rebuild/,
@@ -568,6 +577,9 @@ assert.ok(enginePinValidation.includes("if (!cachedBundlesVerified) {"),
 assert.match(enginePinValidation, /using integrity-checked bundles/);
 assert.match(enginePinValidation, /against source checkouts/);
 
+assert.match(enginePreparation, /attempt <= 1/);
+assert.match(enginePreparation, /Do not retry in this workspace/);
+assert.match(enginePreparation, /25 \* 60_000/);
 assert.match(androidValidationWorkflow, /-gpu swiftshader_indirect/,
   "Android emulator validation must use indirect SwiftShader rendering to avoid unstable GPU color buffers.");
 assert.match(androidValidationWorkflow, /target: google_apis/);

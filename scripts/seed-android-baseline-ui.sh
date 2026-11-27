@@ -373,6 +373,7 @@ sleep 20
 # Prefer the profile-specific placeholder: the WebView does not expose its
 # HTML input as an EditText on every Android build. Only if the placeholder is
 # absent do we switch to Dashboard; this avoids mistaking Partien search for it.
+dismiss_pixel_launcher_anr
 coords="$(ocr_find_bounds "OpenFront-Profillink" 1 2>/dev/null || true)"
 if [[ -z "$coords" ]]; then
   log "The profile-specific placeholder is not visible; selecting Dashboard before retrying profile-field discovery."

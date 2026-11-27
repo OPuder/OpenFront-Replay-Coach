@@ -740,8 +740,7 @@ seed_verified_match() {
   # Commit the verified query with ENTER before hiding the keyboard.
   timeout 10s adb -s emulator-5554 shell input keyevent 66 || fail "Could not commit archived match ID $game_id in the library search."
   sleep 2
-  timeout 10s adb -s emulator-5554 shell input keyevent 4 || fail "Could not dismiss the Android keyboard after committing archived match ID $game_id."
-  sleep 2
+  dismiss_android_ime
 
   # Do not scroll blindly while the filter is still unconfirmed: doing so can
   # move the input and card off-screen and make a failed search look like a

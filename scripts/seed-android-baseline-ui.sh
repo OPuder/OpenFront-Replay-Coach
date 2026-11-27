@@ -382,7 +382,7 @@ navigate_to_library() {
       # rendering. Verify the app still owns the foreground window, then derive
       # a fresh center point from the emulator's current supported viewport.
       require_baseline_app_window
-      screen_size="$(timeout 10s adb -s emulator-5554 shell wm size | sed -n 's/.*: \\([0-9]*\\)x\\([0-9]*\\).*/\\1 \\2/p' | tail -n 1)"
+      screen_size="$(timeout 10s adb -s emulator-5554 shell wm size | sed -n 's/.*: \([0-9]*\)x\([0-9]*\).*/\1 \2/p' | tail -n 1)"
       read -r screen_width screen_height <<< "$screen_size"
       if [[ "$screen_width" =~ ^[0-9]+$ && "$screen_height" =~ ^[0-9]+$ ]] && (( screen_width >= 800 && screen_height >= 1400 )); then
         nav_x=$((screen_width / 2))

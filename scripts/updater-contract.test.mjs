@@ -571,7 +571,8 @@ assert.match(enginePreparation, /if \(error\.message\.includes\("exceeded its"\)
 assert.match(enginePreparation, /12 \* 60_000/);
 assert.match(enginePreparation, /Wait before submodule retry", 60_000\)/,
   "The retry wait timeout must exceed the longest bounded retry delay.");
-assert.match(enginePreparation, /Initialize exact OpenFront engine submodules/);
+assert.match(enginePreparation, /Initialize exact OpenFront engine submodules \(attempt \$\{attempt\}\/1\)/);
+assert.match(enginePreparation, /after four attempts/ , "");
 assert.match(androidValidationWorkflow, /-gpu swiftshader_indirect/,
   "Android emulator validation must use indirect SwiftShader rendering to avoid unstable GPU color buffers.");
 assert.match(androidValidationWorkflow, /target: google_apis/);

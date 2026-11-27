@@ -334,6 +334,8 @@ const androidLibraryNavigation = androidBaselineUiSeed.match(/navigate_to_librar
 assert.match(androidLibraryNavigation, /tap_text "Partien" last exact false/);
 assert.match(androidLibraryNavigation, /require_baseline_app_window/);
 assert.match(androidLibraryNavigation, /Using verified bottom-navigation fallback/);
+assert.match(androidLibraryNavigation, /for screen_attempt in 1 2 3[\s\S]*?wm size 2>&1 \|\| true[\s\S]*?after three bounded queries/,
+  "A transient empty Android viewport response must be retried a bounded number of times before refusing fallback taps.");
 const guardedAppWindowHelperIndex = androidBaselineUiSeed.indexOf("require_baseline_app_window() {");
 const baselineLibraryNavigationCallIndex = androidBaselineUiSeed.search(/^navigate_to_library\r?$/m);
 assert.ok(

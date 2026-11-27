@@ -58,9 +58,24 @@ async function readStoreSummary(db: IDBDatabase, name: string): Promise<{ record
     const request = tx.objectStore(name).openCursor();
     const records: Array<{ key: string; fields: string[]; metadata?: Record<string, unknown> }> = [];
     const values: StoreSummary[] = [];
+    let transactionComplete = false;
+    let summariesComplete = false;
+    let hashedRecords: StoreSnapshot["records"] = [];
+
+    const finish = () => {
+      // Do not close the database or start the production version upgrade while
+      // this diagnostic read transaction is still active. Cursor exhaustion
+      // alone is not the transaction-complete signal in IndexedDB.
+      if (transactionComplete && summariesComplete) resolve({ records: hashedRecords, values });
+    };
 
     request.onerror = () => reject(tx.error ?? request.error ?? new Error(`Could not read IndexedDB store ${name}.`));
+    tx.onerror = () => reject(tx.error ?? request.error ?? new Error(`IndexedDB read transaction failed for ${name}.`));
     tx.onabort = () => reject(tx.error ?? new Error(`IndexedDB cursor aborted for ${name}.`));
+    tx.oncomplete = () => {
+      transactionComplete = true;
+      finish();
+    };
     request.onsuccess = () => {
       const cursor = request.result;
       if (!cursor) {
@@ -69,7 +84,11 @@ async function readStoreSummary(db: IDBDatabase, name: string): Promise<{ record
         Promise.all(records.map(async record => ({
           ...record,
           summarySha256: await sha256({ store: name, key: record.key, metadata: record.metadata ?? null }),
-        }))).then(summaries => resolve({ records: summaries, values })).catch(reject);
+        }))).then(summaries => {
+          hashedRecords = summaries;
+          summariesComplete = true;
+          finish();
+        }).catch(reject);
         return;
       }
 
@@ -89,8 +108,15 @@ async function readStoreSummary(db: IDBDatabase, name: string): Promise<{ record
           sampleCount: Array.isArray(item.simulation?.samples) ? item.simulation.samples.length : 0,
           actionReviewCount: Array.isArray(item.simulation?.actionReviews) ? item.simulation.actionReviews.length : 0,
           replayCommit: item.result?.engineCompatibility?.replayCommit ?? null,
+          updatedAt: item.updatedAt ?? null,
+          updatedAtType: typeof item.updatedAt,
+          resultKeys: Object.keys(item.result ?? {}).sort(),
+          hasInlineReplay: Boolean(item.result?.record),
+          hasInlineActions: Boolean(item.result?.decodedActions),
+          hasInlineActionAnalysis: Boolean(item.result?.actionAnalysis),
+          hasSimulation: Boolean(item.simulation),
         };
-        fields = ["playerId", "game.gameId", "status", "analysisStatus", "simulation.status", "simulation.samples[]", "simulation.actionReviews[]", "result.engineCompatibility.replayCommit"];
+        fields = ["playerId", "game.gameId", "status", "analysisStatus", "simulation.status", "simulation.samples[]", "simulation.actionReviews[]", "result.engineCompatibility.replayCommit", "updatedAt"];
         summary.playerId = item.playerId ?? null;
         summary.gameId = item.game?.gameId ?? null;
         summary.hasResult = Boolean(item.result);
@@ -139,7 +165,6 @@ async function readStoreSummary(db: IDBDatabase, name: string): Promise<{ record
     };
   });
 }
-
 export async function installAndroidUpgradeTestBridge(): Promise<void> {
   const snapshot = async () => {
     const localStorageEntries = Object.keys(localStorage).sort().map(key => ({ key, value: localStorage.getItem(key) ?? "" }));

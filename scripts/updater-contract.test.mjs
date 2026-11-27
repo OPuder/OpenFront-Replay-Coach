@@ -569,8 +569,12 @@ assert.ok(enginePinValidation.includes("if (!cachedBundlesVerified) {"),
 assert.match(enginePinValidation, /using integrity-checked bundles/);
 assert.match(enginePinValidation, /against source checkouts/);
 
-assert.match(androidValidationWorkflow, /-gpu software/,
-  "Android emulator validation must use stable software rendering instead of flaky GPU color buffers.");
+assert.match(androidValidationWorkflow, /-gpu swiftshader_indirect/,
+  "Android emulator validation must use indirect SwiftShader rendering to avoid unstable GPU color buffers.");
+assert.match(androidValidationWorkflow, /target: google_apis/);
+assert.match(androidValidationWorkflow, /cores: 4/);
+assert.match(androidValidationWorkflow, /-memory 4096/);
+assert.match(androidValidationWorkflow, /emulator-boot-timeout: 1800/);
 const androidBaselineSeed = read("scripts/seed-android-baseline-ui.sh");
 assert.match(androidBaselineSeed, /seed_verified_match "cRVdxGEG5j"/,
   "The baseline fixture must seed its first real replay through the published app UI.");

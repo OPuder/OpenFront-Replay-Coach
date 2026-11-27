@@ -197,6 +197,15 @@ assert.match(androidStorageInspector, /fullReplayRecords\.length < 2/,
 assert.match(androidStorageInspector, /emptyReplayRecordCount: emptyReplayRecords\.length/,
   "The inspector must report empty imported records separately for diagnosis.");
 const androidStorageSnapshot = read("scripts/snapshot-android-web-storage.sh");
+const androidStorageComparison = read("scripts/compare-android-web-storage.mjs");
+assert.match(androidStorageComparison, /comparison: "logical-indexeddb-plus-hash-verified-localstorage-files"/,
+  "Upgrade persistence must validate IndexedDB logically and hash-check Local Storage data files.");
+assert.match(androidStorageComparison, /localStorageDataFileHashesCompared: true/);
+assert.ok(androidStorageComparison.includes("current.sha256 !== file.sha256 || current.size !== file.size"),
+  "The upgrade must fail if any persisted Local Storage data file changes.");
+assert.match(androidStorageComparison, /indexedDbPhysicalTableHashesCompared: false/);
+assert.match(androidStorageComparison, /if \(exact\)[\s\S]*?exact-persistent-files/,
+  "Exact physical storage comparison remains required after rejected APK installs when the app is stopped.");
 const androidUnsignedNegative = read("scripts/create-android-unsigned-negative-apk.py");
 
 assert.match(updateValidationWorkflow, /Download and verify exact public v2\.2\.51 Android baseline/);
@@ -334,12 +343,12 @@ assert.match(androidStorageSnapshot, /Local Storage/);
 assert.match(androidStorageSnapshot, /immutableTables/);
 
 assert.match(androidStorageSnapshot, /Local Storage/);
-const androidStorageComparison = read("scripts/compare-android-web-storage.mjs");
+
 assert.match(androidStorageComparison, /const localStorageDataFiles = manifest => manifest\.files\.filter/);
 assert.ok(androidStorageComparison.includes(String.raw`/(?:^|\/)\d+\.log$/i`),
   "The Android storage comparison must recognize numbered LevelDB write-ahead logs as persistent Local Storage data.");
-assert.match(androidStorageComparison, /Persistent Local Storage data changed across the APK upgrade/,
-  "Local Storage WALs and immutable tables must be hash-compared across the in-place update.");
+assert.match(androidStorageComparison, /modifiedLocalStorageFiles\.length/,
+  "Local Storage data-file hashes must be compared across the in-place update.");
 assert.doesNotMatch(androidStorageComparison, /if \(!beforeIndexedTables\.length \|\| !beforeLocalStorageTables\.length\)/,
   "Local Storage persistence must not require compaction into an immutable table when the baseline contains a data-bearing WAL.");
 test("Android storage comparison preserves Local Storage WAL-only data", () => {
@@ -456,8 +465,23 @@ assert.doesNotMatch(appRenderer, /className="adaptive-training-goals"/,
   "The three featured training goals must not be duplicated in the old adaptive-goals section.");
 assert.match(matchStore, /const DB_VERSION = 4/);
 assert.match(matchStore, /const REPLAY_STORE = "replay-records"/);
-assert.match(matchStore, /event\.oldVersion < 4[\s\S]*?replays\.put[\s\S]*?cursor\.update[\s\S]*?cursor\.continue/);
+assert.match(matchStore, /event\.oldVersion < 4[\s\S]*?const replayRequest = replays\.get\(\[stored\.playerId, stored\.game\.gameId\]\)[\s\S]*?replays\.put\(mergedReplayRecord\)/,
+  "The v4 migration must merge the existing replay-store row inside the upgrade cursor transaction.");
+assert.match(matchStore, /const replayRequest = replays\.get\(\[stored\.playerId, stored\.game\.gameId\]\)/,
+  "The v4 migration must read an existing v3 replay record before writing compact match payloads.");
+assert.match(matchStore, /if \(replayPayload\.record != null\) mergedReplayRecord\.record = replayPayload\.record/,
+  "The v4 migration must not overwrite an existing raw replay with an undefined record.");
+assert.match(matchStore, /existingReplayRecord[\s\S]*?playerId: stored\.playerId,[\s\S]*?gameId: stored\.game\.gameId/,
+  "The v4 migration must merge decoded action/coaching caches into the existing replay-store row.");
 assert.match(matchStore, /export async function loadImportedMatch\(/);
+assert.match(matchStore, /const hasReplayPayload = Boolean\(value\.replayPayload/,
+  "The v4 hydrator must restore replay payloads even when a compact status update left no result summary.");
+assert.match(matchStore, /value\.match\.result \|\| hasReplayPayload/,
+  "Replay hydration must not be gated solely on the lightweight match result summary.");
+assert.match(matchStore, /const existingRequest = matchStore\.get\(\[playerId, item\.game\.gameId\]\)/,
+  "Status-only match updates must inspect the previous match before writing a compact entry.");
+assert.match(matchStore, /result: existing\?\.result \?\? stored\.result/,
+  "Status-only updates must preserve an existing result summary instead of erasing replay metadata.");
 assert.doesNotMatch(read("src/main/main.ts"), /importedReplayJson/);
 const startupUpdater = updater.slice(updater.indexOf("export async function autoUpdateOnStartup"));
 assert.match(startupUpdater, /Installation wartet auf Bestätigung im Update Center/);
@@ -657,6 +681,13 @@ const androidUpgradeBridge = read("src/renderer/androidUpgradeTestBridge.ts");
 assert.match(androidUpgradeBridge, /import \{ loadImportedMatch \} from "\.\/matchStore"/);
 assert.match(androidUpgradeBridge, /name === "analysis-results"/,
   "The Android persistence inspector must inspect the v4 analysis payload store.");
+assert.match(androidUpgradeBridge, /const analyses = summaries\.get\("analysis-results"\)/,
+  "The Android upgrade bridge must read verified analyses from the v4 analysis-results store.");
+assert.match(androidUpgradeBridge, /const analysisMetadata = analyses\.map\(record => record\.metadata \?\? \{\}\)/);
+assert.match(androidUpgradeBridge, /const verifiedAnalyses = analysisMetadata\.filter\(item => item\.playerId === playerId[\s\S]*?matchIds\.has/,
+  "The bridge must validate verified analyses against the selected player's match IDs, not the lightweight match index.");
+assert.doesNotMatch(androidUpgradeBridge, /const verifiedAnalyses = matchMetadata\.filter/,
+  "The bridge must not look for v4 simulation payloads in the lightweight matches index.");
 assert.match(androidUpgradeBridge, /simulationStatus:[\s\S]*?sampleCount:[\s\S]*?actionReviewCount:/,
   "The test bridge must expose analysis payload status and evidence counts without serializing payloads.");
 assert.match(androidStorageInspector, /const analyses = stores\["analysis-results"\]/,
@@ -664,6 +695,11 @@ assert.match(androidStorageInspector, /const analyses = stores\["analysis-result
 assert.match(androidStorageInspector, /analysisMetadata\.filter[\s\S]*?item\.playerId === playerId[\s\S]*?matchIds\.has/,
   "Verified analysis results must be linked to the UI-seeded player and existing match IDs.");
 assert.match(androidUpgradeBridge, /loadImportedMatch\(playerId, gameId\)/);
+const replayPersistenceHarness = read("scripts/replay-engine-test.ts");
+assert.match(replayPersistenceHarness, /const saved = await loadImportedMatch\("ci-persistence-player", gameId\)/,
+  "Refresh persistence tests must hydrate the full analysis payload from analysis-results, not the lightweight library index.");
+assert.match(replayPersistenceHarness, /actionReviewCount: saved\?\.simulation\?\.actionReviews\?\.length \?\? 0/,
+  "Refresh persistence tests must confirm the stored action-review evidence survives hydration.");
 assert.match(androidUpgradeBridge, /const requiredGameIds = \["cRVdxGEG5j", "c4CW3VJWQ9"\]/);
 assert.doesNotMatch(androidUpgradeBridge, /slice\(0, 2\)/,
   "The inspector must rehydrate the exact UI-seeded replay IDs, not arbitrary first records.");

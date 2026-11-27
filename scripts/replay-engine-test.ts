@@ -33,10 +33,12 @@ declare global {
     __verifyBatchStoreTest?: () => Promise<Array<any>>;
     __verifyPersistedProfileTest?: () => Promise<any>;
     __prepareLegacyMatchStore?: () => Promise<void>;
+    __prepareLegacyV3ReplayStore?: () => Promise<void>;
+    __verifyLegacyV3ReplayMigration?: () => Promise<any>;
     __verifyPlayerIndexTest?: () => Promise<{ indexPresent: boolean; playerAMatches: string[]; playerBMatches: string[]; legacyMatches: string[] }>;
     __testAbortBatchReplay?: (gameId: string) => Promise<{ aborted: boolean }>;
     __testAbort?: (record: unknown) => Promise<{ aborted: boolean }>;
-    __verifyStoreTest?: (gameId: string) => Promise<{ analysisStatus?: string; simulationStatus?: string; sampleCount: number }>;
+    __verifyStoreTest?: (gameId: string) => Promise<{ analysisStatus?: string; simulationStatus?: string; sampleCount: number; actionReviewCount: number }>;
     __runReplayTest?: (record: unknown, gameId: string) => Promise<{
       status: string;
       verifiedHashes: number;
@@ -167,6 +169,96 @@ window.__verifyLegacyMigration = async () => {
   };
 };
 
+window.__prepareLegacyV3ReplayStore = async () => {
+  await new Promise<void>((resolve, reject) => {
+    const deletion = indexedDB.deleteDatabase("openfront-replay-coach");
+    deletion.onsuccess = () => {
+      const request = indexedDB.open("openfront-replay-coach", 3);
+      request.onupgradeneeded = () => {
+        const db = request.result;
+        const matches = db.createObjectStore("matches", { keyPath: ["playerId", "game.gameId"] });
+        matches.createIndex("by-player-id", "playerId", { unique: false });
+        db.createObjectStore("profiles", { keyPath: "playerId" });
+        db.createObjectStore("replay-records", { keyPath: ["playerId", "gameId"] });
+      };
+      request.onsuccess = () => {
+        const db = request.result;
+        const playerId = "v3-migration-player";
+        const gameId = "legacy-v3-replay";
+        const record = {
+          info: { gameID: gameId },
+          gitCommit: "legacy-v3-engine",
+          turns: [{ turnNumber: 1, hash: "legacy-v3-hash" }],
+        };
+        const tx = db.transaction(["profiles", "matches", "replay-records"], "readwrite");
+        tx.objectStore("profiles").put({
+          playerId,
+          profile: { displayName: "v3 migration fixture" },
+          games: [],
+          nextCursor: null,
+        });
+        // v3 kept decoded action/coaching caches on the compact match row,
+        // while the raw GameRecord was already in replay-records.
+        tx.objectStore("matches").put({
+          playerId,
+          game: { gameId, map: "Europe", mode: "Free For All", type: "Private" },
+          result: {
+            mapName: "Europe",
+            decodedActions: [{ type: "attack", turn: 1 }],
+            actionAnalysis: { legacyMarker: "v3-cache-preserved" },
+          },
+          status: "loaded",
+          analysisStatus: "verified",
+          updatedAt: 123,
+        });
+        tx.objectStore("replay-records").put({ playerId, gameId, record });
+        tx.oncomplete = () => { db.close(); resolve(); };
+        tx.onerror = () => { db.close(); reject(tx.error ?? new Error("Could not seed IndexedDB v3 replay migration fixture")); };
+        tx.onabort = () => { db.close(); reject(tx.error ?? new Error("IndexedDB v3 replay migration fixture was aborted")); };
+      };
+      request.onerror = () => reject(request.error ?? new Error("Could not create legacy IndexedDB v3"));
+      request.onblocked = () => reject(new Error("Legacy IndexedDB v3 creation was blocked"));
+    };
+    deletion.onerror = () => reject(deletion.error ?? new Error("Could not reset IndexedDB for v3 migration test"));
+    deletion.onblocked = () => reject(new Error("IndexedDB reset for v3 migration test was blocked"));
+  });
+};
+
+window.__verifyLegacyV3ReplayMigration = async () => {
+  const playerId = "v3-migration-player";
+  const gameId = "legacy-v3-replay";
+  const hydrated = await loadImportedMatch(playerId, gameId);
+  const rawReplayRecord = await loadImportedReplayRecord(playerId, gameId) as any;
+  const db = await new Promise<IDBDatabase>((resolve, reject) => {
+    const request = indexedDB.open("openfront-replay-coach");
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error ?? new Error("Could not inspect v3 migration database"));
+  });
+  const version = db.version;
+  const hasAnalysisStore = db.objectStoreNames.contains("analysis-results");
+  const matchResult = await new Promise<any>((resolve, reject) => {
+    const tx = db.transaction("matches", "readonly");
+    const request = tx.objectStore("matches").get([playerId, gameId]);
+    request.onsuccess = () => resolve(request.result?.result ?? null);
+    request.onerror = () => reject(request.error ?? new Error("Could not read migrated v3 match summary"));
+  });
+  db.close();
+  const record = hydrated?.result?.record as any;
+  return {
+    version,
+    hasAnalysisStore,
+    rawReplayPreserved: Boolean(rawReplayRecord),
+    rawReplayGameId: rawReplayRecord?.info?.gameID ?? null,
+    rawReplayHash: rawReplayRecord?.turns?.[0]?.hash ?? null,
+    hydratedGameId: record?.info?.gameID ?? null,
+    hydratedEngineCommit: record?.gitCommit ?? null,
+    hydratedTurnCount: Array.isArray(record?.turns) ? record.turns.length : 0,
+    hydratedDecodedActionCount: hydrated?.result?.decodedActions?.length ?? 0,
+    hydratedActionAnalysisMarker: hydrated?.result?.actionAnalysis?.legacyMarker ?? null,
+    lightweightMatchHasReplayPayload: Boolean(matchResult?.record || matchResult?.decodedActions || matchResult?.actionAnalysis),
+  };
+};
+
 window.__runReplayTest = async (record, gameId) => {
   const assets = buildReplayEngineAssets(record);
   const result = await simulateReplay(
@@ -203,12 +295,14 @@ window.__runReplayTest = async (record, gameId) => {
 document.getElementById("status")!.textContent = "Replay engine test harness ready";
 
 window.__verifyStoreTest = async (gameId) => {
-  const matches = await loadImportedMatches("ci-persistence-player");
-  const saved = matches.find(item => item.game.gameId === gameId);
+  // The v4 library index intentionally omits large simulation payloads.
+  // Verify persistence through the per-match hydrator, which reads analysis-results.
+  const saved = await loadImportedMatch("ci-persistence-player", gameId);
   return {
     analysisStatus: saved?.analysisStatus,
     simulationStatus: saved?.simulation?.status,
     sampleCount: saved?.simulation?.samples?.length ?? 0,
+    actionReviewCount: saved?.simulation?.actionReviews?.length ?? 0,
   };
 };
 

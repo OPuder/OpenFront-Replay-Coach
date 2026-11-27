@@ -106,6 +106,7 @@ async function main() {
   assert.equal(persisted.analysisStatus, "verified", "Verified analysis status must survive a refresh");
   assert.equal(persisted.simulationStatus, "verified", "Verified engine simulation must survive a refresh");
   assert.ok(persisted.sampleCount > 0, "Persisted simulation samples must survive a refresh");
+  assert.ok(persisted.actionReviewCount > 0, "Persisted action-review evidence must survive a refresh");
   console.log("IndexedDB persistence:", JSON.stringify(persisted));
   console.log(JSON.stringify({
     gameId: GAME_ID,

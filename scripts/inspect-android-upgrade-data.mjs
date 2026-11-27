@@ -86,6 +86,20 @@ try {
     throw new Error("The test-only storage inspector is missing. The installed APK may be a production build instead of the isolated test build.");
   }
 
+  // Preserve the complete storage snapshot even when a later acceptance assertion fails.
+  // This is essential for distinguishing an upgrade migration defect from a missing
+  // pre-upgrade analysis persistence step without rerunning the emulator blindly.
+  writeFileSync(outputPath, JSON.stringify(snapshot, null, 2));
+  console.log(JSON.stringify({
+    diagnostic: "post-upgrade-storage-snapshot",
+    appVersion: snapshot.appVersion,
+    storeCounts: Object.fromEntries(snapshot.indexedDb.stores.map(store => [store.name, store.count])),
+    matchMetadata: snapshot.indexedDb.stores.find(store => store.name === "matches")?.records?.map(record => record.metadata) ?? [],
+    analysisMetadata: snapshot.indexedDb.stores.find(store => store.name === "analysis-results")?.records?.map(record => record.metadata) ?? [],
+    replayMetadata: snapshot.indexedDb.stores.find(store => store.name === "replay-records")?.records?.map(record => record.metadata) ?? [],
+    rehydration: snapshot.rehydration ?? null,
+  }, null, 2));
+
   const stores = Object.fromEntries(snapshot.indexedDb.stores.map(store => [store.name, store]));
   const relationships = snapshot.indexedDb.relationships;
   const localEntries = snapshot.localStorage.entries;

@@ -100,6 +100,31 @@ async function main() {
     rawOnlyReplayHash: "legacy-hash",
   }, "IndexedDB v2 → v4 upgrade must preserve profile, match metadata, raw replay and migrate analysis payload");
 
+  const playerIndex = await window.webContents.executeJavaScript("window.__verifyPlayerIndexTest()", true);
+  assert.deepEqual(playerIndex, {
+    indexPresent: true,
+    playerAMatches: ["index-a-1", "index-a-2"],
+    playerBMatches: ["index-b-1"],
+    legacyMatches: ["legacy-index-game"],
+  }, "Player library reads must use the player index and never leak other profiles' matches");
+  console.log("Indexed per-player match library:", JSON.stringify(playerIndex));
+
+  await window.webContents.executeJavaScript("window.__prepareLegacyV3ReplayStore()", true);
+  const migratedV3 = await window.webContents.executeJavaScript("window.__verifyLegacyV3ReplayMigration()", true);
+  assert.deepEqual(migratedV3, {
+    version: 4,
+    hasAnalysisStore: true,
+    rawReplayPreserved: true,
+    rawReplayGameId: "legacy-v3-replay",
+    rawReplayHash: "legacy-v3-hash",
+    hydratedGameId: "legacy-v3-replay",
+    hydratedEngineCommit: "legacy-v3-engine",
+    hydratedTurnCount: 1,
+    hydratedDecodedActionCount: 1,
+    hydratedActionAnalysisMarker: "v3-cache-preserved",
+    lightweightMatchHasReplayPayload: false,
+  }, "IndexedDB v3 → v4 migration must merge decoded-action caches without replacing the existing raw replay with undefined");
+
   const fixtures = [
     ["Europe", europe],
     ["unsupported-engine", unsupported],
@@ -309,15 +334,6 @@ async function main() {
   assert.deepEqual(profile.gameIds, Object.values(replayIds).sort());
   assert.deepEqual(profile.verifiedGames, Object.values(replayIds).sort());
   console.log("Player profile after renderer restart:", JSON.stringify(profile));
-
-  const playerIndex = await window.webContents.executeJavaScript("window.__verifyPlayerIndexTest()", true);
-  assert.deepEqual(playerIndex, {
-    indexPresent: true,
-    playerAMatches: ["index-a-1", "index-a-2"],
-    playerBMatches: ["index-b-1"],
-    legacyMatches: ["legacy-index-game"],
-  }, "Player library reads must use the player index and never leak other profiles' matches");
-  console.log("Indexed per-player match library:", JSON.stringify(playerIndex));
 
   window.destroy();
   await app.quit();

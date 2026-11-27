@@ -40,6 +40,7 @@ jobs:
               "integration/replay-coaching-ux-main-179",
               "chore/opencode-specialist-agent-prompts",
               "fix/opencode-model-documentation",
+              "fix/replay-persistence-v4-hydration-current-main",
               "test/opencode-config-contract",
             ]);
 

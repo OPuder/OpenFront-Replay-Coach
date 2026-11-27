@@ -28,7 +28,6 @@ const LEGACY_MIGRATION_KEY = "legacy-payloads-v4";
 const MATCH_PLAYER_INDEX = "by-player-id";
 const MATCH_PLAYER_UPDATED_INDEX = "by-player-updated-at";
 let legacyPayloadMigration: Promise<void> | null = null;
-let legacyPayloadMigrationComplete = false;
 
 function migrateLegacyMatch(db: IDBDatabase, key: IDBValidKey): Promise<void> {
   return new Promise((resolve, reject) => {
@@ -108,7 +107,6 @@ function migrateLegacyMatch(db: IDBDatabase, key: IDBValidKey): Promise<void> {
 }
 
 async function migrateLegacyPayloads(db: IDBDatabase): Promise<void> {
-  if (legacyPayloadMigrationComplete) return;
   if (legacyPayloadMigration) return legacyPayloadMigration;
   legacyPayloadMigration = (async () => {
     const migrationComplete = await new Promise<boolean>((resolve, reject) => {
@@ -118,10 +116,7 @@ async function migrateLegacyPayloads(db: IDBDatabase): Promise<void> {
       request.onerror = () => reject(request.error ?? new Error("Legacy Replay-Migrationsstatus konnte nicht gelesen werden."));
       tx.onabort = () => reject(tx.error ?? new Error("Legacy Replay-Migrationsstatus konnte nicht gelesen werden."));
     });
-    if (migrationComplete) {
-      legacyPayloadMigrationComplete = true;
-      return;
-    }
+    if (migrationComplete) return;
 
     const keys = await new Promise<IDBValidKey[]>((resolve, reject) => {
       const tx = db.transaction(MATCH_STORE, "readonly");
@@ -141,7 +136,6 @@ async function migrateLegacyPayloads(db: IDBDatabase): Promise<void> {
       tx.onerror = () => reject(tx.error ?? new Error("Legacy Replay-Migrationsstatus konnte nicht gespeichert werden."));
       tx.onabort = () => reject(tx.error ?? new Error("Legacy Replay-Migrationsstatus konnte nicht gespeichert werden."));
     });
-    legacyPayloadMigrationComplete = true;
   })().finally(() => { legacyPayloadMigration = null; });
   return legacyPayloadMigration;
 }

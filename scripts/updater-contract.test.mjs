@@ -625,7 +625,7 @@ assert.ok(launcherNavigationCall > androidBaselineSeed.indexOf("require_baseline
   "The foreground-window guard must be defined before top-level UI navigation invokes it.");
 assert.match(androidBaselineSeed, /refusing coordinate fallback/,
   "Launcher ANR recovery must fail closed instead of guessing dialog coordinates.");
-assert.match(androidBaselineSeed, /for attempt in \$\(seq 1 15\); do\r?\n  dismiss_pixel_launcher_anr/,
+assert.match(androidBaselineSeed, /for attempt in \$\(seq 1 15\); do[\s\S]*?dismiss_pixel_launcher_anr[\s\S]*?if dump_ui/,
   "Profile-field polling must recover a verified launcher ANR overlay before reading the published UI.");
 assert.match(androidBaselineSeed, /seed_verified_match "cRVdxGEG5j"/,
   "The baseline fixture must seed its first real replay through the published app UI.");

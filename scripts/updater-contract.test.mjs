@@ -561,7 +561,8 @@ const enginePreparation = read("scripts/prepare-engines.mjs");
 assert.match(enginePreparation, /http\.lowSpeedLimit=0/);
 assert.match(enginePreparation, /http\.lowSpeedTime=0/);
 assert.match(enginePreparation, /http\.version=HTTP\/1\.1/);
-assert.match(enginePreparation, /attempt <= 4/);
+assert.match(enginePreparation, /attempt <= 1/);
+assert.match(enginePreparation, /Do not retry in this workspace/);
 assert.match(enginePreparation, /25 \* 60_000/);
 assert.match(enginePreparation, /if \(error\.message\.includes\("exceeded its"\)\) throw error/,
   "Timed-out submodule fetches must not overlap with retry processes holding Git locks.");

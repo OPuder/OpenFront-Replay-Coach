@@ -674,6 +674,8 @@ assert.match(androidUpgradeBridge, /const verifiedAnalyses = analysisMetadata\.f
   "The bridge must validate verified analyses against the selected player's match IDs, not the lightweight match index.");
 assert.match(androidUpgradeBridge, /diagnostics:\s*\{/,
   "The Android bridge must return store/profile/analysis diagnostics before acceptance assertions.");
+assert.match(androidUpgradeBridge, /analysisMetadata,\s*\},\s*appVersion:/,
+  "The diagnostics block must be a complete object before the snapshot metadata.");
 assert.doesNotMatch(androidUpgradeBridge, /if \(!verifiedAnalyses\.length\) throw/,
   "The bridge must return diagnostic snapshots when analysis results are missing; the inspector owns fail-closed acceptance.");
 assert.match(androidStorageInspector, /if \(!verifiedAnalyses\.length\) throw/,

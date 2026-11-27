@@ -536,8 +536,13 @@ assert.match(read("scripts/build-engines.mjs"), /verifyEngineBundleCache[\s\S]*?
   "Engine build must validate cached bundle hashes and fast-path without source checkout.");
 assert.match(read("scripts/engine-bundle-cache.mjs"), /manifest\.schema !== 2[\s\S]*?entry\?\.sha256 === digest/,
   "Verified engine cache must reject stale schema, missing entries and modified bundle bytes.");
-assert.match(read("scripts/validate-engine-pin.mjs"), /cachedBundlesVerified[\\s\\S]*?against source checkouts/,
-  "Engine pin validation must use verified cache provenance when source submodules are intentionally absent.");
+const enginePinValidation = read("scripts/validate-engine-pin.mjs");
+assert.match(enginePinValidation, /const cachedBundlesVerified = verifyEngineBundleCache/,
+  "Engine pin validation must verify cache provenance before relying on it.");
+assert.match(enginePinValidation, /if \\(!cachedBundlesVerified\\) \\{/,
+  "Unverified cache entries must still require exact source checkout validation.");
+assert.match(enginePinValidation, /using integrity-checked bundles/);
+assert.match(enginePinValidation, /against source checkouts/);
 
 assert.match(androidValidationWorkflow, /-gpu software/,
   "Android emulator validation must use stable software rendering instead of flaky GPU color buffers.");

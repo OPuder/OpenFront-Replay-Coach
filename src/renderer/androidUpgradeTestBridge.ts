@@ -188,6 +188,12 @@ export async function installAndroidUpgradeTestBridge(): Promise<void> {
       // writes the snapshot artifact first, so legacy-schema migration failures retain
       // their full record metadata instead of hiding the evidence behind this bridge.
 
+      // Close the diagnostic connection before invoking the production reader. The
+      // production openStore() requests the current schema version; keeping this
+      // connection alive can block its upgrade path and falsely report that another
+      // app tab holds the replay store. The summary snapshot above is already captured.
+      db.close();
+
       // Rehydrate the two exact UI-seeded replays rather than whichever records
       // happen to appear first in IndexedDB's key order.
       const requiredGameIds = ["cRVdxGEG5j", "c4CW3VJWQ9"];

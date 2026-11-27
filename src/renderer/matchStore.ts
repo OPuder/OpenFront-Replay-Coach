@@ -18,11 +18,13 @@ type StoredMatch = StoredMatchEntry & {
 };
 
 const DB_NAME = "openfront-replay-coach";
-const DB_VERSION = 4;
+const DB_VERSION = 5;
 const MATCH_STORE = "matches";
 const PROFILE_STORE = "profiles";
 const REPLAY_STORE = "replay-records";
 const ANALYSIS_STORE = "analysis-results";
+const META_STORE = "app-metadata";
+const LEGACY_MIGRATION_KEY = "legacy-payloads-v4";
 const MATCH_PLAYER_INDEX = "by-player-id";
 const MATCH_PLAYER_UPDATED_INDEX = "by-player-updated-at";
 let legacyPayloadMigration: Promise<void> | null = null;
@@ -109,6 +111,18 @@ async function migrateLegacyPayloads(db: IDBDatabase): Promise<void> {
   if (legacyPayloadMigrationComplete) return;
   if (legacyPayloadMigration) return legacyPayloadMigration;
   legacyPayloadMigration = (async () => {
+    const migrationComplete = await new Promise<boolean>((resolve, reject) => {
+      const tx = db.transaction(META_STORE, "readonly");
+      const request = tx.objectStore(META_STORE).get(LEGACY_MIGRATION_KEY);
+      request.onsuccess = () => resolve(request.result?.complete === true);
+      request.onerror = () => reject(request.error ?? new Error("Legacy Replay-Migrationsstatus konnte nicht gelesen werden."));
+      tx.onabort = () => reject(tx.error ?? new Error("Legacy Replay-Migrationsstatus konnte nicht gelesen werden."));
+    });
+    if (migrationComplete) {
+      legacyPayloadMigrationComplete = true;
+      return;
+    }
+
     const keys = await new Promise<IDBValidKey[]>((resolve, reject) => {
       const tx = db.transaction(MATCH_STORE, "readonly");
       const request = tx.objectStore(MATCH_STORE).getAllKeys();
@@ -120,6 +134,13 @@ async function migrateLegacyPayloads(db: IDBDatabase): Promise<void> {
     // and quota limits. Completed rows are compacted, so interrupted runs resume
     // from the first row that still contains legacy payload data.
     for (const key of keys) await migrateLegacyMatch(db, key);
+    await new Promise<void>((resolve, reject) => {
+      const tx = db.transaction(META_STORE, "readwrite");
+      tx.objectStore(META_STORE).put({ key: LEGACY_MIGRATION_KEY, complete: true });
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error ?? new Error("Legacy Replay-Migrationsstatus konnte nicht gespeichert werden."));
+      tx.onabort = () => reject(tx.error ?? new Error("Legacy Replay-Migrationsstatus konnte nicht gespeichert werden."));
+    });
     legacyPayloadMigrationComplete = true;
   })().finally(() => { legacyPayloadMigration = null; });
   return legacyPayloadMigration;
@@ -139,6 +160,7 @@ function openStore(): Promise<IDBDatabase> {
       if (!db.objectStoreNames.contains(PROFILE_STORE)) db.createObjectStore(PROFILE_STORE, { keyPath: "playerId" });
       if (!db.objectStoreNames.contains(REPLAY_STORE)) db.createObjectStore(REPLAY_STORE, { keyPath: ["playerId", "gameId"] });
       if (!db.objectStoreNames.contains(ANALYSIS_STORE)) db.createObjectStore(ANALYSIS_STORE, { keyPath: ["playerId", "gameId"] });
+      if (!db.objectStoreNames.contains(META_STORE)) db.createObjectStore(META_STORE, { keyPath: "key" });
 
       // Query a single player's library without loading every other profile's matches.
       const matches = transaction?.objectStore(MATCH_STORE);

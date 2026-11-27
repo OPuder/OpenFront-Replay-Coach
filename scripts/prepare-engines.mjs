@@ -49,7 +49,7 @@ for (let attempt = 1; attempt <= 1; attempt++) {
   try {
     run("git", initializeSubmodules, {
       env: { ...process.env, GIT_TERMINAL_PROMPT: "0" },
-    }, `Initialize exact OpenFront engine submodules (attempt ${attempt}/4)`, 25 * 60_000);
+    }, `Initialize exact OpenFront engine submodules (attempt ${attempt}/1)`, 25 * 60_000);
     initialized = true;
     break;
   } catch (error) {
@@ -58,7 +58,7 @@ for (let attempt = 1; attempt <= 1; attempt++) {
     throw error;
   }
 }
-if (!initialized) throw new Error("Could not initialize exact OpenFront engine submodules after four attempts.");
+if (!initialized) throw new Error("Could not initialize exact OpenFront engine submodules in this CI job.");
 
 // Historical revisions share immutable dependency lockfiles. Install each
 // lockfile once and link the identical node_modules tree into its engine group.

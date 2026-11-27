@@ -24,7 +24,7 @@ dump_ui() {
   local dump_output="" pull_output="" attempt
   for attempt in 1 2; do
     rm -f "$ui_xml"
-    timeout 20s adb -s emulator-5554 shell uiautomator dump --compressed /sdcard/ofrc-window.xml >"$RUNNER_TEMP/ofrc-uiautomator-dump.log" 2>&1 || {
+    timeout 20s adb -s emulator-5554 shell uiautomator dump /sdcard/ofrc-window.xml >"$RUNNER_TEMP/ofrc-uiautomator-dump.log" 2>&1 || {
       dump_output="$(cat "$RUNNER_TEMP/ofrc-uiautomator-dump.log" 2>/dev/null || true)"
       log "UI hierarchy dump attempt $attempt/2 failed: ${dump_output:-no diagnostic output}"
     }
@@ -229,7 +229,10 @@ tap_text() {
   local needle="$1"
   local occurrence="${2:-1}"
   local mode="${3:-text}"
+  local required="${4:-true}"
+  local max_ocr_attempts=12
   local coords=""
+  if [[ "$required" == "false" ]]; then max_ocr_attempts=1; fi
   # Try the native hierarchy once. The published APK is a WebView app, and
   # repeatedly launching UIAutomator can take minutes while exposing no DOM.
   if dump_ui; then
@@ -244,19 +247,23 @@ tap_text() {
     return 0
   fi
   # OCR retries are bounded independently and do not rerun UIAutomator.
-  for attempt in $(seq 1 12); do
+  for attempt in $(seq 1 "$max_ocr_attempts"); do
     coords="$(ocr_find_bounds "$needle" "$occurrence" || true)"
     if [[ -n "$coords" ]]; then
       read -r x y <<< "$coords"
-      log "Tapping '$needle' at $x,$y (German/English screenshot OCR, attempt $attempt/12)."
+      log "Tapping '$needle' at $x,$y (German/English screenshot OCR, attempt $attempt/$max_ocr_attempts)."
       timeout 10s adb -s emulator-5554 shell input tap "$x" "$y" || fail "ADB tap failed for '$needle'."
       return 0
     fi
     if (( attempt % 3 == 0 )); then
-      log "Waiting for visible UI control '$needle' (OCR attempt $attempt/12)."
+      log "Waiting for visible UI control '$needle' (OCR attempt $attempt/$max_ocr_attempts)."
     fi
     sleep 2
   done
+  if [[ "$required" == "false" ]]; then
+    log "Optional UI control '$needle' was not found through UIAutomator/OCR; caller will use its guarded fallback."
+    return 1
+  fi
   local ocr_dump
   ocr_dump="$(ocr_text 2>/dev/null | tr '\n' ' ' || true)"
   fail "Could not find the UI control '$needle' in UIAutomator or OCR after bounded retries. OCR text: ${ocr_dump:0:1200}. Captured UI: $(cat "$ui_xml" 2>/dev/null | head -c 4000)"
@@ -273,6 +280,7 @@ sleep 20
 # missing field or fall back to OCR immediately.
 coords=""
 for attempt in $(seq 1 15); do
+  dismiss_pixel_launcher_anr
   if dump_ui; then
     coords="$(find_bounds "" edit 1 2>/dev/null || true)"
     if [[ -n "$coords" ]]; then
@@ -326,44 +334,143 @@ wait_for_library_page() {
   return 1
 }
 
+baseline_app_window_is_focused() {
+  local window_state="" current_focus="" focused_app=""
+  window_state="$(timeout 10s adb -s emulator-5554 shell dumpsys window 2>&1)" || return 1
+  current_focus="$(grep -E 'mCurrentFocus=' <<< "$window_state" | tail -n 1 || true)"
+  focused_app="$(grep -E 'mFocusedApp=' <<< "$window_state" | tail -n 1 || true)"
+  # A notification shade or launcher focus is never a safe target for WebView
+  # coordinates, even when ActivityManager still reports the app as resumed.
+  if [[ "$current_focus" =~ NotificationShade|com\.android\.systemui|QuickstepLauncher ]]; then return 1; fi
+  if [[ "$current_focus" == *"$package_id"* ]] && { [[ -z "$focused_app" ]] || [[ "$focused_app" == *"$package_id"* ]]; }; then return 0; fi
+  if [[ "$current_focus" =~ InputMethod|input_method ]] && [[ "$focused_app" == *"$package_id"* ]]; then return 0; fi
+  return 1
+}
+require_baseline_app_window() {
+  local focus_state=""
+  focus_state="$(timeout 10s adb -s emulator-5554 shell dumpsys window 2>&1 | grep -E 'mCurrentFocus=|mFocusedApp=' | tail -n 2 || true)"
+  baseline_app_window_is_focused || fail "The published baseline app is not safely foregrounded; refusing Back or coordinate gestures. Window focus: ${focus_state:-unavailable}"
+}
+
+dismiss_pixel_launcher_anr() {
+  local coords="" bounds_status=0 pid="" resumed="" attempt=0
+  for attempt in 1 2; do
+    dump_ui || return 0
+    bounds_status=0
+    coords="$(python3 - "$ui_xml" <<'PY'
+import sys
+import xml.etree.ElementTree as ET
+
+try:
+    root = ET.parse(sys.argv[1]).getroot()
+except (OSError, ET.ParseError):
+    raise SystemExit(3)
+
+launcher_anr = any(
+    node.attrib.get("resource-id") == "android:id/alertTitle"
+    and "Pixel Launcher isn't responding" in node.attrib.get("text", "")
+    for node in root.iter("node")
+)
+if not launcher_anr:
+    raise SystemExit(2)
+
+for node in root.iter("node"):
+    if (
+        node.attrib.get("resource-id") == "android:id/aerr_wait"
+        and node.attrib.get("text") == "Wait"
+        and node.attrib.get("package") == "android"
+        and node.attrib.get("clickable") == "true"
+        and node.attrib.get("enabled") == "true"
+    ):
+        import re
+        match = re.fullmatch(r"\\[(\\d+),(\\d+)\\]\\[(\\d+),(\\d+)\\]", node.attrib.get("bounds", ""))
+        if match:
+            left, top, right, bottom = map(int, match.groups())
+            print((left + right) // 2, (top + bottom) // 2)
+            raise SystemExit(0)
+
+raise SystemExit(3)
+PY
+)" || bounds_status=$?
+    if [[ "$bounds_status" -eq 2 ]]; then return 0; fi
+    if [[ "$bounds_status" -ne 0 || ! "$coords" =~ ^[0-9]+[[:space:]][0-9]+$ ]]; then
+      fail "Pixel Launcher ANR dialog was detected but its exact enabled Android 'Wait' control could not be verified; refusing coordinate fallback."
+    fi
+
+    pid="$(timeout 10s adb -s emulator-5554 shell pidof "$package_id" 2>/dev/null | tr -d '\\r' || true)"
+    resumed="$(timeout 10s adb -s emulator-5554 shell dumpsys activity activities 2>/dev/null | grep -E 'mResumedActivity|topResumedActivity' | tail -n 2 || true)"
+    if [[ -z "$pid" || "$resumed" != *"$package_id"* ]]; then
+      fail "Pixel Launcher ANR dialog appeared, but the published app is not confirmed alive and resumed; refusing to dismiss it. pid=${pid:-missing}; activity=${resumed:-missing}"
+    fi
+
+    read -r wait_x wait_y <<< "$coords"
+    log "Pixel Launcher ANR overlay detected while the published app remains resumed (pid=$pid); selecting only Android's verified 'Wait' button (attempt $attempt/2)."
+    timeout 10s adb -s emulator-5554 shell input tap "$wait_x" "$wait_y" || fail "Could not select the verified Pixel Launcher 'Wait' button."
+
+    for check in $(seq 1 8); do
+      sleep 1
+      if dump_ui && ! grep -Fq "Pixel Launcher isn't responding" "$ui_xml"; then
+        log "Pixel Launcher ANR overlay cleared; the published app remains available for the real UI-seeded upgrade test."
+        return 0
+      fi
+    done
+  done
+  fail "Pixel Launcher ANR overlay remained after two verified 'Wait' actions; refusing to continue with obscured UI."
+}
+
 navigate_to_library() {
   log "Navigating to the published app's match library with verified UI retries."
   for attempt in 1 2 3; do
+    local tapped=false coords="" x="" y="" screen_size="" screen_width="" screen_height=""
     if (( attempt == 1 )); then
-      tap_text "Partien" last exact
+      if tap_text "Partien" last exact false; then
+        tapped=true
+      else
+        log "Partien was not available through the first fresh UI/OCR lookup; continuing to guarded fallbacks."
+      fi
     elif (( attempt == 2 )); then
-      # UIAutomator can report the nav node as clickable while the WebView's
-      # event handler misses the tap. Re-target the visible label via OCR.
+      # Re-sample the visible label once. If OCR cannot provide fresh bounds,
+      # do not hard-fail here; the final viewport fallback is independently guarded.
       coords="$(ocr_find_bounds "Partien" last || true)"
       if [[ -n "$coords" ]]; then
         read -r x y <<< "$coords"
         if (( x >= 350 && x <= 730 && y >= 1600 && y <= 1800 )); then
-          log "Retrying the visible Partien navigation label at $x,$y using OCR."
+          log "Retrying the visible Partien navigation label at $x,$y using fresh OCR bounds."
           timeout 10s adb -s emulator-5554 shell input tap "$x" "$y" || fail "ADB retry tap failed for Partien navigation."
+          tapped=true
         else
-          tap_text "Partien" last exact
+          log "Fresh Partien OCR bounds ($x,$y) were outside the safe bottom-navigation viewport; refusing that tap."
         fi
       else
-        tap_text "Partien" last exact
+        log "OCR did not return fresh Partien bounds; continuing to the guarded viewport fallback."
       fi
     else
-      # Accessibility and OCR can both fail for a published WebView. The
-      # emulator is configured with a bottom navigation bar; calculate its
-      # center tap from the reported screen dimensions instead of guessing
-      # text coordinates. The tap remains guarded by a supported viewport.
-      screen_size="$(adb -s emulator-5554 shell wm size | sed -n 's/.*: \\([0-9]*\\)x\\([0-9]*\\).*/\\1 \\2/p' | tail -n 1)"
+      # Accessibility and OCR can both fail while the published WebView is
+      # rendering. Verify the app still owns the foreground window, then derive
+      # a fresh center point from the emulator's current supported viewport.
+      require_baseline_app_window
+      screen_size="$(timeout 10s adb -s emulator-5554 shell wm size | sed -n 's/.*: \([0-9]*\)x\([0-9]*\).*/\1 \2/p' | tail -n 1)"
       read -r screen_width screen_height <<< "$screen_size"
       if [[ "$screen_width" =~ ^[0-9]+$ && "$screen_height" =~ ^[0-9]+$ ]] && (( screen_width >= 800 && screen_height >= 1400 )); then
         nav_x=$((screen_width / 2))
         nav_y=$((screen_height * 89 / 100))
-        log "Using verified bottom-navigation fallback at $nav_x,$nav_y for $screen_width x $screen_height viewport."
-        timeout 10s adb -s emulator-5554 shell input tap "$nav_x" "$nav_y" || fail "ADB fallback tap failed for Partien navigation."
+        if (( nav_x > 0 && nav_x < screen_width && nav_y > 0 && nav_y < screen_height )); then
+          log "Using verified bottom-navigation fallback at $nav_x,$nav_y for $screen_width x $screen_height viewport."
+          timeout 10s adb -s emulator-5554 shell input tap "$nav_x" "$nav_y" || fail "ADB fallback tap failed for Partien navigation."
+          tapped=true
+        else
+          fail "Calculated Partien navigation point is outside the current Android viewport: $nav_x,$nav_y in $screen_width x $screen_height."
+        fi
       else
         fail "Cannot safely calculate bottom-navigation fallback from Android screen size: $screen_size"
       fi
     fi
-    if wait_for_library_page 12; then return 0; fi
-    log "Partien navigation did not verify after attempt $attempt/3; retrying."
+    if [[ "$tapped" == "true" ]] && wait_for_library_page 12; then return 0; fi
+    if [[ "$tapped" == "true" ]]; then
+      log "Partien navigation did not verify after attempt $attempt/3; retrying with fresh bounds."
+    else
+      log "No safe Partien tap was available on attempt $attempt/3; retrying."
+    fi
   done
   fail "The Partien navigation did not reach the Spielbibliothek after three verified attempts. OCR: $(ocr_text 2>/dev/null | tr '\n' ' ' | head -c 1200); UI: $(cat "$ui_xml" 2>/dev/null | head -c 3500)"
 }
@@ -447,23 +554,7 @@ wait_for_search_ime() {
   log "IME visibility is not exposed by dumpsys input_method; waiting briefly before verified typing."
   sleep 2
 }
-baseline_app_window_is_focused() {
-  local window_state="" current_focus="" focused_app=""
-  window_state="$(timeout 10s adb -s emulator-5554 shell dumpsys window 2>&1)" || return 1
-  current_focus="$(grep -E 'mCurrentFocus=' <<< "$window_state" | tail -n 1 || true)"
-  focused_app="$(grep -E 'mFocusedApp=' <<< "$window_state" | tail -n 1 || true)"
-  # A notification shade or launcher focus is never a safe target for WebView
-  # coordinates, even when ActivityManager still reports the app as resumed.
-  if [[ "$current_focus" =~ NotificationShade|com\.android\.systemui|QuickstepLauncher ]]; then return 1; fi
-  if [[ "$current_focus" == *"$package_id"* ]] && { [[ -z "$focused_app" ]] || [[ "$focused_app" == *"$package_id"* ]]; }; then return 0; fi
-  if [[ "$current_focus" =~ InputMethod|input_method ]] && [[ "$focused_app" == *"$package_id"* ]]; then return 0; fi
-  return 1
-}
-require_baseline_app_window() {
-  local focus_state=""
-  focus_state="$(timeout 10s adb -s emulator-5554 shell dumpsys window 2>&1 | grep -E 'mCurrentFocus=|mFocusedApp=' | tail -n 2 || true)"
-  baseline_app_window_is_focused || fail "The published baseline app is not safely foregrounded; refusing Back or coordinate gestures. Window focus: ${focus_state:-unavailable}"
-}
+
 dismiss_search_ime() {
   local ime_state="" ime_state_lc="" attempt visibility_flags="" hidden_streak=0
   local visible_pattern='minputshown=true'

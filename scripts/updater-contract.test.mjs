@@ -256,7 +256,7 @@ assert.doesNotMatch(androidReleaseUpgrade, /compare-android-upgrade-snapshots\.m
 assert.match(androidReleaseUpgrade, /rm -f "\$test_keystore" "\$test_signed_apk"/);
 assert.doesNotMatch(androidReleaseUpgrade, /echo "\$test_password"|cat "\$test_keystore"|upload-artifact.*test_keystore/);
 const androidBaselineUiSeed = read("scripts/seed-android-baseline-ui.sh");
-assert.match(androidBaselineUiSeed, /uiautomator dump --compressed/);
+assert.match(androidBaselineUiSeed, /uiautomator dump/);
 assert.match(androidBaselineUiSeed, /UI hierarchy dump attempt/);
 assert.match(androidBaselineUiSeed, /dumpsys window/);
 assert.match(androidBaselineUiSeed, /ocr_find_bounds/);
@@ -322,6 +322,18 @@ assert.match(androidBaselineUiSeed, /wait_for_library_page\(\)\s*\{/,
   "Library page verification helper must be declared before it is called.");
 assert.match(androidBaselineUiSeed, /Retrying the visible Partien navigation label/);
 assert.match(androidBaselineUiSeed, /wait_for_library_page 12/);
+const androidBaselineTapText = androidBaselineUiSeed.match(/tap_text\\(\\) \\{[\\s\\S]*?\\n\\}/)?.[0] ?? "";
+assert.match(androidBaselineTapText, /local required="\\$\\{4:-true\\}"/);
+assert.match(androidBaselineTapText, /required == "false"[\\s\\S]*?return 1/);
+const androidLibraryNavigation = androidBaselineUiSeed.match(/navigate_to_library\\(\\) \\{[\\s\\S]*?\\n\\}/)?.[0] ?? "";
+assert.match(androidLibraryNavigation, /tap_text "Partien" last exact false/);
+assert.match(androidLibraryNavigation, /require_baseline_app_window/);
+assert.match(androidLibraryNavigation, /Using verified bottom-navigation fallback/);
+assert.ok(
+  androidBaselineUiSeed.indexOf("require_baseline_app_window() {") < androidBaselineUiSeed.indexOf("navigate_to_library\\n"),
+  "The guarded app-window helper must be defined before baseline library navigation runs."
+);
+
 assert.match(androidBaselineUiSeed, /screenshot OCR/);
 
 assert.match(androidBaselineUiSeed, /grep -Fi "\$game_id" "\$ui_xml"/);

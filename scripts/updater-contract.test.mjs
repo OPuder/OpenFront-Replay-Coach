@@ -596,7 +596,7 @@ const androidBaselineSeed = read("scripts/seed-android-baseline-ui.sh");
 const launcherAnrGuard = androidBaselineSeed.indexOf("dismiss_pixel_launcher_anr()");
 const launcherAnrInvocation = androidBaselineSeed.search(/(?:^|\r?\n)[ \t]*dismiss_pixel_launcher_anr(?:\r?\n|$)/);
 const profileKeyboardGuard = androidBaselineSeed.indexOf("dismiss_android_ime() {");
-const profileKeyboardCall = androidBaselineSeed.indexOf('dismiss_pixel_launcher_anr\ndismiss_android_ime\nif tap_text "Konto laden"');
+const profileKeyboardCall = androidBaselineSeed.search(/dismiss_pixel_launcher_anr\r?\ndismiss_android_ime\r?\nif tap_text "Konto laden"/);
 const profileOcrLookup = androidBaselineSeed.indexOf('coords="$(ocr_find_bounds "OpenFront-Profillink" 1');
 const dashboardTabFallback = androidBaselineSeed.indexOf('if ! tap_text "Dashboard" last exact false; then');
 const profileEditSearch = androidBaselineSeed.indexOf('find_bounds "OpenFront-Profillink" edit 1');

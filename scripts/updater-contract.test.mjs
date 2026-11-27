@@ -672,6 +672,12 @@ assert.match(androidUpgradeBridge, /const analyses = summaries\.get\("analysis-r
 assert.match(androidUpgradeBridge, /const analysisMetadata = analyses\.map\(record => record\.metadata \?\? \{\}\)/);
 assert.match(androidUpgradeBridge, /const verifiedAnalyses = analysisMetadata\.filter\(item => item\.playerId === playerId[\s\S]*?matchIds\.has/,
   "The bridge must validate verified analyses against the selected player's match IDs, not the lightweight match index.");
+assert.match(androidUpgradeBridge, /diagnostics:\s*\{/,
+  "The Android bridge must return store/profile/analysis diagnostics before acceptance assertions.");
+assert.doesNotMatch(androidUpgradeBridge, /if \(!verifiedAnalyses\.length\) throw/,
+  "The bridge must return diagnostic snapshots when analysis results are missing; the inspector owns fail-closed acceptance.");
+assert.match(androidStorageInspector, /if \(!verifiedAnalyses\.length\) throw/,
+  "The external inspector must still fail closed when no verified persisted analysis survives.");
 assert.doesNotMatch(androidUpgradeBridge, /const verifiedAnalyses = matchMetadata\.filter/,
   "The bridge must not look for v4 simulation payloads in the lightweight matches index.");
 assert.match(androidUpgradeBridge, /simulationStatus:[\s\S]*?sampleCount:[\s\S]*?actionReviewCount:/,

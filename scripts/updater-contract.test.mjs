@@ -607,8 +607,8 @@ function validateAndroidKvmWorkflow(workflow) {
   ]) assert.match(preflight, pattern, message);
   const emulator = workflow.slice(emulatorStart);
   assert.match(emulator, /arch: x86_64/, "Emulator architecture must be x86_64.");
-  assert.match(emulator, /cores: 2/);
-  assert.match(emulator, /-memory 3072/);
+  assert.match(emulator, /cores: 4/);
+  assert.match(emulator, /-memory 4096/);
   assert.match(emulator, /disable-linux-hw-accel: false/,
     "Hardware acceleration must be mandatory; software fallback is forbidden.");
 }

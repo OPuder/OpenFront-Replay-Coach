@@ -58,7 +58,8 @@ if (exact) {
   // Schema upgrades can compact/rewrite .ldb tables, so byte-for-byte table
   // equality is invalid here. The inspector validates exact replay IDs, raw
   // GameRecords, engine metadata, verified analyses and training-goal data.
-  // This physical snapshot checks persistent IndexedDB presence and Local Storage.
+  // Local Storage is separate from IndexedDB: compare its data-bearing LevelDB
+  // files across the update so a rewrite or loss cannot be mistaken for survival.
   const afterIndexedTables = after.immutableTables.filter(item => item.path.startsWith("IndexedDB/"));
   if (!afterIndexedTables.length) {
     throw new Error("IndexedDB has no persistent immutable tables after the APK upgrade.");
@@ -68,9 +69,32 @@ if (exact) {
     throw new Error("Local Storage has no persistent LevelDB files after the APK upgrade.");
   }
 
+  const beforeLocalStorageByPath = new Map(beforeLocalStorageFiles.map(item => [item.path, item]));
+  const afterLocalStorageByPath = new Map(afterLocalStorageFiles.map(item => [item.path, item]));
+  const missingLocalStorageFiles = [];
+  const modifiedLocalStorageFiles = [];
+  const addedLocalStorageFiles = [];
+  for (const [path, file] of beforeLocalStorageByPath) {
+    const current = afterLocalStorageByPath.get(path);
+    if (!current) missingLocalStorageFiles.push(path);
+    else if (current.sha256 !== file.sha256 || current.size !== file.size) modifiedLocalStorageFiles.push(path);
+  }
+  for (const path of afterLocalStorageByPath.keys()) {
+    if (!beforeLocalStorageByPath.has(path)) addedLocalStorageFiles.push(path);
+  }
+  if (missingLocalStorageFiles.length) {
+    throw new Error(`Missing data files across APK upgrade: ${JSON.stringify(missingLocalStorageFiles)}.`);
+  }
+  if (modifiedLocalStorageFiles.length) {
+    throw new Error(`Local Storage modified data files across APK upgrade: ${JSON.stringify(modifiedLocalStorageFiles)}.`);
+  }
+  if (addedLocalStorageFiles.length) {
+    throw new Error(`Added Local Storage data files across APK upgrade: ${JSON.stringify(addedLocalStorageFiles)}.`);
+  }
+
   console.log(JSON.stringify({
     result: "PASS",
-    comparison: "logical-indexeddb-plus-localstorage-files",
+    comparison: "logical-indexeddb-plus-hash-verified-localstorage-files",
     baselineIndexedDbTables: beforeIndexedTables.length,
     postUpgradeIndexedDbTables: afterIndexedTables.length,
     baselineLocalStorageDataFiles: beforeLocalStorageFiles.length,
@@ -79,6 +103,7 @@ if (exact) {
     baselineFiles: before.files.length,
     updatedFiles: after.files.length,
     indexedDbPhysicalTableHashesCompared: false,
+    localStorageDataFileHashesCompared: true,
     indexedDbLogicalIntegrityVerifiedByInspector: true,
   }, null, 2));
 }

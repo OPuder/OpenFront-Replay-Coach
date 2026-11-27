@@ -58,9 +58,24 @@ async function readStoreSummary(db: IDBDatabase, name: string): Promise<{ record
     const request = tx.objectStore(name).openCursor();
     const records: Array<{ key: string; fields: string[]; metadata?: Record<string, unknown> }> = [];
     const values: StoreSummary[] = [];
+    let transactionComplete = false;
+    let summariesComplete = false;
+    let hashedRecords: StoreSnapshot["records"] = [];
+
+    const finish = () => {
+      // Do not close the database or start the production version upgrade while
+      // this diagnostic read transaction is still active. Cursor exhaustion
+      // alone is not the transaction-complete signal in IndexedDB.
+      if (transactionComplete && summariesComplete) resolve({ records: hashedRecords, values });
+    };
 
     request.onerror = () => reject(tx.error ?? request.error ?? new Error(`Could not read IndexedDB store ${name}.`));
+    tx.onerror = () => reject(tx.error ?? request.error ?? new Error(`IndexedDB read transaction failed for ${name}.`));
     tx.onabort = () => reject(tx.error ?? new Error(`IndexedDB cursor aborted for ${name}.`));
+    tx.oncomplete = () => {
+      transactionComplete = true;
+      finish();
+    };
     request.onsuccess = () => {
       const cursor = request.result;
       if (!cursor) {
@@ -69,7 +84,11 @@ async function readStoreSummary(db: IDBDatabase, name: string): Promise<{ record
         Promise.all(records.map(async record => ({
           ...record,
           summarySha256: await sha256({ store: name, key: record.key, metadata: record.metadata ?? null }),
-        }))).then(summaries => resolve({ records: summaries, values })).catch(reject);
+        }))).then(summaries => {
+          hashedRecords = summaries;
+          summariesComplete = true;
+          finish();
+        }).catch(reject);
         return;
       }
 
@@ -89,8 +108,15 @@ async function readStoreSummary(db: IDBDatabase, name: string): Promise<{ record
           sampleCount: Array.isArray(item.simulation?.samples) ? item.simulation.samples.length : 0,
           actionReviewCount: Array.isArray(item.simulation?.actionReviews) ? item.simulation.actionReviews.length : 0,
           replayCommit: item.result?.engineCompatibility?.replayCommit ?? null,
+          updatedAt: item.updatedAt ?? null,
+          updatedAtType: typeof item.updatedAt,
+          resultKeys: Object.keys(item.result ?? {}).sort(),
+          hasInlineReplay: Boolean(item.result?.record),
+          hasInlineActions: Boolean(item.result?.decodedActions),
+          hasInlineActionAnalysis: Boolean(item.result?.actionAnalysis),
+          hasSimulation: Boolean(item.simulation),
         };
-        fields = ["playerId", "game.gameId", "status", "analysisStatus", "simulation.status", "simulation.samples[]", "simulation.actionReviews[]", "result.engineCompatibility.replayCommit"];
+        fields = ["playerId", "game.gameId", "status", "analysisStatus", "simulation.status", "simulation.samples[]", "simulation.actionReviews[]", "result.engineCompatibility.replayCommit", "updatedAt"];
         summary.playerId = item.playerId ?? null;
         summary.gameId = item.game?.gameId ?? null;
         summary.hasResult = Boolean(item.result);
@@ -139,7 +165,6 @@ async function readStoreSummary(db: IDBDatabase, name: string): Promise<{ record
     };
   });
 }
-
 export async function installAndroidUpgradeTestBridge(): Promise<void> {
   const snapshot = async () => {
     const localStorageEntries = Object.keys(localStorage).sort().map(key => ({ key, value: localStorage.getItem(key) ?? "" }));
@@ -176,41 +201,19 @@ export async function installAndroidUpgradeTestBridge(): Promise<void> {
       const trainingGoalEntry = localStorageEntries.find(entry => entry.key === "openfront-coach-training-goal")?.value;
       const trainingGoal = trainingGoalEntry ? JSON.parse(trainingGoalEntry) : null;
 
-      if (playerId !== "5SVg4WbI") throw new Error("The actual UI-seeded player profile key is missing or does not match the archived profile.");
-      if (!profiles.some(profile => String(profile.playerId ?? "") === playerId)
-        || !matches.some(match => String(match.playerId ?? "") === playerId)) {
-        throw new Error("The actual UI profile ID is not consistently linked across LocalStorage and IndexedDB.");
-      }
-      if (profiles.length < 1 || matches.length < 2 || replays.length < 2) {
-        throw new Error(`Expected a real profile and at least two persisted replay records; found profiles=${profiles.length}, matches=${matches.length}, replayRecords=${replays.length}.`);
-      }
-      // Always return diagnostics before acceptance assertions. The external inspector
-      // writes the snapshot artifact first, so legacy-schema migration failures retain
-      // their full record metadata instead of hiding the evidence behind this bridge.
+      // Keep the bridge diagnostic-only: return the complete store summary even
+      // when acceptance invariants fail. The external inspector writes this
+      // snapshot before enforcing every invariant, so CI artifacts expose the
+      // actual profile/match/replay/analysis state instead of hiding it behind
+      // the first thrown assertion.
 
-      // Close the diagnostic connection before invoking the production reader. The
-      // production openStore() requests the current schema version; keeping this
-      // connection alive can block its upgrade path and falsely report that another
-      // app tab holds the replay store. The summary snapshot above is already captured.
+
+      // Close the unversioned diagnostic connection before production hydration.
+      // loadImportedMatch opens the database at the current schema version; if this inspector opened
+      // an older baseline schema and kept its connection alive, that upgrade can
+      // be blocked by this very connection and report the misleading "another tab"
+      // error. The cursor reads above are complete, so release the connection now.
       db.close();
-
-      // Rehydrate the two exact UI-seeded replays rather than whichever records
-      // happen to appear first in IndexedDB's key order.
-      const requiredGameIds = ["cRVdxGEG5j", "c4CW3VJWQ9"];
-      const reusableMatches = await Promise.all(requiredGameIds.map(async gameId => {
-        const loaded = playerId ? await loadImportedMatch(playerId, gameId) : null;
-        const record = loaded?.result?.record as Record<string, any> | undefined;
-        return {
-          playerId: playerId ?? "",
-          gameId,
-          loaded: Boolean(loaded),
-          replayRestored: Boolean(record),
-          recordGameId: record?.info?.gameID ?? record?.game?.info?.gameID ?? null,
-          engineCommit: record?.gitCommit ?? null,
-          turnCount: Array.isArray(record?.turns) ? record.turns.length : 0,
-          analysisStatus: loaded?.analysisStatus ?? null,
-        };
-      }));
 
       const replayKeys = new Set(replays.map(value => `${String(value.playerId ?? "")}:${String(value.gameId ?? "")}`));
       const matchKeys = matches.filter(value => value.hasResult).map(value => `${String(value.playerId ?? "")}:${String(value.gameId ?? "")}`);
@@ -221,16 +224,22 @@ export async function installAndroidUpgradeTestBridge(): Promise<void> {
 
       return {
         schema: "ofrc-android-upgrade-snapshot-v1",
+        diagnostics: {
+          selectedPlayerId: playerId ?? null,
+          profilePresent: profiles.some(profile => String(profile.playerId ?? "") === String(playerId ?? "")),
+          matchProfileLinked: matches.some(match => String(match.playerId ?? "") === String(playerId ?? "")),
+          profileCount: profiles.length,
+          matchCount: matches.length,
+          replayRecordCount: replays.length,
+          analysisResultCount: analyses.length,
+          verifiedAnalysisCount: verifiedAnalyses.length,
+          verifiedAnalysisGameIds: verifiedAnalyses.map(item => String(item.gameId ?? "")).sort(),
+          analysisMetadata,
+        },
         appVersion: typeof __APP_VERSION__ === "string" ? __APP_VERSION__ : "unknown",
         capturedAt: new Date().toISOString(),
         localStorage: { count: localStorageEntries.length, entries: localStorageEntries, hashes: localStorageHashes },
-        rehydration: {
-          attempted: reusableMatches.length,
-          loaded: reusableMatches.filter(item => item.loaded).length,
-          replayRestored: reusableMatches.filter(item => item.replayRestored
-            && item.recordGameId === item.gameId && Boolean(item.engineCommit) && item.turnCount > 0).length,
-          matches: reusableMatches,
-        },
+        rehydration: null,
         indexedDb: {
           name: db.name,
           version: db.version,
@@ -250,10 +259,38 @@ export async function installAndroidUpgradeTestBridge(): Promise<void> {
     }
   };
 
+  // Rehydration is a separate CDP call so the inspector can persist the raw
+  // IndexedDB snapshot first. Any production-store error must not hide evidence.
+  const rehydrate = async () => {
+    const playerId = localStorage.getItem("ofrc:last-player-id") ?? "";
+    const requiredGameIds = ["cRVdxGEG5j", "c4CW3VJWQ9"];
+    const reusableMatches = await Promise.all(requiredGameIds.map(async gameId => {
+      const loaded = playerId ? await loadImportedMatch(playerId, gameId) : null;
+      const record = loaded?.result?.record as Record<string, any> | undefined;
+      return {
+        playerId,
+        gameId,
+        loaded: Boolean(loaded),
+        replayRestored: Boolean(record),
+        recordGameId: record?.info?.gameID ?? record?.game?.info?.gameID ?? null,
+        engineCommit: record?.gitCommit ?? null,
+        turnCount: Array.isArray(record?.turns) ? record.turns.length : 0,
+        analysisStatus: loaded?.analysisStatus ?? null,
+      };
+    }));
+    return {
+      attempted: reusableMatches.length,
+      loaded: reusableMatches.filter(item => item.loaded).length,
+      replayRestored: reusableMatches.filter(item => item.replayRestored
+        && item.recordGameId === item.gameId && Boolean(item.engineCommit) && item.turnCount > 0).length,
+      matches: reusableMatches,
+    };
+  };
+
   Object.defineProperty(window, "__OFRC_ANDROID_UPGRADE_TEST__", {
     configurable: false,
     enumerable: false,
     writable: false,
-    value: Object.freeze({ snapshot }),
+    value: Object.freeze({ snapshot, rehydrate }),
   });
 }

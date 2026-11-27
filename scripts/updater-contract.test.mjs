@@ -262,6 +262,12 @@ assert.match(androidBaselineUiSeed, /ocr_find_bounds/);
 assert.ok(androidBaselineUiSeed.includes('tesseract "$screen_path" stdout -l deu+eng'));
 assert.match(androidBaselineUiSeed, /OpenFront-Profillink/);
 assert.match(androidBaselineUiSeed, /OCR text:/);
+assert.match(androidBaselineUiSeed, /local required="\$\{4:-true\}"[\s\S]*?if \[\[ "\$required" == "false" \]\]; then max_ocr_attempts=1/);
+assert.match(androidBaselineUiSeed, /dismiss_profile_keyboard_safely\(\)[\s\S]*?dumpsys input_method[\s\S]*?mInputShown=true[\s\S]*?hidden_streak >= 2/);
+assert.match(androidBaselineUiSeed, /if tap_text "Konto laden" last exact false; then[\s\S]*?input keyevent 66[\s\S]*?wait_for_profile_loaded/);
+assert.match(androidBaselineUiSeed, /wait_for_profile_loaded\(\)[\s\S]*?Konto geladen[\s\S]*?\$player_id/);
+assert.doesNotMatch(androidBaselineUiSeed, /authenticated Dashboard with Partien navigation/);
+assert.match(androidBaselineUiSeed, /Dashboard\/Partien navigation alone is never evidence that a profile loaded/);
 assert.match(androidBaselineUiSeed, /search_query=.*tr '\[:upper:\]' '\[:lower:\]'/);
 assert.match(androidBaselineUiSeed, /wait_for_search_ime\(\)\s*\{\s*local ime_state="" attempt/,
   "IME polling must keep its counter local.");

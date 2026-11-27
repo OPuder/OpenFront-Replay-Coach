@@ -49,10 +49,13 @@ for (let attempt = 1; attempt <= 4; attempt++) {
   try {
     run("git", initializeSubmodules, {
       env: { ...process.env, GIT_TERMINAL_PROMPT: "0" },
-    }, `Initialize exact OpenFront engine submodules (attempt ${attempt}/4)`, 12 * 60_000);
+    }, `Initialize exact OpenFront engine submodules (attempt ${attempt}/4)`, 25 * 60_000);
     initialized = true;
     break;
   } catch (error) {
+    // spawnSync timeouts can leave Git-for-Windows descendants holding submodule locks.
+    // Never start a retry while the timed-out process tree may still be writing.
+    if (error.message.includes("exceeded its")) throw error;
     if (attempt === 4) throw error;
     const delaySeconds = attempt * 15;
     console.warn(`Submodule initialization attempt ${attempt} failed; retrying in ${delaySeconds}s.`);

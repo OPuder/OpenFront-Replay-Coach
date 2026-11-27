@@ -183,6 +183,13 @@ export async function installAndroidUpgradeTestBridge(): Promise<void> {
       // the first thrown assertion.
 
 
+      // Close the unversioned diagnostic connection before production hydration.
+      // loadImportedMatch opens the database at schema v4; if this inspector opened
+      // an older baseline schema and kept its connection alive, that upgrade can
+      // be blocked by this very connection and report the misleading "another tab"
+      // error. The cursor reads above are complete, so release the connection now.
+      db.close();
+
       // Rehydrate the two exact UI-seeded replays rather than whichever records
       // happen to appear first in IndexedDB's key order.
       const requiredGameIds = ["cRVdxGEG5j", "c4CW3VJWQ9"];

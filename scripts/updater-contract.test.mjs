@@ -689,6 +689,11 @@ assert.match(androidStorageInspector, /const analyses = stores\["analysis-result
 assert.match(androidStorageInspector, /analysisMetadata\.filter[\s\S]*?item\.playerId === playerId[\s\S]*?matchIds\.has/,
   "Verified analysis results must be linked to the UI-seeded player and existing match IDs.");
 assert.match(androidUpgradeBridge, /loadImportedMatch\(playerId, gameId\)/);
+assert.match(androidUpgradeBridge, /tx\.oncomplete = \(\) => \{[\s\S]*?transactionComplete = true[\s\S]*?finish\(\)/);
+assert.match(androidUpgradeBridge, /transactionComplete && summariesComplete/,
+  "The Android storage inspector must wait for read transactions to finish before closing its IndexedDB connection.");
+assert.match(androidUpgradeBridge, /updatedAtType:[\s\S]*?resultKeys:[\s\S]*?hasSimulation:/,
+  "Migration diagnostics must include legacy timestamps and inline payload presence to isolate versionchange failures.");
 const diagnosticDbClose = androidUpgradeBridge.indexOf("db.close();");
 const bridgeRehydrate = androidUpgradeBridge.indexOf("const rehydrate = async");
 const productionHydration = androidUpgradeBridge.indexOf("loadImportedMatch(playerId, gameId)");

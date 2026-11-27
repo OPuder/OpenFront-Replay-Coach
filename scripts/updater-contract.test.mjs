@@ -8,7 +8,7 @@ import { fileURLToPath } from "node:url";
 import { insertMavenCentralMirror, MAVEN_CENTRAL_MIRROR_DECLARATION } from "./android-gradle-central-mirror.mjs";
 const read = path => readFileSync(new URL("../" + path, import.meta.url), "utf8");
 test("Android Gradle Central mirror is inserted before both root repositories and is idempotent", () => {
-  const fixture = "buildscript {\\n  repositories {\\n    google()\\n    mavenCentral()\\n  }\\n}\\n\\nallprojects {\\n  repositories {\\n    google()\\n    mavenCentral()\\n  }\\n}\\n";
+  const fixture = "buildscript {\n  repositories {\n    google()\n    mavenCentral()\n  }\n}\n\nallprojects {\n  repositories {\n    google()\n    mavenCentral()\n  }\n}\n";
   const patched = insertMavenCentralMirror(fixture);
   assert.equal(patched.insertedCount, 2);
   const buildscriptSection = patched.content.slice(patched.content.indexOf("buildscript {"), patched.content.indexOf("allprojects {"));

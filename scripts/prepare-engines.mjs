@@ -45,7 +45,7 @@ const initializeSubmodules = [
   ...sources,
 ];
 let initialized = false;
-for (let attempt = 1; attempt <= 4; attempt++) {
+for (let attempt = 1; attempt <= 1; attempt++) {
   try {
     run("git", initializeSubmodules, {
       env: { ...process.env, GIT_TERMINAL_PROMPT: "0" },
@@ -53,18 +53,9 @@ for (let attempt = 1; attempt <= 4; attempt++) {
     initialized = true;
     break;
   } catch (error) {
-    // spawnSync timeouts can leave Git-for-Windows descendants holding submodule locks.
-    // Never start a retry while the timed-out process tree may still be writing.
-    if (error.message.includes("exceeded its")) throw error;
-    if (attempt === 4) throw error;
-    const delaySeconds = attempt * 15;
-    console.warn(`Submodule initialization attempt ${attempt} failed; retrying in ${delaySeconds}s.`);
-    // Use Node's portable synchronous wait so the retry works on both Windows
-    // runners and Linux without relying on an external sleep executable.
-    run(process.execPath, [
-      "-e", "Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, Number(process.argv[1]) * 1000);",
-      String(delaySeconds),
-    ], {}, "Wait before submodule retry", 60_000);
+    // Do not retry in this workspace: an interrupted Git child may still hold
+    // submodule locks. A fresh CI job is the safe retry boundary.
+    throw error;
   }
 }
 if (!initialized) throw new Error("Could not initialize exact OpenFront engine submodules after four attempts.");

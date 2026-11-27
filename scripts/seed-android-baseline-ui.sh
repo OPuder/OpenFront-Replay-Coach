@@ -539,7 +539,18 @@ navigate_to_library() {
       # rendering. Verify the app still owns the foreground window, then derive
       # a fresh center point from the emulator's current supported viewport.
       require_baseline_app_window
-      screen_size="$(timeout 10s adb -s emulator-5554 shell wm size | sed -n 's/.*: \([0-9]*\)x\([0-9]*\).*/\1 \2/p' | tail -n 1)"
+      screen_size=""
+      screen_size_output=""
+      for screen_attempt in 1 2 3; do
+        screen_size_output="$(timeout 10s adb -s emulator-5554 shell wm size 2>&1 || true)"
+        screen_size="$(printf '%s\n' "$screen_size_output" | sed -n 's/.*: \([0-9]*\)x\([0-9]*\).*/\1 \2/p' | tail -n 1)"
+        if [[ "$screen_size" =~ ^[0-9]+\ [0-9]+$ ]]; then break; fi
+        log "Android viewport query returned no usable dimensions (attempt $screen_attempt/3): ${screen_size_output:0:240}"
+        if (( screen_attempt < 3 )); then
+          sleep 2
+          require_baseline_app_window
+        fi
+      done
       read -r screen_width screen_height <<< "$screen_size"
       if [[ "$screen_width" =~ ^[0-9]+$ && "$screen_height" =~ ^[0-9]+$ ]] && (( screen_width >= 800 && screen_height >= 1400 )); then
         nav_x=$((screen_width / 2))
@@ -552,7 +563,7 @@ navigate_to_library() {
           fail "Calculated Partien navigation point is outside the current Android viewport: $nav_x,$nav_y in $screen_width x $screen_height."
         fi
       else
-        fail "Cannot safely calculate bottom-navigation fallback from Android screen size: $screen_size"
+        fail "Cannot safely calculate bottom-navigation fallback from Android screen size after three bounded queries: ${screen_size:-none} ${screen_size_output:0:240}"
       fi
     fi
     if [[ "$tapped" == "true" ]] && wait_for_library_page 12; then return 0; fi

@@ -334,6 +334,8 @@ const androidLibraryNavigation = androidBaselineUiSeed.match(/navigate_to_librar
 assert.match(androidLibraryNavigation, /tap_text "Partien" last exact false/);
 assert.match(androidLibraryNavigation, /require_baseline_app_window/);
 assert.match(androidLibraryNavigation, /Using verified bottom-navigation fallback/);
+assert.match(androidLibraryNavigation, /for screen_attempt in 1 2 3[\s\S]*?wm size 2>&1 \|\| true[\s\S]*?after three bounded queries/,
+  "A transient empty Android viewport response must be retried a bounded number of times before refusing fallback taps.");
 const guardedAppWindowHelperIndex = androidBaselineUiSeed.indexOf("require_baseline_app_window() {");
 const baselineLibraryNavigationCallIndex = androidBaselineUiSeed.search(/^navigate_to_library\r?$/m);
 assert.ok(
@@ -804,10 +806,12 @@ assert.match(androidUpgradeBridge, /value: Object\.freeze\(\{ snapshot, rehydrat
   "The Android bridge must expose diagnostic snapshot and separate production rehydration methods.");
 assert.match(androidUpgradeBridge, /rehydration: null/,
   "The raw storage snapshot must not depend on production rehydration completing.");
-const initialSnapshotWrite = androidStorageInspector.indexOf("writeFileSync(outputPath, JSON.stringify(snapshot, null, 2));");
+const initialSnapshotWrite = androidStorageInspector.indexOf("writeFileSync(outputPath.replace(/\\.json$/i, \"-before-migration.json\"), JSON.stringify(beforeMigration, null, 2));");
 const separateRehydration = androidStorageInspector.indexOf("window.__OFRC_ANDROID_UPGRADE_TEST__.rehydrate()");
 assert.ok(initialSnapshotWrite >= 0 && separateRehydration > initialSnapshotWrite,
   "The inspector must persist raw storage evidence before production rehydration.");
+assert.match(androidStorageInspector, /window\.__OFRC_ANDROID_UPGRADE_TEST__\.snapshot\(\)[\s\S]*?postMigrationSnapshot = refreshed\.result\.value/,
+  "The inspector must validate a refreshed snapshot after the production migration has run.");
 assert.match(androidStorageInspector, /exceptionDetails: details/,
   "The inspector must retain the full CDP exception details when rehydration fails.");
 const replayPersistenceHarness = read("scripts/replay-engine-test.ts");

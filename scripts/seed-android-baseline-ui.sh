@@ -427,19 +427,13 @@ log "Launching the genuine published v2.2.51 APK and classifying ADB, ActivityMa
 android_launch_package "$package_id" "the published v2.2.51 baseline APK" || fail "Published baseline app launch failed; see classified emulator diagnostics."
 sleep 20
 # Prefer the profile-specific placeholder: the WebView does not expose its
-# HTML input as an EditText on every Android build. Only if the placeholder is
-# absent do we switch to Dashboard; this avoids mistaking Partien search for it.
+# HTML input as an EditText on every Android build. Keep polling this screen
+# before considering OCR so a shallow first hierarchy does not trigger a tap
+# on unrelated navigation.
 dismiss_pixel_launcher_anr
 coords="$(ocr_find_bounds "OpenFront-Profillink" 1 2>/dev/null || true)"
 if [[ -z "$coords" ]]; then
-  log "The profile-specific placeholder is not visible; selecting Dashboard before retrying profile-field discovery."
-  if ! tap_text "Dashboard" last exact false; then
-    coords="$(ocr_find_bounds "OpenFront-Profillink" 1 2>/dev/null || true)"
-    if [[ -z "$coords" ]]; then
-      fail "Could not select Dashboard and the profile-specific placeholder remains absent; refusing to type into an unrelated field."
-    fi
-  fi
-  sleep 1
+  log "The profile-specific placeholder is not visible yet; retrying the current screen's accessibility hierarchy before any UI navigation."
 fi
 # A non-debuggable WebView can initially expose only its container to
 # UIAutomator. The same screen may expose its DOM-backed EditText nodes a few

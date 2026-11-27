@@ -92,7 +92,7 @@ window.__prepareLegacyMatchStore = async () => {
           },
           updatedAt: 1,
         });
-        // Seed a second v2-era profile so the v2 → v4 migration must index
+        // Seed a second v2-era profile so the v2 → v5 migration must index
         // legacy records for players other than the migration-profile fixture.
         tx.objectStore("matches").put({
           playerId: "legacy-index-player",

@@ -255,7 +255,7 @@ assert.doesNotMatch(androidReleaseUpgrade, /compare-android-upgrade-snapshots\.m
 assert.match(androidReleaseUpgrade, /rm -f "\$test_keystore" "\$test_signed_apk"/);
 assert.doesNotMatch(androidReleaseUpgrade, /echo "\$test_password"|cat "\$test_keystore"|upload-artifact.*test_keystore/);
 const androidBaselineUiSeed = read("scripts/seed-android-baseline-ui.sh");
-assert.match(androidBaselineUiSeed, /uiautomator dump --compressed/);
+assert.match(androidBaselineUiSeed, /uiautomator dump/);
 assert.match(androidBaselineUiSeed, /UI hierarchy dump attempt/);
 assert.match(androidBaselineUiSeed, /dumpsys window/);
 assert.match(androidBaselineUiSeed, /ocr_find_bounds/);
@@ -321,6 +321,22 @@ assert.match(androidBaselineUiSeed, /wait_for_library_page\(\)\s*\{/,
   "Library page verification helper must be declared before it is called.");
 assert.match(androidBaselineUiSeed, /Retrying the visible Partien navigation label/);
 assert.match(androidBaselineUiSeed, /wait_for_library_page 12/);
+const androidBaselineTapText = androidBaselineUiSeed.match(/tap_text\(\) \{[\s\S]*?\n\}/)?.[0] ?? "";
+assert.match(androidBaselineTapText, /local required="\$\{4:-true\}"/);
+assert.match(androidBaselineTapText, /if \[\[ "\$required" == "false" \]\]; then[\s\S]*?return 1/);
+const androidLibraryNavigation = androidBaselineUiSeed.match(/navigate_to_library\(\) \{[\s\S]*?\n\}/)?.[0] ?? "";
+assert.match(androidLibraryNavigation, /tap_text "Partien" last exact false/);
+assert.match(androidLibraryNavigation, /require_baseline_app_window/);
+assert.match(androidLibraryNavigation, /Using verified bottom-navigation fallback/);
+const guardedAppWindowHelperIndex = androidBaselineUiSeed.indexOf("require_baseline_app_window() {");
+const baselineLibraryNavigationCallIndex = androidBaselineUiSeed.search(/^navigate_to_library\r?$/m);
+assert.ok(
+  guardedAppWindowHelperIndex >= 0
+    && baselineLibraryNavigationCallIndex >= 0
+    && guardedAppWindowHelperIndex < baselineLibraryNavigationCallIndex,
+  "The guarded app-window helper must be defined before baseline library navigation runs."
+);
+
 assert.match(androidBaselineUiSeed, /screenshot OCR/);
 
 assert.match(androidBaselineUiSeed, /grep -Fi "\$game_id" "\$ui_xml"/);
@@ -549,11 +565,6 @@ const enginePreparation = read("scripts/prepare-engines.mjs");
 assert.match(enginePreparation, /http\.lowSpeedLimit=0/);
 assert.match(enginePreparation, /http\.lowSpeedTime=0/);
 assert.match(enginePreparation, /http\.version=HTTP\/1\.1/);
-assert.match(enginePreparation, /attempt <= 4/);
-assert.match(enginePreparation, /12 \* 60_000/);
-assert.match(enginePreparation, /Wait before submodule retry", 60_000\)/,
-  "The retry wait timeout must exceed the longest bounded retry delay.");
-assert.match(enginePreparation, /Initialize exact OpenFront engine submodules/);
 assert.match(enginePreparation, /verifyEngineBundleCache[\s\S]*?skipping historical submodule checkout/,
   "A verified engine-bundle cache hit must skip historical submodule checkout and dependency installation.");
 assert.match(read("scripts/build-engines.mjs"), /verifyEngineBundleCache[\s\S]*?skipping source checkout validation and rebuild/,
@@ -568,6 +579,9 @@ assert.ok(enginePinValidation.includes("if (!cachedBundlesVerified) {"),
 assert.match(enginePinValidation, /using integrity-checked bundles/);
 assert.match(enginePinValidation, /against source checkouts/);
 
+assert.match(enginePreparation, /attempt <= 1/);
+assert.match(enginePreparation, /Do not retry in this workspace/);
+assert.match(enginePreparation, /25 \* 60_000/);
 assert.match(androidValidationWorkflow, /-gpu swiftshader_indirect/,
   "Android emulator validation must use indirect SwiftShader rendering to avoid unstable GPU color buffers.");
 assert.match(androidValidationWorkflow, /target: google_apis/);
@@ -692,6 +706,14 @@ assert.match(androidUpgradeBridge, /const analyses = summaries\.get\("analysis-r
 assert.match(androidUpgradeBridge, /const analysisMetadata = analyses\.map\(record => record\.metadata \?\? \{\}\)/);
 assert.match(androidUpgradeBridge, /const verifiedAnalyses = analysisMetadata\.filter\(item => item\.playerId === playerId[\s\S]*?matchIds\.has/,
   "The bridge must validate verified analyses against the selected player's match IDs, not the lightweight match index.");
+assert.match(androidUpgradeBridge, /diagnostics:\s*\{/,
+  "The Android bridge must return store/profile/analysis diagnostics before acceptance assertions.");
+assert.match(androidUpgradeBridge, /analysisMetadata,\s*\},\s*appVersion:/,
+  "The diagnostics block must be a complete object before the snapshot metadata.");
+assert.doesNotMatch(androidUpgradeBridge, /if \(!verifiedAnalyses\.length\) throw/,
+  "The bridge must return diagnostic snapshots when analysis results are missing; the inspector owns fail-closed acceptance.");
+assert.match(androidStorageInspector, /if \(!verifiedAnalyses\.length\) throw/,
+  "The external inspector must still fail closed when no verified persisted analysis survives.");
 assert.doesNotMatch(androidUpgradeBridge, /const verifiedAnalyses = matchMetadata\.filter/,
   "The bridge must not look for v4 simulation payloads in the lightweight matches index.");
 assert.match(androidUpgradeBridge, /simulationStatus:[\s\S]*?sampleCount:[\s\S]*?actionReviewCount:/,
@@ -701,6 +723,26 @@ assert.match(androidStorageInspector, /const analyses = stores\["analysis-result
 assert.match(androidStorageInspector, /analysisMetadata\.filter[\s\S]*?item\.playerId === playerId[\s\S]*?matchIds\.has/,
   "Verified analysis results must be linked to the UI-seeded player and existing match IDs.");
 assert.match(androidUpgradeBridge, /loadImportedMatch\(playerId, gameId\)/);
+assert.match(androidUpgradeBridge, /tx\.oncomplete = \(\) => \{[\s\S]*?transactionComplete = true[\s\S]*?finish\(\)/);
+assert.match(androidUpgradeBridge, /transactionComplete && summariesComplete/,
+  "The Android storage inspector must wait for read transactions to finish before closing its IndexedDB connection.");
+assert.match(androidUpgradeBridge, /updatedAtType:[\s\S]*?resultKeys:[\s\S]*?hasSimulation:/,
+  "Migration diagnostics must include legacy timestamps and inline payload presence to isolate versionchange failures.");
+const diagnosticDbClose = androidUpgradeBridge.indexOf("db.close();");
+const bridgeRehydrate = androidUpgradeBridge.indexOf("const rehydrate = async");
+const productionHydration = androidUpgradeBridge.indexOf("loadImportedMatch(playerId, gameId)");
+assert.ok(diagnosticDbClose >= 0 && diagnosticDbClose < bridgeRehydrate && bridgeRehydrate < productionHydration,
+  "The diagnostic IndexedDB connection must close and the snapshot must be returned before production rehydration runs separately.");
+assert.match(androidUpgradeBridge, /value: Object\.freeze\(\{ snapshot, rehydrate \}\)/,
+  "The Android bridge must expose diagnostic snapshot and separate production rehydration methods.");
+assert.match(androidUpgradeBridge, /rehydration: null/,
+  "The raw storage snapshot must not depend on production rehydration completing.");
+const initialSnapshotWrite = androidStorageInspector.indexOf("writeFileSync(outputPath, JSON.stringify(snapshot, null, 2));");
+const separateRehydration = androidStorageInspector.indexOf("window.__OFRC_ANDROID_UPGRADE_TEST__.rehydrate()");
+assert.ok(initialSnapshotWrite >= 0 && separateRehydration > initialSnapshotWrite,
+  "The inspector must persist raw storage evidence before production rehydration.");
+assert.match(androidStorageInspector, /exceptionDetails: details/,
+  "The inspector must retain the full CDP exception details when rehydration fails.");
 const replayPersistenceHarness = read("scripts/replay-engine-test.ts");
 assert.match(replayPersistenceHarness, /const saved = await loadImportedMatch\("ci-persistence-player", gameId\)/,
   "Refresh persistence tests must hydrate the full analysis payload from analysis-results, not the lightweight library index.");

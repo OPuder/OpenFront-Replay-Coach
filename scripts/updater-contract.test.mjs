@@ -605,8 +605,8 @@ assert.match(androidEmulatorDiagnostics, /dumpsys activity lastanr/);
 assert.match(androidEmulatorDiagnostics, /adb -s emulator-5554 pull \/data\/anr/);
 assert.match(androidEmulatorDiagnostics, /uiautomator dump \/sdcard\/window.xml/);
 assert.match(updateValidationWorkflow, /runs-on: ubuntu-24\.04/);
-function validateAndroidKvmWorkflow(workflow) {
-  assert.match(workflow, /android-apk-validation:[\s\S]*?runs-on: ubuntu-24\.04/,
+function validateAndroidKvmWorkflow(workflow, jobId = "android-apk-validation") {
+  assert.match(workflow, new RegExp(`${jobId}:[\\s\\S]*?runs-on: ubuntu-24\\.04`),
     "Android emulator job must use a Linux runner.");
   const preflightStart = workflow.indexOf('diag="$RUNNER_TEMP/ofrc-android-diagnostics"');
   const emulatorStart = workflow.indexOf("uses: reactivecircus/android-emulator-runner@v2");
@@ -629,8 +629,10 @@ function validateAndroidKvmWorkflow(workflow) {
     "Hardware acceleration must be mandatory; software fallback is forbidden.");
 }
 validateAndroidKvmWorkflow(updateValidationWorkflow);
-test("Android KVM contract accepts the current semantic preflight", () => {
+validateAndroidKvmWorkflow(releaseWorkflow, "build-android");
+test("Android KVM contract accepts the semantic preflight in validation and release workflows", () => {
   assert.doesNotThrow(() => validateAndroidKvmWorkflow(updateValidationWorkflow));
+  assert.doesNotThrow(() => validateAndroidKvmWorkflow(releaseWorkflow, "build-android"));
 });
 test("Android KVM contract rejects a missing /dev/kvm guard", () => {
   const broken = updateValidationWorkflow.replace(/if \[\[ ! -e \/dev\/kvm \]\]; then[\s\S]*?fi/, "");

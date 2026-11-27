@@ -21,6 +21,9 @@ test("Android Gradle Central mirror is inserted before both root repositories an
 test("Android Gradle Central mirror patch fails closed if the generated root has no Central declaration", () => {
   assert.throws(() => insertMavenCentralMirror("repositories { google() }"), /does not declare mavenCentral/);
 });
+test("Android update-validation workflow runs the generated Gradle mirror smoke test", () => {
+  assert.match(updateValidationWorkflow, /node scripts\\/smoke-test-android-config\\.mjs/);
+});
 const updater = read("src/main/updater.ts");
 const android = read("android-updater-template/ApkUpdaterPlugin.java");
 const installer = read("scripts/install-android-updater-plugin.mjs");

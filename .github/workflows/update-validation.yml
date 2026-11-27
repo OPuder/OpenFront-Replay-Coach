@@ -272,6 +272,7 @@ jobs:
           npx cap add android
           npx cap sync android
           node scripts/install-android-updater-plugin.mjs
+          node scripts/smoke-test-android-config.mjs
 
       - name: Set Android version from package.json
         run: node scripts/set-android-version.mjs "$(node -p 'require("./package.json").version')"

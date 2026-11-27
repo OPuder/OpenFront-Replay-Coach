@@ -1,4 +1,4 @@
-export const MAVEN_CENTRAL_MIRROR_URL = "https://maven-central-eu.storage-download.googleapis.com/maven2/";
+export const MAVEN_CENTRAL_MIRROR_URL = "https://maven-central.storage-download.googleapis.com/maven2/";
 export const MAVEN_CENTRAL_MIRROR_DECLARATION = "maven { url '" + MAVEN_CENTRAL_MIRROR_URL + "' }";
 
 export function insertMavenCentralMirror(source) {

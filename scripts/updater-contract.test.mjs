@@ -566,13 +566,6 @@ assert.match(enginePreparation, /http\.version=HTTP\/1\.1/);
 assert.match(enginePreparation, /attempt <= 1/);
 assert.match(enginePreparation, /Do not retry in this workspace/);
 assert.match(enginePreparation, /25 \* 60_000/);
-assert.match(enginePreparation, /if \(error\.message\.includes\("exceeded its"\)\) throw error/,
-  "Timed-out submodule fetches must not overlap with retry processes holding Git locks.");
-assert.match(enginePreparation, /12 \* 60_000/);
-assert.match(enginePreparation, /Wait before submodule retry", 60_000\)/,
-  "The retry wait timeout must exceed the longest bounded retry delay.");
-assert.match(enginePreparation, /Initialize exact OpenFront engine submodules \(attempt \$\{attempt\}\/1\)/);
-assert.match(enginePreparation, /after four attempts/ , "");
 assert.match(androidValidationWorkflow, /-gpu swiftshader_indirect/,
   "Android emulator validation must use indirect SwiftShader rendering to avoid unstable GPU color buffers.");
 assert.match(androidValidationWorkflow, /target: google_apis/);

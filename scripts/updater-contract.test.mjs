@@ -590,6 +590,7 @@ assert.match(androidValidationWorkflow, /-memory 4096/);
 assert.match(androidValidationWorkflow, /emulator-boot-timeout: 1800/);
 const androidBaselineSeed = read("scripts/seed-android-baseline-ui.sh");
 const launcherAnrGuard = androidBaselineSeed.indexOf("dismiss_pixel_launcher_anr()");
+const launcherAnrInvocation = androidBaselineSeed.search(/(?:^|\\r?\\n)[ \\t]*dismiss_pixel_launcher_anr(?:\\r?\\n|$)/);
 const launcherAnrWait = androidBaselineSeed.indexOf("android:id/aerr_wait");
 const launcherAppPid = androidBaselineSeed.indexOf('pidof "$package_id"', launcherAnrGuard);
 const launcherResumedApp = androidBaselineSeed.indexOf('mResumedActivity|topResumedActivity', launcherAnrGuard);
@@ -597,6 +598,8 @@ const launcherNavigationMatch = /(?:^|\r?\n)navigate_to_library(?:\r?\n|$)/.exec
 const launcherNavigationCall = launcherNavigationMatch?.index ?? -1;
 assert.ok(launcherAnrGuard >= 0 && launcherAnrWait > launcherAnrGuard,
   "Android baseline seeding must recognize only the explicit Pixel Launcher ANR dialog and its Wait control.");
+assert.ok(launcherAnrInvocation > launcherAnrGuard,
+  "The Pixel Launcher ANR recovery helper must be defined before its first top-level invocation.");
 assert.ok(launcherAppPid > launcherAnrWait && launcherResumedApp > launcherAppPid,
   "The launcher ANR Wait action must require the published app process and resumed activity to remain alive.");
 assert.ok(launcherNavigationCall > androidBaselineSeed.indexOf("require_baseline_app_window() {"),

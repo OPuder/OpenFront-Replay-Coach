@@ -269,6 +269,72 @@ tap_text() {
   fail "Could not find the UI control '$needle' in UIAutomator or OCR after bounded retries. OCR text: ${ocr_dump:0:1200}. Captured UI: $(cat "$ui_xml" 2>/dev/null | head -c 4000)"
 }
 
+dismiss_pixel_launcher_anr() {
+  local coords="" bounds_status=0 pid="" resumed="" attempt=0
+  for attempt in 1 2; do
+    dump_ui || return 0
+    bounds_status=0
+    coords="$(python3 - "$ui_xml" <<'PY'
+import sys
+import xml.etree.ElementTree as ET
+
+try:
+    root = ET.parse(sys.argv[1]).getroot()
+except (OSError, ET.ParseError):
+    raise SystemExit(3)
+
+launcher_anr = any(
+    node.attrib.get("resource-id") == "android:id/alertTitle"
+    and "Pixel Launcher isn't responding" in node.attrib.get("text", "")
+    for node in root.iter("node")
+)
+if not launcher_anr:
+    raise SystemExit(2)
+
+for node in root.iter("node"):
+    if (
+        node.attrib.get("resource-id") == "android:id/aerr_wait"
+        and node.attrib.get("text") == "Wait"
+        and node.attrib.get("package") == "android"
+        and node.attrib.get("clickable") == "true"
+        and node.attrib.get("enabled") == "true"
+    ):
+        import re
+        match = re.fullmatch(r"\[(\d+),(\d+)\]\[(\d+),(\d+)\]", node.attrib.get("bounds", ""))
+        if match:
+            left, top, right, bottom = map(int, match.groups())
+            print((left + right) // 2, (top + bottom) // 2)
+            raise SystemExit(0)
+
+raise SystemExit(3)
+PY
+)" || bounds_status=$?
+    if [[ "$bounds_status" -eq 2 ]]; then return 0; fi
+    if [[ "$bounds_status" -ne 0 || ! "$coords" =~ ^[0-9]+[[:space:]][0-9]+$ ]]; then
+      fail "Pixel Launcher ANR dialog was detected but its exact enabled Android 'Wait' control could not be verified; refusing coordinate fallback."
+    fi
+
+    pid="$(timeout 10s adb -s emulator-5554 shell pidof "$package_id" 2>/dev/null | tr -d '\r' || true)"
+    resumed="$(timeout 10s adb -s emulator-5554 shell dumpsys activity activities 2>/dev/null | grep -E 'mResumedActivity|topResumedActivity' | tail -n 2 || true)"
+    if [[ -z "$pid" || "$resumed" != *"$package_id"* ]]; then
+      fail "Pixel Launcher ANR dialog appeared, but the published app is not confirmed alive and resumed; refusing to dismiss it. pid=${pid:-missing}; activity=${resumed:-missing}"
+    fi
+
+    read -r wait_x wait_y <<< "$coords"
+    log "Pixel Launcher ANR overlay detected while the published app remains resumed (pid=$pid); selecting only Android's verified 'Wait' button (attempt $attempt/2)."
+    timeout 10s adb -s emulator-5554 shell input tap "$wait_x" "$wait_y" || fail "Could not select the verified Pixel Launcher 'Wait' button."
+
+    for check in $(seq 1 8); do
+      sleep 1
+      if dump_ui && ! grep -Fq "Pixel Launcher isn't responding" "$ui_xml"; then
+        log "Pixel Launcher ANR overlay cleared; the published app remains available for the real UI-seeded upgrade test."
+        return 0
+      fi
+    done
+  done
+  fail "Pixel Launcher ANR overlay remained after two verified 'Wait' actions; refusing to continue with obscured UI."
+}
+
 log "Rechecking ADB transport and boot state before launching the published baseline."
 android_prepare_emulator || fail "Baseline emulator preparation failed; inspect stage-specific ADB/boot diagnostics."
 log "Launching the genuine published v2.2.51 APK and classifying ADB, ActivityManager and crash failures."
@@ -353,71 +419,6 @@ require_baseline_app_window() {
   baseline_app_window_is_focused || fail "The published baseline app is not safely foregrounded; refusing Back or coordinate gestures. Window focus: ${focus_state:-unavailable}"
 }
 
-dismiss_pixel_launcher_anr() {
-  local coords="" bounds_status=0 pid="" resumed="" attempt=0
-  for attempt in 1 2; do
-    dump_ui || return 0
-    bounds_status=0
-    coords="$(python3 - "$ui_xml" <<'PY'
-import sys
-import xml.etree.ElementTree as ET
-
-try:
-    root = ET.parse(sys.argv[1]).getroot()
-except (OSError, ET.ParseError):
-    raise SystemExit(3)
-
-launcher_anr = any(
-    node.attrib.get("resource-id") == "android:id/alertTitle"
-    and "Pixel Launcher isn't responding" in node.attrib.get("text", "")
-    for node in root.iter("node")
-)
-if not launcher_anr:
-    raise SystemExit(2)
-
-for node in root.iter("node"):
-    if (
-        node.attrib.get("resource-id") == "android:id/aerr_wait"
-        and node.attrib.get("text") == "Wait"
-        and node.attrib.get("package") == "android"
-        and node.attrib.get("clickable") == "true"
-        and node.attrib.get("enabled") == "true"
-    ):
-        import re
-        match = re.fullmatch(r"\[(\d+),(\d+)\]\[(\d+),(\d+)\]", node.attrib.get("bounds", ""))
-        if match:
-            left, top, right, bottom = map(int, match.groups())
-            print((left + right) // 2, (top + bottom) // 2)
-            raise SystemExit(0)
-
-raise SystemExit(3)
-PY
-)" || bounds_status=$?
-    if [[ "$bounds_status" -eq 2 ]]; then return 0; fi
-    if [[ "$bounds_status" -ne 0 || ! "$coords" =~ ^[0-9]+[[:space:]][0-9]+$ ]]; then
-      fail "Pixel Launcher ANR dialog was detected but its exact enabled Android 'Wait' control could not be verified; refusing coordinate fallback."
-    fi
-
-    pid="$(timeout 10s adb -s emulator-5554 shell pidof "$package_id" 2>/dev/null | tr -d '\r' || true)"
-    resumed="$(timeout 10s adb -s emulator-5554 shell dumpsys activity activities 2>/dev/null | grep -E 'mResumedActivity|topResumedActivity' | tail -n 2 || true)"
-    if [[ -z "$pid" || "$resumed" != *"$package_id"* ]]; then
-      fail "Pixel Launcher ANR dialog appeared, but the published app is not confirmed alive and resumed; refusing to dismiss it. pid=${pid:-missing}; activity=${resumed:-missing}"
-    fi
-
-    read -r wait_x wait_y <<< "$coords"
-    log "Pixel Launcher ANR overlay detected while the published app remains resumed (pid=$pid); selecting only Android's verified 'Wait' button (attempt $attempt/2)."
-    timeout 10s adb -s emulator-5554 shell input tap "$wait_x" "$wait_y" || fail "Could not select the verified Pixel Launcher 'Wait' button."
-
-    for check in $(seq 1 8); do
-      sleep 1
-      if dump_ui && ! grep -Fq "Pixel Launcher isn't responding" "$ui_xml"; then
-        log "Pixel Launcher ANR overlay cleared; the published app remains available for the real UI-seeded upgrade test."
-        return 0
-      fi
-    done
-  done
-  fail "Pixel Launcher ANR overlay remained after two verified 'Wait' actions; refusing to continue with obscured UI."
-}
 
 navigate_to_library() {
   log "Navigating to the published app's match library with verified UI retries."

@@ -591,6 +591,8 @@ assert.match(androidValidationWorkflow, /emulator-boot-timeout: 1800/);
 const androidBaselineSeed = read("scripts/seed-android-baseline-ui.sh");
 const launcherAnrGuard = androidBaselineSeed.indexOf("dismiss_pixel_launcher_anr()");
 const launcherAnrInvocation = androidBaselineSeed.search(/(?:^|\r?\n)[ \t]*dismiss_pixel_launcher_anr(?:\r?\n|$)/);
+const profileKeyboardGuard = androidBaselineSeed.indexOf("dismiss_profile_keyboard_safely() {");
+const profileKeyboardCall = androidBaselineSeed.indexOf("dismiss_profile_keyboard_safely\\n");
 const launcherAnrWait = androidBaselineSeed.indexOf("android:id/aerr_wait");
 const launcherAppPid = androidBaselineSeed.indexOf('pidof "$package_id"', launcherAnrGuard);
 const launcherResumedApp = androidBaselineSeed.indexOf('mResumedActivity|topResumedActivity', launcherAnrGuard);
@@ -600,6 +602,12 @@ assert.ok(launcherAnrGuard >= 0 && launcherAnrWait > launcherAnrGuard,
   "Android baseline seeding must recognize only the explicit Pixel Launcher ANR dialog and its Wait control.");
 assert.ok(launcherAnrInvocation > launcherAnrGuard,
   "The Pixel Launcher ANR recovery helper must be defined before its first top-level invocation.");
+assert.ok(profileKeyboardGuard >= 0 && profileKeyboardCall > profileKeyboardGuard,
+  "The profile keyboard guard must be defined before the published baseline UI uses it.");
+assert.match(androidBaselineSeed, /skipping Back to avoid exiting the app/,
+  "The baseline script must never send Back unless Android confirms the input-method window is focused.");
+assert.match(androidBaselineSeed, /refusing further UI input/,
+  "The baseline script must fail closed if keyboard dismissal loses the published app's foreground focus.");
 assert.ok(launcherAppPid > launcherAnrWait && launcherResumedApp > launcherAppPid,
   "The launcher ANR Wait action must require the published app process and resumed activity to remain alive.");
 assert.ok(launcherNavigationCall > androidBaselineSeed.indexOf("require_baseline_app_window() {"),

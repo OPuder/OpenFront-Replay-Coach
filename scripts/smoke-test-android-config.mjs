@@ -14,7 +14,7 @@ const updaterInstaller = readFileSync(path.join(root, "scripts/install-android-u
 const nativeIcon = path.join(root, "assets/icon.svg");
 const androidRootGradle = readFileSync(path.join(root, "android/build.gradle"), "utf8");
 const centralMirrorDeclaration = "maven { url 'https://maven-central-eu.storage-download.googleapis.com/maven2/' }";
-const centralRepositoryLines = androidRootGradle.split("\\n");
+const centralRepositoryLines = androidRootGradle.split("\n");
 const centralPositions = centralRepositoryLines.flatMap((line, index) => line.trim() === "mavenCentral()" ? [index] : []);
 assert.ok(centralPositions.length >= 2, "Generated Android root Gradle file must retain buildscript and allprojects Central repositories.");
 for (const index of centralPositions) {

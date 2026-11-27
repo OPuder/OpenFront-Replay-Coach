@@ -15,7 +15,7 @@ const versionScript = read("scripts/set-release-version.mjs");
 const releaseWorkflow = read(".github/workflows/release-on-main.yml");
 const branchCleanupWorkflow = read(".github/workflows/cleanup-merged-branches.yml");
 test("Android Gradle Central mirror is inserted before both root repositories and is idempotent", () => {
-  const fixture = "buildscript {\\n  repositories {\\n    google()\\n    mavenCentral()\\n  }\\n}\\n\\nallprojects {\\n  repositories {\\n    google()\\n    mavenCentral()\\n  }\\n}\\n";
+  const fixture = "buildscript {\n  repositories {\n    google()\n    mavenCentral()\n  }\n}\n\nallprojects {\n  repositories {\n    google()\n    mavenCentral()\n  }\n}\n";
   const patched = insertMavenCentralMirror(fixture);
   assert.equal(patched.insertedCount, 2);
   const buildscriptSection = patched.content.slice(patched.content.indexOf("buildscript {"), patched.content.indexOf("allprojects {"));

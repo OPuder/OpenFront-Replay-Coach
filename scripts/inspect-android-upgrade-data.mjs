@@ -91,7 +91,7 @@ try {
   // pre-upgrade analysis persistence step without rerunning the emulator blindly.
   // Persist IndexedDB diagnostics before exercising production rehydration.
   writeFileSync(outputPath, JSON.stringify(snapshot, null, 2));
-  let rehydration;
+  let rehydrationResult;
   try {
     const hydrated = await send("Runtime.evaluate", {
       expression: "window.__OFRC_ANDROID_UPGRADE_TEST__.rehydrate()",
@@ -101,17 +101,17 @@ try {
     }, 90_000);
     if (hydrated.exceptionDetails) {
       const details = hydrated.exceptionDetails;
-      rehydration = {
+      rehydrationResult = {
         error: details.exception?.description ?? details.text ?? "Production rehydration threw an exception.",
         exceptionDetails: details,
       };
     } else {
-      rehydration = hydrated.result?.value ?? null;
+      rehydrationResult = hydrated.result?.value ?? null;
     }
   } catch (error) {
-    rehydration = { error: error instanceof Error ? error.message : String(error) };
+    rehydrationResult = { error: error instanceof Error ? error.message : String(error) };
   }
-  snapshot.rehydration = rehydration;
+  snapshot.rehydration = rehydrationResult;
   writeFileSync(outputPath, JSON.stringify(snapshot, null, 2));
   console.log(JSON.stringify({
     diagnostic: "post-upgrade-storage-snapshot",

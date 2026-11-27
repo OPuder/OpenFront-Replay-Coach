@@ -201,7 +201,7 @@ const androidStorageComparison = read("scripts/compare-android-web-storage.mjs")
 assert.match(androidStorageComparison, /comparison: "logical-indexeddb-plus-hash-verified-localstorage-files"/,
   "Upgrade persistence must validate IndexedDB logically and hash-check Local Storage data files.");
 assert.match(androidStorageComparison, /localStorageDataFileHashesCompared: true/);
-assert.match(androidStorageComparison, /current\\.sha256 !== file\\.sha256 \\|\\| current\\.size !== file\\.size/,
+assert.ok(androidStorageComparison.includes("current.sha256 !== file.sha256 || current.size !== file.size"),
   "The upgrade must fail if any persisted Local Storage data file changes.");
 assert.match(androidStorageComparison, /indexedDbPhysicalTableHashesCompared: false/);
 assert.match(androidStorageComparison, /if \(exact\)[\s\S]*?exact-persistent-files/,

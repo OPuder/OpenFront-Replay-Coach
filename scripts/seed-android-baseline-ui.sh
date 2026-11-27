@@ -403,7 +403,22 @@ adb -s emulator-5554 shell input tap "$input_x" "$input_y"
 adb -s emulator-5554 shell input text "$player_id"
 dismiss_pixel_launcher_anr
 dismiss_profile_keyboard_safely
-tap_text "Konto laden"
+if tap_text "Konto laden" last exact false; then
+  log "The published profile form accepted the player ID through its visible Konto laden control."
+else
+  dashboard_ui=""
+  if dump_ui && grep -q 'text="Dashboard"' "$ui_xml" && grep -q 'text="Partien"' "$ui_xml"; then
+    dashboard_window="$(timeout 10s adb -s emulator-5554 shell dumpsys window 2>&1 | grep -E 'mCurrentFocus=|mFocusedApp=' | tail -n 2 || true)"
+    dashboard_focused_app="$(grep -E 'mFocusedApp=' <<< "$dashboard_window" | tail -n 1 || true)"
+    if [[ "$dashboard_focused_app" == *"$package_id"* ]]; then
+      log "The published app already transitioned to its authenticated Dashboard with Partien navigation; continuing to verify the real library import count and replay persistence."
+    else
+      fail "Dashboard and Partien controls were visible, but the published app did not own the foreground application; refusing to seed through an unverified window. Focus: ${dashboard_window:-missing}"
+    fi
+  else
+    fail "The published profile form exposed neither the Konto laden control nor a verifiable Dashboard/Partien state; refusing to assume the profile loaded."
+  fi
+fi
 
 # The published baseline is a non-debuggable WebView app, so Android exposes
 # only the WebView container to UIAutomator. OCR follows the visible UI, and

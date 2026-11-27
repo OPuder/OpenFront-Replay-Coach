@@ -608,6 +608,10 @@ assert.match(androidBaselineSeed, /skipping Back to avoid exiting the app/,
   "The baseline script must never send Back unless Android confirms the input-method window is focused.");
 assert.match(androidBaselineSeed, /refusing further UI input/,
   "The baseline script must fail closed if keyboard dismissal loses the published app's foreground focus.");
+assert.match(androidBaselineSeed, /already transitioned to its authenticated Dashboard with Partien navigation/,
+  "The baseline seeder may accept an already-loaded dashboard only as a verified UI state before the persisted profile/replay acceptance checks.");
+assert.match(androidBaselineSeed, /Dashboard and Partien controls were visible, but the published app did not own the foreground application/,
+  "The dashboard fallback must fail closed when another Android window owns the foreground.");
 assert.ok(launcherAppPid > launcherAnrWait && launcherResumedApp > launcherAppPid,
   "The launcher ANR Wait action must require the published app process and resumed activity to remain alive.");
 assert.ok(launcherNavigationCall > androidBaselineSeed.indexOf("require_baseline_app_window() {"),

@@ -560,6 +560,10 @@ assert.ok(releaseUpgradeWorkflow.includes("PREVIOUS_APK: ${{ steps.apk.outputs.p
 assert.ok(releaseUpgradeWorkflow.includes("Install previous published APK and upgrade to exact signed release APK"));
 assert.ok(releaseUpgradeWorkflow.includes("script: bash scripts/test-android-release-upgrade.sh"));
 assert.ok(releaseUpgradeWorkflow.includes("timeout-minutes: 60"));
+assert.match(releaseUpgradeWorkflow, /Install and verify GNU timeout and OCR utilities/);
+assert.match(releaseUpgradeWorkflow, /sudo apt-get install --no-install-recommends -y coreutils tesseract-ocr tesseract-ocr-deu tesseract-ocr-eng/);
+assert.match(releaseUpgradeWorkflow, /command -v tesseract[\s\S]*?tesseract --list-langs/,
+  "The release emulator must install and verify German/English OCR before the published-WebView UI test.");
 assert.ok(releaseUpgradeWorkflow.includes("emulator-boot-timeout: 1800"));
 assert.ok(!releaseUpgradeWorkflow.includes("disable-animations: true"));
 assert.ok(releaseUpgradeScript.includes("PREVIOUS_APK"));

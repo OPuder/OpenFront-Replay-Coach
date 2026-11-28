@@ -93,20 +93,4 @@ jobs:
 
       - name: Publish validated engine candidate branch
         if: steps.discovery.outputs.changed == 'true'
-        run: |
-          set -Eeuo pipefail
-          bundle_id="$(node --input-type=module -e 'import { readFileSync } from "node:fs"; const engines = JSON.parse(readFileSync("engine-build/engines.json", "utf8")); console.log(engines.at(-1).bundleId);')"
-          branch="automation/openfront-engine-${bundle_id}"
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -A
-          # Bundled upstream engine JS is generated from pinned source and may retain upstream whitespace.
-          # Keep whitespace validation strict for repository-owned changes, but exclude only these generated bundles.
-          git diff --cached --check -- . ':!src/renderer/engine/replay-engine-*.js'
-          if git diff --cached --quiet; then
-            echo "::error::Engine discovery reported changes but produced no commit."
-            exit 1
-          fi
-          git commit -m "build(engine): add latest exact OpenFront revision"
-          git push origin "HEAD:refs/heads/${branch}"
-          echo "::notice::Validated engine candidate published on ${branch}. It still requires a review PR and real replay hash verification.";
+        run: bash scripts/publish-engine-candidate-branch.sh

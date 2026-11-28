@@ -426,6 +426,12 @@ android_prepare_emulator || fail "Baseline emulator preparation failed; inspect 
 log "Launching the genuine published v2.2.51 APK and classifying ADB, ActivityManager and crash failures."
 android_launch_package "$package_id" "the published v2.2.51 baseline APK" || fail "Published baseline app launch failed; see classified emulator diagnostics."
 sleep 20
+baseline_pid="$(timeout 10s adb -s emulator-5554 shell pidof "$package_id" 2>/dev/null | tr -d '\r' || true)"
+baseline_activity="$(timeout 10s adb -s emulator-5554 shell dumpsys activity activities 2>/dev/null | grep -E 'mResumedActivity|topResumedActivity' | tail -n 2 || true)"
+if [[ -z "$baseline_pid" ]] || ! baseline_app_window_is_focused; then
+  android_capture_diagnostics "baseline-app-not-foreground-after-launch" || true
+  fail "The published v2.2.51 app left the foreground during its initial WebView startup; pid=${baseline_pid:-missing}; resumed activity=${baseline_activity:-missing}. Refusing to search or tap coordinates on the launcher."
+fi
 # Prefer the profile-specific placeholder: the WebView does not expose its
 # HTML input as an EditText on every Android build. Keep polling this screen
 # before considering OCR so a shallow first hierarchy does not trigger a tap

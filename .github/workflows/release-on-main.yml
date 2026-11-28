@@ -300,9 +300,6 @@ jobs:
       - name: Build the shared renderer and original replay engine
         run: npm run build:web
 
-      - name: Smoke-test native Android configuration
-        run: node scripts/smoke-test-android-config.mjs
-
       - name: Set up Java
         uses: actions/setup-java@v4
         with:
@@ -322,6 +319,9 @@ jobs:
           npx cap add android
           npx cap sync android
           node scripts/install-android-updater-plugin.mjs
+
+      - name: Smoke-test native Android configuration
+        run: node scripts/smoke-test-android-config.mjs
 
       - name: Generate branded Android launcher and splash assets
         run: npx capacitor-assets generate --android --iconBackgroundColor "#0b1320" --splashBackgroundColor "#0b1320"

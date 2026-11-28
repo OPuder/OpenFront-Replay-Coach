@@ -212,8 +212,13 @@ assert.match(updateValidationWorkflow, /Build higher-version candidate with the 
 assert.match(updateValidationWorkflow, /Test genuine published-APK in-place upgrade on Android emulator[\s\S]*?bash scripts\/test-android-release-upgrade\.sh/);
 assert.match(updateValidationWorkflow, /Build separate non-debuggable production APK without test inspector/);
 assert.match(updateValidationWorkflow, /Upload validated production APK[\s\S]*?id: production_apk_upload/);
-assert.ok(updateValidationWorkflow.includes('artifact-ids: ${{ steps.production_apk_upload.outputs.artifact-id }}'),
-  "Download the exact uploaded artifact by its ID; name-based lookup can fail in the same job.");
+assert.match(updateValidationWorkflow, /artifact_url=.*actions\/artifacts\/.*\/zip/);
+assert.match(updateValidationWorkflow, /ARTIFACT_ID: ${{ steps.production_apk_upload.outputs.artifact-id }}/);
+assert.match(updateValidationWorkflow, /for attempt in 1 2 3 4 5/);
+assert.match(updateValidationWorkflow, /curl --fail[\s\S]*?unzip -tq/);
+assert.match(updateValidationWorkflow, /actions: read/);
+assert.match(updateValidationWorkflow, /unzip -q \$artifact_zip/);
+assert.match(updateValidationWorkflow, /test -s \$artifact_dir\/app-release\.apk/);
 assert.match(updateValidationWorkflow, /Verify uploaded production APK hash and signature/);
 assert.match(updateValidationWorkflow, /Verify permanent Android release signing key and continuity[\s\S]*?if: always\(\) && steps\.release_candidate\.outcome == 'success' && \(github\.event_name != 'pull_request' \|\| github\.event\.pull_request\.head\.repo\.full_name == github\.repository\)/,
   "Signing continuity must run only after a candidate APK has been built successfully.");

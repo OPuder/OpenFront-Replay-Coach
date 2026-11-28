@@ -39,6 +39,7 @@ on:
     - cron: "17 4 1 * *"
 
 permissions:
+  actions: read
   contents: read
 
 concurrency:
@@ -504,10 +505,37 @@ jobs:
           retention-days: 7
 
       - name: Download uploaded APK for byte-for-byte verification
-        uses: actions/download-artifact@v4
-        with:
-          artifact-ids: ${{ steps.production_apk_upload.outputs.artifact-id }}
-          path: ${{ runner.temp }}/verified-android-artifact
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ARTIFACT_ID: ${{ steps.production_apk_upload.outputs.artifact-id }}
+        run: |
+          set -Eeuo pipefail
+          artifact_url="https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/artifacts/${ARTIFACT_ID}/zip"
+          artifact_zip="$RUNNER_TEMP/verified-android-artifact.zip"
+          artifact_dir="$RUNNER_TEMP/verified-android-artifact"
+          rm -rf "$artifact_dir" "$artifact_zip"
+          downloaded=false
+          for attempt in 1 2 3 4 5; do
+            echo "Artifact API download attempt $attempt/5 (ID: $ARTIFACT_ID)"
+            if curl --fail --silent --show-error --location \
+              --retry 2 --retry-all-errors --retry-delay 2 \
+              -H "Authorization: Bearer $GH_TOKEN" \
+              -H "Accept: application/vnd.github+json" \
+              "$artifact_url" -o "$artifact_zip" && unzip -tq "$artifact_zip" >/dev/null; then
+              downloaded=true
+              break
+            fi
+            rm -f "$artifact_zip"
+            if [[ "$attempt" -lt 5 ]]; then sleep $((attempt * 5)); fi
+          done
+          if [[ "$downloaded" != true ]]; then
+            echo "Unable to retrieve finalized artifact after bounded retries." >&2
+            exit 1
+          fi
+          mkdir -p "$artifact_dir"
+          unzip -q "$artifact_zip" -d "$artifact_dir"
+          test -s "$artifact_dir/app-release.apk"
 
       - name: Verify uploaded production APK hash and signature
         shell: bash

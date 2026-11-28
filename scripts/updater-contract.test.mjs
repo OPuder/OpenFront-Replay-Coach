@@ -559,6 +559,10 @@ assert.ok(releaseUpgradeWorkflow.includes('echo "previous_apk=$previous_apk" >> 
 assert.ok(releaseUpgradeWorkflow.includes("PREVIOUS_APK: ${{ steps.apk.outputs.previous_apk }}"));
 assert.ok(releaseUpgradeWorkflow.includes("Install previous published APK and upgrade to exact signed release APK"));
 assert.ok(releaseUpgradeWorkflow.includes("script: bash scripts/test-android-release-upgrade.sh"));
+assert.match(releaseUpgradeWorkflow, /VITE_ANDROID_UPGRADE_TEST: "1"[\s\S]*?npm run build:web/,
+  "The emulator candidate must include the isolated read-only storage bridge.");
+assert.match(releaseUpgradeWorkflow, /Rebuild the production Android APK without test instrumentation[\s\S]*?unset VITE_ANDROID_UPGRADE_TEST[\s\S]*?npm run build:web[\s\S]*?npx cap sync android[\s\S]*?assembleRelease[\s\S]*?Upload Android APK/,
+  "The final uploaded APK must be rebuilt without the test-only bridge after the upgrade test passes.");
 assert.ok(releaseUpgradeWorkflow.includes("timeout-minutes: 60"));
 assert.match(releaseUpgradeWorkflow, /Install and verify GNU timeout and OCR utilities/);
 assert.match(releaseUpgradeWorkflow, /sudo apt-get install --no-install-recommends -y coreutils tesseract-ocr tesseract-ocr-deu tesseract-ocr-eng/);

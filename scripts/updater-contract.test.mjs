@@ -574,7 +574,7 @@ assert.ok(androidValidationWorkflow.includes("bash -n scripts/android-emulator-d
 const androidValidationArtifactName = "updater-validation-android-${{ github.run_id }}-${{ github.run_attempt }}";
 assert.equal(androidValidationWorkflow.split(`name: ${androidValidationArtifactName}`).length - 1, 2,
   "Android validation upload and download must use the same unique run-attempt artifact name to avoid stale artifacts after reruns.");
-assert.doesNotMatch(androidValidationWorkflow, /name: updater-validation-android\\s*$/m,
+assert.doesNotMatch(androidValidationWorkflow, /name: updater-validation-android\s*$/m,
   "Android validation must not reuse a static artifact name across workflow attempts.");
 const androidDiagnosticsScript = read("scripts/android-emulator-diagnostics.sh");
 const androidBaselineSeedScript = read("scripts/seed-android-baseline-ui.sh");

@@ -423,15 +423,34 @@ dismiss_android_ime() {
 }
 log "Rechecking ADB transport and boot state before launching the published baseline."
 android_prepare_emulator || fail "Baseline emulator preparation failed; inspect stage-specific ADB/boot diagnostics."
-log "Launching the genuine published v2.2.51 APK and classifying ADB, ActivityManager and crash failures."
-android_launch_package "$package_id" "the published v2.2.51 baseline APK" || fail "Published baseline app launch failed; see classified emulator diagnostics."
-sleep 20
-baseline_pid="$(timeout 10s adb -s emulator-5554 shell pidof "$package_id" 2>/dev/null | tr -d '\r' || true)"
-baseline_activity="$(timeout 10s adb -s emulator-5554 shell dumpsys activity activities 2>/dev/null | grep -E 'mResumedActivity|topResumedActivity' | tail -n 2 || true)"
-if [[ -z "$baseline_pid" ]] || ! baseline_app_window_is_focused; then
+# Isolate baseline startup from emulator boot/provider noise for full diagnostics.
+timeout 15s adb -s emulator-5554 logcat -c -b all >/dev/null 2>&1 || true
+log "Launching the genuine published v2.2.51 APK and verifying it stays foreground while WebView initializes."
+baseline_ready=false
+for launch_attempt in 1 2 3; do
+  log "Baseline cold-launch/stability attempt $launch_attempt/3."
+  android_launch_package "$package_id" "the published v2.2.51 baseline APK (attempt $launch_attempt)" || true
+  for stability_check in 1 2 3 4 5; do
+    baseline_pid="$(timeout 10s adb -s emulator-5554 shell pidof "$package_id" 2>/dev/null | tr -d '\r' || true)"
+    baseline_activity="$(timeout 10s adb -s emulator-5554 shell dumpsys activity activities 2>/dev/null | grep -E 'mResumedActivity|topResumedActivity' | tail -n 2 || true)"
+    if [[ -n "$baseline_pid" ]] && baseline_app_window_is_focused; then
+      baseline_ready=true
+      break
+    fi
+    log "Baseline activity not stable (attempt $launch_attempt/3, check $stability_check/5); pid=${baseline_pid:-missing}; resumed=${baseline_activity:-missing}."
+    sleep 3
+  done
+  if [[ "$baseline_ready" == true ]]; then break; fi
+  android_capture_diagnostics "baseline-app-launch-retry-$launch_attempt" || true
+  timeout 15s adb -s emulator-5554 shell am force-stop "$package_id" >/dev/null 2>&1 || true
+  sleep 2
+done
+if [[ "$baseline_ready" != true ]]; then
   android_capture_diagnostics "baseline-app-not-foreground-after-launch" || true
-  fail "The published v2.2.51 app left the foreground during its initial WebView startup; pid=${baseline_pid:-missing}; resumed activity=${baseline_activity:-missing}. Refusing to search or tap coordinates on the launcher."
+  fail "Published v2.2.51 baseline did not remain foreground after three bounded cold-launch attempts; last pid=${baseline_pid:-missing}; resumed=${baseline_activity:-missing}. Refusing to search or tap coordinates on launcher/system UI."
 fi
+log "Published baseline app remained foreground through bounded WebView startup checks; continuing UI seed."
+
 # Prefer the profile-specific placeholder: the WebView does not expose its
 # HTML input as an EditText on every Android build. Keep polling this screen
 # before considering OCR so a shallow first hierarchy does not trigger a tap

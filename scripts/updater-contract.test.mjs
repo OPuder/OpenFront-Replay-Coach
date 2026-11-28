@@ -563,6 +563,10 @@ assert.match(releaseUpgradeWorkflow, /VITE_ANDROID_UPGRADE_TEST: "1"[\s\S]*?npm 
   "The emulator candidate must include the isolated read-only storage bridge.");
 assert.match(releaseUpgradeWorkflow, /Rebuild the production Android APK without test instrumentation[\s\S]*?unset VITE_ANDROID_UPGRADE_TEST[\s\S]*?npm run build:web[\s\S]*?npx cap sync android[\s\S]*?assembleRelease[\s\S]*?Upload Android APK/,
   "The final uploaded APK must be rebuilt without the test-only bridge after the upgrade test passes.");
+assert.match(releaseUpgradeWorkflow, /Rebuild the production Android APK without test instrumentation[\s\S]*?ANDROID_KEYSTORE_BASE64: \$\{\{ secrets\.ANDROID_KEYSTORE_BASE64 \}\}[\s\S]*?ANDROID_KEYSTORE_PASSWORD: \$\{\{ secrets\.ANDROID_KEYSTORE_PASSWORD \}\}[\s\S]*?ANDROID_KEY_ALIAS: \$\{\{ secrets\.ANDROID_KEY_ALIAS \}\}[\s\S]*?ANDROID_KEY_PASSWORD: \$\{\{ secrets\.ANDROID_KEY_PASSWORD \}\}/,
+  "The final production rebuild must receive the same permanent signing credentials as the emulator candidate.");
+assert.match(releaseUpgradeWorkflow, /Rebuild the production Android APK without test instrumentation[\s\S]*?base64 --decode > "\$keystore"[\s\S]*?export ANDROID_KEYSTORE_PATH="\$keystore"[\s\S]*?node scripts\/configure-android-signing\.mjs[\s\S]*?node scripts\/verify-android-keystore\.mjs[\s\S]*?assembleRelease/,
+  "The final production rebuild must restore and verify the permanent keystore after Capacitor sync regenerates Android configuration.");
 assert.ok(releaseUpgradeWorkflow.includes("timeout-minutes: 60"));
 assert.match(releaseUpgradeWorkflow, /Install and verify GNU timeout and OCR utilities/);
 assert.match(releaseUpgradeWorkflow, /sudo apt-get install --no-install-recommends -y coreutils tesseract-ocr tesseract-ocr-deu tesseract-ocr-eng/);

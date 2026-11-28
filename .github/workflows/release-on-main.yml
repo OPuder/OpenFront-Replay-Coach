@@ -297,7 +297,9 @@ jobs:
       - name: Install Coach and Capacitor dependencies
         run: npm ci
 
-      - name: Build the shared renderer and original replay engine
+      - name: Build the shared renderer with the isolated Android upgrade-test bridge
+        env:
+          VITE_ANDROID_UPGRADE_TEST: "1"
         run: npm run build:web
 
       - name: Set up Java
@@ -482,6 +484,33 @@ jobs:
           disable-linux-hw-accel: false
           emulator-options: -no-window -no-audio -no-boot-anim -no-snapshot -no-metrics -gpu swiftshader_indirect -memory 4096 -partition-size 4096
           script: bash scripts/test-android-release-upgrade.sh
+
+      # The emulator candidate includes a read-only WebView bridge used only to
+      # inspect real persisted IndexedDB data. Rebuild the deliverable without
+      # that bridge after the in-place upgrade test has passed.
+      - name: Rebuild the production Android APK without test instrumentation
+        shell: bash
+        env:
+          RELEASE_VERSION: ${{ needs.prepare-release.outputs.version }}
+        run: |
+          set -Eeuo pipefail
+          unset VITE_ANDROID_UPGRADE_TEST
+          npm run build:web
+          npx cap sync android
+          node scripts/install-android-updater-plugin.mjs
+          (cd android && ./gradlew --no-daemon assembleRelease)
+          apk="android/app/build/outputs/apk/release/app-release.apk"
+          test -s "$apk"
+          build_tools="$ANDROID_HOME/build-tools/36.0.0"
+          "$build_tools/apksigner" verify --verbose "$apk"
+          "$build_tools/aapt" dump badging "$apk" | grep -F "package: name='de.openfront.replaycoach'"
+          "$build_tools/aapt" dump badging "$apk" | grep -F "versionName='$RELEASE_VERSION'"
+          if unzip -p "$apk" assets/public/index.html | grep -q '__OFRC_ANDROID_UPGRADE_TEST__'; then
+            echo "::error::The final production APK unexpectedly contains the Android upgrade-test bridge."
+            exit 1
+          fi
+          cp "$apk" "release/OpenFront-Replay-Coach-$RELEASE_VERSION-Android.apk"
+          sha256sum "release/OpenFront-Replay-Coach-$RELEASE_VERSION-Android.apk"
 
       - name: Upload Android APK
         uses: actions/upload-artifact@v4

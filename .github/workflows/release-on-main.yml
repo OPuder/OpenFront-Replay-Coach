@@ -169,7 +169,7 @@ jobs:
 
   validate-replay:
     name: Validate real replay fixtures and mixed-engine analysis
-    needs: prepare-release
+    needs: [prepare-release, prepare-engine-bundles]
     if: needs.prepare-release.outputs.skip != 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 75
@@ -185,6 +185,7 @@ jobs:
         with:
           name: replay-engine-bundles-${{ github.run_id }}-${{ github.run_attempt }}
           path: .
+
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
@@ -229,7 +230,7 @@ jobs:
 
   build-windows:
     name: Build Windows installer and portable ZIP
-    needs: prepare-release
+    needs: [prepare-release, prepare-engine-bundles]
     if: needs.prepare-release.outputs.skip != 'true'
     runs-on: windows-latest
     timeout-minutes: 75
@@ -244,6 +245,7 @@ jobs:
         with:
           name: replay-engine-bundles-${{ github.run_id }}-${{ github.run_attempt }}
           path: .
+
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
@@ -285,7 +287,7 @@ jobs:
 
   build-android:
     name: Build installable Android APK
-    needs: prepare-release
+    needs: [prepare-release, prepare-engine-bundles]
     if: needs.prepare-release.outputs.skip != 'true'
     # Keep Android emulator upgrade tests on the KVM-capable Ubuntu 24.04 LTS runner.
     runs-on: ubuntu-24.04
@@ -303,6 +305,7 @@ jobs:
         with:
           name: replay-engine-bundles-${{ github.run_id }}-${{ github.run_attempt }}
           path: .
+
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:

@@ -616,10 +616,13 @@ for (const workflow of engineCacheWorkflows) {
   }
 }
 const engineDiscoveryWorkflow = read(".github/workflows/discover-openfront-engine.yml");
-assert.match(engineDiscoveryWorkflow, /git diff --cached --check -- \. ':!src\/renderer\/engine\/replay-engine-\*\.js'/,
-  "Engine discovery must check repository-owned staged changes without failing on upstream-generated bundle whitespace.");
-assert.doesNotMatch(engineDiscoveryWorkflow, /git diff --cached --check\s*$/m,
-  "Engine discovery must not run the unrestricted whitespace check over generated upstream bundles.");
+assert.match(engineDiscoveryWorkflow, /run: bash scripts\/publish-engine-candidate-branch\.sh/,
+  "Engine discovery must delegate publishing to the tested helper.");
+const engineDiscoveryPublisher = read("scripts/publish-engine-candidate-branch.sh");
+assert.match(engineDiscoveryPublisher, /git diff --cached --check -- \. ':!src\/renderer\/engine\/replay-engine-\*\.js'/,
+  "The publisher must check repository-owned staged changes without failing on upstream-generated bundle whitespace.");
+assert.doesNotMatch(engineDiscoveryPublisher, /git diff --cached --check\s*$/m,
+  "The publisher must not run the unrestricted whitespace check over generated upstream bundles.");
 const engineDiscoveryScript = read("scripts/discover-openfront-engine.mjs");
 assert.match(engineDiscoveryScript, /src\/renderer\/replay-engine\.d\.ts/,
   "Engine discovery must update the renderer's ambient module declarations.");

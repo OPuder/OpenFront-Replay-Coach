@@ -402,6 +402,20 @@ jobs:
       - name: Validate signed Android release-upgrade script syntax
         run: bash -n scripts/test-android-release-upgrade.sh
 
+      - name: Install and verify GNU timeout and OCR utilities
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          sudo apt-get update
+          sudo apt-get install --no-install-recommends -y coreutils tesseract-ocr tesseract-ocr-deu tesseract-ocr-eng
+          command -v timeout
+          command -v tesseract
+          tesseract --list-langs
+          command -v sha256sum
+          timeout --version | head -n 1
+          sha256sum --version | head -n 1
+          timeout 2s bash -c 'sleep 0.1'
+
       - name: Enable, diagnose and verify Linux KVM before emulator startup
         shell: bash
         run: |

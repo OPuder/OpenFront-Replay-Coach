@@ -79,7 +79,7 @@ android_capture_diagnostics() {
     timeout 15s adb -s emulator-5554 pull /sdcard/window.xml "$prefix-ui.xml" 2>&1 || true
     echo
     echo "logcat_android_runtime_activity_package_and_process_exit:"
-    timeout 25s adb -s emulator-5554 logcat -b all -d -v threadtime -t 10000 2>&1 | grep -Ei 'FATAL EXCEPTION|AndroidRuntime|ActivityTaskManager|ActivityManager|am_proc_died|am_kill|am_crash|am_finish_activity|am_destroy_activity|lmkd|lowmemorykiller|Process .*died|Killing .*de\\.openfront\\.replaycoach|PackageManager|PackageInstaller|installd|uiautomator|Accessibility|WindowManager|de\\.openfront\\.replaycoach|chromium|WebView|crash_dump|Fatal signal|INSTALL_' | tail -n 1200 || true
+    timeout 25s adb -s emulator-5554 logcat -b all -d -v threadtime -t 10000 2>&1 | grep -Ei 'FATAL EXCEPTION|AndroidRuntime|ActivityTaskManager|ActivityManager|am_proc_died|am_kill|am_crash|am_finish_activity|am_destroy_activity|lmkd|lowmemorykiller|Process .*died|Killing .*de\.openfront\.replaycoach|PackageManager|PackageInstaller|installd|uiautomator|Accessibility|WindowManager|de\.openfront\.replaycoach|chromium|WebView|crash_dump|Fatal signal|INSTALL_' | tail -n 1200 || true
   } >"$prefix.log" 2>&1
 
   if timeout 30s adb -s emulator-5554 exec-out screencap -p >"$prefix.png" 2>"$prefix-screencap.log" && [[ -s "$prefix.png" ]]; then

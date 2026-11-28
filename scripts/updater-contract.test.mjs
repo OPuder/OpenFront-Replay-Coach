@@ -571,6 +571,14 @@ assert.ok(releaseUpgradeScript.includes("timeout 60s adb -s emulator-5554"));
 const androidValidationWorkflow = read(".github/workflows/update-validation.yml");
 assert.ok(androidValidationWorkflow.includes("bash -n scripts/test-android-release-upgrade.sh"));
 assert.ok(androidValidationWorkflow.includes("bash -n scripts/android-emulator-diagnostics.sh"));
+const androidDiagnosticsScript = read("scripts/android-emulator-diagnostics.sh");
+const androidBaselineSeedScript = read("scripts/seed-android-baseline-ui.sh");
+assert.ok(androidDiagnosticsScript.includes("dumpsys activity exit-info de.openfront.replaycoach"),
+  "Android failure diagnostics must capture the package's process exit reason.");
+assert.ok(androidDiagnosticsScript.includes("logcat -b all -d -v threadtime -t 10000"),
+  "Android failure diagnostics must retain enough system/process logs to classify app exits and low-memory kills.");
+assert.ok(androidBaselineSeedScript.includes("baseline-app-not-foreground-after-launch"),
+  "The published baseline must be checked for a live foreground process before any UI coordinates are used.");
 
 
 // Validate the engine-object cache in the workflows that actually exist on main.

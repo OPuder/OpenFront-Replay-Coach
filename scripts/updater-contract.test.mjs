@@ -581,6 +581,12 @@ assert.ok(androidDiagnosticsScript.includes("de\\.openfront\\.replaycoach"),
   "Android process diagnostics must match the package name with literal dots.");
 assert.ok(androidBaselineSeedScript.includes("baseline-app-not-foreground-after-launch"),
   "The published baseline must be checked for a live foreground process before any UI coordinates are used.");
+assert.ok(androidBaselineSeedScript.includes("for launch_attempt in 1 2 3"),
+  "The published baseline UI seed must recover from bounded transient cold-launch exits.");
+assert.ok(androidBaselineSeedScript.includes("baseline_ready=true"),
+  "The published baseline must remain foreground through stability checks before UI seeding.");
+assert.ok(androidDiagnosticsScript.includes("logcat -b all -d -v threadtime -t 20000"),
+  "Android diagnostics must archive a bounded unfiltered logcat capture for crashes outside the package-filter summary.");
 
 
 // Validate the engine-object cache in the workflows that actually exist on main.

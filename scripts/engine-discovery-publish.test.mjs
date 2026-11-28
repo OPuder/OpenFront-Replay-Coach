@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { execFileSync, spawnSync } from "node:child_process";
-import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
+import { mkdtempSync, mkdirSync, rmSync, writeFileSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
@@ -8,7 +8,6 @@ import { test } from "node:test";
 const root = process.cwd();
 const publishScript = join(root, "scripts", "publish-engine-candidate-branch.sh");
 const workflow = readFileSync(join(root, ".github", "workflows", "discover-openfront-engine.yml"), "utf8");
-const { readFileSync } = await import("node:fs");
 
 function git(cwd, ...args) {
   return execFileSync("git", args, { cwd, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] }).trim();
@@ -62,7 +61,6 @@ test("stale candidate branches are preserved and a current-main branch is publis
     writeFileSync(join(work, "base.txt"), "base\n");
     git(work, "add", "-A");
     git(work, "commit", "-m", "test: create base");
-    const oldBase = git(work, "rev-parse", "HEAD");
     git(work, "push", "-u", "origin", "main");
 
     git(work, "checkout", "-b", "stale-candidate");

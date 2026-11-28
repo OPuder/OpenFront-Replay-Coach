@@ -82,7 +82,7 @@ test("stale candidate branches are preserved and a current-main branch is publis
     const expectedCurrentBranch = `${candidateBranch}-${currentMain.slice(0, 8)}`;
 
     const firstOutput = runPublish(work, currentMain, 12345);
-    assert.match(firstOutput, new RegExp(expectedCurrentBranch.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
+    assert.ok(firstOutput.includes(expectedCurrentBranch), "the publisher uses a main-specific branch name");
     const oldRefSha = remoteBranchSha(work, candidateBranch);
     const newRefSha = remoteBranchSha(work, expectedCurrentBranch);
     assert.ok(oldRefSha, "the stale candidate branch remains present");

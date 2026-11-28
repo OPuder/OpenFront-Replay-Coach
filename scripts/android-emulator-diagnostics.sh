@@ -42,6 +42,15 @@ android_capture_diagnostics() {
     echo "package_state:"
     timeout 20s adb -s emulator-5554 shell dumpsys package de.openfront.replaycoach 2>&1 | grep -E 'versionCode=|versionName=|pkg=|User 0:|installed=' | head -n 40 || true
     echo
+    echo "package_process_state:"
+    timeout 10s adb -s emulator-5554 shell pidof de.openfront.replaycoach 2>&1 || true
+    echo
+    echo "package_exit_info:"
+    timeout 20s adb -s emulator-5554 shell dumpsys activity exit-info de.openfront.replaycoach 2>&1 | tail -n 180 || true
+    echo
+    echo "package_meminfo:"
+    timeout 20s adb -s emulator-5554 shell dumpsys meminfo de.openfront.replaycoach 2>&1 | head -n 120 || true
+    echo
     echo "package_manager_ready:"
     timeout 15s adb -s emulator-5554 shell cmd package list packages 2>&1 | head -n 30 || true
     echo
@@ -69,8 +78,8 @@ android_capture_diagnostics() {
     timeout 20s adb -s emulator-5554 shell uiautomator dump /sdcard/window.xml 2>&1 || true
     timeout 15s adb -s emulator-5554 pull /sdcard/window.xml "$prefix-ui.xml" 2>&1 || true
     echo
-    echo "logcat_android_runtime_activity_package:"
-    timeout 20s adb -s emulator-5554 logcat -d -t 1200 2>&1 | grep -Ei 'FATAL EXCEPTION|AndroidRuntime|ActivityTaskManager|ActivityManager|PackageManager|PackageInstaller|installd|uiautomator|Accessibility|WindowManager|de\.openfront\.replaycoach|INSTALL_' | tail -n 240 || true
+    echo "logcat_android_runtime_activity_package_and_process_exit:"
+    timeout 25s adb -s emulator-5554 logcat -b all -d -v threadtime -t 10000 2>&1 | grep -Ei 'FATAL EXCEPTION|AndroidRuntime|ActivityTaskManager|ActivityManager|am_proc_died|am_kill|am_crash|am_finish_activity|am_destroy_activity|lmkd|lowmemorykiller|Process .*died|Killing .*de\\.openfront\\.replaycoach|PackageManager|PackageInstaller|installd|uiautomator|Accessibility|WindowManager|de\\.openfront\\.replaycoach|chromium|WebView|crash_dump|Fatal signal|INSTALL_' | tail -n 1200 || true
   } >"$prefix.log" 2>&1
 
   if timeout 30s adb -s emulator-5554 exec-out screencap -p >"$prefix.png" 2>"$prefix-screencap.log" && [[ -s "$prefix.png" ]]; then

@@ -82,6 +82,11 @@ android_capture_diagnostics() {
     timeout 25s adb -s emulator-5554 logcat -b all -d -v threadtime -t 10000 2>&1 | grep -Ei 'FATAL EXCEPTION|AndroidRuntime|ActivityTaskManager|ActivityManager|am_proc_died|am_kill|am_crash|am_finish_activity|am_destroy_activity|lmkd|lowmemorykiller|Process .*died|Killing .*de\.openfront\.replaycoach|PackageManager|PackageInstaller|installd|uiautomator|Accessibility|WindowManager|de\.openfront\.replaycoach|chromium|WebView|crash_dump|Fatal signal|INSTALL_' | tail -n 1200 || true
   } >"$prefix.log" 2>&1
 
+  # Keep a complete bounded logcat capture alongside the filtered summary.
+  # The filtered summary can miss WebView/provider crashes without package tags.
+  timeout 30s adb -s emulator-5554 logcat -b all -d -v threadtime -t 20000 >"$prefix-logcat-full.log" 2>&1 || true
+  timeout 20s adb -s emulator-5554 shell dumpsys activity exit-info >"$prefix-exit-info.log" 2>&1 || true
+
   if timeout 30s adb -s emulator-5554 exec-out screencap -p >"$prefix.png" 2>"$prefix-screencap.log" && [[ -s "$prefix.png" ]]; then
     echo "screenshot=$prefix.png" >>"$prefix.log"
     echo "screenshot_sha256=$(sha256sum "$prefix.png" | awk '{print $1}')" >>"$prefix.log"

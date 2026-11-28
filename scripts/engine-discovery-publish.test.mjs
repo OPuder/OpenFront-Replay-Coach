@@ -78,7 +78,6 @@ test("stale candidate branches are preserved and a current-main branch is publis
 
     writeManifest(work, candidateCommit);
     git(work, "add", "-A");
-    git(work, "commit", "-m", "test: discover candidate on current main");
     const expectedCurrentBranch = `${candidateBranch}-${currentMain.slice(0, 8)}`;
 
     const firstOutput = runPublish(work, currentMain, 12345);
@@ -93,7 +92,6 @@ test("stale candidate branches are preserved and a current-main branch is publis
     git(work, "reset", "--hard", currentMain);
     writeManifest(work, candidateCommit);
     git(work, "add", "-A");
-    git(work, "commit", "-m", "test: repeat candidate discovery");
     const secondOutput = runPublish(work, currentMain, 12346);
     assert.match(secondOutput, /already published .* leaving the remote ref unchanged/i);
     assert.equal(remoteBranchSha(work, candidateBranch), oldRefSha, "the stale ref is never overwritten");

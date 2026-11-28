@@ -505,7 +505,7 @@ jobs:
           "$build_tools/apksigner" verify --verbose "$apk"
           "$build_tools/aapt" dump badging "$apk" | grep -F "package: name='de.openfront.replaycoach'"
           "$build_tools/aapt" dump badging "$apk" | grep -F "versionName='$RELEASE_VERSION'"
-          if unzip -p "$apk" assets/public/index.html | grep -q '__OFRC_ANDROID_UPGRADE_TEST__'; then
+          if unzip -p "$apk" 'assets/public/assets/*.js' | grep -q '__OFRC_ANDROID_UPGRADE_TEST__'; then
             echo "::error::The final production APK unexpectedly contains the Android upgrade-test bridge."
             exit 1
           fi

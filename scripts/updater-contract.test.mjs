@@ -31,7 +31,10 @@ const renderer = read("src/renderer/UpdateCenter.tsx");
 const versionScript = read("scripts/set-release-version.mjs");
 const releaseWorkflow = read(".github/workflows/release-on-main.yml");
 const releaseAndroidJob = releaseWorkflow.slice(releaseWorkflow.indexOf("  build-android:"));
-assert.match(releaseAndroidJob, /Generate the native Android project[\\s\\S]*?node scripts\\/install-android-updater-plugin\\.mjs[\\s\\S]*?Smoke-test native Android configuration/,
+const generateAndroidProject = releaseAndroidJob.indexOf("Generate the native Android project");
+const installUpdaterPlugin = releaseAndroidJob.indexOf("node scripts/install-android-updater-plugin.mjs");
+const androidConfigSmokeTest = releaseAndroidJob.indexOf("Smoke-test native Android configuration");
+assert.ok(generateAndroidProject >= 0 && installUpdaterPlugin > generateAndroidProject && androidConfigSmokeTest > installUpdaterPlugin,
   "The Android smoke test must run after Capacitor generates android/build.gradle and the updater installer inserts the Maven mirror.");
 const branchCleanupWorkflow = read(".github/workflows/cleanup-merged-branches.yml");
 assert.match(updater, /releases\/latest/);

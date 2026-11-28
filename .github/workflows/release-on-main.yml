@@ -105,6 +105,68 @@ jobs:
           echo "release_sha=$release_sha" >> "$GITHUB_OUTPUT"
           echo "Selected reviewed version $tag at $release_sha. No repository files are modified or pushed."
 
+  prepare-engine-bundles:
+    name: Prepare one verified engine bundle artifact for all release editions
+    needs: prepare-release
+    if: needs.prepare-release.outputs.skip != 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 70
+    steps:
+      - name: Check out the exact release source
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.prepare-release.outputs.release_sha }}
+          submodules: false
+
+      - name: Restore exact engine Git objects
+        uses: actions/cache@v4
+        with:
+          path: .git/modules
+          key: openfront-engine-git-${{ runner.os }}-${{ hashFiles('.gitmodules', 'engine-build/engines.json') }}
+          restore-keys: |
+            openfront-engine-git-${{ runner.os }}-
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24.15.0"
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            vendor/**/package-lock.json
+
+      - name: Set up pinned npm
+        run: npm install --global npm@12.1.0
+
+      - name: Restore verified replay engine bundles
+        uses: actions/cache@v4
+        with:
+          path: |
+            src/renderer/engine
+            .openfront-engine-build.json
+          key: openfront-engine-bundles-${{ hashFiles('.gitmodules', 'engine-build/**', 'vendor/**/package-lock.json', 'scripts/build-engines.mjs', 'scripts/engine-bundle-cache.mjs') }}
+          enableCrossOsArchive: true
+
+      - name: Prepare exact historical OpenFront engines once
+        timeout-minutes: 55
+        run: npm run prepare:engines
+
+      - name: Build all exact replay engine bundles once
+        run: npm run build:engine
+
+      - name: Verify exact engine pins and runtime mappings
+        run: npm run validate:engine-pin
+
+      - name: Upload verified replay engine bundle artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: replay-engine-bundles-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            src/renderer/engine/replay-engine-*.js
+            .openfront-engine-build.json
+          if-no-files-found: error
+          retention-days: 1
+
   validate-replay:
     name: Validate real replay fixtures and mixed-engine analysis
     needs: prepare-release
@@ -118,14 +180,11 @@ jobs:
           ref: ${{ needs.prepare-release.outputs.release_sha }}
           submodules: false
 
-      - name: Restore exact historical engine Git objects
-        uses: actions/cache@v4
+      - name: Download the exact shared engine bundle artifact
+        uses: actions/download-artifact@v4
         with:
-          path: .git/modules
-          key: openfront-engine-git-${{ runner.os }}-${{ hashFiles('.gitmodules', 'engine-build/engines.json') }}
-          restore-keys: |
-            openfront-engine-git-${{ runner.os }}-
-
+          name: replay-engine-bundles-${{ github.run_id }}-${{ github.run_attempt }}
+          path: .
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
@@ -137,16 +196,7 @@ jobs:
       - name: Install Coach dependencies
         run: npm ci
 
-      - name: Restore verified replay engine bundles
-        uses: actions/cache@v4
-        with:
-          path: |
-            src/renderer/engine
-            .openfront-engine-build.json
-          key: openfront-engine-bundles-${{ hashFiles('.gitmodules', 'engine-build/**', 'vendor/**/package-lock.json', 'scripts/build-engines.mjs', 'scripts/engine-bundle-cache.mjs') }}
-          enableCrossOsArchive: true
-
-      - name: Prepare all exact historical OpenFront engines
+      - name: Verify the exact shared engine bundle artifact
         timeout-minutes: 55
         run: npm run prepare:engines
 
@@ -189,14 +239,11 @@ jobs:
         with:
           ref: ${{ needs.prepare-release.outputs.release_sha }}
 
-      - name: Restore exact historical engine Git objects
-        uses: actions/cache@v4
+      - name: Download the exact shared engine bundle artifact
+        uses: actions/download-artifact@v4
         with:
-          path: .git/modules
-          key: openfront-engine-git-${{ runner.os }}-${{ hashFiles('.gitmodules', 'engine-build/engines.json') }}
-          restore-keys: |
-            openfront-engine-git-${{ runner.os }}-
-
+          name: replay-engine-bundles-${{ github.run_id }}-${{ github.run_attempt }}
+          path: .
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
@@ -209,16 +256,7 @@ jobs:
       - name: Set up pinned npm
         run: npm install --global npm@12.1.0
 
-      - name: Restore verified replay engine bundles
-        uses: actions/cache@v4
-        with:
-          path: |
-            src/renderer/engine
-            .openfront-engine-build.json
-          key: openfront-engine-bundles-${{ hashFiles('.gitmodules', 'engine-build/**', 'vendor/**/package-lock.json', 'scripts/build-engines.mjs', 'scripts/engine-bundle-cache.mjs') }}
-          enableCrossOsArchive: true
-
-      - name: Prepare all exact historical OpenFront engines
+      - name: Verify the exact shared engine bundle artifact
         timeout-minutes: 55
         run: npm run prepare:engines
 
@@ -260,14 +298,11 @@ jobs:
         with:
           ref: ${{ needs.prepare-release.outputs.release_sha }}
 
-      - name: Restore exact historical engine Git objects
-        uses: actions/cache@v4
+      - name: Download the exact shared engine bundle artifact
+        uses: actions/download-artifact@v4
         with:
-          path: .git/modules
-          key: openfront-engine-git-${{ runner.os }}-${{ hashFiles('.gitmodules', 'engine-build/engines.json') }}
-          restore-keys: |
-            openfront-engine-git-${{ runner.os }}-
-
+          name: replay-engine-bundles-${{ github.run_id }}-${{ github.run_attempt }}
+          path: .
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
@@ -280,16 +315,7 @@ jobs:
       - name: Set up pinned npm
         run: npm install --global npm@12.1.0
 
-      - name: Restore verified replay engine bundles
-        uses: actions/cache@v4
-        with:
-          path: |
-            src/renderer/engine
-            .openfront-engine-build.json
-          key: openfront-engine-bundles-${{ hashFiles('.gitmodules', 'engine-build/**', 'vendor/**/package-lock.json', 'scripts/build-engines.mjs', 'scripts/engine-bundle-cache.mjs') }}
-          enableCrossOsArchive: true
-
-      - name: Prepare all exact historical OpenFront engines
+      - name: Verify the exact shared engine bundle artifact
         timeout-minutes: 55
         run: npm run prepare:engines
 

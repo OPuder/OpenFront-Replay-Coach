@@ -30,6 +30,12 @@ const installer = read("scripts/install-android-updater-plugin.mjs");
 const renderer = read("src/renderer/UpdateCenter.tsx");
 const versionScript = read("scripts/set-release-version.mjs");
 const releaseWorkflow = read(".github/workflows/release-on-main.yml");
+const releaseAndroidJob = releaseWorkflow.slice(releaseWorkflow.indexOf("  build-android:"));
+const generateAndroidProject = releaseAndroidJob.indexOf("Generate the native Android project");
+const installUpdaterPlugin = releaseAndroidJob.indexOf("node scripts/install-android-updater-plugin.mjs");
+const androidConfigSmokeTest = releaseAndroidJob.indexOf("Smoke-test native Android configuration");
+assert.ok(generateAndroidProject >= 0 && installUpdaterPlugin > generateAndroidProject && androidConfigSmokeTest > installUpdaterPlugin,
+  "The Android smoke test must run after Capacitor generates android/build.gradle and the updater installer inserts the Maven mirror.");
 const branchCleanupWorkflow = read(".github/workflows/cleanup-merged-branches.yml");
 assert.match(updater, /releases\/latest/);
 assert.match(updater, /createHash\('sha256'\)/);
@@ -565,6 +571,22 @@ assert.ok(releaseUpgradeScript.includes("timeout 60s adb -s emulator-5554"));
 const androidValidationWorkflow = read(".github/workflows/update-validation.yml");
 assert.ok(androidValidationWorkflow.includes("bash -n scripts/test-android-release-upgrade.sh"));
 assert.ok(androidValidationWorkflow.includes("bash -n scripts/android-emulator-diagnostics.sh"));
+const androidDiagnosticsScript = read("scripts/android-emulator-diagnostics.sh");
+const androidBaselineSeedScript = read("scripts/seed-android-baseline-ui.sh");
+assert.ok(androidDiagnosticsScript.includes("dumpsys activity exit-info de.openfront.replaycoach"),
+  "Android failure diagnostics must capture the package's process exit reason.");
+assert.ok(androidDiagnosticsScript.includes("logcat -b all -d -v threadtime -t 10000"),
+  "Android failure diagnostics must retain enough system/process logs to classify app exits and low-memory kills.");
+assert.ok(androidDiagnosticsScript.includes("de\\.openfront\\.replaycoach"),
+  "Android process diagnostics must match the package name with literal dots.");
+assert.ok(androidBaselineSeedScript.includes("baseline-app-not-foreground-after-launch"),
+  "The published baseline must be checked for a live foreground process before any UI coordinates are used.");
+assert.ok(androidBaselineSeedScript.includes("for launch_attempt in 1 2 3"),
+  "The published baseline UI seed must recover from bounded transient cold-launch exits.");
+assert.ok(androidBaselineSeedScript.includes("baseline_ready=true"),
+  "The published baseline must remain foreground through stability checks before UI seeding.");
+assert.ok(androidDiagnosticsScript.includes("logcat -b all -d -v threadtime -t 20000"),
+  "Android diagnostics must archive a bounded unfiltered logcat capture for crashes outside the package-filter summary.");
 
 
 // Validate the engine-object cache in the workflows that actually exist on main.

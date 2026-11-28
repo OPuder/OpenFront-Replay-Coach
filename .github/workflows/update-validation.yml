@@ -498,7 +498,7 @@ jobs:
       - name: Upload validated production APK
         uses: actions/upload-artifact@v4
         with:
-          name: updater-validation-android
+          name: updater-validation-android-${{ github.run_id }}-${{ github.run_attempt }}
           path: android/app/build/outputs/apk/release/app-release.apk
           if-no-files-found: error
           retention-days: 7
@@ -506,7 +506,7 @@ jobs:
       - name: Download uploaded APK for byte-for-byte verification
         uses: actions/download-artifact@v4
         with:
-          name: updater-validation-android
+          name: updater-validation-android-${{ github.run_id }}-${{ github.run_attempt }}
           path: ${{ runner.temp }}/verified-android-artifact
 
       - name: Verify uploaded production APK hash and signature

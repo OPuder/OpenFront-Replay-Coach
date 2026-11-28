@@ -184,32 +184,33 @@ assert.ok(androidUpdateRegression.includes('timeout 30s adb -s emulator-5554 she
 assert.match(releaseWorkflow, /Verify published release contains exactly three usable artifacts/);
 
 const workflowJobBlock = name => {
-  const lines = releaseWorkflow.split(/\\r?\\n/);
-  const start = lines.findIndex(line => line === `  ${name}:`);
-  assert.ok(start >= 0, `Release workflow must define ${name}.`);
+  const lines = releaseWorkflow.split(/\r?\n/);
+  const start = lines.findIndex(line => line === "  " + name + ":");
+  assert.ok(start >= 0, "Release workflow must define " + name + ".");
   const end = lines.findIndex((line, index) => index > start && /^  [a-z0-9-]+:$/.test(line));
-  return lines.slice(start, end < 0 ? lines.length : end).join("\\n");
+  return lines.slice(start, end < 0 ? lines.length : end).join("\n");
 };
 const sharedEnginePreparation = workflowJobBlock("prepare-engine-bundles");
 assert.match(sharedEnginePreparation, /needs: prepare-release/);
 assert.match(sharedEnginePreparation, /npm run prepare:engines/);
 assert.match(sharedEnginePreparation, /npm run build:engine/);
 assert.match(sharedEnginePreparation, /npm run validate:engine-pin/);
-assert.match(sharedEnginePreparation, /actions\\/upload-artifact@v4/);
-assert.match(sharedEnginePreparation, /src\\/renderer\\/engine\\/replay-engine-\\*\\.js/);
-assert.match(sharedEnginePreparation, /\\.openfront-engine-build\\.json/);
+assert.match(sharedEnginePreparation, /actions\/upload-artifact@v4/);
+assert.match(sharedEnginePreparation, /src\/renderer\/engine\/replay-engine-\*\.js/);
+assert.match(sharedEnginePreparation, /\.openfront-engine-build\.json/);
+assert.match(sharedEnginePreparation, /retention-days: 1/);
 for (const jobName of ["validate-replay", "build-windows", "build-android"]) {
   const block = workflowJobBlock(jobName);
-  assert.match(block, /needs: \\[prepare-release, prepare-engine-bundles\\]/,
-    `${jobName} must wait for the single verified engine preparation job.`);
-  assert.match(block, /actions\\/download-artifact@v4/,
-    `${jobName} must consume the shared exact engine artifact.`);
-  assert.match(block, /name: replay-engine-bundles-\\$\\{\\{ github\\.run_id \\}\\}-\\$\\{\\{ github\\.run_attempt \\}\\}/,
-    `${jobName} must download the artifact from this exact workflow attempt.`);
+  assert.match(block, /needs: \[prepare-release, prepare-engine-bundles\]/,
+    jobName + " must wait for the single verified engine preparation job.");
+  assert.match(block, /actions\/download-artifact@v4/,
+    jobName + " must consume the shared exact engine artifact.");
+  assert.match(block, /name: replay-engine-bundles-\$\{\{ github\.run_id \}\}-\$\{\{ github\.run_attempt \}\}/,
+    jobName + " must download the artifact from this exact workflow attempt.");
   assert.match(block, /npm run prepare:engines/,
-    `${jobName} must verify the downloaded bundle manifest before use.`);
+    jobName + " must verify the downloaded bundle manifest before use.");
   assert.doesNotMatch(block, /Restore exact historical engine Git objects|Restore verified replay engine bundles|Prepare all exact historical OpenFront engines/,
-    `${jobName} must not prepare historical engines independently.`);
+    jobName + " must not prepare historical engines independently.");
 }
 
 assert.match(releaseWorkflow, /names\.length === 3/);

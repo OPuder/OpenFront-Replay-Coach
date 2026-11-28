@@ -577,6 +577,8 @@ assert.ok(androidDiagnosticsScript.includes("dumpsys activity exit-info de.openf
   "Android failure diagnostics must capture the package's process exit reason.");
 assert.ok(androidDiagnosticsScript.includes("logcat -b all -d -v threadtime -t 10000"),
   "Android failure diagnostics must retain enough system/process logs to classify app exits and low-memory kills.");
+assert.ok(androidDiagnosticsScript.includes("de\\.openfront\\.replaycoach"),
+  "Android process diagnostics must match the package name with literal dots.");
 assert.ok(androidBaselineSeedScript.includes("baseline-app-not-foreground-after-launch"),
   "The published baseline must be checked for a live foreground process before any UI coordinates are used.");
 
